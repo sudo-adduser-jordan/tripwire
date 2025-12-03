@@ -1,6 +1,10 @@
 defmodule TripwireWeb.Router do
   use TripwireWeb, :router
 
+  pipeline :api do
+    plug :accepts, ["json"]
+  end
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -8,35 +12,41 @@ defmodule TripwireWeb.Router do
     plug :put_root_layout, html: {TripwireWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
-  end
-
-  pipeline :api do
-    plug :accepts, ["json"]
+    plug HelloWeb.Plugs.Locale, "en"
   end
 
   scope "/", TripwireWeb do
     pipe_through :browser
-
     get "/", PageController, :home
+    get "/login", LoginController, :index
+    # get "/dashboard", LoginController, :index
+
+    # get "/systems", LoginController, :index
+    # get "/stations", LoginController, :index
+    # get "/signatures", LoginController, :index
+
+    # get "/users", LoginController, :index
+    # get "/alliances", LoginController, :index
+    # get "/corporations", LoginController, :index
+
+    # resources "/users", UserController do
+    #   resources "/posts", PostController
+    # end
+    # resources "/reviews", ReviewController
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", TripwireWeb do
-  #   pipe_through :api
+  # scope "/admin", HelloWeb.Admin do
+  #   pipe_through :browser
+  #   resources "/users",   UserController
+  #   resources "/images",   UserController
+  #   resources "/reviews", ReviewController
   # end
 
-  # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:tripwire, :dev_routes) do
-    # If you want to use the LiveDashboard in production, you should put
-    # it behind authentication and allow only admins to access it.
-    # If your application does not have an admins-only section yet,
-    # you can use Plug.BasicAuth to set up some basic authentication
-    # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
     scope "/dev" do
       pipe_through :browser
-
       live_dashboard "/dashboard", metrics: TripwireWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
