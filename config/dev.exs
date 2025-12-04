@@ -23,7 +23,7 @@ config :tripwire, TripwireWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "2DsLwHM8Jc91KOH088BX8yTJy0csAyIfdQ92AW/eqlwIb9SF0FjMZ51ECRMijR/P",
+  secret_key_base: "vMF19d7PFCEnoNpB3YLYvvB6tdFNlj/Hp7UgubbvgYsmhmztIDM/GtMMscbKlBds",
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:tripwire, ~w(--sourcemap=inline --watch)]},
     tailwind: {Tailwind, :install_and_run, [:tripwire, ~w(--watch)]}

@@ -20,7 +20,7 @@ config :tripwire, TripwireWeb.Endpoint,
     layout: false
   ],
   pubsub_server: Tripwire.PubSub,
-  live_view: [signing_salt: "lC6hlMkT"]
+  live_view: [signing_salt: "2qoLjCJq"]
 
 # Configure the mailer
 #

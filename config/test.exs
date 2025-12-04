@@ -17,7 +17,7 @@ config :tripwire, Tripwire.Repo,
 # you can enable the server option below.
 config :tripwire, TripwireWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "cDMRK/AhneyOFvyzGtFWpJZEY9G+k1Joe6SI7BqnxX4F1aOFg4/7YuEgcFnN02OI",
+  secret_key_base: "oRmSSMd12xHQZCytekL1JqwYNt5SvFEvz4TUqidiRwOjk8odehw2oxVq8kwp9C8g",
   server: false
 
 # In test we don't send emails
