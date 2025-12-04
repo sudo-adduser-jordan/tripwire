@@ -1,5 +1,33 @@
+<style>
+.grid-stack-item-content {
+  color: var(--color-accent);
+  text-align: center;
+  background-color: var(--color-base-100);
+}
+</style>
+
+
 <Layouts.app flash={@flash}>
-  <section>
-    <h2>Hello {@user}!</h2>
-  </section>
+  <container class="size-full flex flex-col p-2 bg-accent">
+
+    <nav class="flex flex-row bg-base-200 rounded p-2 w-full h-fit gap-2">
+        <div class="">{@user}</div>&gt; 
+        <div class="">{@user}</div>&gt;
+        <div class="">{@user}</div>&gt;
+        <div class="">{@user}</div>&gt;
+        <div class="">{@user}</div>&gt;
+        <div class="">{@user}</div>
+    </nav>
+
+    <grid class="grid-stack mt-2 rounded size-full  bg-base-200"></grid>
+
+  </container>
 </Layouts.app>
+
+
+<script>
+
+
+
+
+</script>
