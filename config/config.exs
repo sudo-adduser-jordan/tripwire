@@ -12,7 +12,7 @@ config :tripwire,
   generators: [timestamp_type: :utc_datetime]
 
 # Configure the endpoint
-config :tripwire, TripwireWeb.Endpoint,
+config :tripwire, TripwireWeb.Endpoint, server: true,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
