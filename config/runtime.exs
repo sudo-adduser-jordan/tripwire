@@ -35,6 +35,12 @@ if config_env() == :prod do
 
   config :tripwire, Tripwire.Repo,
     # ssl: true,
+
+  ssl: [
+    verify: :verify_peer,
+    cacerts: :public_key.cacerts_get()
+  ],
+
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     # For machines with several cores, consider starting multiple pools of `pool_size`
@@ -117,4 +123,5 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Req
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+
 end
