@@ -8,7 +8,7 @@
 import Config
 
 config :tripwire,
-  # ecto_repos: [Tripwire.Repo],
+  ecto_repos: [Tripwire.Repo],
   generators: [timestamp_type: :utc_datetime]
 
 # Configure the endpoint
