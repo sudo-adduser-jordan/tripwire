@@ -4,6 +4,7 @@
   },
   "dependencies": {
     "echarts": "^6.0.0",
-    "gridstack": "^12.3.3"
+    "gridstack": "^12.3.3",
+    "jquery": "^3.7.1"
   }
 }

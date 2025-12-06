@@ -23,6 +23,55 @@ const options = {
 var grid = GridStack.init(options);
 
 import * as echarts from 'echarts';
+import $ from "jquery";
+
+var chartDom = document.getElementById('map');
+var myChart1 = echarts.init(chartDom);
+var option;
+
+myChart1.showLoading();
+$.get('/data.json', function (data) {
+  myChart1.hideLoading();
+  myChart1.setOption(
+    (option = {
+      tooltip: {
+        trigger: 'item',
+        triggerOn: 'mousemove'
+      },
+      series: [
+        {
+          type: 'tree',
+          data: [data],
+          left: '2%',
+          right: '2%',
+          top: '8%',
+          bottom: '20%',
+          symbol: 'emptyCircle',
+          orient: 'vertical',
+          expandAndCollapse: true,
+          label: {
+            position: 'top',
+            rotate: -90,
+            verticalAlign: 'middle',
+            align: 'right',
+            fontSize: 9
+          },
+          leaves: {
+            label: {
+              position: 'bottom',
+              rotate: -90,
+              verticalAlign: 'middle',
+              align: 'left'
+            }
+          },
+          animationDurationUpdate: 750
+        }
+      ]
+    })
+  );
+});
+
+option && myChart1.setOption(option);
 
 var chartDom = document.getElementById('system-chart');
 var myChart = echarts.init(chartDom);
