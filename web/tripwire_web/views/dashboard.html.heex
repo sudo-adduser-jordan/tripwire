@@ -12,18 +12,20 @@
 <Layouts.app flash={@flash}>
   <div class="flex size-full flex-col p-2 bg-base-100 gap-2">
 
-    <nav class="flex flex-row justify-between bg-base-200 rounded p-2 w-full h-fit gap-2">
-        <div class="flex flex-row gap-2">        
-        <div class="hover:cursor-pointer hover:underline">TQ 00000</div> |
-        <div class="hover:cursor-pointer hover:underline">System</div> &gt;
-        <input class="bg-base-100 rounded" placeholder="Search systems"/>
-        </div>
+    <nav class="flex flex-col gap-2 sm:gap-0 sm:flex-row" >
+        <nav class="flex flex-row bg-base-200 p-2 w-full h-fit gap-2">
+            <div class="hover:cursor-pointer hover:underline">TQ 00000</div> |
+            <div class="hover:cursor-pointer hover:underline">System</div> &gt;
+            <input class="bg-base-100 rounded w-42" placeholder="Search systems"/>
+        </nav>
 
-        <div class="flex flex-row gap-2">
-        <div class="hover:cursor-pointer hover:underline">{@user}</div>&gt; 
-        <div class="hover:cursor-pointer hover:underline">Corporation</div> | 
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M21 2h-5v20h5c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1M2 21c0 .6.4 1 1 1h11v-9H2zM2 3v8h12V2H3c-.6 0-1 .4-1 1"/></svg>
-        </div>
+        <nav class="flex flex-row justify-start sm:justify-end bg-base-200 p-2 h-fit gap-2">
+            <svg class="ord`er-1 sm:order-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M21 2h-5v20h5c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1M2 21c0 .6.4 1 1 1h11v-9H2zM2 3v8h12V2H3c-.6 0-1 .4-1 1"/></svg>
+            <p class="  order-1 sm:order-3"> | </p>
+            <div class="order-2 sm:order-1 hover:cursor-pointer hover:underline">{@user}</div> 
+            <p class="  order-3 sm:order-2"> &gt; </p>
+            <div class="order-4 sm:order-3 hover:cursor-pointer hover:underline">Corporation</div>  
+        </nav>
     </nav>
 
     <div class="size-full bg-base-200">
