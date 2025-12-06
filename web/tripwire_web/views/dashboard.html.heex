@@ -1,44 +1,43 @@
 <style>
+.grid-stack  {
+  color: var(--color-accent);
+  background-color: var(--color-base-200);
+}
 .grid-stack-item-content {
   color: var(--color-accent);
-  text-align: center;
   background-color: var(--color-base-100);
 }
 </style>
 
 <Layouts.app flash={@flash}>
-  <container class="size-full flex flex-col p-2 bg-base-100">
+  <div class="flex size-full flex-col p-2 bg-base-100 gap-2">
 
     <nav class="flex flex-row justify-between bg-base-200 rounded p-2 w-full h-fit gap-2">
-        <div class="flex flex-row gap-2">
-        
-        <div class="hover:cursor-pointer hover:underline">{@user}</div>&gt; 
-        <div class="hover:cursor-pointer hover:underline">System</div>&gt;
-        <div class="hover:cursor-pointer hover:underline">Count</div>
+        <div class="flex flex-row gap-2">        
+        <div class="hover:cursor-pointer hover:underline">TQ 00000</div> |
+        <div class="hover:cursor-pointer hover:underline">System</div> &gt;
+        <input class="bg-base-100 rounded" placeholder="Search systems"/>
         </div>
 
         <div class="flex flex-row gap-2">
-        <div class="hover:cursor-pointer hover:underline">Character</div>&gt;
-        <div class="hover:cursor-pointer hover:underline">Corporation</div>
+        <div class="hover:cursor-pointer hover:underline">{@user}</div>&gt; 
+        <div class="hover:cursor-pointer hover:underline">Corporation</div> | 
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M21 2h-5v20h5c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1M2 21c0 .6.4 1 1 1h11v-9H2zM2 3v8h12V2H3c-.6 0-1 .4-1 1"/></svg>
         </div>
     </nav>
 
-    <div class="size-full mt-2 rounded bg-base-200">
-        <div class="grid-stack">
-          <div class="grid-stack-item" gs-w="4" gs-h="3"><div class="grid-stack-item-content">System</div></div>
-          <div class="grid-stack-item" gs-w="4" gs-h="3"><div class="grid-stack-item-content">Signatures</div></div>
-          <div class="grid-stack-item" gs-w="4" gs-h="3"><div class="grid-stack-item-content">Notes</div></div>
-          <div class="grid-stack-item" gs-w="12" gs-h="2"><div class="grid-stack-item-content">Map</div></div>
-        </div>
+    <div class="size-full bg-base-200">
+    <div class="grid-stack">
+        <div class="grid-stack-item" gs-w="4" gs-h="3"><div class="grid-stack-item-content">System</div></div>
+        <div class="grid-stack-item" gs-w="4" gs-h="3"><div class="grid-stack-item-content">Signatures</div></div>
+        <div class="grid-stack-item" gs-w="4" gs-h="3"><div class="grid-stack-item-content">Notes</div></div>
+        <div class="grid-stack-item" gs-w="12" gs-h="2"><div class="grid-stack-item-content">Map</div></div>
+    </div>
     </div>
     
-  </container>
+  </div>
 </Layouts.app>
 
-
 <script>
-
-
-
 
 </script>
