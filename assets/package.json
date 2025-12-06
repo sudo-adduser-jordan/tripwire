@@ -1,8 +1,9 @@
 {
   "scripts": {
-        "deploy": "cd .. && mix assets.deploy && rm -f _build/esbuild"
+    "deploy": "cd .. && mix assets.deploy && rm -f _build/esbuild"
   },
-    "dependencies": {
+  "dependencies": {
+    "echarts": "^6.0.0",
     "gridstack": "^12.3.3"
   }
 }
