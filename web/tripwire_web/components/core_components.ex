@@ -1,44 +1,8 @@
 defmodule TripwireWeb.CoreComponents do
-  @moduledoc """
-  Provides core UI components.
-
-  At first glance, this module may seem daunting, but its goal is to provide
-  core building blocks for your application, such as tables, forms, and
-  inputs. The components consist mostly of markup and are well-documented
-  with doc strings and declarative assigns. You may customize and style
-  them in any way you want, based on your application growth and needs.
-
-  The foundation for styling is Tailwind CSS, a utility-first CSS framework,
-  augmented with daisyUI, a Tailwind CSS plugin that provides UI components
-  and themes. Here are useful references:
-
-    * [daisyUI](https://daisyui.com/docs/intro/) - a good place to get
-      started and see the available components.
-
-    * [Tailwind CSS](https://tailwindcss.com) - the foundational framework
-      we build on. You will use it for layout, sizing, flexbox, grid, and
-      spacing.
-
-    * [Heroicons](https://heroicons.com) - see `icon/1` for usage.
-
-    * [Phoenix.Component](https://hexdocs.pm/phoenix_live_view/Phoenix.Component.html) -
-      the component system used by Phoenix. Some components, such as `<.link>`
-      and `<.form>`, are defined there.
-
-  """
   use Phoenix.Component
   use Gettext, backend: TripwireWeb.Gettext
 
   alias Phoenix.LiveView.JS
-
-  @doc """
-  Renders flash notices.
-
-  ## Examples
-
-      <.flash kind={:info} flash={@flash} />
-      <.flash kind={:info} phx-mounted={show("#flash")}>Welcome Back!</.flash>
-  """
   attr :id, :string, doc: "the optional id of flash container"
   attr :flash, :map, default: %{}, doc: "the map of flash messages to display"
   attr :title, :string, default: nil
@@ -79,15 +43,6 @@ defmodule TripwireWeb.CoreComponents do
     """
   end
 
-  @doc """
-  Renders a button with navigation support.
-
-  ## Examples
-
-      <.button>Send!</.button>
-      <.button phx-click="go" variant="primary">Send!</.button>
-      <.button navigate={~p"/"}>Home</.button>
-  """
   attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
   attr :class, :any
   attr :variant, :string, values: ~w(primary)
@@ -116,46 +71,6 @@ defmodule TripwireWeb.CoreComponents do
     end
   end
 
-  @doc """
-  Renders an input with label and error messages.
-
-  A `Phoenix.HTML.FormField` may be passed as argument,
-  which is used to retrieve the input name, id, and values.
-  Otherwise all attributes may be passed explicitly.
-
-  ## Types
-
-  This function accepts all HTML input types, considering that:
-
-    * You may also set `type="select"` to render a `<select>` tag
-
-    * `type="checkbox"` is used exclusively to render boolean values
-
-    * For live file uploads, see `Phoenix.Component.live_file_input/1`
-
-  See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
-  for more information. Unsupported types, such as radio, are best
-  written directly in your templates.
-
-  ## Examples
-
-  ```heex
-  <.input field={@form[:email]} type="email" />
-  <.input name="my-input" errors={["oh no!"]} />
-  ```
-
-  ## Select type
-
-  When using `type="select"`, you must pass the `options` and optionally
-  a `value` to mark which option should be preselected.
-
-  ```heex
-  <.input field={@form[:user_type]} type="select" options={["Admin": "admin", "User": "user"]} />
-  ```
-
-  For more information on what kind of data can be passed to `options` see
-  [`options_for_select`](https://hexdocs.pm/phoenix_html/Phoenix.HTML.Form.html#options_for_select/2).
-  """
   attr :id, :any, default: nil
   attr :name, :any
   attr :label, :string, default: nil
