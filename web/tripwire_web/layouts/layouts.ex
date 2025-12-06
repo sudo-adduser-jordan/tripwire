@@ -45,17 +45,18 @@ defmodule TripwireWeb.Layouts do
       <div class="flex-none">
         <ul class="flex flex-column px-1 space-x-4 items-center">
           <li>
-            <a href="/" class="btn btn-ghost">Home</a>
+            <a href="/" class="btn btn-ghost">Logout</a>
           </li>
           <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
+            <a href="/" class="btn btn-ghost">Wiki</a>
           </li>
           <li>
             <.theme_toggle />
           </li>
           <li>
-            <a href="https://hexdocs.pm/phoenix/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
+            <a href="/" class="btn btn-primary">
+              Settings <span aria-hidden="true">&rarr;</span>
+              <%!-- swipe to left --%>
             </a>
           </li>
         </ul>
