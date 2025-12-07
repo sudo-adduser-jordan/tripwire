@@ -23,19 +23,18 @@ const options = {
 var grid = GridStack.init(options);
 
 import * as echarts from 'echarts';
-// import $ from "jquery";
+import $ from "jquery";
 
-// var chartDom = document.getElementById('map');
 
 document.addEventListener('DOMContentLoaded', () => {
-    var myChart1 = echarts.init(chartDom);
-    // set options or other chart code here
-var option;
+    var chartDom = document.getElementById('map');
+    var systemChart = echarts.init(chartDom);
+    var option;
 
-myChart1.showLoading();
+systemChart.showLoading();
 $.get('/data.json', function (data) {
-  myChart1.hideLoading();
-  myChart1.setOption(
+  systemChart.hideLoading();
+  systemChart.setOption(
     (option = {
       tooltip: {
         trigger: 'item',
@@ -74,10 +73,10 @@ $.get('/data.json', function (data) {
   );
 });
 
-option && myChart1.setOption(option);
+option && systemChart.setOption(option);
 
 var chartDom = document.getElementById('system-chart');
-var myChart = echarts.init(chartDom);
+var treeMap = echarts.init(chartDom);
 var option;
 
 option = {
@@ -171,7 +170,7 @@ option = {
   ]
 };
 
-option && myChart.setOption(option);
+option && treeMap.setOption(option);
 
 });
 
