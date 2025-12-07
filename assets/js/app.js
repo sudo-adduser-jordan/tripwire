@@ -51,6 +51,7 @@ $.get('/data.json', function (data) {
           symbol: 'emptyCircle',
           orient: 'vertical',
           expandAndCollapse: true,
+          initialTreeDepth: 999,
           label: {
             position: 'top',
             rotate: -90,
