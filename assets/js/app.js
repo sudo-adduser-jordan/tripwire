@@ -44,32 +44,25 @@ $.get('/data.json', function (data) {
         {
           type: 'tree',
           data: [data],
+          orient: 'vertical',
+          expandAndCollapse: true,
+          initialTreeDepth: 999,
+          animationDurationUpdate: 100,
+          label: {show: false},
+
           left: '2%',
           right: '2%',
           top: '8%',
           bottom: '20%',
-          symbol: 'emptyCircle',
-          orient: 'vertical',
-          expandAndCollapse: true,
-          initialTreeDepth: 999,
-          label: {
-            position: 'top',
-            rotate: -90,
-            verticalAlign: 'middle',
-            align: 'right',
-            fontSize: 9
-          },
-          leaves: {
-            label: {
-              position: 'bottom',
-              rotate: -90,
-              verticalAlign: 'middle',
-              align: 'left'
-            }
-          },
-          animationDurationUpdate: 750
+
+          symbol: 'roundRect',
+          symbolSize: [140, 80],
+
+        //   roam: 'true', // div needs lock
+          edgeShape:'polyline',
+          lineStyle: {curveness: .5}
         }
-      ]
+    ],
     })
   );
 });
