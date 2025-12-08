@@ -20,10 +20,11 @@ const options = {
     // float: true,
     // staticGrid: true,
 }
-var grid = GridStack.init(options);
 
 import * as echarts from 'echarts';
 import $ from "jquery";
+
+var grid = GridStack.init(options);
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -68,6 +69,7 @@ $.get('/data.json', function (data) {
 });
 
 option && systemChart.setOption(option);
+
 
 var chartDom = document.getElementById('system-chart');
 var treeMap = echarts.init(chartDom);
