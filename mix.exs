@@ -69,7 +69,12 @@ defmodule Tripwire.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["cmd --cd assets npm ci", "compile",          "tailwind tripwire", "esbuild tripwire"],
+      "assets.build": [
+        "cmd --cd assets npm ci",
+        "compile",
+        "tailwind tripwire",
+        "esbuild tripwire"
+      ],
       "assets.deploy": [
         "cmd --cd assets npm ci",
         "tailwind tripwire --minify",

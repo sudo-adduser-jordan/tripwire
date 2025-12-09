@@ -4,7 +4,8 @@ config :tripwire,
   ecto_repos: [Tripwire.Repo],
   generators: [timestamp_type: :utc_datetime]
 
-config :tripwire, TripwireWeb.Endpoint, server: true,
+config :tripwire, TripwireWeb.Endpoint,
+  server: true,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
@@ -13,7 +14,6 @@ config :tripwire, TripwireWeb.Endpoint, server: true,
   ],
   pubsub_server: Tripwire.PubSub,
   live_view: [signing_salt: "2qoLjCJq"]
-
 
 config :esbuild,
   version: "0.25.4",

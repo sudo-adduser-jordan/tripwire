@@ -49,7 +49,10 @@ $.get('/data.json', function (data) {
           expandAndCollapse: true,
           initialTreeDepth: 999,
           animationDurationUpdate: 100,
-          label: {show: false},
+          label: {
+            show: true,
+            formatter: '{a} \n{b} \n{c}'
+        },
 
           left: '2%',
           right: '2%',
@@ -77,7 +80,7 @@ var option;
 
 option = {
   title: {
-    text: 'Stacked Area Chart'
+    text: 'System'
   },
   tooltip: {
     trigger: 'axis',
@@ -89,18 +92,13 @@ option = {
     }
   },
   legend: {
-    data: ['Email', 'Union Ads', 'Video Ads', 'Direct', 'Search Engine']
-  },
-  toolbox: {
-    feature: {
-      saveAsImage: {}
-    }
+    data: ['Ships Destoryed', 'Pods Destroyed', 'NPCs Destroyed','Jumps', ]
   },
   xAxis: [
     {
       type: 'category',
       boundaryGap: false,
-      data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+      data: ['00:00', '00:00', '00:00', '00:00', '00:00', '00:00', '00:00']
     }
   ],
   yAxis: [
@@ -110,7 +108,7 @@ option = {
   ],
   series: [
     {
-      name: 'Email',
+      name: 'Ships Destoryed',
       type: 'line',
       stack: 'Total',
       areaStyle: {},
@@ -120,7 +118,7 @@ option = {
       data: [120, 132, 101, 134, 90, 230, 210]
     },
     {
-      name: 'Union Ads',
+      name: 'Pods Destroyed',
       type: 'line',
       stack: 'Total',
       areaStyle: {},
@@ -130,7 +128,7 @@ option = {
       data: [220, 182, 191, 234, 290, 330, 310]
     },
     {
-      name: 'Video Ads',
+      name: 'Jumps',
       type: 'line',
       stack: 'Total',
       areaStyle: {},
@@ -140,7 +138,7 @@ option = {
       data: [150, 232, 201, 154, 190, 330, 410]
     },
     {
-      name: 'Direct',
+      name: 'NPCs Destroyed',
       type: 'line',
       stack: 'Total',
       areaStyle: {},
@@ -149,20 +147,6 @@ option = {
       },
       data: [320, 332, 301, 334, 390, 330, 320]
     },
-    {
-      name: 'Search Engine',
-      type: 'line',
-      stack: 'Total',
-      label: {
-        show: true,
-        position: 'top'
-      },
-      areaStyle: {},
-      emphasis: {
-        focus: 'series'
-      },
-      data: [820, 932, 901, 934, 1290, 1330, 1320]
-    }
   ]
 };
 
