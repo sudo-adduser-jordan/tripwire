@@ -54,17 +54,17 @@ $.get('/data.json', function (data) {
             formatter: '{a} \n{b} \n{c}'
         },
 
-          left: '2%',
-          right: '2%',
-          top: '8%',
+          left: '-50%',
+          right: '-50%',
+          top: '10%',
           bottom: '20%',
 
           symbol: 'roundRect',
           symbolSize: [140, 80],
 
-        //   roam: 'true', // div needs lock
+          roam: 'true', // div needs lock    
           edgeShape:'polyline',
-          lineStyle: {curveness: .5}
+        //   lineStyle: {curveness: .5}
         }
     ],
     })
