@@ -16,15 +16,33 @@
 //
 import { GridStack } from 'gridstack'
 import 'gridstack/dist/gridstack.css'
+
 const options = {
     // float: true,
     // staticGrid: true,
 }
 
+let grid;
+let isLocked = false;
+
+// Initialize Gridstack
+document.addEventListener('DOMContentLoaded', () => {
+     grid = GridStack.init();
+    const lockButton = document.getElementById('lock-toggle');
+
+    lockButton.addEventListener('click', () => {
+        const svg = document.getElementById('lockImage');
+        isLocked = !isLocked;
+        grid.setStatic(isLocked);
+        svg.style.fill = isLocked ? "#605dff": "#ff6700";  
+  });
+});
+
+
+
+
 import * as echarts from 'echarts';
 import $ from "jquery";
-
-var grid = GridStack.init(options);
 
 
 document.addEventListener('DOMContentLoaded', () => {

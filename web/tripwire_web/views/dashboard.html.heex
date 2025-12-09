@@ -1,3 +1,6 @@
+
+
+
 <style>
   .grid-stack  {
     color: var(--color-accent);
@@ -21,18 +24,21 @@
       </nav>
 
       <nav class="flex flex-row justify-start sm:justify-end bg-base-200 p-2 h-fit gap-2">
-        <svg
-          class="ord`er-1 sm:order-4"
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-        >
-          <path
-            fill="currentColor"
-            d="M21 2h-5v20h5c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1M2 21c0 .6.4 1 1 1h11v-9H2zM2 3v8h12V2H3c-.6 0-1 .4-1 1"
-          />
-        </svg>
+    
+        <button id="lock-toggle">
+          <svg
+            id="lockImage"
+            class="ord`er-1 sm:order-4"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="#ff6700"
+          >
+            <path d="M21 2h-5v20h5c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1M2 21c0 .6.4 1 1 1h11v-9H2zM2 3v8h12V2H3c-.6 0-1 .4-1 1" />
+          </svg>
+        </button>
+
         <p class="  order-1 sm:order-3">|</p>
         <div class="order-2 sm:order-1 hover:cursor-pointer hover:underline">{@user}</div>
         <p class="  order-3 sm:order-2">&gt;</p>
@@ -41,7 +47,7 @@
     </nav>
 
     <div class="size-full bg-base-200">
-      <div class="grid-stack">
+      <div class="grid-stack" id='grid-stack'>
         <div class="grid-stack-item" gs-w="4" gs-h="3">
           <div class="grid-stack-item-content">
             <div class="size-full" id="system-chart"></div>
@@ -60,7 +66,6 @@
             </ul>
 
             <ul class="list bg-base-100 rounded-box shadow-md">
-
               <li class="list-row h-fit p-1">
                 <div>ID</div>
                 <div>Type</div>
@@ -146,6 +151,3 @@
     </div>
   </div>
 </Layouts.app>
-
-<script>
-</script>
