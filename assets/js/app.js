@@ -82,6 +82,8 @@ option = {
   title: {
     text: 'System'
   },
+          animationDurationUpdate: 100,
+
   tooltip: {
     trigger: 'axis',
     axisPointer: {
