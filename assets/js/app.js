@@ -70,13 +70,13 @@ import $ from "jquery";
 
 document.addEventListener('DOMContentLoaded', () => {
     var chartDom = document.getElementById('map');
-    var systemChart = echarts.init(chartDom);
+    var treeMap = echarts.init(chartDom);
     var option;
 
-    systemChart.showLoading();
+    treeMap.showLoading();
     $.get('/data.json', function (data) {
-        systemChart.hideLoading();
-        systemChart.setOption(
+        treeMap.hideLoading();
+        treeMap.setOption(
             (option = {
                 tooltip: {
                     trigger: 'item',
@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         symbolSize: [140, 80],
 
                         // scaleLimit: {min: 0.1, max:1},
-                        roam: 'move',     
+                        roam: 'move',
                         // roam: 'pan',     
                         edgeShape: 'polyline',
                         //   lineStyle: {curveness: .5}
@@ -113,12 +113,15 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     });
 
-    option && systemChart.setOption(option);
+    option && treeMap.setOption(option);
 
 
+    
+    
     var chartDom = document.getElementById('system-chart');
-    var treeMap = echarts.init(chartDom);
+    var stackedChart = echarts.init(chartDom);
     var option;
+
 
     option = {
         title: {
@@ -194,12 +197,16 @@ document.addEventListener('DOMContentLoaded', () => {
         ]
     };
 
-    option && treeMap.setOption(option);
+    option && stackedChart.setOption(option);
 
+  
+  const resizeObserver = new ResizeObserver(() => {
+      console.log('Container resized');
+      stackedChart.resize();
+    });
+    resizeObserver.observe(chartDom);
+    
 });
-
-
-
 
 
 

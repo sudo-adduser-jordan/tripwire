@@ -80,9 +80,9 @@ defmodule TripwireWeb.DashboardHTML do
 
   def system(assigns) do
     ~H"""
-    <div class="grid-stack-item" gs-w="4" gs-h="3">
-      <div class="grid-stack-item-content">
-        <div class="size-full" id="system-chart"></div>
+    <div class="grid-stack-item overflow-x-scroll" gs-w="4" gs-h="3">
+      <div class="grid-stack-item-content overflow-x-scroll">
+        <div class="size-full overflow-x-scroll" id="system-chart"></div>
       </div>
     </div>
     """
@@ -92,12 +92,13 @@ defmodule TripwireWeb.DashboardHTML do
     ~H"""
     <div class="grid-stack-item overflow-x-scroll" gs-w="12" gs-h="6">
       <div class="grid-stack-item-content overflow-x-scroll">
-        <div class="size-full overflow-x-scroll" id="map"></div>
+        <div class="w-screen h-screen overflow-x-scroll" id="map"></div>
       </div>
     </div>
     """
   end
 
+  @spec signatures(any()) :: Phoenix.LiveView.Rendered.t()
   def signatures(assigns) do
     ~H"""
     <div class="grid-stack-item" gs-w="4" gs-h="3">
