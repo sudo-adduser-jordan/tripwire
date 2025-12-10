@@ -47,8 +47,9 @@ defmodule TripwireWeb.DashboardHTML do
         <ul
           tabindex="-1"
           class="menu dropdown-content bg-base-200 rounded-box z-1 mt-4 w-52 p-2 shadow-sm">
-          <li><a>Item 1</a></li>
-          <li><a>Item 2</a></li>
+          <li><a>Character 1</a></li>
+          <li><a>Character 2</a></li>
+          <li><a>Character 3</a></li>
         </ul>
       </div>
 
@@ -60,8 +61,8 @@ defmodule TripwireWeb.DashboardHTML do
         <ul
           tabindex="-1"
           class="menu dropdown-content bg-base-200 rounded-box z-1 mt-4 w-52 p-2 shadow-sm">
-          <li><a>Item 1</a></li>
-          <li><a>Item 2</a></li>
+          <li><a>Mask 1</a></li>
+          <li><a>Mask 2</a></li>
         </ul>
       </div>
 
