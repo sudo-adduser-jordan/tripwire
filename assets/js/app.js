@@ -26,28 +26,39 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
+    var isOpen = false;
     const settingsButton = document.getElementById('settings-toggle');
     settingsButton.addEventListener('click', () => {
+        if (isOpen) {
+            isOpen = false
+            const button = document.getElementById("settings-toggle");
+            button.innerHTML = `Settings<span aria-hidden="true"s> &rarr; </span>`
+            var widgetEl = document.getElementById('grid-stack-settings'); // or specific selector
+            grid.removeWidget(widgetEl);
 
-        // Create the widget element
-        const widget = document.createElement('div');
-        widget.classList.add('grid-stack-item');
+        } else {
+            isOpen = true
+            const button = document.getElementById("settings-toggle");
+            button.innerHTML = `Close<span aria-hidden="true"s> &larr; </span>`
 
-        const content = document.createElement('div');
-        content.classList.add('grid-stack-item-content');
-        content.innerText = 'Tripwire Settings';
+            const widget = document.createElement('div');
+            widget.classList.add('grid-stack-item');
+            widget.id = 'grid-stack-settings'
 
-        widget.appendChild(content);
+            const content = document.createElement('div');
+            content.classList.add('grid-stack-item-content');
+            content.innerText = 'Tripwire Settings';
 
-        // Add the widget to the grid
-        grid.makeWidget(widget, {
-            w: 12,
-            h: 4,
-            x: 0,
-            y: 0
-        });
-        // add or focus/slide settings widget
-        // grid.addWidget('<div class="grid-stack-item" gs-w="2" gs-h="2"><div class="grid-stack-item-content">My Static Widget</div></div>');
+            widget.appendChild(content);
+
+            grid.makeWidget(widget, {
+                w: 12,
+                h: 4,
+                x: 0,
+                y: 0
+            });
+
+        }
     });
 });
 

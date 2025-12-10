@@ -62,6 +62,7 @@ defmodule TripwireWeb do
 
       import Phoenix.HTML
       import TripwireWeb.CoreComponents
+      # import TripwireWeb.CustomComponents
 
       alias Phoenix.LiveView.JS
       alias TripwireWeb.Layouts

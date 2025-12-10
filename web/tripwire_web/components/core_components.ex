@@ -187,7 +187,6 @@ defmodule TripwireWeb.CoreComponents do
     """
   end
 
-  # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
     ~H"""
     <div class="fieldset mb-2">
@@ -210,7 +209,6 @@ defmodule TripwireWeb.CoreComponents do
     """
   end
 
-  # Helper used by inputs to generate form errors
   defp error(assigns) do
     ~H"""
     <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
@@ -220,9 +218,6 @@ defmodule TripwireWeb.CoreComponents do
     """
   end
 
-  @doc """
-  Renders a header with title.
-  """
   slot :inner_block, required: true
   slot :subtitle
   slot :actions
@@ -243,16 +238,6 @@ defmodule TripwireWeb.CoreComponents do
     """
   end
 
-  @doc """
-  Renders a table with generic styling.
-
-  ## Examples
-
-      <.table id="users" rows={@users}>
-        <:col :let={user} label="id">{user.id}</:col>
-        <:col :let={user} label="username">{user.username}</:col>
-      </.table>
-  """
   attr :id, :string, required: true
   attr :rows, :list, required: true
   attr :row_id, :any, default: nil, doc: "the function for generating the row id"
@@ -306,16 +291,6 @@ defmodule TripwireWeb.CoreComponents do
     """
   end
 
-  @doc """
-  Renders a data list.
-
-  ## Examples
-
-      <.list>
-        <:item title="Title">{@post.title}</:item>
-        <:item title="Views">{@post.views}</:item>
-      </.list>
-  """
   slot :item, required: true do
     attr :title, :string, required: true
   end
@@ -333,24 +308,6 @@ defmodule TripwireWeb.CoreComponents do
     """
   end
 
-  @doc """
-  Renders a [Heroicon](https://heroicons.com).
-
-  Heroicons come in three styles – outline, solid, and mini.
-  By default, the outline style is used, but solid and mini may
-  be applied by using the `-solid` and `-mini` suffix.
-
-  You can customize the size and colors of the icons by setting
-  width, height, and background color classes.
-
-  Icons are extracted from the `deps/heroicons` directory and bundled within
-  your compiled app.css by the plugin in `assets/vendor/heroicons.js`.
-
-  ## Examples
-
-      <.icon name="hero-x-mark" />
-      <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
-  """
   attr :name, :string, required: true
   attr :class, :any, default: "size-4"
 
@@ -359,8 +316,6 @@ defmodule TripwireWeb.CoreComponents do
     <span class={[@name, @class]} />
     """
   end
-
-  ## JS Commands
 
   def show(js \\ %JS{}, selector) do
     JS.show(js,
@@ -383,20 +338,7 @@ defmodule TripwireWeb.CoreComponents do
     )
   end
 
-  @doc """
-  Translates an error message using gettext.
-  """
   def translate_error({msg, opts}) do
-    # When using gettext, we typically pass the strings we want
-    # to translate as a static argument:
-    #
-    #     # Translate the number of files with plural rules
-    #     dngettext("errors", "1 file", "%{count} files", count)
-    #
-    # However the error messages in our forms and APIs are generated
-    # dynamically, so we need to translate them by calling Gettext
-    # with our gettext backend as first argument. Translations are
-    # available in the errors.po file (as we use the "errors" domain).
     if count = opts[:count] do
       Gettext.dngettext(TripwireWeb.Gettext, "errors", msg, msg, count, opts)
     else
@@ -404,9 +346,6 @@ defmodule TripwireWeb.CoreComponents do
     end
   end
 
-  @doc """
-  Translates the errors for a field from a keyword list of errors.
-  """
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end

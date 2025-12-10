@@ -26,7 +26,7 @@ defmodule TripwireWeb.Layouts do
           <li><.theme_toggle /></li>
           <li>
             <button class="btn btn-primary" id="settings-toggle">
-              Settings <span aria-hidden="true">&rarr;</span>
+              Settings <span aria-hidden="true" id="settings-button-span"> &rarr; </span>
               <%!-- swipe to left --%>
             </button>
           </li>
