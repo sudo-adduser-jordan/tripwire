@@ -8,17 +8,16 @@ defmodule TripwireWeb.DashboardHTML do
     ~H"""
     <nav class="flex flex-col gap-2 sm:gap-0 sm:flex-row">
       <nav class="flex flex-row bg-base-200 p-2 w-full h-fit gap-2">
-
         <div class="flex justify-center items-center gap-1">
-        <div class="inline-grid *:[grid-area:1/1]">
-          <div class="status status-error animate-ping"></div>
-          <div class="status status-error"></div>
-        </div>
+          <div class="inline-grid *:[grid-area:1/1]">
+            <div class="status status-error animate-ping"></div>
+            <div class="status status-error"></div>
+          </div>
         </div>
 
         <div class="hover:cursor-pointer hover:underline place-content-center flex gap-1 justify-center items-center">
-        TQ
-        <div class="badge badge-error">Down</div>
+          TQ
+          <div class="badge badge-error">Down</div>
         </div>
 
         <div>|</div>
@@ -41,33 +40,79 @@ defmodule TripwireWeb.DashboardHTML do
           </svg>
         </button>
 
-
-      <div class="dropdown dropdown-end">
-        <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline">{@user}</div>
-        <ul
-          tabindex="-1"
-          class="menu dropdown-content bg-base-200 rounded-box z-1 mt-4 w-52 p-2 shadow-sm">
-          <li><a>Character 1</a></li>
-          <li><a>Character 2</a></li>
-          <li><a>Character 3</a></li>
-        </ul>
-      </div>
+        <div class="dropdown dropdown-end">
+          <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline">
+            {@user}
+          </div>
+          <ul
+            tabindex="-1"
+            class="menu dropdown-content bg-base-200 rounded-box z-1 mt-4 w-52 p-2 shadow-sm"
+          >
+            <li>
+              <a>
+                <div class="avatar avatar-online">
+                  <div class="w-12 rounded-xl">
+                    <img src="https://img.daisyui.com/images/profile/demo/yellingwoman@192.webp" />
+                  </div>
+                </div>
+                Character 1
+              </a>
+            </li>
+            <li>
+              <a>
+                <div class="avatar avatar-offline">
+                  <div class="w-12 rounded-xl">
+                    <img src="https://img.daisyui.com/images/profile/demo/yellingcat@192.webp" />
+                  </div>
+                </div>
+                Character 2
+              </a>
+            </li>
+            <li>
+              <a>
+                <div class="avatar avatar-offline">
+                  <div class="rounded-xl w-12">
+                    <img src="https://img.daisyui.com/images/profile/demo/distracted2@192.webp" />
+                  </div>
+                </div>
+                Character 3
+              </a>
+            </li>
+          </ul>
+        </div>
 
         <p class="  ">&gt;</p>
 
-
-      <div class="dropdown dropdown-end">
-        <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline">Corporation</div>
-        <ul
-          tabindex="-1"
-          class="menu dropdown-content bg-base-200 rounded-box z-1 mt-4 w-52 p-2 shadow-sm">
-          <li><a>Mask 1</a></li>
-          <li><a>Mask 2</a></li>
-        </ul>
-      </div>
-
-
-
+        <div class="dropdown dropdown-end">
+          <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline">
+            Corporation
+          </div>
+          <ul
+            tabindex="-1"
+            class="menu dropdown-content bg-base-200 rounded-box z-1 mt-4 w-52 p-2 shadow-sm"
+          >
+            <li>
+              <a>
+                <div class="avatar avatar-online">
+                  <div class="w-24 rounded-xl">
+                    <img src="https://img.daisyui.com/images/profile/demo/gordon@192.webp" />
+                  </div>
+                </div>
+                Mask 1
+              </a>
+            </li>
+            <li>
+              <a>
+                <div class="avatar avatar-offline">
+                  <div class="w-24 rounded-xl">
+                    <img src="https://img.daisyui.com/images/profile/demo/gordon@192.webp" />
+                  </div>
+                </div>
+                Mask 2
+              </a>
+            </li>
+          </ul>
+        </div>
       </nav>
     </nav>
     """
