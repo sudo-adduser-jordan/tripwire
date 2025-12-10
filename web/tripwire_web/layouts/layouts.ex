@@ -25,7 +25,7 @@ defmodule TripwireWeb.Layouts do
           <li class="hidden min-[400px]:block"><a href="/" class="btn btn-ghost">Wiki</a></li>
           <li><.theme_toggle /></li>
           <li>
-            <a href="/Username/settings" class="btn btn-primary">
+            <a href="/" class="btn btn-primary">
               Settings <span aria-hidden="true">&rarr;</span>
               <%!-- swipe to left --%>
             </a>
