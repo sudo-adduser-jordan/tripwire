@@ -8,7 +8,19 @@ defmodule TripwireWeb.DashboardHTML do
     ~H"""
     <nav class="flex flex-col gap-2 sm:gap-0 sm:flex-row">
       <nav class="flex flex-row bg-base-200 p-2 w-full h-fit gap-2">
-        <div class="hover:cursor-pointer hover:underline place-content-center">TQ 00000</div>
+
+        <div class="flex justify-center items-center gap-1">
+        <div class="inline-grid *:[grid-area:1/1]">
+          <div class="status status-error animate-ping"></div>
+          <div class="status status-error"></div>
+        </div>
+        </div>
+
+        <div class="hover:cursor-pointer hover:underline place-content-center flex gap-1 justify-center items-center">
+        TQ
+        <div class="badge badge-error">Down</div>
+        </div>
+
         <div>|</div>
         <div class="hover:cursor-pointer hover:underline place-content-center">System</div>
         <div>&gt;</div>

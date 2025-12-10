@@ -65,7 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-
 import * as echarts from 'echarts';
 import $ from "jquery";
 
