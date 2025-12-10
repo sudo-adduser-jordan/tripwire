@@ -25,10 +25,10 @@ defmodule TripwireWeb.Layouts do
           <li class="hidden min-[400px]:block"><a href="/" class="btn btn-ghost">Wiki</a></li>
           <li><.theme_toggle /></li>
           <li>
-            <a href="/" class="btn btn-primary">
+            <button class="btn btn-primary" id="settings-toggle">
               Settings <span aria-hidden="true">&rarr;</span>
               <%!-- swipe to left --%>
-            </a>
+            </button>
           </li>
         </ul>
       </div>
