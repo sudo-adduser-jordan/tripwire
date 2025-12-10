@@ -94,7 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             show: true,
                             formatter: '{a} \n{b} \n{c}'
                         },
-
                         left: '-50%',
                         right: '-50%',
                         top: '10%',
@@ -103,7 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         symbol: 'roundRect',
                         symbolSize: [140, 80],
 
-                        roam: 'true', // div needs lock    
+                        // scaleLimit: {min: 0.1, max:1},
+                        roam: 'move',     
+                        // roam: 'pan',     
                         edgeShape: 'polyline',
                         //   lineStyle: {curveness: .5}
                     }

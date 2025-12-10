@@ -90,9 +90,9 @@ defmodule TripwireWeb.DashboardHTML do
 
   def map(assigns) do
     ~H"""
-    <div class="grid-stack-item" gs-w="12" gs-h="6">
-      <div class="grid-stack-item-content">
-        <div class="size-full" id="map"></div>
+    <div class="grid-stack-item overflow-x-scroll" gs-w="12" gs-h="6">
+      <div class="grid-stack-item-content overflow-x-scroll">
+        <div class="size-full overflow-x-scroll" id="map"></div>
       </div>
     </div>
     """
