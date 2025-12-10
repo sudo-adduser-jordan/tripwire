@@ -40,9 +40,33 @@ defmodule TripwireWeb.DashboardHTML do
             <path d="M21 2h-5v20h5c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1M2 21c0 .6.4 1 1 1h11v-9H2zM2 3v8h12V2H3c-.6 0-1 .4-1 1" />
           </svg>
         </button>
-        <div class=" hover:cursor-pointer hover:underline">{@user}</div>
+
+
+      <div class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline">{@user}</div>
+        <ul
+          tabindex="-1"
+          class="menu dropdown-content bg-base-200 rounded-box z-1 mt-4 w-52 p-2 shadow-sm">
+          <li><a>Item 1</a></li>
+          <li><a>Item 2</a></li>
+        </ul>
+      </div>
+
         <p class="  ">&gt;</p>
-        <div class=" hover:cursor-pointer hover:underline">Corporation</div>
+
+
+      <div class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline">Corporation</div>
+        <ul
+          tabindex="-1"
+          class="menu dropdown-content bg-base-200 rounded-box z-1 mt-4 w-52 p-2 shadow-sm">
+          <li><a>Item 1</a></li>
+          <li><a>Item 2</a></li>
+        </ul>
+      </div>
+
+
+
       </nav>
     </nav>
     """
