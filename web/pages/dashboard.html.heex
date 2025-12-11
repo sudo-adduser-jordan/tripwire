@@ -28,7 +28,7 @@
 
 <.flash id="toast" kind={:info} phx-mounted={show("#flash")}>Welcome Back!</.flash>
 
-<Layouts.app flash={@flash}>
+<RootLayout.app flash={@flash}>
   <div class="flex size-full flex-col p-2 bg-base-100 gap-2">
        <nav class="flex flex-col gap-2 sm:gap-0 sm:flex-row">
       <nav class="flex flex-row bg-base-200 p-2 w-full h-fit gap-2">
@@ -245,4 +245,4 @@
       </div>
     </div>
   </div>
-</Layouts.app>
+</RootLayout.app>

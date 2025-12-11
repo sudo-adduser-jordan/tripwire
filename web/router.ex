@@ -5,7 +5,7 @@ defmodule TripwireWeb.Router do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_live_flash
-    plug :put_root_layout, html: {TripwireWeb.Layouts, :root}
+    plug :put_root_layout, html: {TripwireWeb.RootLayout, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
   end
@@ -19,6 +19,11 @@ defmodule TripwireWeb.Router do
 
     get "/", HomeController, :home
     get "/:user/dashboard/", DashboardController, :dashboard
+
+
+
+
+
   end
 
   # Other scopes may use custom stacks.

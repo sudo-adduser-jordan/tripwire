@@ -1,4 +1,4 @@
-defmodule TripwireWeb.Layouts do
+defmodule TripwireWeb.RootLayout do
   use TripwireWeb, :html
 
   embed_templates "/*"
@@ -25,7 +25,7 @@ defmodule TripwireWeb.Layouts do
           <li class="hidden min-[400px]:block"><a href="/" class="btn btn-ghost">Wiki</a></li>
           <li><.theme_toggle /></li>
           <li>
-            <button class="btn btn-primary" id="settings-toggle">
+            <button class="btn btn-primary" id="settings-toggle" autofocus>
               Settings <span aria-hidden="true" id="settings-button-span"> &rarr; </span>
               <%!-- swipe to left --%>
             </button>

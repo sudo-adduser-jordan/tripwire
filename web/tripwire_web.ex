@@ -56,16 +56,21 @@ defmodule TripwireWeb do
     end
   end
 
+  # Edited
   defp html_helpers do
     quote do
       use Gettext, backend: TripwireWeb.Gettext
 
       import Phoenix.HTML
       import TripwireWeb.CoreComponents
-      # import TripwireWeb.CustomComponents
+      import TripwireWeb.FlashComponent
+      import TripwireWeb.TableComponent
+      import TripwireWeb.ListComponent
+      import TripwireWeb.InputComponent
+      import TripwireWeb.IconComponent
 
       alias Phoenix.LiveView.JS
-      alias TripwireWeb.Layouts
+      alias TripwireWeb.RootLayout
 
       unquote(verified_routes())
     end
