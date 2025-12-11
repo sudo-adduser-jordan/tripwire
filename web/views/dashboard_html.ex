@@ -164,28 +164,27 @@ defmodule TripwireWeb.DashboardHTML do
       <option>Raleway</option>
     </select>
 
-<div class="tabs tabs-box">
-  <input type="radio" name="my_tabs_6" class="tab" aria-label="Tab 1" />
-  <div class="tab-content bg-base-100 border-base-300 p-6">Tab content 1</div>
+    <div class="tabs tabs-box">
+    <input type="radio" name="my_tabs_6" class="tab" aria-label="Tab 1" />
+    <div class="tab-content bg-base-100 border-base-300 p-6">Tab content 1</div>
 
-  <input type="radio" name="my_tabs_6" class="tab" aria-label="Tab 2" checked="checked" />
-  <div class="tab-content bg-base-100 border-base-300 p-6">Tab content 2</div>
+    <input type="radio" name="my_tabs_6" class="tab" aria-label="Tab 2" checked="checked" />
+    <div class="tab-content bg-base-100 border-base-300 p-6">Tab content 2</div>
 
-  <input type="radio" name="my_tabs_6" class="tab" aria-label="Tab 3" />
-  <div class="tab-content bg-base-100 border-base-300 p-6">Tab content 3</div>
-</div>
-
-  <!-- Open the modal using ID.showModal() method -->
-  <button class="btn" onclick="my_modal_2.showModal()">open modal</button>
-  <dialog id="my_modal_2" class="modal">
-    <div class="modal-box">
-      <h3 class="text-lg font-bold">Hello!</h3>
-      <p class="py-4">Press ESC key or click outside to close</p>
+    <input type="radio" name="my_tabs_6" class="tab" aria-label="Tab 3" />
+    <div class="tab-content bg-base-100 border-base-300 p-6">Tab content 3</div>
     </div>
-    <form method="dialog" class="modal-backdrop">
-      <button>close</button>
-    </form>
-  </dialog>
+
+    <button class="btn" onclick="my_modal_2.showModal()">open modal</button>
+    <dialog id="my_modal_2" class="modal">
+      <div class="modal-box">
+        <h3 class="text-lg font-bold">Hello!</h3>
+        <p class="py-4">Press ESC key or click outside to close</p>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
 
     """
   end
