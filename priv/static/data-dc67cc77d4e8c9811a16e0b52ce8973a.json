@@ -1,0 +1,69 @@
+{
+ "name": "flare",
+ "children": [
+
+  {
+   "name": "query",
+   "children": [
+    {"name": "Literal", "value": 1214},
+    {"name": "Match", "value": 3748},
+    {"name": "Maximum", "value": 843},
+    {
+     "name": "methods",
+     "children": [
+      {"name": "add", "value": 593},
+      {"name": "and", "value": 330},
+      {"name": "average", "value": 287},
+      {"name": "count", "value": 277},
+      {"name": "distinct", "value": 292},
+      {"name": "xor", "value": 354},
+      {"name": "-", "value": 264}
+     ]
+    }
+   ]
+  },
+
+  {
+   "name": "scale",
+   "children": [
+    {"name": "IScaleMap", "value": 2105},
+    {"name": "RootScale", "value": 1756},
+    {"name": "Scale", "value": 4268},
+    {"name": "ScaleType", "value": 1821},
+    {"name": "TimeScale", "value": 5833}
+   ]
+  },
+
+  {
+   "name": "util",
+   "children": [
+    {
+     "name": "heap",
+     "children": [
+      {"name": "FibonacciHeap", "value": 9354},
+      {"name": "HeapNode", "value": 1233}
+     ]
+    },
+    {
+     "name": "math",
+     "children": [
+      {"name": "DenseMatrix", "value": 3165},
+      {"name": "IMatrix", "value": 2815},
+      {"name": "SparseMatrix", "value": 3366}
+     ]
+    },
+    {
+     "name": "palette",
+     "children": [
+      {"name": "ColorPalette", "value": 6367},
+      {"name": "Palette", "value": 1229},
+      {"name": "ShapePalette", "value": 2059},
+      {"name": "SizePalette", "value": 2291}
+     ]
+    },
+    {"name": "Strings", "value": 22026}
+   ]
+  }
+  
+ ]
+}
