@@ -85,8 +85,8 @@ option && stackedChart.setOption(option);
 
 
 const resizeObserver = new ResizeObserver(() => {
-    console.log('Container resized');
     stackedChart.resize();
 });
 resizeObserver.observe(chartDom);
+
 });

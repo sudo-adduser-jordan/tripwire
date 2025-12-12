@@ -71,6 +71,8 @@ defmodule TripwireWeb do
 
       import TripwireWeb.NavigationComponent
 
+      import TripwireWeb.SettingsComponent
+
       import TripwireWeb.SystemComponent
       import TripwireWeb.SignaturesComponent
       import TripwireWeb.NotesComponent
