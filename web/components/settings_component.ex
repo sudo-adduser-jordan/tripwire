@@ -146,27 +146,54 @@ defmodule TripwireWeb.SettingsComponent do
   <div class="tab-content bg-base-100 border-base-300 p-6">
     Widgets
     <section >
-        <input type="checkbox" checked="checked" class="checkbox checkbox-primary" />
-        <input type="checkbox" checked="checked" class="checkbox checkbox-secondary" />
-        <input type="checkbox" checked="checked" class="checkbox checkbox-accent" />
-        <input type="checkbox" checked="checked" class="checkbox checkbox-neutral" />
-        <input type="checkbox" checked="checked" class="checkbox checkbox-info" />
-        <input type="checkbox" checked="checked" class="checkbox checkbox-success" />
-        <input type="checkbox" checked="checked" class="checkbox checkbox-warning" />
+    <p>System</p>
+    <input type="checkbox" checked="checked" class="checkbox checkbox-primary" />
+
+    <p>Notes</p>
+    <input type="checkbox" checked="checked" class="checkbox checkbox-secondary" />
+
+    <p>Signatures</p>
+    <input type="checkbox" checked="checked" class="checkbox checkbox-accent" />
+
+    <p>Map</p>
+    <input type="checkbox" checked="checked" class="checkbox checkbox-neutral" />
+
+    <p>Killboard</p>
         <input type="checkbox" checked="checked" class="checkbox checkbox-error" />
+
+    <p>Player Statistics</p>
+        <input type="checkbox" checked="checked" class="checkbox checkbox-info" />
+
+    <p>Discord Intell Channel</p>
+        <input type="checkbox" checked="checked" class="checkbox checkbox-success" />
+
+    <p>Udema Scout</p>
+        <input type="checkbox" checked="checked" class="checkbox checkbox-warning" />
     </section>
   </div>
 
   <input type="radio" name="my_tabs_2" class="tab" aria-label="Theme" />
   <div class="tab-content bg-base-100 border-base-300 p-6">
     Themes
-    <section>
-        <select class="select select-ghost">
-        <option disabled selected>Pick a font</option>
-        <option>Inter</option>
-        <option>Poppins</option>
-        <option>Raleway</option>
-        </select>
+    <section >
+    <p>Default</p>
+    <input type="checkbox" checked="checked" class="checkbox checkbox-primary" />
+
+    <p>Native</p>
+    <input type="checkbox" class="checkbox checkbox-secondary" />
+
+    <p>Caldari</p>
+    <input type="checkbox" class="checkbox checkbox-info" />
+
+    <p>Gallente</p>
+    <input type="checkbox" class="checkbox checkbox-success" />
+
+    <p>Minmatar</p>
+        <input type="checkbox" class="checkbox checkbox-error" />
+
+    <p>Amarr</p>
+        <input type="checkbox" class="checkbox checkbox-info" />
+
     </section>
   </div>
 </div>
