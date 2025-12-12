@@ -1,0 +1,32 @@
+[
+  {
+    "title": "First Post",
+    "views": 150,
+    "author": "Alice",
+    "created_at": "2024-04-27T10:15:30Z"
+  },
+  {
+    "title": "Second Post",
+    "views": 230,
+    "author": "Bob",
+    "created_at": "2024-04-26T14:22:10Z"
+  },
+  {
+    "title": "Third Post",
+    "views": 90,
+    "author": "Charlie",
+    "created_at": "2024-04-25T09:05:45Z"
+  },
+  {
+    "title": "Fourth Post",
+    "views": 300,
+    "author": "Diana",
+    "created_at": "2024-04-24T16:45:00Z"
+  },
+  {
+    "title": "Fifth Post",
+    "views": 120,
+    "author": "Eve",
+    "created_at": "2024-04-23T12:30:15Z"
+  }
+]

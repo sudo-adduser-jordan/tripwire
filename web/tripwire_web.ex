@@ -69,6 +69,13 @@ defmodule TripwireWeb do
       import TripwireWeb.InputComponent
       import TripwireWeb.IconComponent
 
+      import TripwireWeb.NavigationComponent
+
+      import TripwireWeb.SystemComponent
+      import TripwireWeb.SignaturesComponent
+      import TripwireWeb.NotesComponent
+      import TripwireWeb.MapComponent
+
       alias Phoenix.LiveView.JS
       alias TripwireWeb.RootLayout
 

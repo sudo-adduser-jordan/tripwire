@@ -2,7 +2,9 @@ defmodule TripwireWeb.HeaderComponent do
   use Phoenix.Component
 
   @doc """
+
   Renders a header with title.
+
   """
   slot :inner_block, required: true
   slot :subtitle
