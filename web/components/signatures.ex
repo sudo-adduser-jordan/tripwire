@@ -4,7 +4,7 @@ defmodule TripwireWeb.SignaturesComponent do
   def signatures(assigns) do
       ~H"""
 
-        <div class="grid-stack-item" gs-w="4" gs-h="3" id='signatures'>
+        <div class="grid-stack-item" id='signatures-container'>
           <div class="grid-stack-item-content">
             <ul class="list bg-base-100 rounded-box shadow-md">
               <li class="list-row h-fit p-1">

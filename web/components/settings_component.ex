@@ -6,7 +6,7 @@ defmodule TripwireWeb.SettingsComponent do
 <section class="hidden size-full" id="template" >
 
 <div class="tabs tabs-box size-full">
-  <input type="radio" name="my_tabs_12s" class="tab" aria-label="Account" checked="checked" />
+  <input type="radio" name="my_tabs_2" class="tab" aria-label="Account" checked="checked" />
   <div class="tab-content bg-base-100 border-base-300 p-6">
     Account Settings
     <section>
@@ -20,7 +20,7 @@ defmodule TripwireWeb.SettingsComponent do
     </section>
 
   </div>
-  <input type="radio" name="my_tabs_12s" class="tab" aria-label="Map" />
+  <input type="radio" name="my_tabs_2" class="tab" aria-label="Map" />
   <div class="tab-content bg-base-100 border-base-300 p-6">
     Map Settings
     <section>
@@ -35,7 +35,7 @@ defmodule TripwireWeb.SettingsComponent do
     </section>
   </div>
 
-  <input type="radio" name="my_tabs_12s" class="tab" aria-label="Widgets" />
+  <input type="radio" name="my_tabs_2" class="tab" aria-label="Widgets" />
   <div class="tab-content bg-base-100 border-base-300 p-6">
     Widgets
     <section >
@@ -50,7 +50,7 @@ defmodule TripwireWeb.SettingsComponent do
     </section>
   </div>
 
-  <input type="radio" name="my_tabs_12s" class="tab" aria-label="Theme" />
+  <input type="radio" name="my_tabs_2" class="tab" aria-label="Theme" />
   <div class="tab-content bg-base-100 border-base-300 p-6">
     Themes
     <section>
