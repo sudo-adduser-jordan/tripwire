@@ -18,12 +18,7 @@ defmodule TripwireWeb.Router do
     pipe_through :browser
 
     get "/", HomeController, :home
-    get "/:user/dashboard/", DashboardController, :dashboard
-
-
-
-
-
+    get "/dashboard/:user", DashboardController, :dashboard
   end
 
   # Other scopes may use custom stacks.
