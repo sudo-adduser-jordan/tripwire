@@ -1,10 +1,7 @@
-// will throw in order and not continue
 
-
-import "./gridStack.js"
-import "./treeMap.js"
-import "./stackedAreaChart.js"
-// import "./user_socket.js"
+// import "./gridStack.js"
+// import "./treeMap.js"
+// import "./stackedAreaChart.js"
 
 import "phoenix_html"
 import { Socket } from "phoenix"
@@ -49,3 +46,5 @@ if (process.env.NODE_ENV === "development") {
         window.liveReloader = reloader
     })
 }
+
+// import "./user_socket.js"

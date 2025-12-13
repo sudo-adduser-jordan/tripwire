@@ -77,9 +77,9 @@ var stackedChartOptions = {
 };
 stackedChart.setOption(stackedChartOptions);
 
-const resizeObserver = new ResizeObserver(() => {
+const stackedChartResizeObserver = new ResizeObserver(() => {
     stackedChart.resize();
 });
 
-resizeObserver.observe(stackedChartDom);
+stackedChartResizeObserver.observe(stackedChartDom);
 

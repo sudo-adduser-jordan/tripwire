@@ -40,8 +40,8 @@ $.get('/data.json', (data) => {
     treeMap.setOption(treeMapOptions)
 });
 
-const resizeObserver = new ResizeObserver(() => {
+const treeMapResizeObserver = new ResizeObserver(() => {
     treeMap.resize();
 });
-resizeObserver.observe(treeMapDom);
+treeMapResizeObserver.observe(treeMapDom);
 

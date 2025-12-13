@@ -1,6 +1,5 @@
 defmodule TripwireWeb.NavigationComponent do
   use Phoenix.Component
-  import TripwireWeb.InputComponent
 
   attr :user, :string, required: true
   def navigation(assigns) do
