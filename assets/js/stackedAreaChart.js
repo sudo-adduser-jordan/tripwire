@@ -41,7 +41,7 @@ var stackedChartOptions = {
             emphasis: {
                 focus: 'series'
             },
-            data: [120, 132, 101, 134, 90, 230, 210]
+            data: [0, 0, 1, 6, 0, 0, 1]
         },
         {
             name: 'Pods Destroyed',
@@ -51,7 +51,7 @@ var stackedChartOptions = {
             emphasis: {
                 focus: 'series'
             },
-            data: [220, 182, 191, 234, 290, 330, 310]
+            data: [0, 0, 0, 5, 0, 0, 1]
         },
         {
             name: 'Jumps',
@@ -61,7 +61,7 @@ var stackedChartOptions = {
             emphasis: {
                 focus: 'series'
             },
-            data: [150, 232, 201, 154, 190, 330, 410]
+            data: [10, 15, 12, 50, 5, 1, 15]
         },
         {
             name: 'NPCs Destroyed',
@@ -71,7 +71,7 @@ var stackedChartOptions = {
             emphasis: {
                 focus: 'series'
             },
-            data: [320, 332, 301, 334, 390, 330, 320]
+            data: [150, 200, 100, 165, 250, 96, 153]
         },
     ]
 };
