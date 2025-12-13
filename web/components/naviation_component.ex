@@ -20,19 +20,20 @@ defmodule TripwireWeb.NavigationComponent do
 
               <div>|</div>
               <div class="hover:cursor-pointer hover:underline place-content-center">System</div>
-              <div>&gt;</div>
-              <input class="bg-base-100 rounded w-36 sm:w-42" placeholder="Search systems" />
+              <div class="hidden min-[400px]:block ">&gt;</div>
+              <input  class="bg-base-100 rounded w-36 sm:w-42 hidden min-[400px]:block" placeholder="Search systems" />
             </nav>
 
             <nav class="flex flex-row justify-start sm:justify-end bg-base-200 p-2 h-fit gap-2">
-              <button id="lock-toggle" class="">
+              <button id="lock-button" class="">
                 <svg
-                  id="lockImage"
+                  id="lock-svg"
                   xmlns="http://www.w3.org/2000/svg"
                   width="24"
                   height="24"
                   viewBox="0 0 24 24"
-                  fill="#ff6700"
+                  fill="#605dff"
+
                 >
                   <path d="M21 2h-5v20h5c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1M2 21c0 .6.4 1 1 1h11v-9H2zM2 3v8h12V2H3c-.6 0-1 .4-1 1" />
                 </svg>

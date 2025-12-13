@@ -1,10 +1,11 @@
 defmodule TripwireWeb.SignaturesComponent do
   use Phoenix.Component
 
+
   def signatures(assigns) do
       ~H"""
 
-        <div class="grid-stack-item" id='signatures-container'>
+        <div id='signatures' class="grid-stack-item" gs-w="12" gs-h="6" gs-x="0" gs-y="6" >
           <div class="grid-stack-item-content">
             <ul class="list bg-base-100 rounded-box shadow-md">
               <li class="list-row h-fit p-1">

@@ -1,56 +1,47 @@
-
-
 import * as echarts from 'echarts';
 import $ from "jquery";
 
-
-var chartDom = document.getElementById('map');
-var treeMap = echarts.init(chartDom);
-var option;
-
-document.addEventListener('DOMContentLoaded', () => {
-
+var treeMapDom = document.getElementById('treeMap');
+var treeMap = echarts.init(treeMapDom);
+var treeMapOptions;
 
 treeMap.showLoading();
-$.get('/data.json', function (data) {
+$.get('/data.json', (data) => {
     treeMap.hideLoading();
-    treeMap.setOption(
-        (option = {
-            tooltip: {
-                trigger: 'item',
-                triggerOn: 'mousemove'
-            },
-            series: [
-                {
-                    type: 'tree',
-                    data: [data],
-                    orient: 'vertical',
-                    expandAndCollapse: true,
-                    initialTreeDepth: 999,
-                    animationDurationUpdate: 100,
-                    label: {
-                        show: true,
-                        formatter: '{a} \n{b} \n{c}'
-                    },
-                    left: '-50%',
-                    right: '-50%',
-                    top: '10%',
-                    bottom: '20%',
 
-                    symbol: 'roundRect',
-                    symbolSize: [140, 80],
-
-                    // scaleLimit: {min: 0.1, max:1},
-                    roam: 'move',
-                    // roam: 'pan',     
-                    edgeShape: 'polyline',
-                    //   lineStyle: {curveness: .5}
-                }
-            ],
-        })
-    );
+    treeMapOptions = {
+        tooltip: {
+            trigger: 'item',
+            triggerOn: 'mousemove'
+        },
+        series: [
+            {
+                type: 'tree',
+                data: [data],
+                orient: 'vertical',
+                expandAndCollapse: true,
+                initialTreeDepth: 999,
+                animationDurationUpdate: 100,
+                label: {
+                    show: true,
+                    formatter: '{b} \n{c}'
+                },
+                left: '-25%',
+                right: '-25%',
+                top: '10%',
+                bottom: '20%',
+                symbol: 'roundRect',
+                symbolSize: [100, 60],
+                roam: 'move',
+                edgeShape: 'polyline',
+            }
+        ],
+    }
+    treeMap.setOption(treeMapOptions)
 });
 
-option && treeMap.setOption(option);
+const resizeObserver = new ResizeObserver(() => {
+    treeMap.resize();
+});
+resizeObserver.observe(treeMapDom);
 
-})

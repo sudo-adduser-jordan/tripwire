@@ -16,7 +16,7 @@ defmodule TripwireWeb.RootLayout do
       <div class="flex-1">
         <a href="/" class="flex-1 flex w-fit items-center gap-2">
           <img class="hidden min-[400px]:block" src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:tripwire, :vsn)}</span>
+          <span class="hidden sm:block text-sm font-semibold">v{Application.spec(:tripwire, :vsn)}</span>
         </a>
       </div>
       <div class="flex-none">
@@ -25,7 +25,7 @@ defmodule TripwireWeb.RootLayout do
           <li class="hidden min-[400px]:block"><a href="/" class="btn btn-ghost">Wiki</a></li>
           <li><.theme_toggle /></li>
           <li>
-            <button class="btn btn-primary" id="settings-toggle" autofocus>
+            <button class="btn btn-primary" id="settings-button" autofocus>
               Settings <span aria-hidden="true" id="settings-button-span"> &rarr; </span>
               <%!-- swipe to left --%>
             </button>

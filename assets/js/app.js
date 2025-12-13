@@ -1,6 +1,9 @@
+// will throw in order and not continue
+
+
 import "./gridStack.js"
-import "./stackedAreaChart.js"
 import "./treeMap.js"
+import "./stackedAreaChart.js"
 // import "./user_socket.js"
 
 import "phoenix_html"

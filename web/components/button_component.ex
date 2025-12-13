@@ -12,6 +12,7 @@ defmodule TripwireWeb.ButtonComponents do
       <.button navigate={~p"/"}>Home</.button>
 
   """
+
   attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
   attr :class, :any
   attr :variant, :string, values: ~w(primary)

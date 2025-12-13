@@ -1,13 +1,8 @@
-
-
 import * as echarts from 'echarts';
 
-document.addEventListener('DOMContentLoaded', () => {
-    
-
-var chartDom = document.getElementById('system-chart');
-var stackedChart = echarts.init(chartDom);
-var option = {
+var stackedChartDom = document.getElementById('system-chart');
+var stackedChart = echarts.init(stackedChartDom);
+var stackedChartOptions = {
     title: {
         text: 'System'
     },
@@ -80,13 +75,11 @@ var option = {
         },
     ]
 };
-
-option && stackedChart.setOption(option);
-
+stackedChart.setOption(stackedChartOptions);
 
 const resizeObserver = new ResizeObserver(() => {
     stackedChart.resize();
 });
-resizeObserver.observe(chartDom);
 
-});
+resizeObserver.observe(stackedChartDom);
+

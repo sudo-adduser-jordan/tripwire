@@ -36,7 +36,7 @@ defmodule TripwireWeb.SettingsComponent do
 
   def settings(assigns) do
 ~H"""
-<section class="hidden size-full" id="template" >
+<section class="hidden size-full" id="settings-template" >
 
 <div class="tabs tabs-box size-full">
   <input type="radio" name="my_tabs_2" class="tab" aria-label="Account" checked="checked" />

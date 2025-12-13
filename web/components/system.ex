@@ -3,9 +3,9 @@ defmodule TripwireWeb.SystemComponent do
 
   def system(assigns) do
       ~H"""
-      <div class="grid-stack-item overflow-x-scroll"  id="system-container">
-        <div class="grid-stack-item-content overflow-x-scroll">
-          <div class="size-full overflow-x-scroll" id="system-chart"></div>
+      <div id="system-container" gs-w="6" gs-h="6" gs-x="0" gs-y="0" class="grid-stack-item"  >
+        <div class="grid-stack-item-content">
+          <div id="system-chart" class="size-full" ></div>
         </div>
       </div>
       """

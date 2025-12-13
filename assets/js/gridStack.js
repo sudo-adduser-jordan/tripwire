@@ -1,106 +1,66 @@
 import { GridStack } from 'gridstack'
 import 'gridstack/dist/gridstack.css'
 
-// const options = {
-//     // float: true,
-//     // staticGrid: true,
-// }
-function applyGridSizeForWidth(grid, el) {
-  const w = window.innerWidth; // current viewport width
+let grid = GridStack.init({
+    cellHeight: 80,
+    // animate: true, // show immediate (animate: true is nice for user dragging though)
+    columnOpts: {
+        breakpointForWindow: true,  // test window vs grid size
+        breakpoints: [{ w: 700, c: 1 }, { w: 850, c: 2 }, { w: 950, c: 2 }, { w: 1100, c: 2 }]
+    },
+    // float: true,
+    staticGrid: true,
+})
+    .on('change', (ev, gsItems) => { });
 
 
-  if (w < 768) {
-    // mobile
-    switch (el.id) {
-      case "system-container":
-        grid.update(el, {x: 0, y: 0, w: 12, h: 6 });
-        break;
+document.getElementById("settings-button").addEventListener('click', toggleSettingsWidget);
 
-      case "notes-container":
-        grid.update(el, {x: 0, y: 6, w: 12, h: 6 });
-        break;
+var isLocked = true;
+document.getElementById('lock-button').addEventListener('click', () => {
+    isLocked = !isLocked;
+    grid.setStatic(isLocked);
+    document.getElementById('lock-svg').style.fill = isLocked ? "#605dff": "#ff6700" ;
+    // document.getElementById('lock-svg').style.fill = isLocked ? "#ff6700" : "#605dff";
+});
 
-      case "signatures-container":
-        grid.update(el, {x: 0, y: 12, w: 12, h: 6 });
-        break;
+function toggleSettingsWidget() {
 
-      case "map-container":
-        grid.update(el, {x: 0, y: 69,  w: 12, h: 12 });
-        break;
+    if (!grid) {
+        console.error("GridStack not initialized yet");
+        return;
     }
-  } else if (w < 1024) {
-    // tablet
-    switch (el.id) {
-      case "system-container":
-        grid.update(el, {x: 0, y: 0, w: 6, h: 3 });
-        break;
 
-      case "notes-container":
-        grid.update(el, {x: 6, y: 0, w: 6, h: 3 });
-        break;
+    const button = document.getElementById("settings-button");
+    var settingsWidget = document.getElementById("settings-widget")
 
-      case "signatures-container":
-        grid.update(el, {x: 0, y: 4, w: 12, h: 3 })    ;
-        break;
-
-      case "map-container":
-        grid.update(el, {x: 0, y: 12, w: 12, h: 6 });
-        break;
+    if (settingsWidget) {
+        button.innerHTML = `Settings<span aria-hidden="true"s> &rarr; </span>`
+        grid.removeWidget(settingsWidget);
     }
-  } else {
-    // desktop
-    switch (el.id) {
-      case "system-container":
-        grid.update(el, {x: 0, y: 0, w: 6, h: 3 });
-        break;
 
-      case "notes-container":
-        grid.update(el, {x: 6, y: 0, w: 6, h: 3 });
-        break;
+    if (!settingsWidget) {
+        button.innerHTML = `Close<span aria-hidden="true"s> &larr; </span>`
 
-      case "signatures-container":
-        grid.update(el, {x: 0, y: 4, w: 12, h: 3 })    ;
-        break;
+        const item = document.createElement('div');
+        item.id = 'settings-widget'
+        item.classList.add('grid-stack-item');
 
-      case "map-container":
-        grid.update(el, {x: 0, y: 12, w: 12, h: 6 });
-        break;
+        const content = document.createElement('div');
+        content.classList.add('grid-stack-item-content');
+
+        const clone = document.getElementById('settings-template').cloneNode(true);
+        clone.classList.remove('hidden')
+
+        item.appendChild(content);
+        content.appendChild(clone)
+
+        grid.makeWidget(item, {
+            w: 12,
+            h: 6,
+            x: 0,
+            y: 0
+        });
     }
-  }
 }
-
-var isLocked = false;
-window.grid = null;
-document.addEventListener("DOMContentLoaded", () => {
-
-const grid = GridStack.init();           
-
-const system   = document.getElementById('system-container');
-const signatures   = document.getElementById('signatures-container');
-const notes   = document.getElementById('notes-container');
-const map   = document.getElementById('map-container');
-
-applyGridSizeForWidth(grid, system);     
-applyGridSizeForWidth(grid, signatures);       
-applyGridSizeForWidth(grid, notes);       
-applyGridSizeForWidth(grid, map);       
-
-window.addEventListener('resize', () => {
-  applyGridSizeForWidth(grid, system);       
-  applyGridSizeForWidth(grid, signatures);       
-  applyGridSizeForWidth(grid, notes);       
-  applyGridSizeForWidth(grid, map);       
-});
-
-
-    window.grid = GridStack.init({/* options */}, '.grid-stack');
-
-    const lockButton = document.getElementById('lock-toggle');
-    lockButton.addEventListener('click', () => {
-        const svg = document.getElementById('lockImage');
-        isLocked = !isLocked;
-        grid.setStatic(isLocked);
-        svg.style.fill = isLocked ? "#605dff" : "#ff6700";
-    });
-});
 

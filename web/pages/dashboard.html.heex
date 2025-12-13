@@ -24,76 +24,19 @@
   });
 </script>
 
-
-<script>
-
-function addSettingsWidget() {
-    if (!window.grid) {
-      console.error("GridStack not initialized yet");
-      return;
-    }
-
-    var widget = document.getElementById("grid-stack-settings")
-    if (widget) {
-        const button = document.getElementById("settings-toggle");
-            button.innerHTML = `Settings<span aria-hidden="true"s> &rarr; </span>`
-
-        window.grid.removeWidget(widget);
-    } else {
-
-        const button = document.getElementById("settings-toggle");
-            button.innerHTML = `Close<span aria-hidden="true"s> &larr; </span>`
-                    button.addEventListener('click', addSettingsWidget);
-
-        widget = document.createElement('div');
-            widget.classList.add('grid-stack-item');
-            widget.id = 'grid-stack-settings'
-
-        if (!document.getElementById('template_cloned')) {
-
-        const template = document.getElementById('template');
-        const content = document.createElement('div');
-        const clone = template.cloneNode(true)
-            
-            clone.classList.remove('hidden')
-            content.classList.add('grid-stack-item-content');
-            content.id  = 'template_cloned'
-            content.appendChild(clone)
-            widget.appendChild(content);
-        }
-
-    window.grid.makeWidget(widget, {
-        w: 12,
-        h: 4,
-        x: 0,
-        y: 0
-    });
-
-    }
-  }
-  
-  document.addEventListener('DOMContentLoaded', () => {
-    const button = document.getElementById("settings-toggle");
-    if (button) {
-        button.addEventListener('click', addSettingsWidget);
-    } else {
-        console.error("Button with ID 'settings-toggle' not found");
-    }
-});
-</script>
-
-
 <.flash id="toast" kind={:info} phx-mounted={show("#flash")}>Welcome Back!</.flash>
 <RootLayout.app flash={@flash}>
   <div class="flex size-full flex-col p-2 bg-base-100 gap-2">
     <.navigation user={@user} />
     <div class="size-full bg-base-200">
+
         <div class="grid-stack" id="grid-stack">
             <.system />
             <.notes />
             <.signatures />
             <.map />
         </div>
+
     </div>
   </div>
 </RootLayout.app>

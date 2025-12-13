@@ -3,9 +3,9 @@ defmodule TripwireWeb.MapComponent do
 
   def map(assigns) do
       ~H"""
-      <div class="grid-stack-item overflow-x-scroll" id="map-container">
-        <div class="grid-stack-item-content overflow-x-scroll">
-          <div class="w-screen h-screen overflow-x-scroll" id="map"></div>
+      <div id="map" class="grid-stack-item " gs-w="12" gs-h="6" gs-x="0" gs-y="12">
+        <div class="grid-stack-item-content">
+          <div class="h-screen w-screen" id="treeMap"></div>
         </div>
       </div>
       """
