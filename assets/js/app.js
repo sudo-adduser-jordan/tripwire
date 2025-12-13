@@ -1,8 +1,4 @@
 
-// import "./gridStack.js"
-// import "./treeMap.js"
-// import "./stackedAreaChart.js"
-
 import "phoenix_html"
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
@@ -48,3 +44,6 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // import "./user_socket.js"
+// import "./gridStack.js"
+// import "./treeMap.js"
+// import "./stackedAreaChart.js"

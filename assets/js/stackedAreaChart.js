@@ -3,11 +3,7 @@ import * as echarts from 'echarts';
 var stackedChartDom = document.getElementById('system-chart');
 var stackedChart = echarts.init(stackedChartDom);
 var stackedChartOptions = {
-    title: {
-        text: 'System'
-    },
     animationDurationUpdate: 100,
-
     tooltip: {
         trigger: 'axis',
         axisPointer: {

@@ -1,6 +1,6 @@
 defmodule TripwireWeb.SignaturesComponent do
   use Phoenix.Component
-
+  import TripwireWeb.IconComponent
 
   def signatures(assigns) do
       ~H"""
@@ -9,11 +9,11 @@ defmodule TripwireWeb.SignaturesComponent do
           <div class="grid-stack-item-content">
             <ul class="list bg-base-100 rounded-box shadow-md">
               <li class="list-row h-fit p-1">
-                <div>Add</div>
-                <div>Edit</div>
-                <div>Undo</div>
-                <div>Redo</div>
-                <div>Delete</div>
+              <.icon name="hero-plus-circle" class="m-1 size-6"/>
+              <.icon name="hero-pencil-square" class="m-1 size-6"/>
+              <.icon name="hero-arrow-uturn-left" class="m-1 size-6"/>
+              <.icon name="hero-arrow-uturn-right" class="m-1 size-6"/>
+              <.icon name="hero-trash" class="m-1 size-6"/>
               </li>
             </ul>
 
