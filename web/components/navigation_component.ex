@@ -1,30 +1,37 @@
 defmodule TripwireWeb.NavigationComponent do
   use Phoenix.Component
+  import TripwireWeb.InputComponent
 
   attr :user, :string, required: true
   def navigation(assigns) do
-      ~H"""
-      <nav class="flex flex-col gap-2 sm:gap-0 sm:flex-row">
-            <nav class="flex flex-row bg-base-200 p-2 w-full h-fit gap-2">
-              <div class="flex justify-center items-center gap-1">
+~H"""
+      <nav class="flex items-center content-center flex-col gap-2 sm:gap-0 sm:flex-row ">
+
+            <nav class="flex items-center content-center flex-row bg-base-200 rounded sm:rounded-none sm:rounded-l-lg p-2 h-12 w-full  gap-2">
+
+              <div class="m-1 flex justify-center items-center gap-1">
                 <div class="inline-grid *:[grid-area:1/1]">
                   <div class="status status-error animate-ping"></div>
                   <div class="status status-error"></div>
                 </div>
               </div>
 
-              <div class="hover:cursor-pointer hover:underline place-content-center flex gap-1 justify-center items-center">
-                TQ
-                <div class="badge badge-error">Down</div>
+              <div class="m-1 hover:cursor-pointer hover:underline place-content-center flex gap-1 justify-center items-center">
+                <p>TQ</p>
+                <div class="badge badge-error m-1">Down</div>
               </div>
 
-              <div>|</div>
-              <div class="hover:cursor-pointer hover:underline place-content-center">System</div>
-              <div class="hidden min-[400px]:block ">&gt;</div>
-              <input  class="bg-base-100 rounded w-36 sm:w-42 hidden min-[400px]:block" placeholder="Search systems" />
+              <p class="flex items-center">|</p>
+
+
+              <div class="hover:cursor-pointer hover:underline place-content-center px-2 text-center">Jita</div>
+              <div class="hidden min-[400px]:flex items-center">&gt;</div>
+
+              <input class="mx-1 px-2 py-1 bg-base-100 rounded h-7/10 w-36 sm:w-42 hidden min-[400px]:block" placeholder="Search systems" />
+
             </nav>
 
-            <nav class="flex flex-row justify-start sm:justify-end bg-base-200 p-2 h-fit gap-2">
+            <nav class="flex flex-row justify-start items-center sm:justify-end bg-base-200 sm:rounded-none  gap-2 rounded sm:rounded-r-lg  p-2 h-12 w-full">
               <button id="lock-button" class="">
                 <svg
                   id="lock-svg"
@@ -39,7 +46,7 @@ defmodule TripwireWeb.NavigationComponent do
                 </svg>
               </button>
 
-              <div class="dropdown dropdown-end">
+              <div class="dropdown dropdown-start">
                 <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline">
                   {@user}
                 </div>
@@ -82,6 +89,13 @@ defmodule TripwireWeb.NavigationComponent do
 
               <p class="  ">&gt;</p>
 
+
+
+
+
+
+
+
               <div class="dropdown dropdown-end">
                 <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline">
                   Corporation
@@ -114,7 +128,7 @@ defmodule TripwireWeb.NavigationComponent do
               </div>
             </nav>
           </nav>
-      """
+"""
   end
 
 end
