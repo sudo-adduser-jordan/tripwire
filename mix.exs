@@ -30,7 +30,7 @@ defmodule Tripwire.MixProject do
 
   defp elixirc_paths(:test), do: ["lib", "web", "test"]
   defp elixirc_paths(_), do: ["lib", "web"]
-s
+
   defp deps do
     [
       {:phoenix, "~> 1.8.2"},
