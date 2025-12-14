@@ -4,7 +4,14 @@ var stackedChartDom = document.getElementById('system-chart');
 var stackedChart = echarts.init(stackedChartDom);
 var stackedChartOptions = {
     animationDurationUpdate: 100,
-    tooltip: {
+    grid: {
+        top: '10%',
+        bottom: '20%',
+        left: '7%',
+        right: '7%',
+        containLabel: false
+    },
+        tooltip: {
         trigger: 'axis',
         axisPointer: {
             type: 'cross',

@@ -2,17 +2,9 @@ defmodule TripwireWeb.SettingsComponent do
   use Phoenix.Component
 
 
-# Username: 	lostcoastwizard
-# Characters:
-# Mask settings:
 
-# Map Render: left right top bottom radial
-# Show Map Jump Lines: Yes No
-# Show Line Aura*: 	Yes No
 # Line Weight Factor*: 	0.5
-# Allow Scroll Without Ctrl Key: 	Yes No
 # Chain Map Node Reference: 	Wormhole Type Signature ID
-# Show sig name on map: true
 # Node Spacing Factor*: 1-10
 # K-space route selection:
 # Avoiding:
@@ -20,6 +12,7 @@ defmodule TripwireWeb.SettingsComponent do
 # Background Image:
 # UI Scale:
 
+# make widget / show stats button from account settings
 # Signatures added: 	22255
 # Signatures updated: 	2728
 # Signatures deleted: 	4280
@@ -31,7 +24,6 @@ defmodule TripwireWeb.SettingsComponent do
 # Comments deleted: 	8
 # Systems visited: 	2,777
 # Logins: 	875
-# Last login: 2025-12-12 09:40:22
 
 
   def settings(assigns) do
@@ -43,7 +35,12 @@ defmodule TripwireWeb.SettingsComponent do
     <div class="tab-content  bg-base-100 border-base-300 p-6">
 
     <div class="size-full flex flex-col gap-4">
+      <p class="p-2">
       Account
+      </p>
+      <p class="p-2">
+      Last login: 2025-12-12 09:40:22
+      </p>
       <div class="flex flex-row ">
         <div class="stats shadow">
           <div class="stat">
@@ -57,7 +54,7 @@ defmodule TripwireWeb.SettingsComponent do
             </div>
             <div class="stat-value">Characer Name1</div>
             <div class="stat-title">Corporation Name</div>
-            <div class="stat-desc text-secondary">Masks</div>
+            <div class="stat-desc text-secondary">Alliance Name</div>
           </div>
         </div>
         <div class="stats shadow">
@@ -72,7 +69,7 @@ defmodule TripwireWeb.SettingsComponent do
             </div>
             <div class="stat-value">Characer Name2</div>
             <div class="stat-title">Corporation Name</div>
-            <div class="stat-desc text-secondary">Masks</div>
+            <div class="stat-desc text-secondary">Alliance Name</div>
           </div>
         </div>
 
@@ -110,61 +107,36 @@ defmodule TripwireWeb.SettingsComponent do
     Map Settings
     <div class="flex flex-col gap-4">
 
-
-
       <div class="flex flex-row gap-4">
-        <p class="w-25/100 pl-8">System</p>
+        <p class="w-25/100 pl-8">Map Render</p>
         <select class="select select-ghost">
-          <option disabled selected>Pick a font</option>
-          <option>Inter</option>
-          <option>Poppins</option>
-          <option>Raleway</option>
-        </select>
-
-      </div>
-
-      <div class="flex flex-row gap-4">
-        <p class="w-25/100 pl-8">System</p>
-        <select class="select select-ghost">
-          <option disabled selected>Pick a font</option>
-          <option>Inter</option>
-          <option>Poppins</option>
-          <option>Raleway</option>
+          <option disabled selected>Default</option>
+          <option>Default</option>
+          <option>Radial</option>
+          <option>Top</option>
+          <option>Bottom</option>
+          <option>Left</option>
+          <option>Right</option>
         </select>
       </div>
 
       <div class="flex flex-row gap-4">
-        <p class="w-25/100 pl-8">System</p>
-        <select class="select select-ghost">
-          <option disabled selected>Pick a font</option>
-          <option>Inter</option>
-          <option>Poppins</option>
-          <option>Raleway</option>
-        </select>
-      </div>
-
-
-
-
-
-
-      <div class="flex flex-row gap-4">
-        <p class="w-4/10 pl-8">System</p>
+        <p class="w-4/10 pl-8">Show Jump Lines</p>
         <input type="checkbox" checked="checked" class="toggle toggle-primary" />
       </div>
       <div class="flex flex-row gap-4">
-        <p class="w-4/10 pl-8">System</p>
+        <p class="w-4/10 pl-8">Show Line Glow</p>
         <input type="checkbox" checked="checked" class="toggle toggle-secondary" />
       </div>
       <div class="flex flex-row gap-4">
-        <p class="w-4/10 pl-8">System</p>
+        <p class="w-4/10 pl-8">Scroll with Ctrl Key</p>
         <input type="checkbox" checked="checked" class="toggle toggle-accent" />
       </div>
       <div class="flex flex-row gap-4">
-        <p class="w-4/10 pl-8">System</p>
+        <p class="w-4/10 pl-8">Show Node Signatures</p>
         <input type="checkbox" checked="checked" class="toggle toggle-neutral" />
       </div>
-      <div class="flex flex-row gap-4">
+      <%!-- <div class="flex flex-row gap-4">
         <p class="w-4/10 pl-8">System</p>
         <input type="checkbox" checked="checked" class="toggle toggle-info" />
       </div>
@@ -179,7 +151,7 @@ defmodule TripwireWeb.SettingsComponent do
       <div class="flex flex-row gap-4">
         <p class="w-4/10 pl-8">System</p>
         <input type="checkbox" checked="checked" class="toggle toggle-error" />
-      </div>
+      </div> --%>
 
     </div>
   </div>
@@ -208,7 +180,7 @@ defmodule TripwireWeb.SettingsComponent do
         <input type="checkbox" checked="checked" class="checkbox checkbox-neutral" />
         <p>Map</p>
       </div>
-
+<%!--
       <div class="flex flex-row gap-4">
         <input type="checkbox" class="checkbox checkbox-error" />
         <p>Killboard</p>
@@ -228,7 +200,7 @@ defmodule TripwireWeb.SettingsComponent do
         <input type="checkbox" class="checkbox checkbox-warning" />
         <p>Udema Scout</p>
       </div>
-
+ --%>
     </div>
   </div>
 

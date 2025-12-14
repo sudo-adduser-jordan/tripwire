@@ -1,5 +1,6 @@
 defmodule TripwireWeb.MapComponent do
   use Phoenix.Component
+  import TripwireWeb.IconComponent
 
   def map(assigns) do
 ~H"""
@@ -8,7 +9,10 @@ defmodule TripwireWeb.MapComponent do
 
 
 <!-- name of each tab group should be unique -->
+
 <div class="tabs tabs-lift">
+<.icon name="hero-folder-plus" class="m-1 size-6"/>
+
   <input type="radio" name="my_tabs_3" class="tab" aria-label="Tab 1" />
   <div class="tab-content bg-base-100 border-base-300 p-6">Tab content 1</div>
 
@@ -20,10 +24,16 @@ defmodule TripwireWeb.MapComponent do
 
   <input type="radio" name="my_tabs_3" class="tab" aria-label="Tab 3" />
   <div class="tab-content bg-base-100 border-base-300 p-6">Tab content 3</div>
+    <.icon name="hero-star" class="m-1 size-6"/>
+    <.icon name="hero-user" class="m-1 size-6"/>
+    <.icon name="hero-rocket-launch" class="m-1 size-6"/>
+
 </div>
 
-
+<%!-- <div class="flex flex-row justify-between w-full bg-red-300"></div> --%>
         </div>
+
+
       </div>
 """
   end

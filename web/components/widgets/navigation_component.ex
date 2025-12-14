@@ -21,6 +21,8 @@ defmodule TripwireWeb.NavigationComponent do
               </div>
 
               <p class="flex items-center">|</p>
+                <p>00:00</p>
+              <p class="flex items-center">|</p>
 
 
               <div class="hover:cursor-pointer hover:underline place-content-center px-2 text-center">Jita</div>

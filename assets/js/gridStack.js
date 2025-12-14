@@ -20,7 +20,7 @@ var isLocked = true;
 document.getElementById('lock-button').addEventListener('click', () => {
     isLocked = !isLocked;
     grid.setStatic(isLocked);
-    document.getElementById('lock-svg').style.fill = isLocked ? "#605dff": "#ff6700" ;
+    document.getElementById('lock-svg').style.fill = isLocked ? "#605dff" : "#ff6700";
     // document.getElementById('lock-svg').style.fill = isLocked ? "#ff6700" : "#605dff";
 });
 
@@ -49,6 +49,7 @@ function toggleSettingsWidget() {
         const content = document.createElement('div');
         content.classList.add('grid-stack-item-content');
 
+
         const clone = document.getElementById('settings-template').cloneNode(true);
         clone.classList.remove('hidden')
 
@@ -57,7 +58,7 @@ function toggleSettingsWidget() {
 
         grid.makeWidget(item, {
             w: 12,
-            h: 6,
+            h: 8,
             x: 0,
             y: 0
         });
