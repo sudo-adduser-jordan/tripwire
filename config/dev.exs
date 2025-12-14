@@ -24,17 +24,20 @@ config :tripwire, TripwireWeb.Endpoint,
   live_reload: [
     web_console_logger: true,
     patterns: [
-      ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$"E,
-      ~r"priv/gettext/.*\.po$"E,
-      ~r"lib/tripwire_web/router\.ex$"E,
-      ~r"lib/tripwire_web/(controllers|live|components)/.*\.(ex|heex)$"E
+      ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$",
+      ~r"priv/gettext/.*\.po$",
+      ~r"web/(controllers|live|components|router|widgets|layouts|pages|views)/.*\.(ex|heex)$",
     ]
   ]
 
 config :swoosh, :api_client, false
+
 config :tripwire, dev_routes: true
+
 config :logger, :default_formatter, format: "[$level] $message\n"
+
 config :phoenix, :stacktrace_depth, 20
+
 config :phoenix, :plug_init_mode, :runtime
 
 config :phoenix_live_view,

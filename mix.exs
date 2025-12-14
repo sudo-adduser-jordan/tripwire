@@ -5,7 +5,7 @@ defmodule Tripwire.MixProject do
     [
       app: :tripwire,
       version: "0.0.1",
-      elixir: "~> 1.15",
+      elixir: "~> 1.19",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
@@ -28,9 +28,9 @@ defmodule Tripwire.MixProject do
     ]
   end
 
-  defp elixirc_paths(:test), do: ["lib", "web", "test/support"]
+  defp elixirc_paths(:test), do: ["lib", "web", "test"]
   defp elixirc_paths(_), do: ["lib", "web"]
-
+s
   defp deps do
     [
       {:phoenix, "~> 1.8.2"},

@@ -1,5 +1,7 @@
 import Config
 
+config :tripwire, Tripwire.Mailer, adapter: Swoosh.Adapters.Local
+
 config :tripwire,
   ecto_repos: [Tripwire.Repo],
   generators: [timestamp_type: :utc_datetime]
@@ -19,7 +21,6 @@ config :esbuild,
   version: "0.25.4",
   tripwire: [
     args:
-      # ~w(app=js/app.js dashboard=js/dashboard --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
       ~w(app=js/app.js dashboard=js/dashboard --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
@@ -40,6 +41,5 @@ config :logger, :default_formatter,
   metadata: [:request_id]
 
 config :phoenix, :json_library, Jason
-config :tripwire, Tripwire.Mailer, adapter: Swoosh.Adapters.Local
 
 import_config "#{config_env()}.exs"
