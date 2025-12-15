@@ -2,16 +2,6 @@ defmodule TripwireWeb.SettingsComponent do
   use Phoenix.Component
 
 
-
-# Line Weight Factor*: 	0.5
-# Chain Map Node Reference: 	Wormhole Type Signature ID
-# Node Spacing Factor*: 1-10
-# K-space route selection:
-# Avoiding:
-# Signature copy output separator:
-# Background Image:
-# UI Scale:
-
 # make widget / show stats button from account settings
 # Signatures added: 	22255
 # Signatures updated: 	2728
@@ -26,27 +16,34 @@ defmodule TripwireWeb.SettingsComponent do
 # Logins: 	875
 
 
+
+
+  # Line Weight Factor*: 	0.5
+# Chain Map Node Reference: 	Wormhole Type Signature ID
+# Node Spacing Factor*: 1-10
+# K-space route selection:
+# Avoiding:
+# Signature copy output separator:
+# Background Image:
+# UI Scale:
+
+
   def settings(assigns) do
 ~H"""
 <div class="hidden size-full" id="settings-template">
-
   <div class="tabs tabs-box size-full">
+
     <input type="radio" name="my_tabs_6" class="tab" aria-label="Account" checked="checked" />
     <div class="tab-content  bg-base-100 border-base-300 p-6">
-
-    <div class="size-full flex flex-col gap-4">
-      <p class="p-2">
-      Account
-      </p>
-      <p class="p-2">
-      Last login: 2025-12-12 09:40:22
-      </p>
-      <div class="flex flex-row ">
+      <div class="size-full flex flex-col gap-4">
+        <p class="p-2">Account</p>
+        <p class="p-2">Last login: 2025-12-12 09:40:22</p>
+        <div class="flex flex-row ">
         <div class="stats shadow">
           <div class="stat">
             <div class="stat-figure text-secondary">
               <div class="avatar avatar-online">
-                <div class="w-16 rounded-full">
+                <div class="w-16 rounded-xl">
                   <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
                 </div>
               </div>
@@ -61,7 +58,7 @@ defmodule TripwireWeb.SettingsComponent do
           <div class="stat">
             <div class="stat-figure text-secondary">
               <div class="avatar avatar-offline">
-                <div class="w-16 rounded-full">
+                <div class="w-16 rounded-xl">
                   <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
                 </div>
               </div>
@@ -77,7 +74,7 @@ defmodule TripwireWeb.SettingsComponent do
           <div class="stat">
             <div class="stat-figure text-secondary">
               <div class="avatar avatar-offline">
-                <div class="w-16 rounded-full">
+                <div class="w-16 rounded-xl">
                   <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
                 </div>
               </div>
