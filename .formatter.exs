@@ -6,6 +6,6 @@
     "*.{heex,ex,exs}",
     "{config,lib,test}/**/*.{heex,ex,exs}",
     "priv/*/seeds.exs",
-    "web/tripwire_web/views/**/*.{heex,ex,exs}"
+    "web/views/**/*.{heex,ex,exs}"
   ]
 ]
