@@ -5,6 +5,17 @@ var treeMapDom = document.getElementById('treeMap');
 var treeMap = echarts.init(treeMapDom);
 var treeMapOptions;
 
+
+var treeMaps = {}
+function createTreeMapf(character){}
+function getTreeMaps(character){}
+function loadTreeMaps(treeMaps){}
+function loadTreeMap(treeMaps){}
+function getTreeMapFavorites(treeMap){}
+function updateShowShip(treeMap){}
+function updateShowCharacter(treeMap){}
+
+
 treeMap.showLoading();
 $.get('/data.json', (data) => {
     treeMap.hideLoading();

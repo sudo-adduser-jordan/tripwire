@@ -1,5 +1,8 @@
 import * as echarts from 'echarts';
 
+function copySystemName(character){}
+
+
 var stackedChartDom = document.getElementById('system-chart');
 var stackedChart = echarts.init(stackedChartDom);
 var stackedChartOptions = {
