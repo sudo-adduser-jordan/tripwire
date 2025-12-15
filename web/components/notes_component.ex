@@ -20,20 +20,6 @@ defmodule TripwireWeb.NotesComponent do
       to pay respects.
     </div>
 
-      <div class="w-full text-center p-4">
-        <kbd class="kbd">ctrl</kbd>
-        +
-        <kbd class="kbd">v</kbd>
-      </div>
-
-
-      <div class="w-full text-center p-4">
-        <kbd class="kbd">ctrl</kbd>
-        +
-        <kbd class="kbd">c</kbd>
-      </div>
-
-
   </div>
 </div>
 """

@@ -1,13 +1,14 @@
 import * as echarts from 'echarts';
 import $ from "jquery";
 
+
+// var treeMapDom = document.querySelectorAll('treeMap');
 var treeMapDom = document.getElementById('treeMap');
 var treeMap = echarts.init(treeMapDom);
 var treeMapOptions;
 
-
 var treeMaps = {}
-function createTreeMapf(character){}
+function createTreeMap(character){}
 function getTreeMaps(character){}
 function loadTreeMaps(treeMaps){}
 function loadTreeMap(treeMaps){}

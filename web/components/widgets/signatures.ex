@@ -3,7 +3,7 @@ defmodule TripwireWeb.SignaturesComponent do
   import TripwireWeb.IconComponent
 
   def signatures(assigns) do
-      ~H"""
+~H"""
 
         <div id='signatures' class="grid-stack-item" gs-w="12" gs-h="6" gs-x="0" gs-y="6" >
           <div class="grid-stack-item-content">
@@ -26,60 +26,6 @@ defmodule TripwireWeb.SignaturesComponent do
                 <div>Life</div>
                 <div>Mass</div>
               </li>
-
-              <li class="list-row h-fit p-1">
-                <div>ID</div>
-                <div>Type</div>
-                <div>Age</div>
-                <div>Name</div>
-                <div>Life</div>
-                <div>Mass</div>
-              </li>
-
-              <li class="list-row h-fit p-1">
-                <div>ID</div>
-                <div>Type</div>
-                <div>Age</div>
-                <div>Name</div>
-                <div>Life</div>
-                <div>Mass</div>
-              </li>
-
-              <li class="list-row h-fit p-1">
-                <div>ID</div>
-                <div>Type</div>
-                <div>Age</div>
-                <div>Name</div>
-                <div>Life</div>
-                <div>Mass</div>
-              </li>
-
-              <li class="list-row h-fit p-1">
-                <div>ID</div>
-                <div>Type</div>
-                <div>Age</div>
-                <div>Name</div>
-                <div>Life</div>
-                <div>Mass</div>
-              </li>
-
-              <li class="list-row h-fit p-1">
-                <div>ID</div>
-                <div>Type</div>
-                <div>Age</div>
-                <div>Name</div>
-                <div>Life</div>
-                <div>Mass</div>
-              </li>
-
-              <li class="list-row h-fit p-1">
-                <div>ID</div>
-                <div>Type</div>
-                <div>Age</div>
-                <div>Name</div>
-                <div>Life</div>
-                <div>Mass</div>
-              </li>
             </ul>
 
           <div class="w-full text-center p-4">
@@ -89,8 +35,27 @@ Press
 to pay respects.
           </div>
 
+
+
+      <div class="w-full text-center p-4">
+        <kbd class="kbd">ctrl</kbd>
+        +
+        <kbd class="kbd">v</kbd>
+      </div>
+
+
+      <div class="w-full text-center p-4">
+        <kbd class="kbd">ctrl</kbd>
+        +
+        <kbd class="kbd">c</kbd>
+      </div>
+
+
+
+
+
           </div>
         </div>
-      """
+"""
     end
 end
