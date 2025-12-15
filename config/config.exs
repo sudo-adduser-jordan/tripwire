@@ -21,7 +21,16 @@ config :esbuild,
   version: "0.25.4",
   tripwire: [
     args:
-      ~w(app=js/app.js dashboard=js/dashboard --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
+      ~w(
+      app=js/app.js
+      dashboard=js/dashboard
+      --bundle
+      --target=es2022
+      --outdir=../priv/static/assets/js
+      --external:/fonts/*
+      --external:/images/*
+      --alias:@=.
+      ),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]

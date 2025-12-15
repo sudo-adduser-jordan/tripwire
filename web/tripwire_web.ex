@@ -1,5 +1,12 @@
 defmodule TripwireWeb do
-  def static_paths, do: ~w(assets fonts images favicon.ico robots.txt data.json)
+  def static_paths, do: ~w(
+  assets
+  fonts
+  images
+  favicon.ico
+  robots.txt
+  data.json
+  )
 
   def router do
     quote do
@@ -20,7 +27,6 @@ defmodule TripwireWeb do
   def controller do
     quote do
       use Phoenix.Controller, formats: [:html, :json]
-
       use Gettext, backend: TripwireWeb.Gettext
 
       import Plug.Conn
@@ -70,7 +76,6 @@ defmodule TripwireWeb do
       import TripwireWeb.IconComponent
 
       import TripwireWeb.NavigationComponent
-
       import TripwireWeb.SettingsComponent
 
       import TripwireWeb.SystemComponent
