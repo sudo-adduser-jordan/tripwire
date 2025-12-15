@@ -81,6 +81,14 @@ defmodule TripwireWeb.SignaturesComponent do
                 <div>Mass</div>
               </li>
             </ul>
+
+          <div class="w-full text-center p-4">
+
+Press
+<kbd class="kbd kbd-sm">F</kbd>
+to pay respects.
+          </div>
+
           </div>
         </div>
       """

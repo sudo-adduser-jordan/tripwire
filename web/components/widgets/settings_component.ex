@@ -16,18 +16,6 @@ defmodule TripwireWeb.SettingsComponent do
 # Logins: 	875
 
 
-
-
-  # Line Weight Factor*: 	0.5
-# Chain Map Node Reference: 	Wormhole Type Signature ID
-# Node Spacing Factor*: 1-10
-# K-space route selection:
-# Avoiding:
-# Signature copy output separator:
-# Background Image:
-# UI Scale:
-
-
   def settings(assigns) do
 ~H"""
 <div class="hidden size-full" id="settings-template">
@@ -102,11 +90,11 @@ defmodule TripwireWeb.SettingsComponent do
   <input type="radio" name="my_tabs_6" class="tab" aria-label="Map" />
   <div class="tab-content bg-base-100 border-base-300 p-6">
     Map Settings
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-4 p-4">
 
       <div class="flex flex-row gap-4">
         <p class="w-25/100 pl-8">Map Render</p>
-        <select class="select select-ghost">
+        <select class="select">
           <option disabled selected>Default</option>
           <option>Default</option>
           <option>Radial</option>
@@ -126,32 +114,45 @@ defmodule TripwireWeb.SettingsComponent do
         <input type="checkbox" checked="checked" class="toggle toggle-secondary" />
       </div>
       <div class="flex flex-row gap-4">
-        <p class="w-4/10 pl-8">Scroll with Ctrl Key</p>
-        <input type="checkbox" checked="checked" class="toggle toggle-accent" />
-      </div>
-      <div class="flex flex-row gap-4">
         <p class="w-4/10 pl-8">Show Node Signatures</p>
         <input type="checkbox" checked="checked" class="toggle toggle-neutral" />
       </div>
-      <%!-- <div class="flex flex-row gap-4">
-        <p class="w-4/10 pl-8">System</p>
-        <input type="checkbox" checked="checked" class="toggle toggle-info" />
+
+      <div class="flex flex-row gap-4">
+        <p class="w-25/100 pl-8">Map Scale</p>
+      <input type="range" min="0" max="100" value="40" class="range range-primary" />
       </div>
       <div class="flex flex-row gap-4">
-        <p class="w-4/10 pl-8">System</p>
-        <input type="checkbox" checked="checked" class="toggle toggle-success" />
+        <p class="w-25/100 pl-8">Line Weight</p>
+      <input type="range" min="0" max="100" value="40" class="range range-primary" />
       </div>
       <div class="flex flex-row gap-4">
-        <p class="w-4/10 pl-8">System</p>
-        <input type="checkbox" checked="checked" class="toggle toggle-warning" />
+        <p class="w-25/100 pl-8">Node Spacing</p>
+      <input type="range" min="0" max="100" value="40" class="range range-primary" />
       </div>
+
+
       <div class="flex flex-row gap-4">
-        <p class="w-4/10 pl-8">System</p>
-        <input type="checkbox" checked="checked" class="toggle toggle-error" />
-      </div> --%>
+        <p class="w-25/100 pl-8">Background Image</p>
+<label class="input">
+  <input type="text" placeholder="domain name" />
+  <span class="label">.com</span>
+</label>
+
+      </div>
 
     </div>
   </div>
+
+
+
+
+
+
+
+
+
+
 
   <input type="radio" name="my_tabs_6" class="tab" aria-label="Widgets" />
   <div class="tab-content bg-base-100 border-base-300 p-6">
@@ -177,34 +178,34 @@ defmodule TripwireWeb.SettingsComponent do
         <input type="checkbox" checked="checked" class="checkbox checkbox-neutral" />
         <p>Map</p>
       </div>
-<%!--
-      <div class="flex flex-row gap-4">
-        <input type="checkbox" class="checkbox checkbox-error" />
-        <p>Killboard</p>
-      </div>
 
       <div class="flex flex-row gap-4">
-        <input type="checkbox" class="checkbox checkbox-info" />
-        <p>Player Statistics</p>
+        <input type="checkbox" checked="checked" class="checkbox checkbox-info" />
+        <p>Settings</p>
       </div>
 
-      <div class="flex flex-row gap-4">
-        <input type="checkbox" class="checkbox checkbox-success" />
-        <p>Discord Intell</p>
-      </div>
 
-      <div class="flex flex-row gap-4">
-        <input type="checkbox" class="checkbox checkbox-warning" />
-        <p>Udema Scout</p>
-      </div>
- --%>
     </div>
   </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   <input type="radio" name="my_tabs_6" class="tab" aria-label="Theme" />
   <div class="tab-content bg-base-100 border-base-300 p-6">
     Themes
-    <div>
+    <div class="p-4">
 
       <div class="flex flex-row gap-4">
         <input type="checkbox" checked="checked" class="checkbox checkbox-primary" />
@@ -235,6 +236,17 @@ defmodule TripwireWeb.SettingsComponent do
         <input type="checkbox" class="checkbox checkbox-info" />
         <p>Amarr</p>
       </div>
+
+      <div class="flex flex-row gap-4">
+        <input type="checkbox" class="checkbox checkbox-info" />
+        <p>Ore</p>
+      </div>
+
+      <div class="flex flex-row gap-4">
+        <input type="checkbox" class="checkbox checkbox-info" />
+        <p>Carbon</p>
+      </div>
+
 
     </div>
   </div>
