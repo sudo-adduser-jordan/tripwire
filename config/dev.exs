@@ -26,7 +26,7 @@ config :tripwire, TripwireWeb.Endpoint,
     patterns: [
       ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*\.po$",
-      ~r"web/(controllers|live|components|router|widgets|layouts|pages|views)/.*\.(ex|heex)$",
+      ~r"web/(controllers|live|components|router|widgets|RootLayout|pages|views)/.*\.(ex|heex)$",
     ]
   ]
 

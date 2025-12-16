@@ -10,23 +10,25 @@ defmodule TripwireWeb.Router do
     plug :put_secure_browser_headers
   end
 
-  pipeline :api do
-    plug :accepts, ["json"]
-  end
+#   pipeline :api do
+#     plug :accepts, ["json"]
+#   end
 
-  scope "/", TripwireWeb do
-    pipe_through :browser
+    scope "/", TripwireWeb do
+        pipe_through :browser
+        get "/", HomeController, :home
+        get "/dashboard/:user", DashboardController, :dashboard
+    end
 
-    get "/", HomeController, :home
-    get "/dashboard/:user", DashboardController, :dashboard
-  end
-
-  # Other scopes may use custom stacks.
-  # scope "/api", TripwireWeb do
-  #   pipe_through :api
+  # scope "/auth", TripwireWeb do
+  #    pipe_through :browser
+  #     get "/:provider", AuthController, :request
+  #     get "/:provider/callback", AuthController, :callback
+  #     post "/:provider/callback", AuthController, :callback
+  #     delete "/logout", AuthController, :delete
   # end
 
-  # Enable LiveDashboard and Swoosh mailbox preview in development
+  # dev
   if Application.compile_env(:tripwire, :dev_routes) do
     # If you want to use the LiveDashboard in production, you should put
     # it behind authentication and allow only admins to access it.
@@ -34,7 +36,6 @@ defmodule TripwireWeb.Router do
     # you can use Plug.BasicAuth to set up some basic authentication
     # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
-
     scope "/dev" do
       pipe_through :browser
 

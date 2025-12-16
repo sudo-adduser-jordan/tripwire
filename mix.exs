@@ -17,6 +17,7 @@ defmodule Tripwire.MixProject do
 
   def application do
     [
+      # applications: [:ueberauth_auth0],
       mod: {Tripwire.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
@@ -44,7 +45,6 @@ defmodule Tripwire.MixProject do
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
-
       {:heroicons,
        github: "tailwindlabs/heroicons",
        tag: "v2.2.0",
@@ -52,7 +52,6 @@ defmodule Tripwire.MixProject do
        app: false,
        compile: false,
        depth: 1},
-
       {:swoosh, "~> 1.16"},
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
@@ -60,7 +59,9 @@ defmodule Tripwire.MixProject do
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+
+      {:ueberauth_auth0, "~> 2.0"}
     ]
   end
 
