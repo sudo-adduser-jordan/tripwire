@@ -17,9 +17,8 @@ defmodule Tripwire.MixProject do
 
   def application do
     [
-      # applications: [:ueberauth_auth0],
       mod: {Tripwire.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :ueberauth_eve_online]
     ]
   end
 
@@ -61,17 +60,36 @@ defmodule Tripwire.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
 
-      {:ueberauth_auth0, "~> 2.0"}
-    ]
+      {:ueberauth_eve_online, "~> 1.0"}
+  ]
   end
 
   defp aliases do
     [
-      setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
-      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
-      "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
+      setup: [
+        "deps.get",
+        "ecto.setup",
+        "assets.setup",
+        "assets.build"
+      ],
+      "ecto.setup": [
+        "ecto.create",
+        "ecto.migrate",
+        "run priv/repo/seeds.exs"
+      ],
+      "ecto.reset": [
+        "ecto.drop",
+        "ecto.setup"
+      ],
+      test: [
+        "ecto.create --quiet",
+        "ecto.migrate --quiet",
+        "test"
+      ],
+      "assets.setup": [
+        "tailwind.install --if-missing",
+        "esbuild.install --if-missing"
+      ],
       "assets.build": [
         "cmd --cd assets npm ci",
         "compile",
@@ -84,7 +102,12 @@ defmodule Tripwire.MixProject do
         "esbuild tripwire --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
+      precommit: [
+        "compile --warnings-as-errors",
+        "deps.unlock --unused",
+        "format",
+        "test"
+      ]
     ]
   end
 end

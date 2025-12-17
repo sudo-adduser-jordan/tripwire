@@ -1,38 +1,41 @@
-# defmodule TripwireWeb.AuthController do
-#   use TripwireWeb, :controller
-#   plug Ueberauth, otp_app: :my_app
+defmodule TripwireWeb.AuthController do
+  use TripwireWeb, :controller
 
-#   def request(conn, _params) do
-#     render(conn, "request.html", callback_url: Helpers.callback_url(conn))
-#   end
+  # alias TripwireWeb.UserFromAuth
+  plug Ueberauth
 
-#   def delete(conn, _params) do
-#     conn
-#     |> put_flash(:info, "You have been logged out!")
-#     |> clear_session()
-#     |> redirect(to: "/")
-#   end
+  # def request(conn, _params) do
+  #   render(conn, "request.html", req: "World")
+  # end
 
-#   def callback(%{assigns: %{ueberauth_failure: _fails}} = conn, _params) do
-#     conn
-#     |> put_flash(:error, "Failed to authenticate.")
-#     |> redirect(to: "/")
-#   end
+  def delete(conn, _params) do
+    conn
+    |> put_flash(:info, "You have been logged out!")
+    |> clear_session()
+    |> redirect(to: "/")
+  end
+  def callback(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
+    # Handle successful authentication here
+    user_info = %{
+      uid: auth.uid,
+      name: auth.info.name,
+      image: auth.info.image,
+      token: auth.credentials.token
+    }
 
-#   def callback(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
-#     case UserFromAuth.find_or_create(auth) do
-#       {:ok, user} ->
-#         conn
-#         |> put_flash(:info, "Successfully authenticated.")
-#         |> put_session(:current_user, user)
-#         |> configure_session(renew: true)
-#         |> redirect(to: "/")
+    # Example: log in user, save to DB, or start session
+    conn
+    |> put_session(:user, user_info)
+    # |> put_session(:current_user, %{id: auth.uid, name: auth.info.name})
+    |> redirect(to: "/dashboard/#{auth.info.name}")
+  end
 
-#       {:error, reason} ->
-#         conn
-#         |> put_flash(:error, reason)
-#         |> redirect(to: "/")
-#     end
-#   end
+  def callback(%{assigns: %{ueberauth_failure: fails}} = conn, _params) do
+    # Handle failures here
+    # IO.inspect(fails, label: "Authentication failed")
 
-# end
+    conn
+    |> put_flash(:error, "EVE SSO login failed")
+    |> redirect(to: "/")
+  end
+end
