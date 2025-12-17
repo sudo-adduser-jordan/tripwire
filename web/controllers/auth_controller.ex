@@ -1,12 +1,8 @@
 defmodule TripwireWeb.AuthController do
   use TripwireWeb, :controller
 
-  # alias TripwireWeb.UserFromAuth
   plug Ueberauth
 
-  # def request(conn, _params) do
-  #   render(conn, "request.html", req: "World")
-  # end
 
   def delete(conn, _params) do
     conn
@@ -14,23 +10,24 @@ defmodule TripwireWeb.AuthController do
     |> clear_session()
     |> redirect(to: "/")
   end
+
   def callback(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
     # Handle successful authentication here
-    user_info = %{
-      uid: auth.uid,
-      name: auth.info.name,
-      image: auth.info.image,
-      token: auth.credentials.token
-    }
+    # user_info = %{
+    #   uid: auth.uid,
+    #   name: auth.info.name,
+    #   image: auth.info.image,
+    #   token: auth.credentials.token
+    # }
 
     # Example: log in user, save to DB, or start session
     conn
-    |> put_session(:user, user_info)
-    # |> put_session(:current_user, %{id: auth.uid, name: auth.info.name})
+    # |> put_session(:user, user_info)
+    |> put_session(:current_user, %{id: auth.uid, name: auth.info.name})
     |> redirect(to: "/dashboard/#{auth.info.name}")
   end
 
-  def callback(%{assigns: %{ueberauth_failure: fails}} = conn, _params) do
+  def callback(%{assigns: %{ueberauth_failure: _fails}} = conn, _params) do
     # Handle failures here
     # IO.inspect(fails, label: "Authentication failed")
 

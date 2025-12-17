@@ -1,7 +1,6 @@
 defmodule TripwireWeb.Router do
   use TripwireWeb, :router
 
-  # Private plug used only in this router
   defp authorized(conn, _opts) do
     # example: you set this in AuthController.callback after Ueberauth
     if get_session(conn, :current_user) do
@@ -34,7 +33,10 @@ defmodule TripwireWeb.Router do
     scope "/", TripwireWeb do
       pipe_through :browser
       get "/", HomeController, :home
-    end
+
+      get "/dashboard/Admin", DashboardController, :dashboard_admin_demo
+      get "/dashboard/User",  DashboardController, :dashboard_user_demo
+      end
 
     scope "/", TripwireWeb do
       pipe_through :browser_auth

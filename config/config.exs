@@ -5,10 +5,6 @@ config :ueberauth, Ueberauth,
     evesso: {Ueberauth.Strategy.EVESSO, []}
   ]
 
-# config :ueberauth, Ueberauth.Strategy.EVESSO.OAuth,
-#   client_id: System.get_env("EVESSO_CLIENT_ID"),
-#   client_secret: System.get_env("EVESSO_SECRET_KEY")
-
 config :ueberauth, Ueberauth.Strategy.EVESSO.OAuth,
   client_id: {:system, "EVESSO_CLIENT_ID"},
   client_secret: {:system, "EVESSO_SECRET_KEY"}

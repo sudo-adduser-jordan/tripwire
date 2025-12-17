@@ -21,7 +21,23 @@ defmodule TripwireWeb.RootLayout do
       </div>
       <div class="flex-none">
         <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li><a href="/" class="btn btn-ghost">Logout</a></li>
+
+
+
+
+
+        <li>
+          <form action="/auth/logout" method="post">
+            <input type="hidden" name="_method" value="delete" />
+            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+            <button type="submit" class="btn btn-ghost">
+              Logout
+            </button>
+          </form>
+        </li>
+
+
+
           <li class="hidden min-[400px]:block"><a href="/" class="btn btn-ghost">Wiki</a></li>
           <li><.theme_toggle /></li>
           <li>

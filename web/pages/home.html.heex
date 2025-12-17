@@ -1,7 +1,11 @@
+<style>
+.sso-dark { display: none; }
+
+html[data-theme="dark"] .sso-light { display: none; }
+html[data-theme="dark"] .sso-dark  { display: inline; }
+</style>
+
 <RootLayout.flash_group flash={@flash} />
-
-
-
 <%!-- <.flash kind={:info} phx-mounted={show("#flash")}>Welcome Back!</.flash> --%>
 
 <main class="size-full flex flex-col lg:flex-row">
@@ -323,10 +327,14 @@
 
     <fieldset class="absolute z-9 fieldset bg-base-100 border-base-300 rounded-box w-xs border p-4">
       <p>Log in with Eve Online SEO</p>
-      <button autofocus onclick="window.location.href='/dashboard/Username';" class="btn btn-primary mt-4">
-        Login
-      </button>
-      <button onclick="window.location.href='/dashboard/User1';" class="btn btn-secondary mt-4">
+     
+     
+<a class="btn mt-4 p-0" href={~p"/auth/evesso"} autofocus>
+  <img class="size-full sso-light" src="/images/eve-sso-login-white-small.png" alt="EVE SSO Logo">
+  <img class="size-full sso-dark"  src="/images/eve-sso-login-black-small.png"  alt="EVE SSO Logo">
+</a>
+     
+      <button onclick="window.location.href='/dashboard/User';" class="btn btn-secondary mt-4">
         User Demo
       </button>
         <button onclick="window.location.href='/dashboard/Admin';" class="btn btn-secondary mt-4">
@@ -334,12 +342,8 @@
       </button>
     <button onclick="window.location.href='/dev/dashboard';" class="btn btn-secondary mt-4">
         Metrics
-      </button>
 
-        <a class="btn btn-secondary mt-4" href={~p"/auth/evesso"}>
-        <i class="fa fa-auth0"></i>
-        Sign in with auth0
-        </a>
+      </button>
 
     </fieldset>
   </section>

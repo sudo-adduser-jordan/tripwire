@@ -6,4 +6,13 @@ defmodule TripwireWeb.DashboardController do
     render(conn, :dashboard, user: user, users: users)
   end
 
+  # public
+  def dashboard_admin_demo(conn, _params) do
+    render(conn, :dashboard, user: "Admin", demo?: true)
+  end
+
+  def dashboard_user_demo(conn, _params) do
+    render(conn, :dashboard, user: "User", demo?: true)
+  end
+
 end
