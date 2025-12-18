@@ -9,23 +9,21 @@
   }
 </style>
 
-
 <link phx-track-static rel="stylesheet" href={~p"/assets/js/dashboard.css"} />
-<script defer phx-track-static type="text/javascript" src={~p"/assets/js/dashboard.js"}></script>
-
+<script defer phx-track-static type="text/javascript" src={~p"/assets/js/dashboard.js"}>
+</script>
 
 <.flash id="toast" kind={:info} phx-mounted={show("#flash")}>Welcome Back!</.flash>
 <RootLayout.app flash={@flash}>
   <div class="flex size-full flex-col p-2 bg-base-100 gap-2">
     <.navigation user={@user} />
     <div class="size-full bg-base-200">
-        <div class="grid-stack" id="grid-stack">
+      <div class="grid-stack" id="grid-stack">
             <.system />
             <.notes />
             <.signatures />
             <.map />
         </div>/
-
     </div>
   </div>
 </RootLayout.app>

@@ -40,5 +40,4 @@ defmodule TripwireWeb.ButtonComponents do
       """
     end
   end
-
 end

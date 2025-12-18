@@ -193,6 +193,4 @@ defmodule TripwireWeb.InputComponent do
     </p>
     """
   end
-
-
 end

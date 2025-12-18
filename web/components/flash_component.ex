@@ -6,7 +6,6 @@ defmodule TripwireWeb.FlashComponent do
   import TripwireWeb.IconComponent
   alias Phoenix.LiveView.JS
 
-
   @doc """
 
   Renders flash notices.
@@ -57,5 +56,4 @@ defmodule TripwireWeb.FlashComponent do
     </div>
     """
   end
-
 end

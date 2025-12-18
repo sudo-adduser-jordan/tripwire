@@ -29,5 +29,4 @@ defmodule TripwireWeb.IconComponent do
     <span class={[@name, @class]} />
     """
   end
-
 end

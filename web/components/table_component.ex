@@ -15,7 +15,7 @@ defmodule TripwireWeb.TableComponent do
 
   """
 
-attr :id, :string, required: true
+  attr :id, :string, required: true
   attr :rows, :list, required: true
   attr :row_id, :any, default: nil, doc: "the function for generating the row id"
   attr :row_click, :any, default: nil, doc: "the function for handling phx-click on each row"

@@ -29,8 +29,7 @@ config :tripwire, TripwireWeb.Endpoint,
 config :esbuild,
   version: "0.25.4",
   tripwire: [
-    args:
-      ~w(
+    args: ~w(
       app=js/app.js
       dashboard=js/dashboard
       --bundle

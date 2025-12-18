@@ -2,8 +2,7 @@ defmodule TripwireWeb.DashboardHTML do
   use TripwireWeb, :html
   embed_templates "../pages/dashboard.html"
 
-
- def users do
+  def users do
     [
       %{id: 1, username: "alice"},
       %{id: 2, username: "bob"},
@@ -12,6 +11,4 @@ defmodule TripwireWeb.DashboardHTML do
       %{id: 5, username: "eve"}
     ]
   end
-
-
 end

@@ -4,6 +4,7 @@ defmodule TripwireWeb.RootLayout do
   embed_templates "/*"
 
   attr :flash, :map, required: true, doc: "the map of flash messages"
+
   attr :current_scope, :map,
     default: nil,
     doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
@@ -16,27 +17,22 @@ defmodule TripwireWeb.RootLayout do
       <div class="flex-1">
         <a href="/" class="flex-1 flex w-fit items-center gap-2">
           <img class="hidden min-[400px]:block" src={~p"/images/logo.svg"} width="36" />
-          <span class="hidden sm:block text-sm font-semibold">v{Application.spec(:tripwire, :vsn)}</span>
+          <span class="hidden sm:block text-sm font-semibold">
+            v{Application.spec(:tripwire, :vsn)}
+          </span>
         </a>
       </div>
       <div class="flex-none">
         <ul class="flex flex-column px-1 space-x-4 items-center">
-
-
-
-
-
-        <li>
-          <form action="/auth/logout" method="post">
-            <input type="hidden" name="_method" value="delete" />
-            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-            <button type="submit" class="btn btn-ghost">
-              Logout
-            </button>
-          </form>
-        </li>
-
-
+          <li>
+            <form action="/auth/logout" method="post">
+              <input type="hidden" name="_method" value="delete" />
+              <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+              <button type="submit" class="btn btn-ghost">
+                Logout
+              </button>
+            </form>
+          </li>
 
           <li class="hidden min-[400px]:block"><a href="/" class="btn btn-ghost">Wiki</a></li>
           <li><.theme_toggle /></li>
@@ -51,7 +47,7 @@ defmodule TripwireWeb.RootLayout do
     </header>
 
     <main style="height: calc(100vh - 64px);">
-        {render_slot(@inner_block)}
+      {render_slot(@inner_block)}
     </main>
 
     <.flash_group flash={@flash} />
@@ -93,6 +89,7 @@ defmodule TripwireWeb.RootLayout do
     </div>
     """
   end
+
   def theme_toggle(assigns) do
     ~H"""
     <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-md">

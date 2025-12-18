@@ -1,6 +1,5 @@
 defmodule TripwireWeb.CoreComponents do
-
- @moduledoc """
+  @moduledoc """
 
   Provides core UI components.
 

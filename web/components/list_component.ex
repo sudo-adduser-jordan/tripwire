@@ -29,5 +29,4 @@ defmodule TripwireWeb.ListComponent do
     </ul>
     """
   end
-
 end
