@@ -168,7 +168,7 @@ defmodule TripwireWeb.SettingsComponent do
         <input type="radio" name="my_tabs_6" class="tab" aria-label="Widgets" />
         <div class="tab-content bg-base-100 border-base-300 p-6  " enabled>
           Widgets
-          <div class="p-4">
+          <div class="p-4 flex flex-col gap-1">
 
             <div class="flex flex-row gap-4">
               <input type="checkbox" checked="checked" class="checkbox checkbox-primary" />
