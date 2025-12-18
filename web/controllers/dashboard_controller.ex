@@ -2,8 +2,7 @@ defmodule TripwireWeb.DashboardController do
   use TripwireWeb, :controller
 
   def dashboard(conn, %{"user" => user}) do
-    users = TripwireWeb.DashboardHTML.users()
-    render(conn, :dashboard, user: user, users: users)
+    render(conn, :dashboard, user: user)
   end
 
   def dashboard_admin_demo(conn, _params) do
