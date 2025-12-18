@@ -45,6 +45,7 @@ function toggleSettingsWidget() {
         const item = document.createElement('div');
         item.id = 'settings-widget'
         item.classList.add('grid-stack-item');
+        item.setAttribute('tabindex', "0");
 
         const content = document.createElement('div');
         content.classList.add('grid-stack-item-content');
@@ -62,6 +63,8 @@ function toggleSettingsWidget() {
             x: 0,
             y: 0
         });
+
+        item.focus()
     }
 }
 

@@ -1,7 +1,7 @@
 defmodule TripwireWeb.SettingsComponent do
   use Phoenix.Component
 
-    @themes [
+  @themes [
     "light",
     "dark",
     "cupcake",
@@ -35,7 +35,6 @@ defmodule TripwireWeb.SettingsComponent do
 
   def themes, do: @themes
 
-
   # Signatures added: 	22255
   # Signatures updated: 	2728
   # Signatures deleted: 	4280
@@ -49,16 +48,18 @@ defmodule TripwireWeb.SettingsComponent do
   # Logins: 	875
 
   def settings(assigns) do
-    ~H"""
+~H"""
     <div class="hidden size-full" id="settings-template">
       <div class="tabs tabs-box size-full">
         <input type="radio" name="my_tabs_6" class="tab" aria-label="Account" checked="checked" />
-        <div class="tab-content  bg-base-100 border-base-300 p-6">
+        <div class="tab-content  bg-base-100 border-base-300 p-6" enabled>
           <div class="size-full flex flex-col gap-4">
+
             <p class="p-2">Account</p>
             <p class="p-2">Last login: 2025-12-12 09:40:22</p>
-            <div class="flex flex-row ">
-              <div class="stats shadow">
+
+            <div class="flex flex-col md:flex-row ">
+              <div class="stats shadow" tabindex="0">
                 <div class="stat">
                   <div class="stat-figure text-secondary">
                     <div class="avatar avatar-online">
@@ -72,7 +73,7 @@ defmodule TripwireWeb.SettingsComponent do
                   <div class="stat-desc text-secondary">Alliance Name</div>
                 </div>
               </div>
-              <div class="stats shadow">
+              <div class="stats shadow" tabindex="0">
                 <div class="stat">
                   <div class="stat-figure text-secondary">
                     <div class="avatar avatar-offline">
@@ -87,7 +88,7 @@ defmodule TripwireWeb.SettingsComponent do
                 </div>
               </div>
 
-              <div class="stats shadow">
+              <div class="stats shadow" tabindex="0">
                 <div class="stat">
                   <div class="stat-figure text-secondary">
                     <div class="avatar avatar-offline">
@@ -112,7 +113,7 @@ defmodule TripwireWeb.SettingsComponent do
         </div>
 
         <input type="radio" name="my_tabs_6" class="tab" aria-label="Map" />
-        <div class="tab-content bg-base-100 border-base-300 p-6">
+        <div class="tab-content bg-base-100 border-base-300 p-6" enabled>
           Map Settings
           <div class="flex flex-col gap-4 p-4">
             <div class="flex flex-row gap-4">
@@ -165,9 +166,10 @@ defmodule TripwireWeb.SettingsComponent do
         </div>
 
         <input type="radio" name="my_tabs_6" class="tab" aria-label="Widgets" />
-        <div class="tab-content bg-base-100 border-base-300 p-6">
+        <div class="tab-content bg-base-100 border-base-300 p-6  " enabled>
           Widgets
-          <div>
+          <div class="p-4">
+
             <div class="flex flex-row gap-4">
               <input type="checkbox" checked="checked" class="checkbox checkbox-primary" />
               <p>System</p>
@@ -196,57 +198,58 @@ defmodule TripwireWeb.SettingsComponent do
         </div>
 
         <input type="radio" name="my_tabs_6" class="tab" aria-label="Theme" />
-        <div class="tab-content bg-base-100 border-base-300 p-6">
-
+        <div class="tab-content bg-base-100 border-base-300 p-6" enabled>
           Themes
+          <div
+            id="theme-container"
+            class="rounded-box p-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+          >
 
-        <div
-          id="theme-container"
-          class="rounded-box p-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
-        >
-          <%= for theme <- themes() do %>
-            <div
-              class="border-base-content/20 hover:border-base-content/40 overflow-hidden rounded-lg border outline-2 outline-offset-2 outline-transparent"
-              data-set-theme={theme}
-              data-act-class="outline-base-content!"
-            >
-              <div
-                data-theme={theme}
-                class="bg-base-100 text-base-content w-full cursor-pointer font-sans"
+            <%= for theme <- themes() do %>
+              <button
+                class={
+                  "border-base-content/20 hover:border-base-content/40 overflow-hidden rounded-lg border outline-2 outline-offset-2 " <>
+                  (if theme == "dark" do "outline" else "outline-transparent " end)
+                }
+                data-set-theme={theme}
+                 onclick={
+                        "document.documentElement.setAttribute('data-theme', '" <> theme <> "')"
+                }
+                tabindex="0"
               >
-                <div class="grid grid-cols-5 grid-rows-3">
-                  <div class="bg-base-200 col-start-1 row-span-2 row-start-1"></div>
-                  <div class="bg-base-300 col-start-1 row-start-3"></div>
-                  <div class="bg-base-100 col-span-4 col-start-2 row-span-3 row-start-1 flex flex-col gap-1 p-2">
-                    <div class="font-bold">{theme}</div>
-                    <div class="flex flex-wrap gap-1">
-                      <div class="bg-primary flex aspect-square w-5 items-center justify-center rounded lg:w-6">
-                        <div class="text-primary-content text-sm font-bold">A</div>
-                      </div>
-                      <div class="bg-secondary flex aspect-square w-5 items-center justify-center rounded lg:w-6">
-                        <div class="text-secondary-content text-sm font-bold">A</div>
-                      </div>
-                      <div class="bg-accent flex aspect-square w-5 items-center justify-center rounded lg:w-6">
-                        <div class="text-accent-content text-sm font-bold">A</div>
-                      </div>
-                      <div class="bg-neutral flex aspect-square w-5 items-center justify-center rounded lg:w-6">
-                        <div class="text-neutral-content text-sm font-bold">A</div>
+                <div
+                  data-theme={theme}
+                  class="bg-base-100 text-base-content w-full cursor-pointer font-sans"
+                >
+                  <div class="grid grid-cols-5 grid-rows-3">
+                    <div class="bg-base-200 col-start-1 row-span-2 row-start-1"></div>
+                    <div class="bg-base-300 col-start-1 row-start-3"></div>
+                    <div class="bg-base-100 col-span-4 col-start-2 row-span-3 row-start-1 flex flex-col gap-1 p-2">
+                      <div class="font-bold">{theme}</div>
+                      <div class="flex flex-wrap gap-1">
+                        <div class="bg-primary flex aspect-square w-5 items-center justify-center rounded lg:w-6">
+                          <div class="text-primary-content text-sm font-bold">A</div>
+                        </div>
+                        <div class="bg-secondary flex aspect-square w-5 items-center justify-center rounded lg:w-6">
+                          <div class="text-secondary-content text-sm font-bold">A</div>
+                        </div>
+                        <div class="bg-accent flex aspect-square w-5 items-center justify-center rounded lg:w-6">
+                          <div class="text-accent-content text-sm font-bold">A</div>
+                        </div>
+                        <div class="bg-neutral flex aspect-square w-5 items-center justify-center rounded lg:w-6">
+                          <div class="text-neutral-content text-sm font-bold">A</div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          <% end %>
-        </div>
+              </button>
+            <% end %>
 
-
-
-
-
+          </div>
         </div>
       </div>
     </div>
-    """
+"""
   end
 end

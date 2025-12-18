@@ -2,13 +2,14 @@ defmodule TripwireWeb.SystemComponent do
   use Phoenix.Component
 
   def system(assigns) do
-    ~H"""
-    <div id="system-container" gs-w="6" gs-h="6" gs-x="0" gs-y="0" class="grid-stack-item">
+~H"""
+    <div id="system-container" gs-w="6" gs-h="6" gs-x="0" gs-y="0" class="grid-stack-item" tabindex="0">
       <div class="grid-stack-item-content">
         <div class="size-full">
           <div id="" class="flex flex-col size-full ">
             <div class="flex flex-row items-center w-full p-8 pb-4 ">
               <svg
+tabindex="0"
                 class="size-6 mx-2"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -30,6 +31,6 @@ defmodule TripwireWeb.SystemComponent do
         </div>
       </div>
     </div>
-    """
+"""
   end
 end
