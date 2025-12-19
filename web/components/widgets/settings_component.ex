@@ -48,76 +48,125 @@ defmodule TripwireWeb.SettingsComponent do
   # Logins: 	875
 
   def settings(assigns) do
-~H"""
-    <div class="hidden size-full" id="settings-template">
-      <div class="tabs tabs-box size-full">
+    ~H"""
+    <div class="hidden size-full overflow-hidden" id="settings-template">
+      <div class="tabs tabs-box size-full overflow-hidden">
         <input type="radio" name="my_tabs_6" class="tab" aria-label="Account" checked="checked" />
-        <div class="tab-content  bg-base-100 border-base-300 p-6" enabled>
-          <div class="size-full flex flex-col gap-4">
-
+        <div class="tab-content overflow-hidden w-full  bg-red-300 border-base-300 p-6" enabled>
+          <div class="size-full flex flex-col gap-4 overflow-y-scroll">
             <p class="p-2">Account</p>
             <p class="p-2">Last login: 2025-12-12 09:40:22</p>
 
-            <div class="flex flex-col md:flex-row ">
-              <div class="stats shadow" tabindex="0">
-                <div class="stat">
-                  <div class="stat-figure text-secondary">
-                    <div class="avatar avatar-online">
-                      <div class="w-16 rounded-xl">
-                        <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
-                      </div>
+            <div class="w-full h-fit flex flex-col md:flex-row gap-4 bg-amber-200 p-4">
+              Characters
+              <div class="stats shadow overflow-hidden md:w-84 h-fit " tabindex="0">
+                <div class="stat overflow-hidden flex flex-col">
+                  <div class="avatar avatar-online">
+                    <div class="w-16 rounded-xl">
+                      <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
                     </div>
                   </div>
-                  <div class="stat-value">Characer Name1</div>
+                  <div class="stat-value text-lg lg:stat-value">Characer Name1</div>
                   <div class="stat-title">Corporation Name</div>
                   <div class="stat-desc text-secondary">Alliance Name</div>
-                </div>
-              </div>
-              <div class="stats shadow" tabindex="0">
-                <div class="stat">
-                  <div class="stat-figure text-secondary">
-                    <div class="avatar avatar-offline">
-                      <div class="w-16 rounded-xl">
-                        <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
-                      </div>
-                    </div>
+
+                  <div class="flex flex-row gap-1 w-full justify-items-start">
+                    <div class="badge badge-info">Info</div>
+                    <div class="badge badge-success">Success</div>
                   </div>
-                  <div class="stat-value">Characer Name2</div>
-                  <div class="stat-title">Corporation Name</div>
-                  <div class="stat-desc text-secondary">Alliance Name</div>
                 </div>
               </div>
 
-              <div class="stats shadow" tabindex="0">
-                <div class="stat">
-                  <div class="stat-figure text-secondary">
-                    <div class="avatar avatar-offline">
-                      <div class="w-16 rounded-xl">
-                        <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
-                      </div>
+              <div class="stats shadow overflow-hidden md:w-84 h-fit " tabindex="0">
+                <div class="stat overflow-hidden flex flex-col">
+                  <div class="avatar avatar-offline">
+                    <div class="w-16 rounded-xl">
+                      <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
                     </div>
                   </div>
-                  <div class="stat-value">Characer Name3</div>
+                  <div class="stat-value text-lg lg:stat-value">Characer Name1</div>
                   <div class="stat-title">Corporation Name</div>
                   <div class="stat-desc text-secondary">Alliance Name</div>
+
+                  <div class="flex flex-row gap-1 w-full justify-items-start">
+                    <div class="badge badge-info">Info</div>
+                    <div class="badge badge-warning">Warning</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="stats shadow overflow-hidden md:w-84 h-fit " tabindex="0">
+                <div class="stat overflow-hidden flex flex-col">
+                  <div class="avatar avatar-offline">
+                    <div class="w-16 rounded-xl">
+                      <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
+                    </div>
+                  </div>
+                  <div class="stat-value text-lg lg:stat-value">Characer Name1</div>
+                  <div class="stat-title">Corporation Name</div>
+                  <div class="stat-desc text-secondary">Alliance Name</div>
+
+                  <div class="flex flex-row gap-1 w-full justify-items-start">
+                    <div class="badge badge-info">Info</div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="flex flex-col gap-4">
+
+            <div class="w-full h-fit flex flex-col md:flex-row gap-4 bg-amber-200 p-4">
               Masks
-              <div class="badge badge-soft badge-primary ml-8 ">Mask 1</div>
-              <div class="badge badge-soft badge-secondary ml-8 ">Mask 2</div>
-              <div class="badge badge-soft badge-accent ml-8 ">Mask 3</div>
+              <div class="stats shadow overflow-hidden md:w-84 h-fit " tabindex="0">
+                <div class="stat overflow-hidden flex flex-col">
+                  <div class="avatar avatar-online">
+                    <div class="w-16 rounded-xl">
+                      <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
+                    </div>
+                  </div>
+                  <div class="stat-value text-lg lg:stat-value">Mask 1</div>
+                  <div class="stat-title">Corporation Name</div>
+                  <div class="stat-desc text-secondary">Alliance Name</div>
+
+                                  <div class="flex flex-col md:flex-row gap-1 w-full justify-items-start">
+                    <div class="badge badge-info">Character1</div>
+                    <div class="badge badge-info">Character2</div>
+                </div>
+
+
+
+                </div>
+              </div>
+
+              <div class="stats shadow overflow-hidden md:w-84 h-fit " tabindex="0">
+                <div class="stat overflow-hidden flex flex-col">
+                  <div class="avatar avatar-offline">
+                    <div class="w-16 rounded-xl">
+                      <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
+                    </div>
+                  </div>
+                  <div class="stat-value text-lg lg:stat-value">Mask 2</div>
+                  <div class="stat-title">Corporation Name</div>
+                  <div class="stat-desc text-secondary">Alliance Name</div>
+
+
+                                  <div class="flex flex-col md:flex-row gap-1 w-full justify-items-start">
+
+                    <div class="badge badge-info">Character1</div>
+                    <div class="badge badge-info">Character2</div>
+                    <div class="badge badge-info">Character3</div>
+                </div>
+
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <input type="radio" name="my_tabs_6" class="tab" aria-label="Map" />
-        <div class="tab-content bg-base-100 border-base-300 p-6" enabled>
+        <div class="tab-content overflow-y-scroll bg-base-100 border-base-300 p-6" enabled>
           Map Settings
-          <div class="flex flex-col gap-4 p-4">
+          <div class="flex flex-col gap-4 p-1 md:p-4">
             <div class="flex flex-row gap-4">
-              <p class="w-25/100 pl-8">Map Render</p>
+              <p class="w-25/100 sm:pl-8">Map Render</p>
               <select class="select">
                 <option disabled selected>Default</option>
                 <option>Default</option>
@@ -130,33 +179,33 @@ defmodule TripwireWeb.SettingsComponent do
             </div>
 
             <div class="flex flex-row gap-4">
-              <p class="w-4/10 pl-8">Show Jump Lines</p>
+              <p class="w-4/10 sm:pl-8">Show Jump Lines</p>
               <input type="checkbox" checked="checked" class="toggle toggle-primary" />
             </div>
             <div class="flex flex-row gap-4">
-              <p class="w-4/10 pl-8">Show Line Glow</p>
+              <p class="w-4/10 sm:pl-8">Show Line Glow</p>
               <input type="checkbox" checked="checked" class="toggle toggle-secondary" />
             </div>
             <div class="flex flex-row gap-4">
-              <p class="w-4/10 pl-8">Show Node Signatures</p>
+              <p class="w-4/10 sm:pl-8">Show Node Signatures</p>
               <input type="checkbox" checked="checked" class="toggle toggle-neutral" />
             </div>
 
             <div class="flex flex-row gap-4">
-              <p class="w-25/100 pl-8">Map Scale</p>
+              <p class="w-25/100 sm:pl-8">Map Scale</p>
               <input type="range" min="0" max="100" value="40" class="range range-primary" />
             </div>
             <div class="flex flex-row gap-4">
-              <p class="w-25/100 pl-8">Line Weight</p>
+              <p class="w-25/100 sm:pl-8">Line Weight</p>
               <input type="range" min="0" max="100" value="40" class="range range-primary" />
             </div>
             <div class="flex flex-row gap-4">
-              <p class="w-25/100 pl-8">Node Spacing</p>
+              <p class="w-25/100 sm:pl-8">Node Spacing</p>
               <input type="range" min="0" max="100" value="40" class="range range-primary" />
             </div>
 
             <div class="flex flex-row gap-4">
-              <p class="w-25/100 pl-8">Background Image</p>
+              <p class="w-25/100 sm:pl-8">Background Image</p>
               <label class="input">
                 <input type="text" placeholder="domain name" />
                 <span class="label">.com</span>
@@ -166,10 +215,9 @@ defmodule TripwireWeb.SettingsComponent do
         </div>
 
         <input type="radio" name="my_tabs_6" class="tab" aria-label="Widgets" />
-        <div class="tab-content bg-base-100 border-base-300 p-6  " enabled>
+        <div class="tab-content overflow-y-scroll bg-base-100 border-base-300 p-6  " enabled>
           Widgets
           <div class="p-4 flex flex-col gap-1">
-
             <div class="flex flex-row gap-4">
               <input type="checkbox" checked="checked" class="checkbox checkbox-primary" />
               <p>System</p>
@@ -198,23 +246,23 @@ defmodule TripwireWeb.SettingsComponent do
         </div>
 
         <input type="radio" name="my_tabs_6" class="tab" aria-label="Theme" />
-        <div class="tab-content bg-base-100 border-base-300 p-6" enabled>
+        <div class="tab-content size-full overflow-y-scroll bg-base-100 border-base-300 p-6" enabled>
           Themes
           <div
             id="theme-container"
-            class="rounded-box p-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+            class="rounded-box size-fit overflow-y-scroll p-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
           >
-
             <%= for theme <- themes() do %>
               <button
                 class={
-                  "border-base-content/20 hover:border-base-content/40 overflow-hidden rounded-lg border outline-2 outline-offset-2 " <>
-                  (if theme == "dark" do "outline" else "outline-transparent " end)
-                }
+                      "border-base-content/20 hover:border-base-content/40 overflow-hidden rounded-lg border outline-2 outline-offset-2 z-10"
+                       <>
+                      (if theme == "dark" do "outline" else "outline-transparent " end)
+                    }
                 data-set-theme={theme}
-                 onclick={
-                        "document.documentElement.setAttribute('data-theme', '" <> theme <> "')"
-                }
+                onclick={
+                            "document.documentElement.setAttribute('data-theme', '" <> theme <> "')"
+                    }
                 tabindex="0"
               >
                 <div
@@ -245,11 +293,10 @@ defmodule TripwireWeb.SettingsComponent do
                 </div>
               </button>
             <% end %>
-
           </div>
         </div>
       </div>
     </div>
-"""
+    """
   end
 end

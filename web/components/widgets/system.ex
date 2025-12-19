@@ -7,7 +7,7 @@ defmodule TripwireWeb.SystemComponent do
       <div class="grid-stack-item-content">
         <div class="size-full">
           <div id="" class="flex flex-col size-full ">
-            <div class="flex flex-row items-center w-full p-8 pb-4 ">
+            <div class="flex flex-row items-center w-full lg:p-8 lg:pb-4 sm:p-4 sm:pb-2 p-1 ">
               <svg
 tabindex="0"
                 class="size-6 mx-2"
