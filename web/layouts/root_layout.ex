@@ -13,7 +13,7 @@ defmodule TripwireWeb.RootLayout do
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
+    <header class="navbar sm:px-4 sm:px-6 lg:px-8">
       <div class="flex-1">
         <a href="/" class="flex-1 flex w-fit items-center gap-2">
           <img class="hidden min-[400px]:block" src={~p"/images/logo.svg"} width="36" />
@@ -25,13 +25,15 @@ defmodule TripwireWeb.RootLayout do
       <div class="flex-none">
         <ul class="flex flex-column px-1 space-x-4 items-center">
           <li>
+
             <form action="/auth/logout" method="post">
               <input type="hidden" name="_method" value="delete" />
               <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-              <button type="submit" class="btn btn-ghost">
+              <button type="submit" class="btn btn-ghost p-0">
                 Logout
               </button>
             </form>
+
           </li>
 
           <li class="hidden min-[400px]:block"><a href="/" class="btn btn-ghost">Wiki</a></li>
