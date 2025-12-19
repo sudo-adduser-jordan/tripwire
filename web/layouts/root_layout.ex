@@ -13,7 +13,7 @@ defmodule TripwireWeb.RootLayout do
 
   def app(assigns) do
     ~H"""
-    <header class="navbar sm:px-4 sm:px-6 lg:px-8">
+    <header class="navbar  sm:px-6 lg:px-8">
       <div class="flex-1">
         <a href="/" class="flex-1 flex w-fit items-center gap-2">
           <img class="hidden min-[400px]:block" src={~p"/images/logo.svg"} width="36" />

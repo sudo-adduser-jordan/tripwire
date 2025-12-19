@@ -1,5 +1,7 @@
 defmodule TripwireWeb.SettingsComponent do
   use Phoenix.Component
+  alias Phoenix.LiveView.JS
+
 
   @themes [
     "light",
@@ -48,16 +50,16 @@ defmodule TripwireWeb.SettingsComponent do
   # Logins: 	875
 
   def settings(assigns) do
-    ~H"""
+~H"""
     <div class="hidden size-full overflow-hidden" id="settings-template">
       <div class="tabs tabs-box size-full overflow-hidden">
         <input type="radio" name="my_tabs_6" class="tab" aria-label="Account" checked="checked" />
-        <div class="tab-content overflow-hidden w-full  bg-red-300 border-base-300 p-6" enabled>
+        <div class="tab-content overflow-hidden w-full  border-base-300 p-6" enabled>
           <div class="size-full flex flex-col gap-4 overflow-y-scroll">
             <p class="p-2">Account</p>
             <p class="p-2">Last login: 2025-12-12 09:40:22</p>
 
-            <div class="w-full h-fit flex flex-col md:flex-row gap-4 bg-amber-200 p-4">
+            <div class="w-full h-fit flex flex-col md:flex-row gap-4 p-4">
               Characters
               <div class="stats shadow overflow-hidden md:w-84 h-fit " tabindex="0">
                 <div class="stat overflow-hidden flex flex-col">
@@ -113,13 +115,13 @@ defmodule TripwireWeb.SettingsComponent do
               </div>
             </div>
 
-            <div class="w-full h-fit flex flex-col md:flex-row gap-4 bg-amber-200 p-4">
+            <div class="w-full h-fit flex flex-col md:flex-row gap-4 p-4">
               Masks
               <div class="stats shadow overflow-hidden md:w-84 h-fit " tabindex="0">
                 <div class="stat overflow-hidden flex flex-col">
                   <div class="avatar avatar-online">
                     <div class="w-16 rounded-xl">
-                      <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
+                      <img src="https://img.daisyui.com/images/profile/demo/gordon@192.webp" />
                     </div>
                   </div>
                   <div class="stat-value text-lg lg:stat-value">Mask 1</div>
@@ -140,7 +142,7 @@ defmodule TripwireWeb.SettingsComponent do
                 <div class="stat overflow-hidden flex flex-col">
                   <div class="avatar avatar-offline">
                     <div class="w-16 rounded-xl">
-                      <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
+                      <img src="https://img.daisyui.com/images/profile/demo/gordon@192.webp" />
                     </div>
                   </div>
                   <div class="stat-value text-lg lg:stat-value">Mask 2</div>
@@ -254,15 +256,12 @@ defmodule TripwireWeb.SettingsComponent do
           >
             <%= for theme <- themes() do %>
               <button
+              id={"theme-button-" <> theme }
                 class={
-                      "border-base-content/20 hover:border-base-content/40 overflow-hidden rounded-lg border outline-2 outline-offset-2 z-10"
-                       <>
-                      (if theme == "dark" do "outline" else "outline-transparent " end)
+                      "theme-button border-base-content/20 hover:border-base-content/40 overflow-hidden rounded-lg border outline-offset-2"
                     }
-                data-set-theme={theme}
-                onclick={
-                            "document.documentElement.setAttribute('data-theme', '" <> theme <> "')"
-                    }
+                phx-click={JS.dispatch("phx:set-theme")}
+                data-phx-theme={theme}
                 tabindex="0"
               >
                 <div
@@ -297,6 +296,6 @@ defmodule TripwireWeb.SettingsComponent do
         </div>
       </div>
     </div>
-    """
+"""
   end
 end
