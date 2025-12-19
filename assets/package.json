@@ -8,6 +8,7 @@
     "jquery": "^3.7.1"
   },
   "devDependencies": {
-    "@types/jquery": "^3.5.33"
+    "@types/jquery": "^3.5.33",
+    "daisyui": "^5.5.14"
   }
 }
