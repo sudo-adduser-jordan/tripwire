@@ -1,10 +1,11 @@
 /* See the Tailwind configuration guide for advanced usage
    https://tailwindcss.com/docs/configuration */
 
+/* @import "tailwindcss" source(none); */
 @import "tailwindcss";
 @source "../css";
 @source "../js";
-@source "../../lib/tripwire_web";
+@source "../../web";
 
 /* A Tailwind plugin that makes "hero-#{ICON}" classes available.
    The heroicons installation itself is managed by your mix.exs */
@@ -16,6 +17,7 @@
 @plugin "../vendor/daisyui" {
   themes: all;
 }
+
 
 /* daisyUI theme plugin. You can update this file by fetching the latest version with:
   curl -sLO https://github.com/saadeghi/daisyui/releases/latest/download/daisyui-theme.js

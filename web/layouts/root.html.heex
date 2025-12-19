@@ -15,44 +15,23 @@
     </script>
 
     <script>
-            (() => {
-
-
-              const setTheme = (theme) => {
-                if (theme === "system") {
-                  localStorage.removeItem("phx:theme");
-                  document.documentElement.removeAttribute("data-theme");
-                } else {
-                  localStorage.setItem("phx:theme", theme);
-                  document.documentElement.setAttribute("data-theme", theme);
-          
-
-                }
-              };
-              if (!document.documentElement.hasAttribute("data-theme")) {
-                setTheme(localStorage.getItem("phx:theme") || "system");
-              }
-
-              window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
-              window.addEventListener("phx:set-theme", (e) =>{
-                
-                setTheme(e.target.dataset.phxTheme)
-
-                let theme = localStorage.getItem("phx:theme");
-                document.querySelectorAll(".theme-button").forEach(button => {
-                    button.classList.add("outline-transparent") 
-                    button.classList.remove("outline-2")
-                if(button.id.includes(theme)) {
-                    button.classList.add("outline-2")
-                    button.classList.remove("outline-transparent")
-                }
-            })
-                 
-                 
-                 
-                 });
-            })();
-          
+      (() => {
+        const setTheme = (theme) => {
+          if (theme === "system") {
+            localStorage.removeItem("phx:theme");
+            document.documentElement.removeAttribute("data-theme");
+          } else {
+            localStorage.setItem("phx:theme", theme);
+            document.documentElement.setAttribute("data-theme", theme);
+          }
+        };
+        if (!document.documentElement.hasAttribute("data-theme")) {
+          setTheme(localStorage.getItem("phx:theme") || "system");
+        }
+        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+        
+        window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+      })();
     </script>
   </head>
   <body>
