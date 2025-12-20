@@ -9,7 +9,7 @@
   themes: all;
 }
 
-@plugin "daisyui" {
+@plugin "daisyui/theme" {
   name: "dark";
   default: false;
   prefersdark: true;
@@ -44,7 +44,7 @@
   --noise: 0;
 }
 
-@plugin "daisyui" {
+@plugin "daisyui/theme" {
   name: "light";
   default: true;
   prefersdark: false;
