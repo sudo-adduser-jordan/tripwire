@@ -9,7 +9,10 @@
 <%!-- <.flash kind={:info} phx-mounted={show("#flash")}>Welcome Back!</.flash> --%>
 
 <main class="size-full flex flex-col lg:flex-row">
-  <section class="size-full px-4 py-10 sm:px-6 sm:py-42 lg:px-8 xl:px-30 xl:py-32">
+
+
+  <section class="size-full lg:w-7/10 px-4 py-10 sm:px-6 sm:py-42 lg:px-8 xl:px-30 xl:py-32">
+    
     <div class="mx-auto max-w-8/10 lg:mx-0">
       <svg viewBox="0 0 71 48" class="h-12" aria-hidden="true">
         <path
@@ -325,9 +328,7 @@
       />
     </svg>
 
-    <fieldset class="absolute z-9 fieldset bg-base-100 border-base-300 rounded-box w-xs border p-4">
-      <p>Log in with Eve Online SEO</p>
-
+    <fieldset class="absolute z-9 fieldset bg-base-100 border-base-300 rounded  border m-4 p-4">
       <a class="btn mt-4 p-0" href={~p"/auth/evesso"} autofocus>
         <img
           class="size-full sso-light"
