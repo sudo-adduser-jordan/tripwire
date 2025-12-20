@@ -1,5 +1,6 @@
 defmodule TripwireWeb.SystemComponent do
   use Phoenix.Component
+    import TripwireWeb.IconComponent
 
   def system(assigns) do
 ~H"""
@@ -8,6 +9,7 @@ defmodule TripwireWeb.SystemComponent do
         <div class="size-full">
           <div id="" class="flex flex-col size-full ">
             <div class="flex flex-row items-center w-full lg:p-8 lg:pb-4 sm:p-4 sm:pb-2 p-1 ">
+          <.icon name="hero-star" class="m-1 size-6" />
               <svg
 tabindex="0"
                 class="size-6 mx-2"
@@ -24,6 +26,7 @@ tabindex="0"
                 />
               </svg>
               <p class="text-2xl">System</p>
+
             </div>
 
             <div id="system-chart" class="size-full"></div>
