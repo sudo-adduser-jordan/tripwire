@@ -59,7 +59,7 @@ function toggleSettingsWidget() {
 
         grid.makeWidget(item, {
             w: 12,
-            h: 8,
+            h: 9,
             x: 0,
             y: 0
         });

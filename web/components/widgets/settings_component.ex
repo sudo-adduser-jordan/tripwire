@@ -53,7 +53,8 @@ defmodule TripwireWeb.SettingsComponent do
 ~H"""
     <div class="hidden size-full overflow-hidden" id="settings-template">
       <div class="tabs tabs-box size-full overflow-hidden">
-        <input type="radio" name="my_tabs_6" class="tab" aria-label="Account" checked="checked" />
+
+        <input type="radio" name="my_tabs_6" class="tab" aria-label="Account" checked/>
         <div class="tab-content overflow-hidden w-full  border-base-300 p-6" enabled>
           <div class="size-full flex flex-col gap-4 overflow-y-scroll">
             <p class="p-2">Account</p>
@@ -61,7 +62,7 @@ defmodule TripwireWeb.SettingsComponent do
 
             <div class="w-full h-fit flex flex-col md:flex-row gap-4 p-4">
               Characters
-              <div class="stats shadow overflow-hidden md:w-84 h-fit " tabindex="0">
+              <div class="stats shadow overflow-hidden md:w-84 h-fit outline" tabindex="0">
                 <div class="stat overflow-hidden flex flex-col">
                   <div class="avatar avatar-online">
                     <div class="w-16 rounded-xl">
@@ -117,7 +118,7 @@ defmodule TripwireWeb.SettingsComponent do
 
             <div class="w-full h-fit flex flex-col md:flex-row gap-4 p-4">
               Masks
-              <div class="stats shadow overflow-hidden md:w-84 h-fit " tabindex="0">
+              <div class="stats shadow overflow-hidden md:w-84 h-fit outline" tabindex="0">
                 <div class="stat overflow-hidden flex flex-col">
                   <div class="avatar avatar-online">
                     <div class="w-16 rounded-xl">
