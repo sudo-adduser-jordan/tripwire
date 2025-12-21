@@ -64,7 +64,7 @@ function toggleSettingsWidget() {
             y: 0
         });
 
-        item.focus()
+        // item.focus() // dev // make useable in prod
     }
 }
 
