@@ -30,16 +30,15 @@
       }
 
       window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
-
       window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
-            
+
     </script>
   </head>
 
   <body class="">
     <div class="fixed inset-0 flex items-center justify-center bg-[url('/images/stars.jpg')] bg-cover">
       <video
-        class="object-cover w-fit h-full"
+        class="object-cover w-fit h-screen"
         autoplay
         muted
         playsinline
