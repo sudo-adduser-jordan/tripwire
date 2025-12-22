@@ -1,6 +1,7 @@
 import { GridStack } from 'gridstack'
 import 'gridstack/dist/gridstack.css'
 
+
 let grid = GridStack.init({
     cellHeight: 80,
     // animate: true, // show immediate (animate: true is nice for user dragging though)

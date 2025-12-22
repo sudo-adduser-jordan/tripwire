@@ -52,6 +52,10 @@ $.get('/data.json', (data) => {
     treeMap.setOption(treeMapOptions)
 });
 
+
+// treeMap.init()
+
+
 const treeMapResizeObserver = new ResizeObserver(() => {
     treeMap.resize();
 });

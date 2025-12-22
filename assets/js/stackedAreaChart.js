@@ -83,6 +83,8 @@ var stackedChartOptions = {
 };
 stackedChart.setOption(stackedChartOptions);
 
+stackedChart.init()
+
 const stackedChartResizeObserver = new ResizeObserver(() => {
     stackedChart.resize();
 });
