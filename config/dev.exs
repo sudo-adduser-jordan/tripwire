@@ -10,7 +10,8 @@ config :tripwire, Tripwire.Repo,
   pool_size: 10
 
 config :tripwire, TripwireWeb.Endpoint,
-  http: [ip: {127, 0, 0, 1}],
+#   http: [ip: {127, 0, 0, 1}],
+  http: [ip: {0, 0, 0, 0}],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
