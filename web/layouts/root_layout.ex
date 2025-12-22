@@ -48,7 +48,8 @@ defmodule TripwireWeb.RootLayout do
       </div>
     </header>
 
-    <main style="height: calc(100vh - 64px);">
+    <%!-- <main class="h-[calc(100%-64px)]"> --%>
+    <main class="">
       {render_slot(@inner_block)}
     </main>
 

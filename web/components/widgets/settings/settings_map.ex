@@ -4,7 +4,7 @@ defmodule TripwireWeb.SettingsMapComponent do
   def settings_map(assigns) do
 ~H"""
         <input type="radio" name="my_tabs_6" class="tab" aria-label="Map" />
-        <div class="tab-content overflow-y-scroll bg-base-100 border-base-300 p-6" enabled>
+        <div class="tab-content overflow-y-scroll bg-base-100/50 border-base-300 p-6" enabled>
           Map Settings
           <div class="flex flex-col gap-4 p-1 md:p-4">
             <div class="flex flex-row gap-4">

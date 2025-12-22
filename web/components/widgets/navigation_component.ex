@@ -5,8 +5,8 @@ defmodule TripwireWeb.NavigationComponent do
 
   def navigation(assigns) do
     ~H"""
-    <nav class="flex items-center content-center flex-col gap-2 sm:gap-0 sm:flex-row ">
-      <nav class="flex items-center content-center flex-row bg-base-200 rounded sm:rounded-none sm:rounded-l-lg p-2 h-12 w-full  gap-2">
+    <nav class="flex items-center content-center flex-col gap-2 sm:gap-0 sm:flex-row p-2">
+      <nav class="flex items-center content-center flex-row bg-base-200/75 rounded sm:rounded-none sm:rounded-l-lg p-2 h-12 w-full  gap-2">
         <div class="m-1 flex justify-center items-center gap-1">
           <div class="inline-grid *:[grid-area:1/1]">
             <div class="status status-error animate-ping"></div>
@@ -34,7 +34,7 @@ defmodule TripwireWeb.NavigationComponent do
         />
       </nav>
 
-      <nav class="flex flex-row justify-start items-center sm:justify-end bg-base-200 sm:rounded-none  gap-2 rounded sm:rounded-r-lg  p-2 h-12 w-full">
+      <nav class="flex flex-row justify-start items-center sm:justify-end bg-base-200/75 sm:rounded-none  gap-2 rounded sm:rounded-r-lg  p-2 h-12 w-full">
         <button id="lock-button" class="">
           <svg
             id="lock-svg"
@@ -54,7 +54,7 @@ defmodule TripwireWeb.NavigationComponent do
           </div>
           <ul
             tabindex="-1"
-            class="menu dropdown-content bg-base-200 rounded-box z-1 mt-4 w-52 p-2 shadow-sm"
+            class="menu dropdown-content bg-base-200/75 rounded-box z-1 mt-4 w-52 p-2 shadow-sm"
           >
             <li>
               <a>
@@ -97,7 +97,7 @@ defmodule TripwireWeb.NavigationComponent do
           </div>
           <ul
             tabindex="-1"
-            class="menu dropdown-content bg-base-200 rounded-box z-1 mt-4 w-52 p-2 shadow-sm"
+            class="menu dropdown-content bg-base-200/75 rounded-box z-1 mt-4 w-52 p-2 shadow-sm"
           >
             <li>
               <a>

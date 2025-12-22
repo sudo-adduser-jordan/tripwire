@@ -16,7 +16,7 @@ defmodule TripwireWeb.SignaturesComponent do
 
       <div class="grid-stack-item-content  flex flex-col">
 
-        <div class="sticky top-0 bg-base-100 ">
+        <div class="sticky top-0  ">
 
           <ul class="list rounded-box shadow-md">
             <li class="list-row h-fit p-1">
@@ -29,24 +29,24 @@ defmodule TripwireWeb.SignaturesComponent do
           </ul>
 
           <table class="table table-xs w-full">
-            <thead class="sticky top-0 bg-base-100 outline ">
+            <thead class="sticky top-0  outline ">
               <tr>
-                <th class="outline outline-primary text-xs text-center bg-base-200 p-0">
+                <th class="outline outline-primary text-xs text-center  p-0">
                   ID <span>-</span>
                 </th>
-                <th class="outline outline-primary text-xs text-center bg-base-200 p-0">
+                <th class="outline outline-primary text-xs text-center  p-0">
                   Type <.icon name="hero-arrow-long-down" />
                 </th>
-                <th class="outline outline-primary text-xs text-center bg-base-200 p-0">
+                <th class="outline outline-primary text-xs text-center  p-0">
                   Age <.icon name="hero-arrow-long-up" />
                 </th>
-                <th class="outline outline-primary text-xs text-center bg-base-200 p-0">
+                <th class="outline outline-primary text-xs text-center  p-0">
                   Name <span>-</span>
                 </th>
-                <th class="outline outline-primary text-xs text-center bg-base-200 p-0">
+                <th class="outline outline-primary text-xs text-center  p-0">
                   Life <span>-</span>
                 </th>
-                <th class="outline outline-primary text-xs text-center bg-base-200 p-0">
+                <th class="outline outline-primary text-xs text-center  p-0">
                   Mass <span>-</span>
                 </th>
               </tr>

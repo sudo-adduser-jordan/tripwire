@@ -11,8 +11,39 @@ let grid = GridStack.init({
     // float: true,
     staticGrid: true,
 })
-    .on('change', (ev, gsItems) => { });
+.on('change', (ev, gsItems) => { });
+// Store previous column count
+let previousColumn = grid.getColumn();
 
+// Define explicit orders for each breakpoint
+const ordersMap = {
+  1: [0, 1, 2],
+  3: [0, 2, 1],
+  6: [2, 0, 1],
+  8: [1, 2, 0]
+};
+
+grid.on('change', (ev, gsItems) => {
+  const currentColumn = grid.getColumn();
+
+  if (currentColumn !== previousColumn) {
+    previousColumn = currentColumn;
+
+    // Determine order based on current column
+    const order = ordersMap[currentColumn] || [];
+
+    // Reorder widgets explicitly
+    order.forEach((widgetIndex, position) => {
+      const item = gsItems[widgetIndex];
+      if (item) {
+        grid.update(item.el, {
+          x: position % currentColumn,
+          y: Math.floor(position / currentColumn)
+        });
+      }
+    });
+  }
+});
 
 document.getElementById("settings-button").addEventListener('click', toggleSettingsWidget);
 

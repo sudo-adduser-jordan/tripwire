@@ -15,27 +15,41 @@
     </script>
 
     <script>
-    const setTheme = (theme) => {
-        if (theme === "system") {
-            localStorage.removeItem("phx:theme");
-            document.documentElement.removeAttribute("data-theme");
-        } else {
-            localStorage.setItem("phx:theme", theme);
-            document.documentElement.setAttribute("data-theme", theme);
-        }
-    };
+      const setTheme = (theme) => {
+          if (theme === "system") {
+              localStorage.removeItem("phx:theme");
+              document.documentElement.removeAttribute("data-theme");
+          } else {
+              localStorage.setItem("phx:theme", theme);
+              document.documentElement.setAttribute("data-theme", theme);
+          }
+      };
 
-    if (!document.documentElement.hasAttribute("data-theme")) {
-        setTheme(localStorage.getItem("phx:theme") || "black");
-    }
+      if (!document.documentElement.hasAttribute("data-theme")) {
+          setTheme(localStorage.getItem("phx:theme") || "black");
+      }
 
-    window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
-    
-    window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
-          
+      window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+
+      window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+            
     </script>
   </head>
-  <body>
-    {@inner_content}
+
+  <body class="bg-[url('/images/stars.jpg')] bg-cover bg-fixed">
+    <div class="fixed inset-0 flex items-center justify-center z-0">
+      <video
+        class="object-cover lg:object-contain size-full  m-0 p-0"
+        autoplay
+        muted
+        playsinline
+      >
+        <source src="/images/EVE_Catalyst_WH.webm" type="video/webm" />
+      </video>
+    </div>
+
+    <div class="relative z-10">
+      {@inner_content}
+    </div>
   </body>
 </html>

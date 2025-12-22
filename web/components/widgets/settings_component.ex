@@ -20,7 +20,7 @@ defmodule TripwireWeb.SettingsComponent do
   def settings(assigns) do
 ~H"""
     <div class="hidden size-full overflow-hidden" id="settings-template">
-      <div class="tabs tabs-box size-full overflow-hidden">
+      <div class="tabs tabs-box size-full overflow-hidden bg-base-100/50">
             <.settings_account />
             <.settings_map />
             <.settings_widgets />

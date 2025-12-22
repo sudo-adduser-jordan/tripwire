@@ -16,7 +16,7 @@ defmodule TripwireWeb.MapComponent do
             <.icon name="hero-eye" class="m-1 size-6" />
 
             <input type="radio" name="my_tabs_3" class="tab" aria-label="Intructions" />
-            <div class="tab-content bg-base-100 border-base-300 p-6 size-full">
+            <div class="tab-content  border-base-300 p-6 size-full">
               <section class="flex flex-col p-4">
                 <div class="w-full text-center p-4">
                   Press <kbd class="kbd">ctrl</kbd> + <kbd class="kbd">v</kbd> to paste items
@@ -41,7 +41,7 @@ defmodule TripwireWeb.MapComponent do
             </div>
 
             <input type="radio" name="my_tabs_3" class="tab" aria-label="Tab 1" checked />
-            <div class="tab-content bg-base-100 border-base-300 p-6 overflow-hidden">
+            <div class="tab-content  border-base-300 p-6 overflow-hidden">
               <div class="h-screen w-screen overflow-auto" id="treeMap"></div>
             </div>
           </div>

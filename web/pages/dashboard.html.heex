@@ -1,11 +1,9 @@
 <style>
   .grid-stack  {
     color: var(--color-accent);
-    background-color: var(--color-base-200);
   }
   .grid-stack-item-content {
     color: var(--color-accent);
-    background-color: var(--color-base-100);
   }
 </style>
 
@@ -14,16 +12,16 @@
 </script>
 
 <.flash id="toast" kind={:info} phx-mounted={show("#flash")}>Welcome Back!</.flash>
+
 <RootLayout.app flash={@flash}>
-  <div class="flex size-full flex-col p-2 bg-base-100 gap-2">
-    <.navigation user={@user} />
-    <div class="size-full bg-base-200">
-      <div class="grid-stack" id="grid-stack">
-            <.system />
-            <.notes />
-            <.signatures />
-            <.map />
-        </div>
+  <.navigation user={@user} />
+
+  <div class=" flex flex-col p-2 ">
+    <div class="grid-stack" id="grid-stack">
+      <.system />
+      <.notes />
+      <.signatures />
+      <.map />
     </div>
   </div>
 </RootLayout.app>
@@ -31,7 +29,6 @@
 <%!-- hidden settings heex cloned into widget --%>
 <%!-- should be destroyed when new one is created or on load --%>
 <.settings />
-
 
 <script>
   document.addEventListener("DOMContentLoaded", () => {
@@ -45,4 +42,3 @@
     }, 666);
   });
 </script>
-
