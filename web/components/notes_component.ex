@@ -5,7 +5,7 @@ defmodule TripwireWeb.NotesComponent do
   def notes(assigns) do
     ~H"""
     <div id="notes" class="grid-stack-item" gs-w="6" gs-h="6" gs-x="6" gs-y="0" tabindex="0">
-      <div class="grid-stack-item-content">
+      <div class="grid-stack-item-content bg-base-100/50">
         <ul class="list rounded-box shadow-md">
           <li class="list-row h-fit p-1">
             <div tabindex="0">

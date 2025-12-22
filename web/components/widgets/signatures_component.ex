@@ -14,7 +14,7 @@ defmodule TripwireWeb.SignaturesComponent do
       tabindex="0"
     >
 
-      <div class="grid-stack-item-content  flex flex-col">
+      <div class="grid-stack-item-content  bg-base-100/50 flex flex-col">
 
         <div class="sticky top-0  ">
 

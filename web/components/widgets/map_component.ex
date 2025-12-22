@@ -5,7 +5,7 @@ defmodule TripwireWeb.MapComponent do
   def map(assigns) do
     ~H"""
     <div id="map" gs-w="12" gs-h="6" gs-x="0" gs-y="12" class="grid-stack-item overflow-hidden ">
-      <div class="grid-stack-item-content overflow-hidden">
+      <div class="grid-stack-item-content overflow-hidden bg-base-100/50">
         <div class="size-full overflow-hidden">
 
           <div class="tabs tabs-lift overflow-hidden size-full">
