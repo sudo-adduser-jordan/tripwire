@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "deploy": "cd .. && mix assets.deploy && rm -f _build/esbuild"
+  },
+  "dependencies": {
+    "echarts": "^6.0.0",
+    "gridstack": "^12.3.3",
+    "jquery": "^3.7.1"
+  },
+  "devDependencies": {
+    "@types/jquery": "^3.5.33",
+    "daisyui": "^5.5.14"
+  }
+}

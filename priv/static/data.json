@@ -1,0 +1,67 @@
+{
+  "name": "Home",
+  "value": "C6",
+  "children": [
+    {
+      "name": "J123456",
+  "value": "C6",
+      "children": [
+        {"name": "J654321", "value": "C4"},
+        {"name": "J987654", "value": "C1"},
+        {"name": "J456789", "value": "C3"},
+        {
+          "name": "J321987",
+          "children": [
+            {"name": "J111222", "value": "C2"},
+            {"name": "J333444", "value": "C5"},
+            {"name": "J555666", "value": "C6"}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "J222333",
+  "value": "C6",
+      "children": [
+        {"name": "J444555", "value": "C1"},
+        {"name": "J777888", "value": "C4"},
+        {"name": "J999000", "value": "C2"},
+        {"name": "J111333", "value": "C6"},
+        {"name": "J222444", "value": "C3"}
+      ]
+    },
+    {
+      "name": "J333444",
+  "value": "C6",
+      "children": [
+        {
+          "name": "J555666",
+          "children": [
+            {"name": "J777888", "value": "C5"},
+            {"name": "J999000", "value": "C2"}
+          ]
+        },
+        {
+          "name": "J222333",
+  "value": "C6",
+          "children": [
+            {"name": "J111222", "value": "C4"},
+            {"name": "J333444", "value": "C1"},
+            {"name": "J555666", "value": "C3"}
+          ]
+        },
+        {
+          "name": "J444555",
+  "value": "C6",
+          "children": [
+            {"name": "J666777", "value": "C6"},
+            {"name": "J888999", "value": "C2"},
+            {"name": "J111222", "value": "C5"},
+            {"name": "J333444", "value": "C4"}
+          ]
+        },
+        {"name": "J444555", "value": "C3"}
+      ]
+    }
+  ]
+}

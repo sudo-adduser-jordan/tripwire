@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+
+    <.live_title default="Tripwire" suffix=" · Login">
+      {assigns[:page_title]}
+    </.live_title>
+
+    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <%!-- <link phx-track-static rel="stylesheet" href={~p"/assets/js/app.css"} /> --%>
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+    </script>
+
+    <script>
+      const setTheme = (theme) => {
+          if (theme === "system") {
+              localStorage.removeItem("phx:theme");
+              document.documentElement.removeAttribute("data-theme");
+          } else {
+              localStorage.setItem("phx:theme", theme);
+              document.documentElement.setAttribute("data-theme", theme);
+          }
+      };
+
+      if (!document.documentElement.hasAttribute("data-theme")) {
+          setTheme(localStorage.getItem("phx:theme") || "black");
+      }
+
+      window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+      window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+
+    </script>
+  </head>
+
+  <body class="">
+    <div class="fixed inset-0 flex items-center justify-center bg-[url('/images/stars.jpg')] bg-cover">
+      <video
+        class="object-cover w-fit h-screen"
+        autoplay
+        muted
+        playsinline
+      >
+        <source src="/images/EVE_Catalyst_WH.webm" type="video/webm" />
+      </video>
+    </div>
+
+    <div class="relative z-10">
+      {@inner_content}
+    </div>
+  </body>
+</html>
