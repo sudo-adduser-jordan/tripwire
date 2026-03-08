@@ -9,7 +9,7 @@ defmodule Tripwire.Application do
   def start(_type, _args) do
     children = [
       TripwireWeb.Telemetry,
-      Tripwire.Repo,
+    #   Tripwire.Repo,
       {DNSCluster, query: Application.get_env(:tripwire, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Tripwire.PubSub},
       # Start a worker by calling: Tripwire.Worker.start_link(arg)
