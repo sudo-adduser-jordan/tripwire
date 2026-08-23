@@ -18,7 +18,7 @@ defmodule Tripwire.MixProject do
   def application do
     [
       mod: {Tripwire.Application, []},
-      extra_applications: [:logger, :runtime_tools, :ueberauth_eve_online]
+      extra_applications: [:logger, :runtime_tools]
     ]
   end
 
@@ -35,8 +35,8 @@ defmodule Tripwire.MixProject do
     [
       {:phoenix, "~> 1.8.2"},
       {:phoenix_ecto, "~> 4.5"},
-      {:ecto_sql, "~> 3.13"},
-      {:postgrex, ">= 0.0.0"},
+      {:ecto_sql, "~> 3.14"},
+      {:ecto_sqlite3, "~> 0.24"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.1.0"},
@@ -59,7 +59,9 @@ defmodule Tripwire.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      {:ueberauth_eve_online, "~> 1.0"}
+      {:ueberauth_eve_online, "~> 1.0"},
+      {:cloak, "~> 1.1"},
+      {:cloak_ecto, "~> 1.3"}
     ]
   end
 

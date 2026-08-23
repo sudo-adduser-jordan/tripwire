@@ -2,7 +2,14 @@ import Config
 
 config :ueberauth, Ueberauth,
   providers: [
-    evesso: {Ueberauth.Strategy.EVESSO, []}
+    evesso:
+      {Ueberauth.Strategy.EVESSO,
+       [
+         uid_field: :character_id,
+         default_scope:
+           ~w(esi-location.read_location.v1 esi-location.read_ship_type.v1 esi-ui.open_window.v1 esi-ui.write_waypoint.v1 esi-characters.read_corporation_roles.v1 esi-location.read_online.v1 esi-characters.read_titles.v1 esi-search.search_structures.v1)
+           |> Enum.join(" ")
+       ]}
   ]
 
 config :ueberauth, Ueberauth.Strategy.EVESSO.OAuth,
@@ -14,6 +21,14 @@ config :tripwire, Tripwire.Mailer, adapter: Swoosh.Adapters.Local
 config :tripwire,
   ecto_repos: [Tripwire.Repo],
   generators: [timestamp_type: :utc_datetime]
+
+config :tripwire, Tripwire.Vault,
+  ciphers: [
+    default: {
+      Cloak.Ciphers.AES.GCM,
+      tag: "AES.GCM.V1", key: Base.decode64!("pd2umDJ8tuldw5vzB3bdUQnIK1cFI6FaHaNILBXCiUE=")
+    }
+  ]
 
 config :tripwire, TripwireWeb.Endpoint,
   server: true,

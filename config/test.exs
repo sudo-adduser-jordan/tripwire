@@ -1,12 +1,11 @@
 import Config
 
 config :tripwire, Tripwire.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  database: "tripwire_test#{System.get_env("MIX_TEST_PARTITION")}",
+  database: Path.expand("../priv/db/tripwire-test.db", __DIR__),
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2
+  pool_size: System.schedulers_online() * 2,
+  journal_mode: :wal,
+  busy_timeout: 5000
 
 config :tripwire, TripwireWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],

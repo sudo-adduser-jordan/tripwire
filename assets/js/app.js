@@ -4,12 +4,15 @@ import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
 import { hooks as colocatedHooks } from "phoenix-colocated/tripwire"
 import topbar from "../vendor/topbar"
+import mapDrag from "./mapDrag"
+
+const hooks = { ...colocatedHooks, MapDrag: mapDrag }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
     longPollFallbackMs: 2500,
     params: { _csrf_token: csrfToken },
-    hooks: { ...colocatedHooks },
+    hooks,
 })
 
 // Show progress bar on live navigation and form submits
@@ -42,8 +45,3 @@ if (process.env.NODE_ENV === "development") {
         window.liveReloader = reloader
     })
 }
-
-// import "./user_socket.js"
-// import "./gridStack.js"
-// import "./treeMap.js"
-// import "./stackedAreaChart.js"

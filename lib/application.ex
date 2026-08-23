@@ -9,9 +9,14 @@ defmodule Tripwire.Application do
   def start(_type, _args) do
     children = [
       TripwireWeb.Telemetry,
-    #   Tripwire.Repo,
-      {DNSCluster, query: Application.get_env(:tripwire, :dns_cluster_query) || :ignore},
+      Tripwire.Repo,
+      Tripwire.Vault,
+      Tripwire.ESI.TokenCache,
       {Phoenix.PubSub, name: Tripwire.PubSub},
+      Tripwire.Tracking.PollerSupervisor,
+      {Registry, keys: :unique, name: Tripwire.TrackingRegistry},
+      Tripwire.SyncServer,
+      {DNSCluster, query: Application.get_env(:tripwire, :dns_cluster_query) || :ignore},
       # Start a worker by calling: Tripwire.Worker.start_link(arg)
       # {Tripwire.Worker, arg},
       # Start to serve requests, typically the last entry

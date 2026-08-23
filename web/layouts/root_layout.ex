@@ -5,9 +5,7 @@ defmodule TripwireWeb.RootLayout do
 
   attr :flash, :map, required: true, doc: "the map of flash messages"
 
-  attr :current_scope, :map,
-    default: nil,
-    doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
+  attr :current_user, :map, default: nil, doc: "the current logged in character"
 
   slot :inner_block, required: true
 
@@ -24,8 +22,7 @@ defmodule TripwireWeb.RootLayout do
       </div>
       <div class="flex-none">
         <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-
+          <li :if={@current_user}>
             <form action="/auth/logout" method="post">
               <input type="hidden" name="_method" value="delete" />
               <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
@@ -33,15 +30,13 @@ defmodule TripwireWeb.RootLayout do
                 Logout
               </button>
             </form>
-
           </li>
 
           <li class="hidden min-[400px]:block"><a href="/" class="btn btn-ghost">Wiki</a></li>
           <li><.theme_toggle /></li>
           <li>
-            <button class="btn btn-primary" id="settings-button" autofocus>
+            <button class="btn btn-primary" id="settings-button" phx-click="toggle-settings">
               Settings <span aria-hidden="true" id="settings-button-span"> &rarr; </span>
-              <%!-- swipe to left --%>
             </button>
           </li>
         </ul>

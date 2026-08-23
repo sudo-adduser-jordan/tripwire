@@ -8,24 +8,30 @@ config :tripwire, TripwireWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 if config_env() == :prod do
-  database_url =
-    System.get_env("DATABASE_URL") ||
+  database_path =
+    System.get_env("DATABASE_PATH") ||
       raise """
-      environment variable DATABASE_URL is missing.
-      For example: ecto://USER:PASS@HOST/DATABASE
+      environment variable DATABASE_PATH is missing.
+      Set it to the SQLite database file on a persistent volume.
+      For example: /data/tripwire-prod.db
       """
 
-  maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
-
   config :tripwire, Tripwire.Repo,
-    url: database_url,
+    database: database_path,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-    # pool_count: 4,
-    socket_options: maybe_ipv6,
-    ssl: true,
-    ssl_opts: [
-      verify: :verify_none,
-      cacerts: :public_key.cacerts_get()
+    journal_mode: :wal,
+    busy_timeout: 5000
+
+  encryption_key =
+    System.get_env("TRIPWIRE_ENCRYPTION_KEY") ||
+      raise """
+      environment variable TRIPWIRE_ENCRYPTION_KEY is missing.
+      Generate one with: openssl rand -base64 32
+      """
+
+  config :tripwire, Tripwire.Vault,
+    ciphers: [
+      default: {Cloak.Ciphers.AES.GCM, tag: "AES.GCM.V1", key: Base.decode64!(encryption_key)}
     ]
 
   secret_key_base =

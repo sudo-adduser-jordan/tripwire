@@ -11,17 +11,12 @@ defmodule TripwireWeb.AuthController do
   end
 
   def callback(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
-    # user_info = %{
-    #   uid: auth.uid,
-    #   name: auth.info.name,
-    #   image: auth.info.image,
-    #   token: auth.credentials.token
-    # }
+    {:ok, character} = Tripwire.Accounts.upsert_character_from_ueberauth(auth)
+    {:ok, _pid} = Tripwire.Tracking.ensure_poller(character)
 
     conn
-    # |> put_session(:user, user_info)
-    |> put_session(:current_user, %{id: auth.uid, name: auth.info.name})
-    |> redirect(to: "/dashboard/#{auth.info.name}")
+    |> put_session(:current_user, %{id: character.eve_id, name: character.name})
+    |> redirect(to: ~p"/dashboard/#{character.name}")
   end
 
   def callback(%{assigns: %{ueberauth_failure: _fails}} = conn, _params) do

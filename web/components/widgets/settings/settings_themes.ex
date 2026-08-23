@@ -38,18 +38,6 @@ defmodule TripwireWeb.SettingsThemesComponent do
 
   def themes, do: @themes
 
-  # Signatures added: 	22255
-  # Signatures updated: 	2728
-  # Signatures deleted: 	4280
-  # Wormholes added: 	3162
-  # Wormholes updated: 	4253
-  # Wormholes deleted: 	1443
-  # Comments added: 	62
-  # Comments updated: 	18
-  # Comments deleted: 	8
-  # Systems visited: 	2,777
-  # Logins: 	875
-
   def settings_themes(assigns) do
     ~H"""
     <input type="radio" name="my_tabs_6" class="tab" aria-label="Theme" />

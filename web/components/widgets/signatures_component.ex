@@ -2,53 +2,62 @@ defmodule TripwireWeb.SignaturesComponent do
   use Phoenix.Component
   import TripwireWeb.IconComponent
 
+  alias Tripwire.Signatures, as: SigParser
+
+  attr :id, :string, default: "signatures"
+  attr :signatures, :list, required: true
+  attr :selected_system_id, :integer, default: nil
+  attr :paste_open, :boolean, default: false
+  attr :paste_text, :string, default: ""
+
   def signatures(assigns) do
     ~H"""
-    <div
-      id="signatures"
-      class="grid-stack-item h-full"
-      gs-w="12"
-      gs-h="6"
-      gs-x="0"
-      gs-y="6"
-      tabindex="0"
-    >
-
-      <div class="grid-stack-item-content  bg-base-100/50 flex flex-col">
-
-        <div class="sticky top-0  ">
-
+    <div id={@id} class="grid-stack-item h-full" gs-w="12" gs-h="6" gs-x="0" gs-y="6" tabindex="0">
+      <div class="grid-stack-item-content bg-base-100/50 flex flex-col">
+        <div class="sticky top-0">
           <ul class="list rounded-box shadow-md">
-            <li class="list-row h-fit p-1">
-              <.icon name="hero-plus-circle" class="m-1 size-6" />
-              <.icon name="hero-pencil-square" class="m-1 size-6" />
-              <.icon name="hero-arrow-uturn-left" class="m-1 size-6" />
-              <.icon name="hero-arrow-uturn-right" class="m-1 size-6" />
-              <.icon name="hero-trash" class="m-1 size-6" />
+            <li class="list-row h-fit p-1 flex items-center gap-1">
+              <button
+                class="btn btn-xs btn-ghost"
+                title="Paste scan results"
+                phx-click="toggle-paste"
+              >
+                <.icon name="hero-plus-circle" class="size-5" /> Paste
+              </button>
+              <button class="btn btn-xs btn-ghost" title="Undo" phx-click="undo">
+                <.icon name="hero-arrow-uturn-left" class="size-5" />
+              </button>
+              <button class="btn btn-xs btn-ghost" title="Redo" phx-click="redo">
+                <.icon name="hero-arrow-uturn-right" class="size-5" />
+              </button>
+              <span class="ml-auto text-xs opacity-60">
+                {system_label(@selected_system_id)}
+              </span>
+            </li>
+
+            <li :if={@paste_open} class="p-2 flex flex-col gap-2 border-b border-base-300">
+              <textarea
+                class="textarea textarea-sm w-full font-mono"
+                rows="4"
+                placeholder="Paste probe results, e.g.\nABC-123\tCosmic Signature\tUnstable Wormhole"
+                phx-change="paste-update"
+                value={@paste_text}
+              ></textarea>
+              <div class="flex gap-2 justify-end">
+                <button class="btn btn-xs" phx-click="toggle-paste">Cancel</button>
+                <button class="btn btn-xs btn-primary" phx-click="paste-submit">Import</button>
+              </div>
             </li>
           </ul>
 
           <table class="table table-xs w-full">
-            <thead class="sticky top-0  outline ">
+            <thead class="sticky top-0 outline">
               <tr>
-                <th class="outline outline-primary text-xs text-center  p-0">
-                  ID <span>-</span>
-                </th>
-                <th class="outline outline-primary text-xs text-center  p-0">
-                  Type <.icon name="hero-arrow-long-down" />
-                </th>
-                <th class="outline outline-primary text-xs text-center  p-0">
-                  Age <.icon name="hero-arrow-long-up" />
-                </th>
-                <th class="outline outline-primary text-xs text-center  p-0">
-                  Name <span>-</span>
-                </th>
-                <th class="outline outline-primary text-xs text-center  p-0">
-                  Life <span>-</span>
-                </th>
-                <th class="outline outline-primary text-xs text-center  p-0">
-                  Mass <span>-</span>
-                </th>
+                <th class="outline outline-primary text-xs text-center p-0">ID</th>
+                <th class="outline outline-primary text-xs text-center p-0">Type</th>
+                <th class="outline outline-primary text-xs text-center p-0">Name</th>
+                <th class="outline outline-primary text-xs text-center p-0">Life</th>
+                <th class="outline outline-primary text-xs text-center p-0"></th>
               </tr>
             </thead>
           </table>
@@ -57,174 +66,48 @@ defmodule TripwireWeb.SignaturesComponent do
         <div class="overflow-auto flex-1">
           <table class="table table-xs w-full">
             <tbody>
-              <tr>
-                <td>Cy Ganderton</td>
-                <td>Quality Control Specialist</td>
-                <td>Littel, Schaden and Vandervort</td>
-                <td>Canada</td>
-                <td>12/16/2020</td>
-                <td>Blue</td>
+              <tr :for={sig <- @signatures} id={"signature-#{sig.id}"}>
+                <td class="font-mono">{sig.sig_id}</td>
+                <td>{kind_label(sig)}</td>
+                <td>{sig.type_name || "-"}</td>
+                <td>{format_life_left(sig.inserted_at)}</td>
+                <td class="text-right">
+                  <button
+                    class="btn btn-ghost btn-xs"
+                    title="Delete signature"
+                    phx-click="delete-signature"
+                    phx-value-id={sig.id}
+                    data-confirm="Delete this signature?"
+                  >
+                    <.icon name="hero-trash" class="size-4" />
+                  </button>
+                </td>
               </tr>
-              <tr>
-                <td>Hart Hagerty</td>
-                <td>Desktop Support Technician</td>
-                <td>Zemlak, Daniel and Leannon</td>
-                <td>United States</td>
-                <td>12/5/2020</td>
-                <td>Purple</td>
-              </tr>
-              <tr>
-                <td>Brice Swyre</td>
-                <td>Tax Accountant</td>
-                <td>Carroll Group</td>
-                <td>China</td>
-                <td>8/15/2020</td>
-                <td>Red</td>
-              </tr>
-              <tr>
-                <td>Marjy Ferencz</td>
-                <td>Office Assistant I</td>
-                <td>Rowe-Schoen</td>
-                <td>Russia</td>
-                <td>3/25/2021</td>
-                <td>Crimson</td>
-              </tr>
-              <tr>
-                <td>Yancy Tear</td>
-                <td>Community Outreach Specialist</td>
-                <td>Wyman-Ledner</td>
-                <td>Brazil</td>
-                <td>5/22/2020</td>
-                <td>Indigo</td>
-              </tr>
-              <tr>
-                <td>Irma Vasilik</td>
-                <td>Editor</td>
-                <td>Wiza, Bins and Emard</td>
-                <td>Venezuela</td>
-                <td>12/8/2020</td>
-                <td>Purple</td>
-              </tr>
-              <tr>
-                <td>Meghann Durtnal</td>
-                <td>Staff Accountant IV</td>
-                <td>Schuster-Schimmel</td>
-                <td>Philippines</td>
-                <td>2/17/2021</td>
-                <td>Yellow</td>
-              </tr>
-              <tr>
-                <td>Sammy Seston</td>
-                <td>Accountant I</td>
-                <td>O'Hara, Welch and Keebler</td>
-                <td>Indonesia</td>
-                <td>5/23/2020</td>
-                <td>Crimson</td>
-              </tr>
-              <tr>
-                <td>Lesya Tinham</td>
-                <td>Safety Technician IV</td>
-                <td>Turner-Kuhlman</td>
-                <td>Philippines</td>
-                <td>2/21/2021</td>
-                <td>Maroon</td>
-              </tr>
-              <tr>
-                <td>Zaneta Tewkesbury</td>
-                <td>VP Marketing</td>
-                <td>Sauer LLC</td>
-                <td>Chad</td>
-                <td>6/23/2020</td>
-                <td>Green</td>
-              </tr>
-              <tr>
-                <td>Andy Tipple</td>
-                <td>Librarian</td>
-                <td>Hilpert Group</td>
-                <td>Poland</td>
-                <td>7/9/2020</td>
-                <td>Indigo</td>
-              </tr>
-              <tr>
-                <td>Sophi Biles</td>
-                <td>Recruiting Manager</td>
-                <td>Gutmann Inc</td>
-                <td>Indonesia</td>
-                <td>2/12/2021</td>
-                <td>Maroon</td>
-              </tr>
-              <tr>
-                <td>Florida Garces</td>
-                <td>Web Developer IV</td>
-                <td>Gaylord, Pacocha and Baumbach</td>
-                <td>Poland</td>
-                <td>5/31/2020</td>
-                <td>Purple</td>
-              </tr>
-              <tr>
-                <td>Maribeth Popping</td>
-                <td>Analyst Programmer</td>
-                <td>Deckow-Pouros</td>
-                <td>Portugal</td>
-                <td>4/27/2021</td>
-                <td>Aquamarine</td>
-              </tr>
-              <tr>
-                <td>Moritz Dryburgh</td>
-                <td>Dental Hygienist</td>
-                <td>Schiller, Cole and Hackett</td>
-                <td>Sri Lanka</td>
-                <td>8/8/2020</td>
-                <td>Crimson</td>
-              </tr>
-              <tr>
-                <td>Reid Semiras</td>
-                <td>Teacher</td>
-                <td>Sporer, Sipes and Rogahn</td>
-                <td>Poland</td>
-                <td>7/30/2020</td>
-                <td>Green</td>
-              </tr>
-              <tr>
-                <td>Alec Lethby</td>
-                <td>Teacher</td>
-                <td>Reichel, Glover and Hamill</td>
-                <td>China</td>
-                <td>2/28/2021</td>
-                <td>Khaki</td>
-              </tr>
-              <tr>
-                <td>Aland Wilber</td>
-                <td>Quality Control Specialist</td>
-                <td>Kshlerin, Rogahn and Swaniawski</td>
-                <td>Czech Republic</td>
-                <td>9/29/2020</td>
-                <td>Purple</td>
-              </tr>
-              <tr>
-                <td>Teddie Duerden</td>
-                <td>Staff Accountant III</td>
-                <td>Pouros, Ullrich and Windler</td>
-                <td>France</td>
-                <td>10/27/2020</td>
-                <td>Aquamarine</td>
-              </tr>
-              <tr>
-                <td>Lorelei Blackstone</td>
-                <td>Data Coordiator</td>
-                <td>Witting, Kutch and Greenfelder</td>
-                <td>Kazakhstan</td>
-                <td>6/3/2020</td>
-                <td>Red</td>
+
+              <tr :if={@signatures == []}>
+                <td colspan="5" class="text-center text-sm opacity-50 py-4">
+                  No signatures yet. Paste scan results for the selected system.
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
-
-
-
       </div>
     </div>
     """
+  end
+
+  defp system_label(nil), do: "no system selected"
+  defp system_label(_), do: "system selected"
+
+  defp kind_label(%{kind: "anomaly"}), do: "Anomaly"
+  defp kind_label(_), do: "Signature"
+
+  defp format_life_left(inserted_at) do
+    seconds = SigParser.life_left(DateTime.from_naive!(inserted_at, "Etc/UTC"))
+
+    hours = div(seconds, 3600)
+    minutes = rem(seconds, 3600) |> div(60)
+    "#{hours}h #{String.pad_leading(Integer.to_string(minutes), 2, "0")}m"
   end
 end

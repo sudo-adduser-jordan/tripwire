@@ -8,9 +8,7 @@
 <RootLayout.flash_group flash={@flash} />
 
 <main class=" flex flex-col lg:flex-row size-full">
-  
   <div class=" w-full p-8   flex justify-center items-center">
-  
     <div class="p-4 w-full    2xl:w-6/10 ">
       <svg viewBox="0 0 71 48" class="h-12" aria-hidden="true">
         <path
@@ -39,7 +37,6 @@
 
       <div class="flex p-4 ">
         <div class="w-full sm:w-auto">
-        
           <div class=" grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3 p-8 w-full ">
             <a
               href="https://github.com/sudo-adduser-jordan/tripwire/wiki"
@@ -82,7 +79,7 @@
             </a>
 
             <a
-              href={"https://github.com/sudo-adduser-jordan/tripwire/blob/v#{Application.spec(:phoenix, :vsn)}/CHANGELOG.md"}
+              href={"https://github.com/sudo-adduser-jordan/tripwire/blob/v#{Application.spec(:tripwire, :vsn)}/CHANGELOG.md"}
               class="group relative rounded-box px-6 py-4 text-sm font-semibold leading-6 sm:py-6"
             >
               <span class="absolute inset-0 rounded-box bg-base-200 transition group-hover:bg-base-300 sm:group-hover:scale-105">
@@ -178,7 +175,7 @@
   <div class="w-screen h-screen flex items-center justify-center">
     <fieldset class="fieldset bg-base-100 border-base-300 rounded w-fit  border m-4 p-4">
       <%!-- <a class="btn  p-0" href={~p"/auth/evesso"} autofocus> --%>
-      <a class="btn  p-0" href={~p"/auth/evesso"} >
+      <a class="btn  p-0" href={~p"/auth/evesso"}>
         <img
           class="size-full sso-light"
           src="/images/eve-sso-login-white-small.png"
@@ -191,15 +188,17 @@
         />
       </a>
 
-      <button onclick="window.location.href='/dashboard/User';" class="btn btn-secondary ">
-        User Demo
-      </button>
-      <button onclick="window.location.href='/dashboard/Admin';" class="btn btn-secondary ">
-        Admin Demo
-      </button>
-      <button onclick="window.location.href='/dev/dashboard';" class="btn btn-secondary ">
-        Metrics
-      </button>
+      <%= if Application.get_env(:tripwire, :dev_routes) do %>
+        <button onclick="window.location.href='/dashboard/User';" class="btn btn-secondary ">
+          User Demo
+        </button>
+        <button onclick="window.location.href='/dashboard/Admin';" class="btn btn-secondary ">
+          Admin Demo
+        </button>
+        <button onclick="window.location.href='/dev/dashboard';" class="btn btn-secondary ">
+          Metrics
+        </button>
+      <% end %>
     </fieldset>
   </div>
 </main>

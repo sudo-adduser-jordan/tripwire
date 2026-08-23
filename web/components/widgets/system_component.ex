@@ -2,6 +2,9 @@ defmodule TripwireWeb.SystemComponent do
   use Phoenix.Component
   import TripwireWeb.IconComponent
 
+  attr :systems, :list, default: []
+  attr :selected_system_id, :integer, default: nil
+
   def system(assigns) do
     ~H"""
     <div
@@ -19,7 +22,6 @@ defmodule TripwireWeb.SystemComponent do
             <div class="flex flex-row items-center w-full lg:p-8 lg:pb-4 sm:p-4 sm:pb-2 p-1 ">
               <p class="text-2xl">System</p>
 
-
               <svg
                 tabindex="0"
                 class="size-6 mx-2"
@@ -36,11 +38,19 @@ defmodule TripwireWeb.SystemComponent do
                 />
               </svg>
 
-
               <.icon name="hero-star" class="m-1 size-6" />
+            </div>
 
-
-
+            <div class="flex flex-row flex-wrap gap-1 px-1 sm:px-4">
+              <button
+                :for={sys <- @systems}
+                class={"btn btn-xs " <> (if sys.id == @selected_system_id, do: "btn-primary", else: "btn-ghost")}
+                phx-click="select-system"
+                phx-value-id={sys.id}
+              >
+                {sys.name}
+              </button>
+              <span :if={@systems == []} class="text-sm opacity-50 p-1">No systems on map yet</span>
             </div>
 
             <div id="system-chart" class="size-full"></div>

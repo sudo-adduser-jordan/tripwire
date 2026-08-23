@@ -1,32 +1,21 @@
 defmodule TripwireWeb.SettingsComponent do
   use Phoenix.Component
-    import TripwireWeb.SettingsAccountComponent
-    import TripwireWeb.SettingsMapComponent
-    import TripwireWeb.SettingsWidgetsComponent
-    import TripwireWeb.SettingsThemesComponent
-
-  # Signatures added: 	22255
-  # Signatures updated: 	2728
-  # Signatures deleted: 	4280
-  # Wormholes added: 	3162
-  # Wormholes updated: 	4253
-  # Wormholes deleted: 	1443
-  # Comments added: 	62
-  # Comments updated: 	18
-  # Comments deleted: 	8
-  # Systems visited: 	2,777
-  # Logins: 	875
+  import TripwireWeb.SettingsAccountComponent
+  import TripwireWeb.SettingsMapComponent
+  import TripwireWeb.SettingsWidgetsComponent
+  import TripwireWeb.SettingsThemesComponent
 
   def settings(assigns) do
-~H"""
-    <div class="hidden size-full overflow-hidden" id="settings-template">
-      <div class="tabs tabs-box size-full overflow-hidden bg-base-100/50">
-            <.settings_account />
-            <.settings_map />
-            <.settings_widgets />
-            <.settings_themes />
+    ~H"""
+    <div class="fixed inset-0 z-40 bg-black/50" phx-click="toggle-settings"></div>
+    <div class="fixed z-50 top-16 left-2 right-2 bottom-2 sm:left-4 sm:right-4">
+      <div class="tabs tabs-box size-full overflow-hidden bg-base-100/95 rounded-lg border border-base-300 shadow-xl">
+        <.settings_account />
+        <.settings_map />
+        <.settings_widgets />
+        <.settings_themes />
       </div>
     </div>
-"""
+    """
   end
 end

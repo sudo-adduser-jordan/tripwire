@@ -13,22 +13,24 @@
 
 <.flash id="toast" kind={:info} phx-mounted={show("#flash")}>Welcome Back!</.flash>
 
-<RootLayout.app flash={@flash}>
+<RootLayout.app flash={@flash} current_user={assigns[:current_user]}>
   <.navigation user={@user} />
 
   <div class=" flex flex-col p-2 ">
     <div class="grid-stack" id="grid-stack">
-      <.system />
+      <.system systems={[]} selected_system_id={nil} />
       <.notes />
-      <.signatures />
-      <.map />
+      <.signatures
+        id="signatures"
+        signatures={[]}
+        selected_system_id={nil}
+        paste_open={false}
+        paste_text=""
+      />
+      <.map systems={[]} connections={[]} selected_system_id={nil} />
     </div>
   </div>
 </RootLayout.app>
-
-<%!-- hidden settings heex cloned into widget --%>
-<%!-- should be destroyed when new one is created or on load --%>
-<.settings />
 
 <script>
   document.addEventListener("DOMContentLoaded", () => {

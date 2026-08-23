@@ -1,16 +1,15 @@
 import Config
 
 config :tripwire, Tripwire.Repo,
-  hostname: System.get_env("HOSTNAME"),
-  username: System.get_env("POSTGRES_USERNAME"),
-  password: System.get_env("POSTGRES_PASSWORD"),
-  database: System.get_env("POSTGRES_DATABASE"),
+  database: System.get_env("DATABASE_PATH") || Path.expand("../priv/db/tripwire-dev.db", __DIR__),
+  pool_size: 5,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+  journal_mode: :wal,
+  busy_timeout: 5000
 
 config :tripwire, TripwireWeb.Endpoint,
-#   http: [ip: {127, 0, 0, 1}],
+  #   http: [ip: {127, 0, 0, 1}],
   http: [ip: {0, 0, 0, 0}],
   check_origin: false,
   code_reloader: true,

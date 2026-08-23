@@ -1,0 +1,28 @@
+<link phx-track-static rel="stylesheet" href={~p"/assets/js/dashboard.css"} />
+<script defer phx-track-static type="text/javascript" src={~p"/assets/js/dashboard.js"}>
+</script>
+
+<RootLayout.app flash={@flash} current_user={@current_user}>
+  <.navigation user={(@current_user && @current_user.name) || "Guest"} />
+
+  <div class=" flex flex-col p-2 ">
+    <div class="grid-stack" id="grid-stack">
+      <.system systems={@systems} selected_system_id={@selected_system_id} />
+      <.notes />
+      <.signatures
+        id="signatures"
+        signatures={@signatures}
+        selected_system_id={@selected_system_id}
+        paste_open={@paste_open}
+        paste_text={@paste_text}
+      />
+      <.map
+        systems={@systems}
+        connections={@connections}
+        selected_system_id={@selected_system_id}
+      />
+    </div>
+  </div>
+</RootLayout.app>
+
+<.settings :if={@settings_open} />

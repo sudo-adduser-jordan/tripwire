@@ -2,7 +2,7 @@ defmodule TripwireWeb.SettingsAccountComponent do
   use Phoenix.Component
 
   def settings_account(assigns) do
-~H"""
+    ~H"""
     <input type="radio" name="my_tabs_6" class="tab" aria-label="Account" checked />
     <div class="tab-content overflow-hidden w-full  border-base-300 p-6" enabled>
       <div class="size-full flex flex-col gap-4 overflow-y-scroll">
@@ -106,6 +106,6 @@ defmodule TripwireWeb.SettingsAccountComponent do
         </div>
       </div>
     </div>
-"""
+    """
   end
 end
