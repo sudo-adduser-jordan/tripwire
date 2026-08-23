@@ -1,16 +1,6 @@
 defmodule TripwireWeb.Router do
   use TripwireWeb, :router
 
-  defp authorized(conn, _opts) do
-    if get_session(conn, :current_user) do
-      conn
-    else
-      conn
-      |> Phoenix.Controller.redirect(to: "/")
-      |> Plug.Conn.halt()
-    end
-  end
-
   defp load_current_user(conn, _opts) do
     case get_session(conn, :current_user) do
       %{id: eve_id} ->
@@ -37,22 +27,10 @@ defmodule TripwireWeb.Router do
     plug :accepts, ["json"]
   end
 
-  pipeline :browser_authorized do
-    plug :browser
-    plug :authorized
-  end
-
   scope "/", TripwireWeb do
     pipe_through :browser
     get "/", HomeController, :home
-  end
-
-  if Application.compile_env(:tripwire, :dev_routes) do
-    scope "/", TripwireWeb do
-      pipe_through :browser
-      get "/dashboard/Admin", DashboardController, :dashboard_admin_demo
-      get "/dashboard/User", DashboardController, :dashboard_user_demo
-    end
+    live "/dashboard/:user", DashboardLive
   end
 
   scope "/auth", TripwireWeb do
@@ -60,11 +38,6 @@ defmodule TripwireWeb.Router do
     get "/:provider", AuthController, :request
     get "/:provider/callback", AuthController, :callback
     delete "/logout", AuthController, :delete
-  end
-
-  scope "/", TripwireWeb do
-    pipe_through :browser_authorized
-    live "/dashboard/:user", DashboardLive
   end
 
   if Application.compile_env(:tripwire, :dev_routes) do

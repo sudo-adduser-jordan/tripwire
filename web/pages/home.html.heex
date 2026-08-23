@@ -1,8 +1,8 @@
 <style>
-  .sso-dark { display: none; }
+  .sso-black { display: none; }
 
-  html[data-theme="dark"] .sso-light { display: none; }
-  html[data-theme="dark"] .sso-dark  { display: inline; }
+  html[data-theme="light"] .sso-white { display: none; }
+  html[data-theme="light"] .sso-black { display: inline; }
 </style>
 
 <RootLayout.flash_group flash={@flash} />
@@ -17,14 +17,13 @@
         />
       </svg>
 
-      <div class=" flex justify-between items-center">
+      <div class="flex items-center">
         <h1 class="flex items-center text-sm font-semibold leading-6">
           zTripwire
           <small class="badge badge-warning badge-sm ml-3">
             v{Application.spec(:tripwire, :vsn)}
           </small>
         </h1>
-        <RootLayout.theme_toggle />
       </div>
 
       <p class="p-4 text-4xl  font-semibold leading-10 tracking-tighter text-balance">
@@ -177,12 +176,12 @@
       <%!-- <a class="btn  p-0" href={~p"/auth/evesso"} autofocus> --%>
       <a class="btn  p-0" href={~p"/auth/evesso"}>
         <img
-          class="size-full sso-light"
+          class="size-full sso-white"
           src="/images/eve-sso-login-white-small.png"
           alt="EVE SSO Logo"
         />
         <img
-          class="size-full sso-dark"
+          class="size-full sso-black"
           src="/images/eve-sso-login-black-small.png"
           alt="EVE SSO Logo"
         />

@@ -26,7 +26,7 @@
       };
 
       if (!document.documentElement.hasAttribute("data-theme")) {
-          setTheme(localStorage.getItem("phx:theme") || "black");
+          setTheme(localStorage.getItem("phx:theme") || "tripwire");
       }
 
       window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
@@ -37,13 +37,14 @@
   <body class="">
     <div class="fixed inset-0 flex items-center justify-center bg-[url('/images/stars.jpg')] bg-cover">
       <video
-        class="object-cover w-fit h-screen"
+        class="object-cover w-fit h-screen opacity-50"
         autoplay
         muted
         playsinline
       >
         <source src="/images/EVE_Catalyst_WH.webm" type="video/webm" />
       </video>
+      <div class="absolute inset-0 bg-black/40"></div>
     </div>
 
     <div class="relative z-10">

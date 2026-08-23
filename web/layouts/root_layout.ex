@@ -11,31 +11,37 @@ defmodule TripwireWeb.RootLayout do
 
   def app(assigns) do
     ~H"""
-    <header class="navbar  sm:px-6 lg:px-8">
+    <header class="navbar min-h-0 h-11 px-2 sm:px-4 gap-2">
       <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img class="hidden min-[400px]:block" src={~p"/images/logo.svg"} width="36" />
-          <span class="hidden sm:block text-sm font-semibold">
+        <a href="/" class="flex w-fit items-center gap-2">
+          <img class="hidden min-[400px]:block size-7" src={~p"/images/logo.svg"} />
+          <span class="hidden sm:block text-xs font-semibold">
             v{Application.spec(:tripwire, :vsn)}
           </span>
         </a>
       </div>
       <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
+        <ul class="flex flex-row px-1 space-x-3 items-center text-sm">
           <li :if={@current_user}>
             <form action="/auth/logout" method="post">
               <input type="hidden" name="_method" value="delete" />
               <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-              <button type="submit" class="btn btn-ghost p-0">
+              <button type="submit" class="btn btn-ghost btn-sm p-0 h-8 min-h-8">
                 Logout
               </button>
             </form>
           </li>
 
-          <li class="hidden min-[400px]:block"><a href="/" class="btn btn-ghost">Wiki</a></li>
+          <li class="hidden min-[400px]:block">
+            <a href="/" class="btn btn-ghost btn-sm p-0 h-8 min-h-8">Wiki</a>
+          </li>
           <li><.theme_toggle /></li>
           <li>
-            <button class="btn btn-primary" id="settings-button" phx-click="toggle-settings">
+            <button
+              class="btn btn-primary btn-sm h-8 min-h-8"
+              id="settings-button"
+              phx-click="toggle-settings"
+            >
               Settings <span aria-hidden="true" id="settings-button-span"> &rarr; </span>
             </button>
           </li>

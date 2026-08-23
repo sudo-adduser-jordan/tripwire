@@ -53,7 +53,14 @@ defmodule TripwireWeb.SystemComponent do
               <span :if={@systems == []} class="text-sm opacity-50 p-1">No systems on map yet</span>
             </div>
 
-            <div id="system-chart" class="size-full"></div>
+            <div
+              id="system-chart"
+              phx-hook="ChartMount"
+              data-chart-fn="initSystemChart"
+              phx-update="ignore"
+              class="size-full"
+            >
+            </div>
           </div>
         </div>
       </div>

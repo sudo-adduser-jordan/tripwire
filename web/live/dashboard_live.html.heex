@@ -3,7 +3,11 @@
 </script>
 
 <RootLayout.app flash={@flash} current_user={@current_user}>
-  <.navigation user={(@current_user && @current_user.name) || "Guest"} />
+  <.navigation user={@nav_user} />
+
+  <div :if={@demo?} class="alert alert-warning mx-2 py-2 text-sm">
+    <span>Demo mode — log in with EVE SSO for a personal map.</span>
+  </div>
 
   <div class=" flex flex-col p-2 ">
     <div class="grid-stack" id="grid-stack">

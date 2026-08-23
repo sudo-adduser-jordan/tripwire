@@ -20,8 +20,35 @@ defmodule TripwireWeb.NotesComponent do
           </li>
         </ul>
 
-        <div class="w-full text-center p-4">
-          mdx
+        <div class="w-full p-4 overflow-auto text-sm leading-6">
+          <h3 class="font-bold text-base">Welcome to zTripwire</h3>
+          <p class="opacity-70 mt-1">
+            The modern wormhole mapping tool. Here is how to get started:
+          </p>
+
+          <ol class="list-decimal list-inside mt-3 space-y-1.5 opacity-90">
+            <li>
+              <span class="font-semibold">Log in with EVE SSO</span> to create your personal map.
+            </li>
+            <li>
+              <span class="font-semibold">Paste probe results</span> into the Signatures widget,
+              then select a system to file them under.
+            </li>
+            <li>
+              Manage signatures with delete and <span class="font-semibold">undo / redo</span>.
+            </li>
+            <li>
+              <span class="font-semibold">Drag systems</span> on the map to arrange your chain;
+              tracked character jumps add systems and links automatically.
+            </li>
+            <li>
+              Open <span class="font-semibold">Settings</span> to pick a theme and tune widgets.
+            </li>
+          </ol>
+
+          <p class="opacity-60 mt-3">
+            Tip: the lock icon in the top bar freezes or unfreezes the dashboard layout.
+          </p>
         </div>
       </div>
     </div>

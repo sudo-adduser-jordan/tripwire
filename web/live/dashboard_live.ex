@@ -6,53 +6,48 @@ defmodule TripwireWeb.DashboardLive do
   alias Tripwire.Masks
   alias Tripwire.Signatures, as: SigParser
 
+  @demo_users ~w(Admin User)
+
   @impl true
+  def mount(%{"user" => user} = _params, _session, socket) when user in @demo_users do
+    {:ok,
+     socket
+     |> assign(:current_user, nil)
+     |> assign(:nav_user, user)
+     |> assign(:character, nil)
+     |> assign(:map, nil)
+     |> assign(:systems, [])
+     |> assign(:connections, [])
+     |> assign(:selected_system_id, nil)
+     |> assign(:signatures, [])
+     |> assign(:paste_open, false)
+     |> assign(:paste_text, "")
+     |> assign(:settings_open, false)
+     |> assign(:undo, [])
+     |> assign(:redo, [])
+     |> assign(:demo?, true)}
+  end
+
   def mount(_params, session, socket) do
-    socket =
-      case session["current_user"] do
-        %{"id" => eve_id} ->
-          character = Accounts.get_character_by_eve_id(eve_id)
+    case session["current_user"] do
+      %{"id" => eve_id} ->
+        character = Accounts.get_character_by_eve_id(eve_id)
 
-          cond do
-            is_nil(character) ->
-              put_flash(socket, :error, "Character not found, please log in again")
-              |> push_navigate(to: ~p"/")
+        cond do
+          is_nil(character) ->
+            {:ok,
+             put_flash(socket, :error, "Character not found, please log in again")
+             |> push_navigate(to: ~p"/")}
 
-            true ->
-              {:ok, mask} = Masks.ensure_personal_mask(character)
+          true ->
+            {:ok, provision(socket, character)}
+        end
 
-              map =
-                case Mapping.list_maps_for_mask(mask.id) do
-                  [] ->
-                    {:ok, map} = Mapping.create_map(%{name: "Home", mask_id: mask.id})
-                    map
-
-                  [map | _] ->
-                    map
-                end
-
-              socket
-              |> assign(:current_user, %{id: character.eve_id, name: character.name})
-              |> assign(:character, character)
-              |> assign(:map, map)
-              |> assign(:systems, Mapping.list_systems(map.id))
-              |> assign(:connections, Mapping.list_connections(map.id))
-              |> assign(:selected_system_id, nil)
-              |> assign(:signatures, [])
-              |> assign(:paste_open, false)
-              |> assign(:paste_text, "")
-              |> assign(:settings_open, false)
-              |> assign(:undo, [])
-              |> assign(:redo, [])
-              |> subscribe_to_map(map.id)
-          end
-
-        _ ->
-          put_flash(socket, :error, "Please log in to view your dashboard")
-          |> push_navigate(to: ~p"/")
-      end
-
-    {:ok, socket}
+      _ ->
+        {:ok,
+         put_flash(socket, :error, "Please log in to view your dashboard")
+         |> push_navigate(to: ~p"/")}
+    end
   end
 
   @impl true
@@ -60,7 +55,7 @@ defmodule TripwireWeb.DashboardLive do
 
   @impl true
   def handle_info({:map_updated, map_id}, %{assigns: %{map: map}} = socket)
-      when map_id == map.id do
+      when not is_nil(map) and map_id == map.id do
     {:noreply,
      socket
      |> assign(:systems, Mapping.list_systems(map_id))
@@ -72,11 +67,6 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
-
-  defp subscribe_to_map(socket, map_id) do
-    Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map_id))
-    socket
-  end
 
   @impl true
   def handle_event("toggle-settings", _params, socket) do
@@ -189,6 +179,33 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
+  defp provision(socket, character) do
+    {:ok, mask} = Masks.ensure_personal_mask(character)
+
+    map =
+      case Mapping.list_maps_for_mask(mask.id) do
+        [] -> elem(Mapping.create_map(%{name: "Home", mask_id: mask.id}), 1)
+        [map | _] -> map
+      end
+
+    socket
+    |> assign(:current_user, %{id: character.eve_id, name: character.name})
+    |> assign(:nav_user, character.name)
+    |> assign(:character, character)
+    |> assign(:map, map)
+    |> assign(:systems, Mapping.list_systems(map.id))
+    |> assign(:connections, Mapping.list_connections(map.id))
+    |> assign(:selected_system_id, nil)
+    |> assign(:signatures, [])
+    |> assign(:paste_open, false)
+    |> assign(:paste_text, "")
+    |> assign(:settings_open, false)
+    |> assign(:undo, [])
+    |> assign(:redo, [])
+    |> assign(:demo?, false)
+    |> subscribe_to_map(map.id)
+  end
+
   defp apply_inverse(:delete, signature, socket) do
     case selected_system(socket) do
       nil ->
@@ -224,6 +241,11 @@ defmodule TripwireWeb.DashboardLive do
       nil -> socket
       id -> assign(socket, :signatures, Mapping.list_signatures(id))
     end
+  end
+
+  defp subscribe_to_map(socket, map_id) do
+    Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map_id))
+    socket
   end
 
   defp push_undo(socket, op), do: update(socket, :undo, &[op | &1])

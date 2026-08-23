@@ -3,6 +3,7 @@ defmodule TripwireWeb.SettingsThemesComponent do
   alias Phoenix.LiveView.JS
 
   @themes [
+    "tripwire",
     "native",
     "native-dark",
     "light",

@@ -4,6 +4,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   alias Tripwire.Accounts
   alias Tripwire.Mapping
   alias Tripwire.Masks
+  alias Tripwire.Repo
 
   setup do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 42_000, name: "Kariyo Astrien"})
@@ -19,6 +20,30 @@ defmodule TripwireWeb.DashboardLiveTest do
   test "redirects anonymous visitors to the landing page", %{conn: conn} do
     conn = get(conn, ~p"/dashboard/Kariyo Astrien")
     assert redirected_to(conn) == "/"
+  end
+
+  test "demo mode mounts without a session and opens settings", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/dashboard/Admin")
+
+    assert html =~ "Demo mode"
+    assert has_element?(view, "#grid-stack")
+    assert has_element?(view, "#system-chart")
+    assert has_element?(view, "#chain-map")
+
+    view |> element("#settings-button") |> render_click()
+    assert has_element?(view, "#settings-modal")
+    assert render(view) =~ "Theme"
+
+    view
+    |> render_keydown("toggle-settings", %{"key" => "Escape"})
+
+    refute has_element?(view, "#settings-modal")
+  end
+
+  test "demo mode provisions nothing", %{conn: conn} do
+    live(conn, ~p"/dashboard/User")
+    assert Repo.all(Masks.Mask) == []
+    assert Repo.all(Mapping.Map) == []
   end
 
   test "mounts with session character and provisions a personal map", %{

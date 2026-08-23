@@ -1,6 +1,7 @@
 const MapDrag = {
   mounted() {
     this.svg = this.el
+    if (!this.svg) return
     this.selected = null
     this.offset = { x: 0, y: 0 }
 
@@ -9,8 +10,8 @@ const MapDrag = {
       if (!node) return
       this.selected = node
       const pt = this.toSvgPoint(ev)
-      const transform = node.getAttribute("transform")
-      const [x, y] = parseTransform(transform)
+      if (!pt) return
+      const [x, y] = parseTransform(node.getAttribute("transform"))
       this.offset = { x: pt.x - x, y: pt.y - y }
       ev.preventDefault()
     }
@@ -18,6 +19,7 @@ const MapDrag = {
     this.onPointerMove = (ev) => {
       if (!this.selected) return
       const pt = this.toSvgPoint(ev)
+      if (!pt) return
       const x = Math.max(0, Math.min(pt.x - this.offset.x, 920))
       const y = Math.max(0, Math.min(pt.y - this.offset.y, 650))
       this.selected.setAttribute("transform", `translate(${x}, ${y})`)
@@ -38,6 +40,7 @@ const MapDrag = {
   },
 
   destroyed() {
+    if (!this.svg) return
     this.svg.removeEventListener("pointerdown", this.onPointerDown)
     window.removeEventListener("pointermove", this.onPointerMove)
     window.removeEventListener("pointerup", this.onPointerUp)
@@ -45,10 +48,19 @@ const MapDrag = {
 
   toSvgPoint(ev) {
     const ctm = this.svg.getScreenCTM()
+    if (!ctm) return null
     return {
       x: (ev.clientX - ctm.e) / ctm.a,
       y: (ev.clientY - ctm.f) / ctm.d,
     }
+  },
+}
+
+const ChartMount = {
+  mounted() {
+    const name = this.el.dataset.chartFn
+    const init = name && window.TripwireCharts && window.TripwireCharts[name]
+    if (typeof init === "function") init()
   },
 }
 
@@ -57,4 +69,4 @@ function parseTransform(transform) {
   return match ? [parseFloat(match[1]), parseFloat(match[2])] : [0, 0]
 }
 
-export default MapDrag
+export { MapDrag as default, ChartMount }

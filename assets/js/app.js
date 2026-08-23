@@ -1,12 +1,11 @@
-
 import "phoenix_html"
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
 import { hooks as colocatedHooks } from "phoenix-colocated/tripwire"
 import topbar from "../vendor/topbar"
-import mapDrag from "./mapDrag"
+import mapDrag, { ChartMount } from "./mapDrag"
 
-const hooks = { ...colocatedHooks, MapDrag: mapDrag }
+const hooks = { ...colocatedHooks, MapDrag: mapDrag, ChartMount: ChartMount }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {

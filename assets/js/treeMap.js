@@ -1,30 +1,13 @@
-import * as echarts from 'echarts';
-import $ from "jquery";
+import * as echarts from 'echarts'
 
+let treeMap = null
+let loaded = false
 
-// var treeMapDom = document.querySelectorAll('treeMap');
-var treeMapDom = document.getElementById('treeMap');
-var treeMap = echarts.init(treeMapDom);
-var treeMapOptions;
-
-var treeMaps = {}
-function createTreeMap(character){}
-function getTreeMaps(character){}
-function loadTreeMaps(treeMaps){}
-function loadTreeMap(treeMaps){}
-function getTreeMapFavorites(treeMap){}
-function updateShowShip(treeMap){}
-function updateShowCharacter(treeMap){}
-
-
-treeMap.showLoading();
-$.get('/data.json', (data) => {
-    treeMap.hideLoading();
-
-    treeMapOptions = {
+function renderTreeMap(data) {
+    const options = {
         tooltip: {
             trigger: 'item',
-            triggerOn: 'mousemove'
+            triggerOn: 'mousemove',
         },
         series: [
             {
@@ -36,7 +19,7 @@ $.get('/data.json', (data) => {
                 animationDurationUpdate: 100,
                 label: {
                     show: true,
-                    formatter: '{b} \n{c}'
+                    formatter: '{b} \n{c}',
                 },
                 left: '-25%',
                 right: '-25%',
@@ -46,18 +29,33 @@ $.get('/data.json', (data) => {
                 symbolSize: [100, 60],
                 roam: 'move',
                 edgeShape: 'polyline',
-            }
+            },
         ],
     }
-    treeMap.setOption(treeMapOptions)
-});
 
+    treeMap.setOption(options)
+}
 
-// treeMap.init()
+function initTreeMap() {
+    const dom = document.getElementById('treeMap')
+    if (!dom || treeMap) return
 
+    treeMap = echarts.init(dom)
 
-const treeMapResizeObserver = new ResizeObserver(() => {
-    treeMap.resize();
-});
-treeMapResizeObserver.observe(treeMapDom);
+    new ResizeObserver(() => {
+        if (treeMap) treeMap.resize()
+    }).observe(dom)
 
+    if (!loaded) {
+        loaded = true
+        fetch('/data.json')
+            .then((response) => response.json())
+            .then(renderTreeMap)
+            .catch(() => {})
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initTreeMap)
+
+window.TripwireCharts = window.TripwireCharts || {}
+window.TripwireCharts.initTreeMap = initTreeMap

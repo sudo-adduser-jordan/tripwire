@@ -6,6 +6,14 @@ defmodule TripwireWeb.SettingsMapComponent do
     <input type="radio" name="my_tabs_6" class="tab" aria-label="Map" />
     <div class="tab-content overflow-y-scroll bg-base-100/50 border-base-300 p-6" enabled>
       Map Settings
+      <div
+        id="treeMap"
+        class="w-full h-96 mb-4 rounded-lg border border-base-300"
+        phx-hook="ChartMount"
+        data-chart-fn="initTreeMap"
+        phx-update="ignore"
+      >
+      </div>
       <div class="flex flex-col gap-4 p-1 md:p-4">
         <div class="flex flex-row gap-4">
           <p class="w-25/100 sm:pl-8">Map Render</p>

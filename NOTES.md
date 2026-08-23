@@ -13,7 +13,3 @@ git push gigalixir
 https://daisyui.com/
 https://gridstackjs.com/
 https://material-theme.com/docs/reference/color-palette/
-
-
-# temp
-add notes widget as mdx for formatting
