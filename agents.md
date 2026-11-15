@@ -101,7 +101,7 @@ fix:
 | `task remove` | `rm -rf _build deps assets/node_modules priv/static/assets cover tmp` |
 | `task setup` | `mkdir -p logs/test logs/errors`, `mix deps.get`, `mix ecto.setup`, `mix assets.setup`, `mix assets.build` |
 | `task migrate` | `mix ecto.migrate`, `MIX_ENV=test mix ecto.migrate` |
-| `task start` | `MIX_ENV=prod PHX_SERVER=true mix phx.server` (preconditions: `DATABASE_PATH`, `SECRET_KEY_BASE`, `TRIPWIRE_ENCRYPTION_KEY`) |
+| `task start` | `MIX_ENV=prod PHX_SERVER=true mix phx.server` with `DATABASE_PATH` defaulting to `./priv/db/tripwire-prod.db` when empty (preconditions: `SECRET_KEY_BASE`, `TRIPWIRE_ENCRYPTION_KEY`) |
 | `task stop` | `pkill -f "tripwire.*phx.server"`, `pkill -f "beam.*tripwire"` (both `ignore_error: true`) |
 | `task dev` | `mkdir -p logs/test logs/errors`, `iex -S mix phx.server` |
 

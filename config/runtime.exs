@@ -8,13 +8,15 @@ config :tripwire, TripwireWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 if config_env() == :prod do
-  database_path =
-    System.get_env("DATABASE_PATH") ||
-      raise """
-      environment variable DATABASE_PATH is missing.
-      Set it to the SQLite database file on a persistent volume.
-      For example: /data/tripwire-prod.db
-      """
+  database_path = System.get_env("DATABASE_PATH")
+
+  if database_path in [nil, ""] do
+    raise """
+    environment variable DATABASE_PATH is missing.
+    Set it to the SQLite database file on a persistent volume.
+    For example: /data/tripwire-prod.db
+    """
+  end
 
   config :tripwire, Tripwire.Repo,
     database: database_path,

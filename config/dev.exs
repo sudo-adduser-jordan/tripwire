@@ -1,7 +1,11 @@
 import Config
 
 config :tripwire, Tripwire.Repo,
-  database: System.get_env("DATABASE_PATH") || Path.expand("../priv/db/tripwire-dev.db", __DIR__),
+  database:
+    (case System.get_env("DATABASE_PATH") do
+       path when path in [nil, ""] -> Path.expand("../priv/db/tripwire-dev.db", __DIR__)
+       path -> path
+     end),
   pool_size: 5,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,

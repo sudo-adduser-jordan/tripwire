@@ -23,6 +23,6 @@ Automation uses `Taskfile.yml` (Task v3). No external scripts; every task runs i
 | `task remove` | Remove build artifacts and installed dependencies |
 | `task setup` | First-time setup of database, assets, and log directories |
 | `task migrate` | Run database migrations for dev and test |
-| `task start` | Start the production server (requires `DATABASE_PATH`, `SECRET_KEY_BASE`, `TRIPWIRE_ENCRYPTION_KEY`) |
+| `task start` | Start the production server (`DATABASE_PATH` defaults to `./priv/db/tripwire-prod.db`; requires `SECRET_KEY_BASE`, `TRIPWIRE_ENCRYPTION_KEY`) |
 | `task stop` | Stop running Tripwire server processes |
 | `task dev` | Start the development server with live reload |
