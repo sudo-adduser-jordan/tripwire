@@ -68,6 +68,12 @@ config :tailwind,
     cd: Path.expand("..", __DIR__)
   ]
 
+config :tripwire, Tripwire.Log,
+  service: "tripwire",
+  sample_rate: 1.0,
+  test_path: "logs/test",
+  error_path: "logs/errors"
+
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]

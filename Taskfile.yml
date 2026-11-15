@@ -1,0 +1,87 @@
+version: '3'
+silent: true
+output: group
+set: [errexit, nounset, pipefail]
+dotenv: [.env]
+vars:
+  BLUE: '\033[1;34m'
+  GREEN: '\033[1;32m'
+  YELLOW: '\033[1;33m'
+  RED: '\033[1;31m'
+  CYAN: '\033[1;36m'
+  RESET: '\033[0m'
+tasks:
+  install:
+    desc: Install Elixir, Node, and asset dependencies
+    cmds:
+      - echo -e "{{.BLUE}}[install]{{.RESET}} {{.CYAN}}mix deps.get{{.RESET}}"
+      - mix deps.get
+      - echo -e "{{.BLUE}}[install]{{.RESET}} {{.CYAN}}mix assets.setup{{.RESET}}"
+      - mix assets.setup
+      - echo -e "{{.BLUE}}[install]{{.RESET}} {{.CYAN}}npm ci in assets{{.RESET}}"
+      - npm ci --prefix assets
+      - echo -e "{{.GREEN}}[install]{{.RESET}} dependencies installed"
+  update:
+    desc: Update Elixir and Node dependencies
+    cmds:
+      - echo -e "{{.BLUE}}[update]{{.RESET}} {{.CYAN}}mix deps.update --all{{.RESET}}"
+      - mix deps.update --all
+      - echo -e "{{.BLUE}}[update]{{.RESET}} {{.CYAN}}npm update in assets{{.RESET}}"
+      - npm update --prefix assets
+      - echo -e "{{.GREEN}}[update]{{.RESET}} dependencies updated"
+  remove:
+    desc: Remove build artifacts and installed dependencies
+    cmds:
+      - echo -e "{{.YELLOW}}[remove]{{.RESET}} {{.CYAN}}rm -rf _build deps assets/node_modules priv/static/assets cover tmp{{.RESET}}"
+      - rm -rf _build deps assets/node_modules priv/static/assets cover tmp
+      - echo -e "{{.GREEN}}[remove]{{.RESET}} artifacts removed"
+  setup:
+    desc: First-time setup of database, assets, and log directories
+    cmds:
+      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mkdir -p logs/test logs/errors{{.RESET}}"
+      - mkdir -p logs/test logs/errors
+      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix deps.get{{.RESET}}"
+      - mix deps.get
+      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix ecto.setup{{.RESET}}"
+      - mix ecto.setup
+      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix assets.setup{{.RESET}}"
+      - mix assets.setup
+      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix assets.build{{.RESET}}"
+      - mix assets.build
+      - echo -e "{{.GREEN}}[setup]{{.RESET}} setup complete"
+  migrate:
+    desc: Run database migrations for dev and test
+    cmds:
+      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}mix ecto.migrate{{.RESET}}"
+      - mix ecto.migrate
+      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=test mix ecto.migrate{{.RESET}}"
+      - MIX_ENV=test mix ecto.migrate
+      - echo -e "{{.GREEN}}[migrate]{{.RESET}} migrations complete"
+  start:
+    desc: Start the production server
+    preconditions:
+      - sh: test -n "${DATABASE_PATH:-}"
+        msg: DATABASE_PATH environment variable is required
+      - sh: test -n "${SECRET_KEY_BASE:-}"
+        msg: SECRET_KEY_BASE environment variable is required
+      - sh: test -n "${TRIPWIRE_ENCRYPTION_KEY:-}"
+        msg: TRIPWIRE_ENCRYPTION_KEY environment variable is required
+    cmds:
+      - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}MIX_ENV=prod PHX_SERVER=true mix phx.server{{.RESET}}"
+      - MIX_ENV=prod PHX_SERVER=true mix phx.server
+  stop:
+    desc: Stop running Tripwire server processes
+    cmds:
+      - echo -e "{{.YELLOW}}[stop]{{.RESET}} {{.CYAN}}pkill Tripwire server processes{{.RESET}}"
+      - cmd: pkill -f "tripwire.*phx.server"
+        ignore_error: true
+      - cmd: pkill -f "beam.*tripwire"
+        ignore_error: true
+      - echo -e "{{.GREEN}}[stop]{{.RESET}} server stopped"
+  dev:
+    desc: Start the development server with live reload
+    cmds:
+      - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}mkdir -p logs/test logs/errors{{.RESET}}"
+      - mkdir -p logs/test logs/errors
+      - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}iex -S mix phx.server{{.RESET}}"
+      - iex -S mix phx.server
