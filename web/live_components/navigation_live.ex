@@ -1,6 +1,10 @@
 defmodule TripwireWeb.LiveComponents.NavigationLive do
   use Phoenix.Component
 
+  import TripwireWeb.IconComponent
+
+  alias Phoenix.LiveView.JS
+
   attr :user, :string, required: true
   attr :characters, :list, default: []
   attr :masks, :list, default: []
@@ -13,64 +17,49 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
   attr :topbar_now, :any, default: nil
   attr :grid_locked, :boolean, default: true
   attr :system_search, :string, default: ""
+  attr :current_user, :map, default: nil
+  attr :settings_open, :boolean, default: false
 
   def navigation_live(assigns) do
     ~H"""
-    <nav class="flex w-full max-w-full flex-col gap-2 p-2 sm:flex-row sm:gap-0 sm:p-3">
-      <nav class="flex h-auto min-h-12 w-full items-center gap-2 rounded bg-base-200/75 p-2 sm:rounded-none sm:rounded-l-lg">
-        <div class="m-1 flex justify-center items-center gap-1">
-          <div class="inline-grid *:[grid-area:1/1]" aria-hidden="true">
-            <div class={[
-              "status animate-[ping_2.4s_cubic-bezier(0,0,0.2,1)_infinite] opacity-40",
-              if(@tq_online, do: "status-success", else: "status-error")
-            ]}>
-            </div>
-            <div class={[
-              "status blur-[3px] opacity-70",
-              if(@tq_online, do: "status-success", else: "status-error")
-            ]}>
-            </div>
-            <div class={["status", if(@tq_online, do: "status-success", else: "status-error")]}></div>
-          </div>
+    <nav class="sticky top-0 z-30 flex w-full max-w-full flex-wrap items-center gap-x-2 gap-y-1 bg-base-200/75 p-2">
+      <a href="/" class="flex w-fit items-center gap-2">
+        <img class="hidden min-[400px]:block size-7" src="/images/logo.svg" />
+        <span class="hidden sm:block text-xs font-semibold">
+          v{Application.spec(:tripwire, :vsn)}
+        </span>
+      </a>
+      <div
+        class="m-1 hover:cursor-pointer hover:underline place-content-center flex gap-1 justify-center items-center"
+        title={tq_title(@tq_online, @tq_players)}
+      >
+        <div class={["badge m-1", if(@tq_online, do: "badge-success", else: "badge-error")]}>
+          {if @tq_online, do: format_players(@tq_players), else: "Down"}
         </div>
-        <div
-          class="m-1 hover:cursor-pointer hover:underline place-content-center flex gap-1 justify-center items-center"
-          title={tq_title(@tq_online, @tq_players)}
-        >
-          <p>TQ</p>
-          <div class={["badge m-1", if(@tq_online, do: "badge-success", else: "badge-error")]}>
-            {if @tq_online, do: format_players(@tq_players), else: "Down"}
-          </div>
-        </div>
-        <p class="flex items-center">|</p>
-        <p class="tabular-nums" title="EVE time (UTC)">{format_time(@topbar_now)}</p>
-        <p class="flex items-center">|</p>
-        <div
-          id="topbar-system"
-          class="hover:cursor-pointer hover:underline place-content-center px-2 text-center"
-          title={if @character_online == false, do: "Character offline"}
-        >
-          {@selected_system_name || @current_system_name || "Jita"}
-        </div>
-        <div :if={@ship_name} class="hidden text-xs opacity-60 min-[400px]:block max-w-32 truncate">
-          {@ship_name}
-        </div>
-        <div class="hidden min-[400px]:flex items-center">&gt;</div>
-        <form
-          phx-submit="system-search-submit"
-          class="hidden min-[400px]:block"
-        >
-          <input
-            id="system-search"
-            name="search"
-            value={@system_search}
-            class="mx-1 h-8 w-36 rounded bg-base-100 px-2 py-1 sm:w-44"
-            placeholder="Search systems"
-            autocomplete="off"
-          />
-        </form>
-      </nav>
-      <nav class="flex h-auto min-h-12 w-full flex-row items-center justify-start gap-2 rounded bg-base-200/75 p-2 sm:justify-end sm:rounded-none sm:rounded-r-lg">
+      </div>
+      <p class="tabular-nums" title="EVE time (UTC)">{format_time(@topbar_now)}</p>
+      <div
+        id="topbar-system"
+        class="hover:cursor-pointer hover:underline place-content-center px-2 text-center"
+        title={if @character_online == false, do: "Character offline"}
+      >
+        {@selected_system_name || @current_system_name || "Jita"}
+      </div>
+      <div :if={@ship_name} class="hidden text-xs opacity-60 min-[400px]:block max-w-32 truncate">
+        {@ship_name}
+      </div>
+      <div class="hidden min-[400px]:flex items-center">&gt;</div>
+      <form phx-submit="system-search-submit" class="hidden min-[400px]:block">
+        <input
+          id="system-search"
+          name="search"
+          value={@system_search}
+          class="mx-1 h-8 w-36 rounded bg-base-100 px-2 py-1 sm:w-44"
+          placeholder="Search systems"
+          autocomplete="off"
+        />
+      </form>
+      <div class="ml-auto flex flex-wrap items-center gap-2">
         <button
           id="lock-button"
           phx-click="toggle-grid-lock"
@@ -148,8 +137,59 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
             </li>
           </ul>
         </div>
-      </nav>
+        <.theme_toggle />
+        <form :if={@current_user} action="/auth/logout" method="post">
+          <input type="hidden" name="_method" value="delete" />
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <button type="submit" class="btn btn-ghost btn-sm h-8 min-h-8 p-0">
+            Logout
+          </button>
+        </form>
+        <button
+          class="btn btn-primary btn-sm mr-2 h-8 min-h-8"
+          id="settings-button"
+          phx-click="toggle-settings"
+          autofocus
+        >
+          Settings
+          <span aria-hidden="true" id="settings-button-span">
+            {if @settings_open, do: "←", else: "→"}
+          </span>
+        </button>
+      </div>
     </nav>
+    """
+  end
+
+  def theme_toggle(assigns) do
+    ~H"""
+    <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-md">
+      <div class="absolute w-1/3 h-full rounded border border-base-200 bg-base-100 brightness-200 left-0 in-data-[theme=light]:left-1/3 in-data-[theme=dark]:left-2/3 transition-[left]" />
+
+      <button
+        class="flex p-1.5 cursor-pointer w-1/3"
+        phx-click={JS.dispatch("phx:set-theme")}
+        data-phx-theme="system"
+      >
+        <.icon name="hero-computer-desktop-micro" class="size-3 opacity-75 hover:opacity-100" />
+      </button>
+
+      <button
+        class="flex p-1.5 cursor-pointer w-1/3"
+        phx-click={JS.dispatch("phx:set-theme")}
+        data-phx-theme="light"
+      >
+        <.icon name="hero-sun-micro" class="size-3 opacity-75 hover:opacity-100" />
+      </button>
+
+      <button
+        class="flex p-1.5 cursor-pointer w-1/3"
+        phx-click={JS.dispatch("phx:set-theme")}
+        data-phx-theme="dark"
+      >
+        <.icon name="hero-moon-micro" class="size-3 opacity-75 hover:opacity-100" />
+      </button>
+    </div>
     """
   end
 
@@ -162,7 +202,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
   defp tq_title(true, _), do: "Tranquility online"
   defp tq_title(_, _), do: "Tranquility unreachable"
 
-  defp format_players(players) when is_integer(players), do: "#{players} online"
+  defp format_players(players) when is_integer(players), do: "#{players}"
   defp format_players(_), do: "Up"
 
   defp format_time(%DateTime{} = now) do

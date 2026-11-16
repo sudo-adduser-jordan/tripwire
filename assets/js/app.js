@@ -6,6 +6,7 @@ import topbar from "../vendor/topbar"
 import mapDrag, { ChartMount } from "./mapDrag"
 import LockToggle from "./lockToggle"
 import GridWidget from "./gridWidget"
+import ScrollIntoView from "./scrollIntoView"
 import CopyText from "./copyText"
 import GlobalPaste from "./globalPaste"
 
@@ -53,6 +54,7 @@ const hooks = {
     ChartMount: ChartMount,
     GridStack: GridStack,
     GridWidget: GridWidget,
+    ScrollIntoView: ScrollIntoView,
     CopyText: CopyText,
     GlobalPaste: GlobalPaste,
 }

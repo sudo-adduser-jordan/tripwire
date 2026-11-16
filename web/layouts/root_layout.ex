@@ -11,45 +11,6 @@ defmodule TripwireWeb.RootLayout do
 
   def app(assigns) do
     ~H"""
-    <header class="navbar min-h-0 h-11 px-2 sm:px-4 gap-2">
-      <div class="flex-1">
-        <a href="/" class="flex w-fit items-center gap-2">
-          <img class="hidden min-[400px]:block size-7" src={~p"/images/logo.svg"} />
-          <span class="hidden sm:block text-xs font-semibold">
-            v{Application.spec(:tripwire, :vsn)}
-          </span>
-        </a>
-      </div>
-      <div class="flex-none">
-        <ul class="flex flex-row px-1 space-x-3 items-center text-sm">
-          <li :if={@current_user}>
-            <form action="/auth/logout" method="post">
-              <input type="hidden" name="_method" value="delete" />
-              <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-              <button type="submit" class="btn btn-ghost btn-sm p-0 h-8 min-h-8">
-                Logout
-              </button>
-            </form>
-          </li>
-
-          <li class="hidden min-[400px]:block">
-            <a href="/" class="btn btn-ghost btn-sm p-0 h-8 min-h-8">Wiki</a>
-          </li>
-          <li><.theme_toggle /></li>
-          <li>
-            <button
-              class="btn btn-primary btn-sm h-8 min-h-8"
-              id="settings-button"
-              phx-click="toggle-settings"
-              autofocus
-            >
-              Settings <span aria-hidden="true" id="settings-button-span"> &rarr; </span>
-            </button>
-          </li>
-        </ul>
-      </div>
-    </header>
-
     <%!-- <main class="h-[calc(100%-64px)]"> --%>
     <main class="">
       {render_slot(@inner_block)}
@@ -91,38 +52,6 @@ defmodule TripwireWeb.RootLayout do
         {gettext("Attempting to reconnect")}
         <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
       </.flash>
-    </div>
-    """
-  end
-
-  def theme_toggle(assigns) do
-    ~H"""
-    <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-md">
-      <div class="absolute w-1/3 h-full rounded border border-base-200 bg-base-100 brightness-200 left-0 in-data-[theme=light]:left-1/3 in-data-[theme=dark]:left-2/3 transition-[left]" />
-
-      <button
-        class="flex p-1.5 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="system"
-      >
-        <.icon name="hero-computer-desktop-micro" class="size-3 opacity-75 hover:opacity-100" />
-      </button>
-
-      <button
-        class="flex p-1.5 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="light"
-      >
-        <.icon name="hero-sun-micro" class="size-3 opacity-75 hover:opacity-100" />
-      </button>
-
-      <button
-        class="flex p-1.5 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="dark"
-      >
-        <.icon name="hero-moon-micro" class="size-3 opacity-75 hover:opacity-100" />
-      </button>
     </div>
     """
   end

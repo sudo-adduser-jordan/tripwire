@@ -57,11 +57,11 @@ Deploys run the server in `MIX_ENV=prod` and are driven by the `start`, `stop`, 
 3. Start the server:
 
    ```sh
-   task start   # digest assets, boot in prod, log to logs/prod.log
+   task start   # build + digest assets, boot in prod, log to logs/prod.log
    task dev     # follow logs/prod.log
    task stop    # stop the background server
    ```
 
-`task start` runs `mix phx.digest` before boot so `cache_static_manifest` resolves, then waits until the endpoint reports it is listening before printing the URL. If the port is already taken the task fails and prints the tail of `logs/prod.log`.
+`task start` rebuilds and digests assets before boot so `cache_static_manifest` resolves, then waits until the endpoint reports it is listening before printing the URL. If the port is already taken the task fails and prints the tail of `logs/prod.log`.
 
 Production sets `force_ssl` with `rewrite_on: [:x_forwarded_proto]`, so terminate TLS in a reverse proxy (or a platform edge) and forward `X-Forwarded-Proto: https`. Plain `http://` requests to a non-loopback host are redirected to `https`.

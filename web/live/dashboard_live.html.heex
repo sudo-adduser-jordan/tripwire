@@ -7,6 +7,8 @@
     user={@nav_user}
     characters={@characters}
     masks={@masks}
+    current_user={@current_user}
+    settings_open={@settings_open}
     tq_online={@tq_online}
     tq_players={@tq_players}
     selected_system_name={@selected_system_name}
@@ -18,7 +20,7 @@
     system_search={@system_search}
   />
 
-  <div :if={@demo?} class="px-2 sm:px-3">
+  <div :if={@demo?} class="px-2 pt-3 sm:px-3">
     <div class="alert alert-warning py-2 text-sm">
       <span>Demo mode — log in with EVE SSO for a personal map.</span>
     </div>

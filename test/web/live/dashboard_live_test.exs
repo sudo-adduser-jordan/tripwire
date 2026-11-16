@@ -34,11 +34,13 @@ defmodule TripwireWeb.DashboardLiveTest do
     view |> element("#settings-button") |> render_click()
     assert has_element?(view, "#grid-stack #settings-widget")
     assert render(view) =~ "Theme"
+    assert render(view) =~ "←"
 
     view
     |> render_keydown("toggle-settings", %{"key" => "Escape"})
 
     refute has_element?(view, "#settings-widget")
+    assert render(view) =~ "→"
   end
 
   test "demo mode provisions its own editable mask", %{conn: conn} do
@@ -456,8 +458,8 @@ defmodule TripwireWeb.DashboardLiveTest do
   test "top bar renders ESI fallbacks and grid lock toggles", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/dashboard/User")
 
-    assert html =~ "TQ"
     assert html =~ "Down"
+    assert html =~ "sticky"
     assert html =~ ~s|id="lock-button"|
     assert html =~ ~s|data-grid-locked="true"|
 

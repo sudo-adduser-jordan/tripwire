@@ -17,7 +17,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
     ~H"""
     <div
       id="settings-widget"
-      class="grid-stack-item"
+      class="grid-stack-item scroll-mt-24"
       gs-w="12"
       gs-h="10"
       gs-x="0"
@@ -27,7 +27,11 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
       phx-window-keydown="toggle-settings"
       phx-key="Escape"
     >
-      <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
+      <div
+        id="settings-content"
+        class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden"
+        phx-hook="ScrollIntoView"
+      >
         <div class="tabs tabs-box max-w-full min-h-0 size-full">
           <AccountLive.settings_account_live
             settings_tab={@settings_tab}
