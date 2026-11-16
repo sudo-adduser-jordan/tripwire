@@ -811,7 +811,10 @@ defmodule Tripwire.Mapping do
     %{solar_system_id: 30_000_142, name: "Jita", security: 0.9, x: 880.0, y: 380.0},
     %{solar_system_id: 30_000_201, name: "Tama", security: 0.2, x: 700.0, y: 540.0},
     %{solar_system_id: 30_000_301, name: "1DQ1-A", security: -1.0, x: 450.0, y: 560.0},
-    %{solar_system_id: 31_000_010, name: "Raravoss", alias: "Pochven", sys_class: "Trig", x: 200.0, y: 540.0}
+    %{solar_system_id: 31_000_010, name: "Raravoss", alias: "Pochven", sys_class: "Trig", x: 200.0, y: 540.0},
+    %{solar_system_id: 31_000_011, name: "J150327", sys_class: "C4", x: 240.0, y: 300.0},
+    %{solar_system_id: 31_000_012, name: "J150328", sys_class: "C2", x: 120.0, y: 460.0},
+    %{solar_system_id: 30_000_216, name: "Dodixie", security: 0.9, x: 240.0, y: 620.0}
   ]
 
   @demo_shortcuts """
@@ -842,7 +845,10 @@ defmodule Tripwire.Mapping do
     {5, 6, "C140", "stable", "stable"},
     {3, 7, "K162", "stable", "stable"},
     {3, 8, "N968", "stable", "stable"},
-    {4, 9, "K162", "stable", "stable"}
+    {4, 9, "K162", "stable", "stable"},
+    {0, 10, "K162", "stable", "stable"},
+    {10, 11, "K162", "stable", "stable"},
+    {11, 12, "C140", "stable", "stable"}
   ]
 
   @demo_signatures %{
@@ -952,6 +958,26 @@ defmodule Tripwire.Mapping do
         site_type: "wormhole",
         type_name: "Unstable Wormhole (K162)"
       }
+    ],
+    10 => [
+      %{
+        sig_id: "OPQ-789",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (K162)"
+      },
+      %{sig_id: "RST-012", kind: "signature", site_type: "combat", type_name: "Guristas Hub"}
+    ],
+    11 => [
+      %{
+        sig_id: "UVW-345",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (K162)"
+      }
+    ],
+    12 => [
+      %{sig_id: "XYZ-678", kind: "anomaly", site_type: "combat", type_name: "Forsaken Hub"}
     ]
   }
 

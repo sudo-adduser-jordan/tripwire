@@ -78,7 +78,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     [map] = Repo.all(Mapping.Map)
     assert map.mask_id == mask.id
-    assert length(Mapping.list_systems(map.id)) == 10
+    assert length(Mapping.list_systems(map.id)) == 13
 
     assert html =~ "C3"
     assert html =~ "K162"
@@ -92,7 +92,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert_push_event(view, "reset-pan", %{x: 0, y: 20.0})
 
     reloaded = Mapping.get_system!(system.id)
-    assert reloaded.x == 460.0
+    assert reloaded.x == 572.5
     assert reloaded.y == 60.0
   end
 
@@ -687,8 +687,8 @@ defmodule TripwireWeb.DashboardLiveTest do
       |> element(~s|#settings-widget form[phx-change="map-layout"]|)
       |> render_change(%{layout: "bottom"})
 
-    assert html =~ "translate(460.0, 590.0)"
-    refute html =~ "translate(460.0, 60.0)"
+    assert html =~ "translate(572.5, 590.0)"
+    refute html =~ "translate(572.5, 60.0)"
   end
 
   test "delete then undo restores the signature", %{conn: conn, character: character} do

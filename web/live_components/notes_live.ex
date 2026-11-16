@@ -51,8 +51,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
       <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
         <ul class="list rounded-box shadow-md shrink-0">
           <li class="list-row h-fit items-center gap-1 p-1">
-            <p class="px-1 text-lg font-semibold">Notes</p>
-            <span class="text-xs opacity-60">{length(@comments)} notes</span>
+            <span class="px-1 text-xs opacity-60">{length(@comments)} notes</span>
             <span
               :if={Map.get(assigns, :selected_system_name)}
               class="badge badge-primary badge-sm ml-auto"
