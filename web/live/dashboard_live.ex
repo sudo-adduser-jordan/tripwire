@@ -38,6 +38,7 @@ defmodule TripwireWeb.DashboardLive do
     {:ok, mask} = Masks.ensure_demo_mask()
     {:ok, _} = Masks.add_membership(mask, character)
     {:ok, map} = Mapping.ensure_demo_map(mask.id)
+    systems = ensure_jita_system(map, Mapping.list_systems(map.id))
 
     socket
     |> assign(:current_user, nil)
@@ -47,7 +48,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:masks, [mask])
     |> assign(:map, map)
     |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
-    |> assign(:systems, Mapping.list_systems(map.id))
+    |> assign(:systems, systems)
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
     |> apply_tree_layout("top")
     |> assign(:selected_system_id, nil)
@@ -83,32 +84,42 @@ defmodule TripwireWeb.DashboardLive do
 
   @impl true
   def handle_params(params, _url, socket) do
-    system_name = Map.get(params, "system")
+    system_name = Map.get(params, "system_name") || Map.get(params, "system")
+    systems = socket.assigns[:systems] || []
 
-    socket =
-      if system_name && socket.assigns[:systems] do
-        case Enum.find(
-               socket.assigns.systems,
-               &(String.downcase(&1.name) == String.downcase(system_name))
-             ) do
-          %{id: id, name: name} ->
-            socket =
-              socket
-              |> assign(:selected_system_id, id)
-              |> assign(:selected_system_name, name)
-              |> assign(:signatures, Mapping.list_signatures(id))
-              |> assign(:comments, Mapping.list_comments(id))
-
-            schedule_system_detail(socket, id)
+    cond do
+      system_name && systems != [] ->
+        case Enum.find(systems, &(String.downcase(&1.name) == String.downcase(system_name))) do
+          %{id: id} ->
+            if socket.assigns[:selected_system_id] == id do
+              {:noreply, socket}
+            else
+              {:noreply, select_system(socket, id)}
+            end
 
           nil ->
-            socket
-        end
-      else
-        socket
-      end
+            case preferred_system(systems) do
+              %{id: id, name: name} ->
+                {:noreply, socket |> select_system(id) |> push_patch(to: "/" <> name)}
 
-    {:noreply, socket}
+              nil ->
+                {:noreply, socket}
+            end
+        end
+
+      systems != [] ->
+        if socket.assigns[:selected_system_id] do
+          {:noreply, socket}
+        else
+          case preferred_system(systems) do
+            %{id: id} -> {:noreply, select_system(socket, id)}
+            nil -> {:noreply, socket}
+          end
+        end
+
+      true ->
+        {:noreply, socket}
+    end
   end
 
   @impl true
@@ -121,13 +132,13 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_info({:select_system, system_id}, socket) do
-    {:noreply, select_system(socket, system_id)}
+    {:noreply, select_system_and_patch(socket, system_id)}
   end
 
   def handle_info({:open_system, system_id}, socket) do
     {:noreply,
      socket
-     |> select_system(system_id)
+     |> select_system_and_patch(system_id)
      |> open_system_modal(system_id)}
   end
 
@@ -300,17 +311,14 @@ defmodule TripwireWeb.DashboardLive do
     if system do
       {:noreply,
        socket
-       |> assign(:selected_system_id, system.id)
-       |> assign(:selected_system_name, system.name)
-       |> assign(:signatures, Mapping.list_signatures(system.id))
-       |> assign(:comments, Mapping.list_comments(system.id))
-       |> assign(:stale_ids, [])
-       |> assign(:stale_system_id, nil)
-       |> assign(:undo, [])
-       |> assign(:redo, [])
-       |> schedule_system_detail(system.id)}
+       |> assign(:system_search, search)
+       |> select_system(system.id)
+       |> push_patch(to: "/" <> system.name)}
     else
-      {:noreply, put_flash(socket, :error, "No system matching #{inspect(trimmed)} on this map")}
+      {:noreply,
+       socket
+       |> assign(:system_search, search)
+       |> put_flash(:error, "No system matching #{inspect(trimmed)} on this map")}
     end
   end
 
@@ -326,7 +334,7 @@ defmodule TripwireWeb.DashboardLive do
   def handle_event("settings-tab", _params, socket), do: {:noreply, socket}
 
   def handle_event("select-system", %{"id" => id}, socket) do
-    {:noreply, select_system(socket, String.to_integer(id))}
+    {:noreply, select_system_and_patch(socket, String.to_integer(id))}
   end
 
   def handle_event("chart-range", %{"range" => range}, socket) when range in @chart_ranges do
@@ -474,17 +482,20 @@ defmodule TripwireWeb.DashboardLive do
               [m | _] -> m
             end
 
+          next_systems = Mapping.list_systems(next_map.id)
+
           socket
           |> assign(:mask, next)
           |> assign(:masks, remaining)
           |> assign(:map, next_map)
           |> assign(:maps, Mapping.list_maps_for_mask(next.id))
-          |> assign(:systems, Mapping.list_systems(next_map.id))
+          |> assign(:systems, next_systems)
           |> assign(:connections, Mapping.list_connections_with_endpoints(next_map.id))
           |> assign(:selected_system_id, nil)
           |> assign(:selected_system_name, nil)
           |> assign(:signatures, [])
           |> assign(:comments, [])
+          |> patch_to_preferred(next_systems)
         else
           assign(socket, masks: remaining)
         end
@@ -737,18 +748,22 @@ defmodule TripwireWeb.DashboardLive do
       system ->
         {:ok, _} = Mapping.delete_system(system)
 
-        {:noreply,
-         socket
-         |> assign(:systems, Mapping.list_systems(socket.assigns.map.id))
-         |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))
-         |> assign(:selected_system_id, nil)
-         |> assign(:selected_system_name, nil)
-         |> assign(:signatures, [])
-         |> assign(:comments, [])
-         |> assign(:sys_modal_open, false)
-         |> assign(:sys_edit_id, nil)
-         |> assign(:sys_errors, [])
-         |> put_flash(:info, "System removed")}
+        remaining = Mapping.list_systems(socket.assigns.map.id)
+
+        socket =
+          socket
+          |> assign(:systems, remaining)
+          |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))
+          |> assign(:selected_system_id, nil)
+          |> assign(:selected_system_name, nil)
+          |> assign(:signatures, [])
+          |> assign(:comments, [])
+          |> assign(:sys_modal_open, false)
+          |> assign(:sys_edit_id, nil)
+          |> assign(:sys_errors, [])
+          |> put_flash(:info, "System removed")
+
+        {:noreply, patch_to_preferred(socket, remaining)}
     end
   end
 
@@ -860,7 +875,8 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:comments, [])
          |> assign(:flares, [])
          |> assign(:system_stat, nil)
-         |> put_flash(:info, "Switched to #{mask.name}")}
+         |> put_flash(:info, "Switched to #{mask.name}")
+         |> patch_to_preferred(Mapping.list_systems(map.id))}
     end
   end
 
@@ -920,7 +936,8 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:comments, [])
          |> assign(:flares, [])
          |> assign(:system_stat, nil)
-         |> put_flash(:info, "Switched to #{map.name}")}
+         |> put_flash(:info, "Switched to #{map.name}")
+         |> patch_to_preferred(Mapping.list_systems(map.id))}
 
       _ ->
         {:noreply, put_flash(socket, :error, "Map not found")}
@@ -946,13 +963,8 @@ defmodule TripwireWeb.DashboardLive do
        socket
        |> assign(:systems, Mapping.list_systems(socket.assigns.map.id))
        |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))
-       |> assign(:selected_system_id, system.id)
-       |> assign(:selected_system_name, system.name)
-       |> assign(:signatures, Mapping.list_signatures(system.id))
-       |> assign(:comments, Mapping.list_comments(system.id))
-       |> assign(:flares, Mapping.list_flares(system.id))
-       |> assign(:system_stat, Mapping.get_system_stat(system.id))
-       |> schedule_system_detail(system.id)
+       |> select_system(system.id)
+       |> push_patch(to: "/" <> system.name)
        |> put_flash(:info, "Added viewing system #{system.name}")}
     else
       _ -> {:noreply, put_flash(socket, :error, "ESI location unavailable")}
@@ -1183,6 +1195,7 @@ defmodule TripwireWeb.DashboardLive do
 
     masks = Masks.list_masks_for_character(character.id)
     masks = if Enum.any?(masks, &(&1.id == mask.id)), do: masks, else: [mask | masks]
+    systems = ensure_jita_system(map, Mapping.list_systems(map.id))
 
     socket
     |> assign(:current_user, %{id: character.eve_id, name: character.name})
@@ -1192,7 +1205,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:masks, masks)
     |> assign(:map, map)
     |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
-    |> assign(:systems, Mapping.list_systems(map.id))
+    |> assign(:systems, systems)
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
     |> apply_tree_layout("top")
     |> assign(:selected_system_id, nil)
@@ -1329,17 +1342,64 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
-  defp autoselect_first_system(
-         %{assigns: %{selected_system_id: nil, systems: [%{id: id, name: name} | _]}} = socket
-       ) do
-    socket =
-      socket
-      |> assign(:selected_system_id, id)
-      |> assign(:selected_system_name, name)
-      |> assign(:signatures, Mapping.list_signatures(id))
-      |> assign(:comments, Mapping.list_comments(id))
+  defp preferred_system(systems) do
+    Enum.find(systems, &(String.downcase(&1.name) == "jita")) || List.first(systems)
+  end
 
-    schedule_system_detail(socket, id)
+  defp ensure_jita_system(_map, systems) when systems != [] do
+    systems
+  end
+
+  defp ensure_jita_system(map, []) do
+    case Mapping.add_system_to_map(map, %{
+           solar_system_id: 30_000_142,
+           name: "Jita",
+           security: 0.9,
+           x: 880.0,
+           y: 380.0
+         }) do
+      {:ok, _} -> Mapping.list_systems(map.id)
+      _ -> []
+    end
+  end
+
+  defp select_system_and_patch(socket, system_id) do
+    socket = select_system(socket, system_id)
+
+    case socket.assigns[:selected_system_name] do
+      nil -> socket
+      name -> push_patch(socket, to: "/" <> name)
+    end
+  end
+
+  defp patch_to_preferred(socket, systems) do
+    case preferred_system(systems) do
+      %{id: id, name: name} ->
+        socket |> select_system(id) |> push_patch(to: "/" <> name)
+
+      nil ->
+        socket
+    end
+  end
+
+  defp autoselect_first_system(
+         %{assigns: %{selected_system_id: nil, systems: systems}} = socket
+       )
+       when is_list(systems) and systems != [] do
+    case preferred_system(systems) do
+      %{id: id, name: name} ->
+        socket =
+          socket
+          |> assign(:selected_system_id, id)
+          |> assign(:selected_system_name, name)
+          |> assign(:signatures, Mapping.list_signatures(id))
+          |> assign(:comments, Mapping.list_comments(id))
+
+        schedule_system_detail(socket, id)
+
+      nil ->
+        socket
+    end
   end
 
   defp autoselect_first_system(socket), do: socket
