@@ -17,9 +17,14 @@ function syncLock(el) {
 }
 
 // Reveal the grid on first layout so pre-init paint never shows a pile-up.
+// The loading class lives in the server template, so morphdom re-adds it
+// on every LiveView patch; only animate the very first reveal, later ones
+// just unhide so selecting systems never flashes the grid.
 function reveal(el) {
     if (!el || !el.classList.contains('grid-stack-loading')) return
     el.classList.remove('grid-stack-loading')
+    if (el._revealed) return
+    el._revealed = true
     const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (!reduceMotion && typeof el.animate === 'function') {
         el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' })
