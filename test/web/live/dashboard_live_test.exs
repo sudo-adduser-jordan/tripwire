@@ -197,6 +197,66 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "J150321"
   end
 
+  test "typing in system search sends nothing until submit", %{conn: conn} do
+    {:ok, _view, html} = live(conn, ~p"/dashboard/User")
+
+    refute html =~ ~s|phx-change="system-search"|
+    assert html =~ ~s|phx-submit="system-search-submit"|
+  end
+
+  test "selecting a system reflects it in the topbar and system widget", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    assert html =~ ~s|id="system-copy"|
+    assert view |> element("#system-copy") |> render() =~ ~s|data-copy="Jita"|
+    assert view |> element("#topbar-system") |> render() =~ "Jita"
+    assert view |> element("#system-container p") |> render() =~ "Jita"
+
+    view
+    |> element("#system-container button", "J150321")
+    |> render_click()
+
+    assert view |> element("#topbar-system") |> render() =~ "J150321"
+    assert view |> element("#system-container p") |> render() =~ "J150321"
+
+    copy_html = view |> element("#system-copy") |> render()
+    assert copy_html =~ ~s|data-copy="J150321"|
+    assert copy_html =~ "Copy J150321"
+    refute copy_html =~ "disabled"
+
+    for id <- ["#system-container", "#notes", "#signatures", "#chain-map", "#grid-stack"] do
+      assert has_element?(view, id)
+    end
+
+    assert Mapping.get_system!(system.id).name == "J150321"
+  end
+
+  test "adding a note leaves signatures untouched", %{conn: conn, character: character} do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, _sig} = Mapping.create_signature(system, %{sig_id: "ABC-123"}, character)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    view
+    |> element("#system-container button", "J150321")
+    |> render_click()
+
+    view
+    |> element(~s|#notes form[phx-submit="comment-submit"]|)
+    |> render_submit(%{comment: "scouted"})
+
+    html = render(view)
+    assert html =~ "scouted"
+    assert html =~ "1 notes"
+    assert html =~ "ABC-123"
+  end
+
   test "map-layout rearranges the tree", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/dashboard/User")
 

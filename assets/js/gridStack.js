@@ -58,13 +58,45 @@ function destroyGrid() {
     }
 }
 
-// LiveView re-renders the dashboard subtree and drops attributes it did not
-// render (gridstack's CSS vars and item inline styles), so re-apply the grid
-// state after each update. Skips nodes mid-drag/resize so a patch never
-// yanks a widget out from under the pointer.
+function itemSignature(el) {
+    return Array.from(el.querySelectorAll(':scope > .grid-stack-item'))
+        .map((n) => n.id + '|' + n.getAttribute('gs-x') + ',' + n.getAttribute('gs-y') + ',' + n.getAttribute('gs-w') + ',' + n.getAttribute('gs-h'))
+        .join(';');
+}
+
+// Content-only patch (selection, signatures, notes): re-assert node
+// attributes morphdom may have wiped, without re-laying out the engine.
+function touchGrid(el) {
+    const grid = el && el.gridstack
+    if (!grid || !grid.engine) return
+
+    grid.engine.nodes.forEach((node) => {
+        if (!node || !node.el || node._moving || node._resizing) return
+        if (typeof grid._writeAttr === 'function') {
+            grid._writeAttr(node.el, node)
+        }
+    })
+
+    if (typeof grid._updateContainerHeight === 'function') grid._updateContainerHeight()
+    syncLock(el)
+}
+
+// LiveView re-renders the dashboard subtree on every patch (selection,
+// signatures, notes) and morphdom drops attributes it did not render
+// (gridstack's CSS vars and item inline styles), so re-apply the grid
+// state after each update. Full engine refresh is only needed when the
+// widget set itself changed (e.g. settings toggled); content-only patches
+// get a light touch so the whole grid doesn't visibly re-layout/flash.
 function refreshGrid(el) {
     const grid = el && el.gridstack
     if (!grid || !grid.engine) return
+
+    const sig = itemSignature(el)
+    if (el._gridSig === sig) {
+        touchGrid(el)
+        return
+    }
+    el._gridSig = sig
 
     if (typeof grid._updateColumnVar === 'function') {
         grid._updateColumnVar()

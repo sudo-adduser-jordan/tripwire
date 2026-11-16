@@ -18,14 +18,12 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
      |> assign_new(:comment_body, fn -> "" end)}
   end
 
-  def handle_event("comment-update", %{"value" => value}, socket) do
-    {:noreply, assign(socket, :comment_body, value)}
-  end
+  def handle_event("comment-submit", params, socket) do
+    body = params |> Map.get("comment", "") |> to_string() |> String.trim()
 
-  def handle_event("comment-submit", _params, socket) do
     with system_id when not is_nil(system_id) <- socket.assigns.selected_system_id,
          system when not is_nil(system) <- Mapping.get_system(system_id),
-         body when body != "" <- String.trim(socket.assigns.comment_body || ""),
+         true <- body != "",
          {:ok, _} <- Mapping.create_comment(system, %{body: body}, socket.assigns.character) do
       send(self(), {:comments_updated, system_id})
 
@@ -35,7 +33,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
        |> assign(:comments, Mapping.list_comments(system_id))}
     else
       nil -> {:noreply, put_flash(socket, :error, "Select a system first")}
-      "" -> {:noreply, put_flash(socket, :error, "Comment cannot be empty")}
+      false -> {:noreply, put_flash(socket, :error, "Comment cannot be empty")}
       {:error, changeset} -> {:noreply, put_flash(socket, :error, changeset_errors(changeset))}
     end
   end
@@ -56,17 +54,23 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
             <p class="px-1 text-lg font-semibold">Notes</p>
             <span class="ml-auto text-xs opacity-60">{length(@comments)} notes</span>
           </li>
-          <li class="flex gap-2 p-2">
-            <input
-              class="input input-sm w-full"
-              placeholder="Add a note for the selected system"
-              phx-change="comment-update"
+          <li>
+            <form
+              phx-submit="comment-submit"
               phx-target={@myself}
-              value={@comment_body}
-            />
-            <button class="btn btn-primary btn-sm" phx-click="comment-submit" phx-target={@myself}>
-              <.icon name="hero-plus" class="size-4" />
-            </button>
+              class="flex gap-2 p-2"
+            >
+              <input
+                name="comment"
+                class="input input-sm w-full"
+                placeholder="Add a note for the selected system"
+                value={@comment_body}
+                autocomplete="off"
+              />
+              <button type="submit" class="btn btn-primary btn-sm">
+                <.icon name="hero-plus" class="size-4" />
+              </button>
+            </form>
           </li>
         </ul>
         <div class="min-h-0 w-full flex-1 overflow-y-auto p-3 text-sm leading-6 sm:p-4">

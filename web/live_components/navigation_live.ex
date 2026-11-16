@@ -6,6 +6,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
   attr :masks, :list, default: []
   attr :tq_online, :boolean, default: false
   attr :tq_players, :any, default: nil
+  attr :selected_system_name, :any, default: nil
   attr :current_system_name, :any, default: nil
   attr :character_online, :any, default: nil
   attr :ship_name, :any, default: nil
@@ -45,21 +46,22 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
         <p class="tabular-nums" title="EVE time (UTC)">{format_time(@topbar_now)}</p>
         <p class="flex items-center">|</p>
         <div
+          id="topbar-system"
           class="hover:cursor-pointer hover:underline place-content-center px-2 text-center"
           title={if @character_online == false, do: "Character offline"}
         >
-          {@current_system_name || "Jita"}
+          {@selected_system_name || @current_system_name || "Jita"}
         </div>
         <div :if={@ship_name} class="hidden text-xs opacity-60 min-[400px]:block max-w-32 truncate">
           {@ship_name}
         </div>
         <div class="hidden min-[400px]:flex items-center">&gt;</div>
         <form
-          phx-change="system-search"
           phx-submit="system-search-submit"
           class="hidden min-[400px]:block"
         >
           <input
+            id="system-search"
             name="search"
             value={@system_search}
             class="mx-1 h-8 w-36 rounded bg-base-100 px-2 py-1 sm:w-44"

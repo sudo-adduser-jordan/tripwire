@@ -32,6 +32,7 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:systems, Mapping.list_systems(map.id))
      |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
      |> assign(:selected_system_id, nil)
+     |> assign(:selected_system_name, nil)
      |> assign(:signatures, [])
      |> assign(:comments, [])
      |> assign(:paste_open, false)
@@ -85,6 +86,7 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply,
      socket
      |> assign(:selected_system_id, system_id)
+     |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
      |> assign(:signatures, Mapping.list_signatures(system_id))
      |> assign(:comments, Mapping.list_comments(system_id))
      |> assign(:undo, [])
@@ -179,10 +181,6 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply, update(socket, :grid_locked, &(!&1))}
   end
 
-  def handle_event("system-search", %{"search" => search}, socket) do
-    {:noreply, assign(socket, :system_search, search)}
-  end
-
   def handle_event("system-search-submit", %{"search" => search}, socket) do
     trimmed = String.trim(search || "")
 
@@ -197,6 +195,7 @@ defmodule TripwireWeb.DashboardLive do
       {:noreply,
        socket
        |> assign(:selected_system_id, system.id)
+       |> assign(:selected_system_name, system.name)
        |> assign(:signatures, Mapping.list_signatures(system.id))
        |> assign(:comments, Mapping.list_comments(system.id))
        |> assign(:undo, [])
@@ -219,6 +218,7 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply,
      socket
      |> assign(:selected_system_id, system_id)
+     |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
      |> assign(:signatures, Mapping.list_signatures(system_id))
      |> assign(:comments, Mapping.list_comments(system_id))
      |> assign(:undo, [])
@@ -374,6 +374,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:systems, Mapping.list_systems(map.id))
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
     |> assign(:selected_system_id, nil)
+    |> assign(:selected_system_name, nil)
     |> assign(:signatures, [])
     |> assign(:comments, [])
     |> assign(:paste_open, false)
@@ -416,6 +417,13 @@ defmodule TripwireWeb.DashboardLive do
 
   defp selected_system(%{assigns: %{selected_system_id: id}}) do
     Mapping.get_system(id)
+  end
+
+  defp selected_system_name(systems, id) do
+    case Enum.find(systems, &(&1.id == id)) do
+      %{name: name} -> name
+      nil -> nil
+    end
   end
 
   defp reload_signatures(socket) do

@@ -5,6 +5,7 @@ import { hooks as colocatedHooks } from "phoenix-colocated/tripwire"
 import topbar from "../vendor/topbar"
 import mapDrag, { ChartMount } from "./mapDrag"
 import GridWidget from "./gridWidget"
+import CopyText from "./copyText"
 
 const GridStack = {
     mounted() {
@@ -49,6 +50,7 @@ const hooks = {
     ChartMount: ChartMount,
     GridStack: GridStack,
     GridWidget: GridWidget,
+    CopyText: CopyText,
 }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
