@@ -141,6 +141,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
           <table class="widget-table table table-xs w-full">
             <thead class="sticky top-0 z-10 bg-base-100">
               <tr>
+                <th class="p-1"></th>
                 <th class="p-1 text-center text-xs">ID</th>
                 <th class="p-1 text-center text-xs">Type</th>
                 <th class="p-1 text-center text-xs">Name</th>
@@ -150,6 +151,9 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
             </thead>
             <tbody class="text-center">
               <tr :for={sig <- @signatures} id={"signature-#{sig.id}"}>
+                <td class="text-center">
+                  <.icon name={site_icon(sig)} class={["size-4", site_icon_class(sig)]} />
+                </td>
                 <td class="text-center">
                   <button
                     class="font-mono link link-hover"
@@ -161,10 +165,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                   </button>
                 </td>
                 <td class="text-center">
-                  <span class={["badge badge-xs gap-1", site_badge(sig)]}>
-                    <.icon name={site_icon(sig)} class={["size-3.5", site_icon_class(sig)]} />
-                    {site_label(sig)}
-                  </span>
+                  <span class={["badge badge-xs", site_badge(sig)]}>{site_label(sig)}</span>
                 </td>
                 <td class="cell-truncate text-center">
               <a
@@ -201,7 +202,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                 </td>
               </tr>
               <tr :if={@signatures == []}>
-                <td colspan="5" class="py-4 text-center text-sm opacity-50">
+                <td colspan="6" class="py-4 text-center text-sm opacity-50">
                   No signatures yet. Click Add or paste scan results anywhere.
                 </td>
               </tr>
