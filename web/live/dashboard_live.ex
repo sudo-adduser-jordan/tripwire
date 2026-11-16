@@ -295,9 +295,9 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("map-layout", %{"layout" => "default"}, socket) do
+    socket = socket |> assign(:map_layout, "default") |> apply_tree_layout("top")
     {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
-
-    {:noreply, socket |> assign(:map_layout, "default") |> push_event("reset-pan", %{x: x, y: y})}
+    {:noreply, push_event(socket, "reset-pan", %{x: x, y: y})}
   end
 
   def handle_event("map-layout", %{"layout" => layout}, socket)
@@ -306,6 +306,14 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("map-layout", _params, socket), do: {:noreply, socket}
+
+  def handle_event("toggle-row-guides", _params, socket) do
+    {:noreply, update(socket, :show_row_guides, &(!&1))}
+  end
+
+  def handle_event("toggle-row-counts", _params, socket) do
+    {:noreply, update(socket, :show_row_counts, &(!&1))}
+  end
 
   def handle_event("global-paste", params, socket) do
     text = Map.get(params, "text", "") |> to_string()
@@ -950,6 +958,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:stale_ids, [])
     |> assign(:stale_system_id, nil)
     |> assign(:settings_open, false)
+    |> assign(:settings_tab, "account")
     |> assign(:map_layout, "default")
     |> assign(:undo, [])
     |> assign(:redo, [])
@@ -1096,6 +1105,8 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:topbar_now, DateTime.utc_now())
     |> assign(:grid_locked, true)
     |> assign(:system_search, "")
+    |> assign(:show_row_guides, false)
+    |> assign(:show_row_counts, false)
     |> assign(:sso_configured?, false)
     |> assign(:conn_modal_open, false)
     |> assign(:conn_edit_id, nil)

@@ -75,6 +75,8 @@
       <.settings_live
         :if={@settings_open}
         map_layout={@map_layout}
+        show_row_guides={@show_row_guides}
+        show_row_counts={@show_row_counts}
         settings_tab={@settings_tab}
         characters={@characters}
         masks={@masks}
@@ -114,6 +116,8 @@
         systems={@systems}
         connections={@connections}
         selected_system_id={@selected_system_id}
+        show_row_guides={@show_row_guides}
+        show_row_counts={@show_row_counts}
         map_name={if @map, do: @map.name, else: "Demo"}
       />
     </div>

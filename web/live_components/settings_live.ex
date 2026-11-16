@@ -7,6 +7,8 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   alias TripwireWeb.LiveComponents.Settings.WidgetsLive
 
   attr :map_layout, :string, default: "default"
+  attr :show_row_guides, :boolean, default: false
+  attr :show_row_counts, :boolean, default: false
   attr :settings_tab, :string, default: "account"
   attr :characters, :list, default: []
   attr :masks, :list, default: []
@@ -40,7 +42,12 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
             character={@character}
             mask={@mask}
           />
-          <MapLive.settings_map_live map_layout={@map_layout} settings_tab={@settings_tab} />
+          <MapLive.settings_map_live
+            map_layout={@map_layout}
+            settings_tab={@settings_tab}
+            show_row_guides={@show_row_guides}
+            show_row_counts={@show_row_counts}
+          />
           <WidgetsLive.settings_widgets_live settings_tab={@settings_tab} />
           <ThemesLive.settings_themes_live settings_tab={@settings_tab} />
         </div>

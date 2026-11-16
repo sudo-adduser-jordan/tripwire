@@ -18,7 +18,9 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign(:systems, systems)
      |> assign(:connections, connections)
      |> assign_new(:pan_x, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 0) end)
-     |> assign_new(:pan_y, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 1) end)}
+     |> assign_new(:pan_y, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 1) end)
+     |> assign_new(:show_row_guides, fn -> false end)
+     |> assign_new(:show_row_counts, fn -> false end)}
   end
 
   def handle_event("select-system", %{"id" => id}, socket) do
@@ -182,14 +184,35 @@ defmodule TripwireWeb.LiveComponents.MapLive do
             phx-hook="MapDrag"
             data-selected={@selected_system_id}
           >
-            <g id="map-edges">
+            <g id="map-guides">
               <line
+                :for={{cy, _} <- row_groups(@systems)}
+                :if={@show_row_guides}
+                x1="0"
+                x2="1000"
+                y1={cy}
+                y2={cy}
+                class="stroke-base-content/20"
+                stroke-width="1"
+                stroke-dasharray="2 3"
+              />
+              <text
+                :for={{cy, count} <- row_counts(@systems)}
+                :if={@show_row_counts}
+                x="8"
+                y={cy - 8}
+                text-anchor="start"
+                class="fill-base-content/60 text-[10px]"
+              >
+                {count}
+              </text>
+            </g>
+            <g id="map-edges">
+              <path
                 :for={{conn, from, to} <- @connections}
                 id={"connection-#{conn.id}"}
-                x1={from.x + 60}
-                y1={from.y + 44}
-                x2={to.x + 60}
-                y2={to.y + 44}
+                d={edge_path(from, to)}
+                fill="none"
                 stroke-dasharray={if conn.time_status == "eol", do: "4"}
                 class={edge_class(conn)}
               />
@@ -268,6 +291,27 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   defp edge_class(%{time_status: "eol"}), do: "stroke-error stroke-1"
   defp edge_class(%{mass_status: "critical"}), do: "stroke-warning stroke-1"
   defp edge_class(_), do: "stroke-base-content/60 stroke-1"
+
+  defp edge_path(from, to) do
+    x1 = from.x + 60
+    y1 = from.y + 44
+    x2 = to.x + 60
+    y2 = to.y + 44
+
+    cond do
+      x1 == x2 and y1 == y2 -> "M #{x1} #{y1}"
+      abs(y2 - y1) >= abs(x2 - x1) -> "M #{x1} #{y1} V #{(y1 + y2) / 2} H #{x2} V #{y2}"
+      true -> "M #{x1} #{y1} H #{(x1 + x2) / 2} V #{y2} H #{x2}"
+    end
+  end
+
+  defp row_groups(systems) do
+    systems |> Enum.group_by(&(&1.y + 44)) |> Enum.sort_by(&elem(&1, 0))
+  end
+
+  defp row_counts(systems) do
+    Enum.map(row_groups(systems), fn {cy, members} -> {cy, length(members)} end)
+  end
 
   defp node_class(system), do: Tripwire.Systems.display_class(system)
 

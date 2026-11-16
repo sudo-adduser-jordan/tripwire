@@ -89,7 +89,10 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> render_click()
 
     assert_push_event(view, "reset-pan", %{x: 0, y: 0})
-    assert Mapping.get_system!(system.id).x == 120.0
+
+    reloaded = Mapping.get_system!(system.id)
+    assert reloaded.x == 460.0
+    assert reloaded.y == 60.0
   end
 
   test "mounts with session character and provisions a personal map", %{
@@ -278,7 +281,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element("#chain-zoom-reset")
     |> render_click()
 
-    assert_push_event(view, "reset-pan", %{x: 0, y: -40.0})
+    assert_push_event(view, "reset-pan", %{x: 0, y: 0})
   end
 
   test "header lock button renders locked and toggles client-side", %{
@@ -508,6 +511,69 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert container =~ "J150321"
     assert container =~ "J150322"
     refute container =~ "J150323"
+  end
+
+  test "default layout arranges the tree from the top", %{conn: conn, character: character} do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, other} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 0.0, y: 300.0})
+
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    view
+    |> element("#settings-button")
+    |> render_click()
+
+    view
+    |> element(~s|#settings-widget form[phx-change="map-layout"]|)
+    |> render_change(%{"layout" => "default"})
+
+    assert Mapping.get_system!(system.id).y == 60.0
+    assert Mapping.get_system!(other.id).y == 220.0
+  end
+
+  test "connections render as orthogonal paths", %{conn: conn, character: character} do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, other} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 200.0})
+
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
+
+    {:ok, _view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    assert html =~ "<path"
+    assert html =~ "M 60.0 44.0 H 210.0 V 244.0 H 360.0"
+  end
+
+  test "row guides and counts outline systems per row", %{conn: conn, character: character} do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, other} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 0.0})
+
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    view
+    |> element("#settings-button")
+    |> render_click()
+
+    view
+    |> element("#toggle-row-guides")
+    |> render_click()
+
+    view
+    |> element("#toggle-row-counts")
+    |> render_click()
+
+    html = render(view)
+    assert html =~ ~s|x1="0"|
+    assert html =~ ~r/<text[^>]*>\s*2\s*<\/text>/
   end
 
   test "top bar renders ESI fallbacks and grid lock toggles", %{conn: conn} do

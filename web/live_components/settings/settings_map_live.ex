@@ -3,6 +3,8 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
 
   attr :settings_tab, :string, default: "account"
   attr :map_layout, :string, default: "default"
+  attr :show_row_guides, :boolean, default: false
+  attr :show_row_counts, :boolean, default: false
 
   def settings_map_live(assigns) do
     ~H"""
@@ -43,6 +45,26 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
           <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Show Node Signatures</p>
           <input type="checkbox" checked="checked" class="toggle toggle-neutral toggle-sm" />
+        </div>
+        <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Show Row Guides</p>
+          <input
+            id="toggle-row-guides"
+            type="checkbox"
+            checked={@show_row_guides}
+            phx-click="toggle-row-guides"
+            class="toggle toggle-primary toggle-sm"
+          />
+        </div>
+        <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Show Row Counts</p>
+          <input
+            id="toggle-row-counts"
+            type="checkbox"
+            checked={@show_row_counts}
+            phx-click="toggle-row-counts"
+            class="toggle toggle-secondary toggle-sm"
+          />
         </div>
 
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
