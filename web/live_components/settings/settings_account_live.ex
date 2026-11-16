@@ -5,6 +5,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
   attr :characters, :list, default: []
   attr :masks, :list, default: []
   attr :character, :any, default: nil
+  attr :mask, :any, default: nil
 
   def settings_account_live(assigns) do
     ~H"""
@@ -18,47 +19,121 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
       phx-value-tab="account"
     />
     <div class="tab-content w-full max-w-full overflow-hidden p-3 sm:p-4">
-      <div class="flex min-h-0 w-full max-w-full flex-col gap-2 overflow-hidden">
+      <div class="flex min-h-0 w-full max-w-full flex-col gap-3 overflow-hidden">
         <div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <p class="text-sm font-semibold">Account</p>
-          <p :if={@character} class="truncate text-xs opacity-60">
+          <p :if={@character && @character.last_login_at} class="truncate text-xs opacity-60">
             Last login: {@character.last_login_at}
           </p>
         </div>
-        <p class="text-xs font-medium opacity-70">Characters</p>
-        <div class="grid w-full max-w-full grid-cols-2 gap-2 sm:grid-cols-3">
-          <div :for={character <- @characters} class="stats shadow min-w-0" tabindex="0">
-            <div class="stat min-w-0 gap-1 p-2">
-              <div class="avatar avatar-offline">
-                <div class="w-10 rounded-xl">
-                  <img src="/images/alliance-default.png" alt="" />
-                </div>
-              </div>
-              <div class="truncate text-sm font-semibold">{character.name}</div>
-              <div class="truncate text-xs opacity-70">
-                {character.corporation_name || "Corporation"}
-              </div>
-            </div>
-          </div>
-          <p :if={@characters == []} class="text-xs opacity-50">No characters yet</p>
+
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-xs font-medium opacity-70">Characters</p>
+          <span class="badge badge-ghost badge-xs tabular-nums">{length(@characters)}</span>
         </div>
-        <p class="text-xs font-medium opacity-70">Masks</p>
-        <div class="grid w-full max-w-full grid-cols-2 gap-2">
-          <div :for={mask <- @masks} class="stats shadow min-w-0" tabindex="0">
+        <div class="grid w-full max-w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <div
+            :for={entry <- @characters}
+            class={[
+              "stats shadow min-w-0",
+              current_character?(@character, entry) && "outline outline-primary"
+            ]}
+            tabindex="0"
+          >
             <div class="stat min-w-0 gap-1 p-2">
-              <div class="avatar avatar-offline">
+              <div class={[
+                "avatar",
+                (current_character?(@character, entry) && "avatar-online") || "avatar-offline"
+              ]}>
                 <div class="w-10 rounded-xl">
-                  <img src="/images/alliance-default.png" alt="" />
+                  <img
+                    src={portrait(entry)}
+                    onerror="this.onerror=null;this.src='/images/alliance-default.png'"
+                    alt=""
+                    loading="lazy"
+                  />
                 </div>
               </div>
-              <div class="truncate text-sm font-semibold">{mask.name}</div>
-              <div class="truncate text-xs opacity-70">{mask.kind}</div>
+              <div class="truncate text-sm font-semibold">{entry.name}</div>
+              <div class="truncate text-xs opacity-70">{corporation(entry)}</div>
+              <div class="flex min-w-0 flex-row flex-wrap gap-1">
+                <div :if={entry.alliance_name} class="badge badge-info badge-xs truncate max-w-full">
+                  {entry.alliance_name}
+                </div>
+                <div
+                  :if={current_character?(@character, entry)}
+                  class="badge badge-success badge-xs"
+                >
+                  Current
+                </div>
+              </div>
             </div>
           </div>
-          <p :if={@masks == []} class="text-xs opacity-50">No masks yet</p>
+          <div :if={@characters == []} class="rounded-box bg-base-200/50 p-3 text-xs opacity-60">
+            No characters yet. Log in with EVE SSO to add one.
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-xs font-medium opacity-70">Masks</p>
+          <span class="badge badge-ghost badge-xs tabular-nums">{length(@masks)}</span>
+        </div>
+        <div class="grid w-full max-w-full grid-cols-1 gap-2 sm:grid-cols-2">
+          <div
+            :for={entry <- @masks}
+            class={["stats shadow min-w-0", current_mask?(@mask, entry) && "outline outline-primary"]}
+            tabindex="0"
+          >
+            <div class="stat min-w-0 gap-1 p-2">
+              <div class={[
+                "avatar",
+                (current_mask?(@mask, entry) && "avatar-online") || "avatar-offline"
+              ]}>
+                <div class="w-10 rounded-xl">
+                  <img src="/images/alliance-default.png" alt="" loading="lazy" />
+                </div>
+              </div>
+              <div class="truncate text-sm font-semibold">{entry.name}</div>
+              <div class="truncate text-xs opacity-70 capitalize">{entry.kind || "custom"}</div>
+              <div class="flex min-w-0 flex-row flex-wrap gap-1">
+                <div class={["badge badge-xs", mask_badge(entry.kind)]}>{entry.kind || "custom"}</div>
+                <div :if={current_mask?(@mask, entry)} class="badge badge-success badge-xs">
+                  Current
+                </div>
+              </div>
+            </div>
+          </div>
+          <div :if={@masks == []} class="rounded-box bg-base-200/50 p-3 text-xs opacity-60">
+            No masks yet. Masks are created automatically for each character.
+          </div>
         </div>
       </div>
     </div>
     """
   end
+
+  defp current_character?(%{id: id}, %{id: other_id}), do: id == other_id
+  defp current_character?(_, _), do: false
+
+  defp current_mask?(%{id: id}, %{id: other_id}), do: id == other_id
+  defp current_mask?(_, _), do: false
+
+  defp portrait(%{eve_id: eve_id}) when is_integer(eve_id) and eve_id > 0,
+    do: "https://images.evetech.net/characters/#{eve_id}/portrait?size=64"
+
+  defp portrait(_), do: "/images/alliance-default.png"
+
+  defp corporation(%{corporation_name: name}) when is_binary(name) and name != "",
+    do: name
+
+  defp corporation(%{corporation_id: id}) when is_integer(id),
+    do: "Corp #{id}"
+
+  defp corporation(_), do: "Unknown corporation"
+
+  defp mask_badge("personal"), do: "badge-info"
+  defp mask_badge("demo"), do: "badge-warning"
+  defp mask_badge("corporation"), do: "badge-success"
+  defp mask_badge("alliance"), do: "badge-accent"
+  defp mask_badge(_), do: "badge-neutral"
 end

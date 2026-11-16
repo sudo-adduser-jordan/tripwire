@@ -11,6 +11,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   attr :characters, :list, default: []
   attr :masks, :list, default: []
   attr :character, :any, default: nil
+  attr :mask, :any, default: nil
 
   def settings_live(assigns) do
     ~H"""
@@ -33,6 +34,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
             characters={@characters}
             masks={@masks}
             character={@character}
+            mask={@mask}
           />
           <MapLive.settings_map_live map_layout={@map_layout} settings_tab={@settings_tab} />
           <WidgetsLive.settings_widgets_live settings_tab={@settings_tab} />
