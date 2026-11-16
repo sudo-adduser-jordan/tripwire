@@ -54,7 +54,7 @@ defmodule Tripwire.Markdown do
     lines
     |> Enum.map(&classify_line/1)
     |> Enum.chunk_by(&elem(&1, 0))
-    |> Enum.reject(fn [{kind, _} | _] -> kind == :blank end)
+    |> Enum.reject(fn [head | _] -> elem(head, 0) == :blank end)
   end
 
   defp classify_line(""), do: {:blank, ""}
@@ -64,13 +64,26 @@ defmodule Tripwire.Markdown do
 
   defp classify_line(line) do
     cond do
-      Regex.match?(~r/^\s*([-*+]|\d+\.)\s+\S/, line) -> {:list, line}
-      true -> {:text, line}
+      match = Regex.run(~r/^(\#{1,6})\s+(.*)$/, line) ->
+        [_, hashes, rest] = match
+        {:header, String.length(hashes), rest}
+
+      Regex.match?(~r/^\s*([-*+]|\d+\.)\s+\S/, line) ->
+        {:list, line}
+
+      true ->
+        {:text, line}
     end
   end
 
   defp render_block([{:fence, line} | _]) do
     line
+  end
+
+  defp render_block([{:header, _, _} | _] = items) do
+    Enum.map_join(items, "", fn {:header, level, text} ->
+      "<h#{level}>#{inline(text)}</h#{level}>"
+    end)
   end
 
   defp render_block([{:quote, _} | _] = items) do

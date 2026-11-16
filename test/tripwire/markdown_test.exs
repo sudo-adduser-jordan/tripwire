@@ -30,6 +30,14 @@ defmodule Tripwire.MarkdownTest do
              ~s(<p>see <a href="https://example.com" rel="noopener noreferrer" target="_blank">https://example.com</a>.</p>)
   end
 
+  test "to_html/1 renders headers" do
+    assert Markdown.to_html("# Title") == "<h1>Title</h1>"
+    assert Markdown.to_html("## Sub") == "<h2>Sub</h2>"
+    assert Markdown.to_html("###### Tiny") == "<h6>Tiny</h6>"
+    assert Markdown.to_html("#nospace") == "<p>#nospace</p>"
+    assert Markdown.to_html("####### Too many") == "<p>####### Too many</p>"
+  end
+
   test "to_html/1 renders quotes and lists" do
     assert Markdown.to_html("> watch this") == "<blockquote>watch this</blockquote>"
 

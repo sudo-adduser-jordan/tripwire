@@ -634,6 +634,10 @@ defmodule Tripwire.Mapping do
   __underline__
   ~~strike~~
   `code`
+  # Header 1
+  ## Header 2
+  ### Header 3
+  [EVE University](https://wiki.eveuniversity.org)
   """
 
   @demo_links [
