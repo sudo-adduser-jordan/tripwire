@@ -48,6 +48,17 @@ defmodule Tripwire.MarkdownTest do
              "<ol><li>one</li><li>two</li></ol>"
   end
 
+  test "to_html/1 renders kbd tags with the daisy component" do
+    assert Markdown.to_html("<kbd>Ctrl</kbd> + <kbd>V</kbd>") ==
+             ~s(<p><kbd class="kbd kbd-sm">Ctrl</kbd> + <kbd class="kbd kbd-sm">V</kbd></p>)
+
+    assert Markdown.to_html("<kbd><script></kbd>") ==
+             "<p><kbd class=\"kbd kbd-sm\">&lt;script&gt;</kbd></p>"
+
+    assert Markdown.to_html("<kbd>**bold**</kbd>") ==
+             ~s(<p><kbd class="kbd kbd-sm">**bold**</kbd></p>)
+  end
+
   test "to_html/1 escapes hostile input" do
     assert Markdown.to_html("<script>alert(1)</script>") ==
              "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>"

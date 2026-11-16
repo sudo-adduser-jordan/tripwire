@@ -72,7 +72,7 @@ defmodule Tripwire.MappingTest do
 
     assert [%{body: first_body}, %{body: second_body}] = Mapping.list_comments(home.id)
     assert first_body =~ "# Shortcuts"
-    assert first_body =~ "`Ctrl+V`"
+    assert first_body =~ "<kbd>Ctrl</kbd>"
     assert second_body =~ "**Bold**"
   end
 

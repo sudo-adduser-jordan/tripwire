@@ -137,10 +137,20 @@ defmodule Tripwire.Markdown do
   end
 
   defp extract_tokens(text) do
+    {text, kbds} = extract_kbd(text)
     {text, links} = extract_md_links(text)
     {text, autos} = extract_autolinks(text)
     {text, codes} = extract_inline_code(text)
-    {text, %{links: links, autos: autos, codes: codes}}
+    {text, %{kbds: kbds, links: links, autos: autos, codes: codes}}
+  end
+
+  defp extract_kbd(text) do
+    Regex.scan(~r/&lt;kbd&gt;(.*?)&lt;\/kbd&gt;/si, text)
+    |> Enum.reduce({text, %{}}, fn [full, keys], {t, acc} ->
+      token = "\0K#{map_size(acc)}\0"
+      html = ~s(<kbd class="kbd kbd-sm">#{keys}</kbd>)
+      {String.replace(t, full, token, global: false), Map.put(acc, token, html)}
+    end)
   end
 
   defp extract_md_links(text) do
@@ -209,10 +219,10 @@ defmodule Tripwire.Markdown do
     |> String.replace(~r/_([^_\n]+)_/, "<em>\\1</em>")
   end
 
-  defp restore_tokens(text, %{links: links, autos: autos}) do
-    store = Map.merge(links, autos)
+  defp restore_tokens(text, %{kbds: kbds, links: links, autos: autos}) do
+    store = Map.merge(kbds, links) |> Map.merge(autos)
 
-    Regex.replace(~r/\0[LA](\d+)\0/, text, fn token, _ ->
+    Regex.replace(~r/\0[KLA](\d+)\0/, text, fn token, _ ->
       case Map.fetch(store, token) do
         {:ok, html} -> html
         :error -> token

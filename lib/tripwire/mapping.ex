@@ -631,9 +631,9 @@ defmodule Tripwire.Mapping do
   @demo_shortcuts """
   # Shortcuts
 
-  - `Ctrl+V` anywhere — paste probe scans
-  - `Escape` — close settings
-  - `Enter` in Search — jump to a system
+  - <kbd>Ctrl</kbd> + <kbd>V</kbd> anywhere — paste probe scans
+  - <kbd>Escape</kbd> — close settings
+  - <kbd>Enter</kbd> in Search — jump to a system
   """
 
   @demo_note """
