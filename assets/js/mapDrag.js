@@ -1,5 +1,5 @@
 const DRAG_THRESHOLD = 4
-const FREE_LIMIT = 800
+const FREE_LIMIT = 5000
 const VIEW_W = 1000
 const VIEW_H = 700
 const PAD_Y = 40
@@ -118,6 +118,12 @@ const MapDrag = {
 
 const ChartMount = {
   mounted() {
+    this._initChart()
+  },
+  updated() {
+    this._initChart()
+  },
+  _initChart() {
     const name = this.el.dataset.chartFn
     const init = name && window.TripwireCharts && window.TripwireCharts[name]
     if (typeof init === "function") init()

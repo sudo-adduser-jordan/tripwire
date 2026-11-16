@@ -137,9 +137,6 @@ defmodule Tripwire.Tracking do
     end
   end
 
-  # ViewBox is 1000x700 and nodes are 120x88, so origins clamp to 880x612.
-  @map_max_x 880.0
-  @map_max_y 612.0
   @map_center %{x: 460.0, y: 300.0}
   @placement_radius 170.0
 
@@ -154,16 +151,14 @@ defmodule Tripwire.Tracking do
         angle = :math.pi() * (3 - :math.sqrt(5)) * count
 
         %{
-          x: clamp(x * 1.0 + @placement_radius * :math.cos(angle), @map_max_x),
-          y: clamp(y * 1.0 + @placement_radius * :math.sin(angle), @map_max_y)
+          x: x * 1.0 + @placement_radius * :math.cos(angle),
+          y: y * 1.0 + @placement_radius * :math.sin(angle)
         }
 
       _ ->
         @map_center
     end
   end
-
-  defp clamp(value, max), do: value |> max(0.0) |> min(max)
 
   defp fetch_system_info(solar_system_id) do
     case ESI.get_system(solar_system_id) do

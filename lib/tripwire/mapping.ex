@@ -45,11 +45,7 @@ defmodule Tripwire.Mapping do
     |> Enum.map(fn conn -> {conn, conn.from_system, conn.to_system} end)
   end
 
-  # ViewBox is 1000x700 and nodes are 120x88, so origins clamp to 880x612.
-  @layout_max_x 880.0
-  @layout_max_y 612.0
-
-  @pan_free_limit 800
+  @pan_free_limit 5000
   @pan_pad_y 40
 
   @doc """
@@ -115,13 +111,12 @@ defmodule Tripwire.Mapping do
     |> depth_layers(connections)
     |> Enum.flat_map(fn {depth, members} ->
       n = length(members)
-      radius = if depth == 0 and n == 1, do: 0.0, else: min(150.0 * max(depth, 1), 330.0)
+      radius = if depth == 0 and n == 1, do: 0.0, else: 150.0 * max(depth, 1)
 
       Enum.with_index(members, fn id, i ->
         angle = 2 * :math.pi() * i / max(n, 1) + depth * 0.5
 
-        {id,
-         {clamp_x(460.0 + radius * :math.cos(angle)), clamp_y(325.0 + radius * :math.sin(angle))}}
+        {id, {460.0 + radius * :math.cos(angle), 325.0 + radius * :math.sin(angle)}}
       end)
     end)
     |> Elixir.Map.new(fn {id, {x, y}} -> {id, %{x: x, y: y}} end)
@@ -180,21 +175,18 @@ defmodule Tripwire.Mapping do
 
     case orientation do
       "up" ->
-        {clamp_x(460.0 + (i - mid) * 150.0), clamp_y(590.0 - depth * 160.0)}
+        {460.0 + (i - mid) * 150.0, 590.0 - depth * 160.0}
 
       "left" ->
-        {clamp_x(860.0 - depth * 170.0), clamp_y(325.0 + (i - mid) * 120.0)}
+        {860.0 - depth * 170.0, 325.0 + (i - mid) * 120.0}
 
       "right" ->
-        {clamp_x(60.0 + depth * 170.0), clamp_y(325.0 + (i - mid) * 120.0)}
+        {60.0 + depth * 170.0, 325.0 + (i - mid) * 120.0}
 
       _ ->
-        {clamp_x(460.0 + (i - mid) * 150.0), clamp_y(60.0 + depth * 160.0)}
+        {460.0 + (i - mid) * 150.0, 60.0 + depth * 160.0}
     end
   end
-
-  defp clamp_x(value), do: value |> max(0.0) |> min(@layout_max_x)
-  defp clamp_y(value), do: value |> max(0.0) |> min(@layout_max_y)
 
   @doc """
   Finds a connection between two systems in either direction and updates it,
