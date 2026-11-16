@@ -122,13 +122,16 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
               >
                 <.icon name="hero-arrow-uturn-right" class="size-5" />
               </button>
+              <span class="ml-auto text-xs tabular-nums opacity-60">
+                {length(@signatures)} signatures
+              </span>
               <span
                 :if={Map.get(assigns, :selected_system_name)}
-                class="badge badge-primary badge-sm ml-auto"
+                class="badge badge-primary badge-sm"
               >
                 {Map.get(assigns, :selected_system_name)}
               </span>
-              <span :if={!Map.get(assigns, :selected_system_name)} class="ml-auto text-xs opacity-60">
+              <span :if={!Map.get(assigns, :selected_system_name)} class="text-xs opacity-60">
                 {system_label(@selected_system_id)}
               </span>
             </li>

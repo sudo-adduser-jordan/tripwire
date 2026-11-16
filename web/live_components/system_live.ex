@@ -132,7 +132,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
             </button>
             <span :if={@systems == []} class="p-1 text-sm opacity-50">No systems on map yet</span>
           </div>
-          <.chart_legend chart_hidden={@chart_hidden} />
+          <.chart_range_buttons chart_range={@chart_range} />
           <div
             id="system-chart"
             phx-hook="ChartMount"
@@ -146,23 +146,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
             class="min-h-0 w-full flex-1"
           >
           </div>
-          <div
-            class="flex items-center justify-center gap-1 p-2 pb-1"
-            role="group"
-            aria-label="Chart time range"
-          >
-            <button
-              :for={range <- ["week", "48h", "24h"]}
-              phx-click="chart-range"
-              phx-value-range={range}
-              class={
-                "btn btn-xs " <>
-                  (if @chart_range == range, do: "btn-primary", else: "btn-ghost")
-              }
-            >
-              {range_label(range)}
-            </button>
-          </div>
+          <.chart_legend chart_hidden={@chart_hidden} />
         </div>
       </div>
     </div>
@@ -173,11 +157,35 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
   defp range_label("48h"), do: "48H"
   defp range_label(_), do: "24H"
 
+  attr :chart_range, :string, default: "24h"
+
+  defp chart_range_buttons(assigns) do
+    ~H"""
+    <div
+      class="flex items-center justify-center gap-1 px-2 pt-1"
+      role="group"
+      aria-label="Chart time range"
+    >
+      <button
+        :for={range <- ["week", "48h", "24h"]}
+        phx-click="chart-range"
+        phx-value-range={range}
+        class={
+          "btn btn-xs " <>
+            (if @chart_range == range, do: "btn-primary", else: "btn-ghost")
+        }
+      >
+        {range_label(range)}
+      </button>
+    </div>
+    """
+  end
+
   attr :chart_hidden, :any, default: nil
 
   defp chart_legend(assigns) do
     ~H"""
-    <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-2 pt-1 text-[11px]">
+    <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-2 pt-1 pb-1 text-[11px]">
       <.legend_toggle
         series="jumps"
         label="Jumps"
