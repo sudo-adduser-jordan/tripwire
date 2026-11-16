@@ -205,10 +205,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               <line
                 :for={{conn, from, to} <- @connections}
                 id={"connection-#{conn.id}"}
-                x1={from.x + 50}
-                y1={from.y + 36}
-                x2={to.x + 50}
-                y2={to.y + 36}
+                x1={from.x + 60}
+                y1={from.y + 44}
+                x2={to.x + 60}
+                y2={to.y + 44}
                 stroke-dasharray={if conn.time_status == "eol", do: "4"}
                 class={edge_class(conn)}
               />
@@ -225,8 +225,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 phx-target={@myself}
               >
                 <rect
-                  width="100"
-                  height="72"
+                  width="120"
+                  height="88"
                   rx="8"
                   stroke={node_stroke(system, @selected_system_id)}
                   class={
@@ -238,8 +238,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   stroke-dasharray={if system.locked, do: "4"}
                 />
                 <text
-                  x="50"
-                  y="17"
+                  x="60"
+                  y="20"
                   text-anchor="middle"
                   fill={node_color(system)}
                   class="text-sm font-semibold tracking-wider"
@@ -247,10 +247,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   {node_class(system)}
                 </text>
                 <text
-                  x="50"
-                  y="40"
+                  x="60"
+                  y="46"
                   text-anchor="middle"
-                  textLength="92"
+                  textLength="104"
                   lengthAdjust="spacingAndGlyphs"
                   class="fill-base-content text-sm font-bold cursor-pointer hover:underline"
                   phx-click="open-system"
@@ -260,8 +260,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   {system.alias || system.name}
                 </text>
                 <text
-                  x="50"
-                  y="61"
+                  x="60"
+                  y="70"
                   text-anchor="middle"
                   class="fill-base-content/60 text-xs"
                 >

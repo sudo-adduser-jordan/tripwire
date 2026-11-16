@@ -33,8 +33,8 @@ const MapDrag = {
         const dy = pt.y - this.start.y
         this.dragged = Math.hypot(dx, dy) > DRAG_THRESHOLD
       }
-      const x = Math.max(0, Math.min(pt.x - this.offset.x, 900))
-      const y = Math.max(0, Math.min(pt.y - this.offset.y, 628))
+      const x = Math.max(0, Math.min(pt.x - this.offset.x, 880))
+      const y = Math.max(0, Math.min(pt.y - this.offset.y, 612))
       this.selected.setAttribute("transform", `translate(${x}, ${y})`)
       ev.preventDefault()
     }

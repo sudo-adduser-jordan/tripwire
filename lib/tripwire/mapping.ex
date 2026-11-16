@@ -45,9 +45,9 @@ defmodule Tripwire.Mapping do
     |> Enum.map(fn conn -> {conn, conn.from_system, conn.to_system} end)
   end
 
-  # ViewBox is 1000x700 and nodes are 100x72, so origins clamp to 900x628.
-  @layout_max_x 900.0
-  @layout_max_y 628.0
+  # ViewBox is 1000x700 and nodes are 120x88, so origins clamp to 880x612.
+  @layout_max_x 880.0
+  @layout_max_y 612.0
 
   @doc """
   Groups system ids into `{depth, [id]}` layers, sorted by depth. Depths
