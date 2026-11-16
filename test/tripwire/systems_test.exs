@@ -20,6 +20,19 @@ defmodule Tripwire.SystemsTest do
     assert Systems.display_class(%{}) == nil
   end
 
+  test "color/1 mirrors official Tripwire class colors" do
+    assert Systems.color(%{sys_class: "C3", security: nil}) == "#4399F0"
+    assert Systems.color(%{sys_class: "C6", security: nil}) == "#4399F0"
+    assert Systems.color(%{sys_class: nil, security: 0.9}) == "#50D25A"
+    assert Systems.color(%{sys_class: nil, security: 0.2}) == "#F5B544"
+    assert Systems.color(%{sys_class: nil, security: 0.0}) == "#FF4747"
+    assert Systems.color(%{sys_class: nil, security: -1.0}) == "#6b7280"
+  end
+
+  test "classes/0 lists every assignable class" do
+    assert Systems.classes() == ~w(C1 C2 C3 C4 C5 C6 HS LS NS)
+  end
+
   test "attrs_from_esi/1 keeps name and security" do
     assert Systems.attrs_from_esi(%{"name" => "Jita", "security_status" => 0.9}) == %{
              name: "Jita",

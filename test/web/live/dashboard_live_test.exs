@@ -308,6 +308,141 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert name_pos < hole_pos
   end
 
+  test "nodes are color coded by system class", %{conn: conn, character: character} do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, _} = Mapping.update_system(system, %{sys_class: "C3"})
+
+    {:ok, other} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 200.0})
+
+    {:ok, _link, _new?} =
+      Mapping.upsert_connection(map.id, system.id, other.id, %{hole_type: "K162"})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    view
+    |> element("#system-container button", "J150322")
+    |> render_click()
+
+    html = render(view)
+    assert html =~ "chain-map"
+    assert html =~ ~s|stroke="#4399F0"|
+    assert html =~ ~s|fill="#4399F0"|
+  end
+
+  test "clicking a node's J-code opens the system editor and saves changes", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    refute render(view) =~ "sys-modal"
+
+    view
+    |> element("#chain-map text[phx-click='open-system']", "J150321")
+    |> render_click()
+
+    assert render(view) =~ "sys-modal"
+    assert render(view) =~ "Edit System"
+
+    view
+    |> element("#sys-modal form[phx-submit='update-system']")
+    |> render_submit(%{
+      "system" => %{"alias" => "Home", "sys_class" => "C3", "locked" => "true"}
+    })
+
+    refute render(view) =~ "sys-modal"
+
+    reloaded = Mapping.get_system!(system.id)
+    assert reloaded.alias == "Home"
+    assert reloaded.sys_class == "C3"
+    assert reloaded.locked
+  end
+
+  test "system editor rejects an unknown class and keeps the modal open", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    view
+    |> element("#chain-map text[phx-click='open-system']", "J150321")
+    |> render_click()
+
+    html =
+      view
+      |> element("#sys-modal form[phx-submit='update-system']")
+      |> render_submit(%{"system" => %{"alias" => "", "sys_class" => "C9"}})
+
+    assert html =~ "sys-modal"
+    assert html =~ "sys_class"
+    assert Mapping.get_system!(system.id).sys_class == nil
+  end
+
+  test "clicking the star favorites the system and turns all stars yellow", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    view
+    |> element("#system-container button", "J150321")
+    |> render_click()
+
+    refute render(view) =~ "hero-star-solid"
+
+    view
+    |> element("#system-favorite")
+    |> render_click()
+
+    html = render(view)
+    assert html =~ "hero-star-solid"
+    assert html =~ "text-amber-400"
+    assert Mapping.get_system!(system.id).favorite
+
+    view
+    |> element("#show-favorite")
+    |> render_click()
+
+    html = render(view)
+    refute html =~ "hero-star-solid"
+    refute Mapping.get_system!(system.id).favorite
+  end
+
+  test "signature types render color coded badges", %{conn: conn, character: character} do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, _} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "ABC-123", kind: "signature", site_type: "wormhole"},
+        character
+      )
+
+    {:ok, _} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "DEF-456", kind: "signature", site_type: "combat"},
+        character
+      )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    view
+    |> element("#system-container button", "J150321")
+    |> render_click()
+
+    html = render(view)
+    assert html =~ "badge-info"
+    assert html =~ "badge-error"
+  end
+
   test "top bar renders ESI fallbacks and grid lock toggles", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/dashboard/User")
 

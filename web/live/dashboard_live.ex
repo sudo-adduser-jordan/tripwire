@@ -120,19 +120,18 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_info({:select_system, system_id}, socket) do
+    {:noreply, select_system(socket, system_id)}
+  end
+
+  def handle_info({:open_system, system_id}, socket) do
     {:noreply,
      socket
-     |> assign(:selected_system_id, system_id)
-     |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
-     |> assign(:signatures, Mapping.list_signatures(system_id))
-     |> assign(:comments, Mapping.list_comments(system_id))
-     |> assign(:flares, Mapping.list_flares(system_id))
-     |> assign(:system_stat, Mapping.get_system_stat(system_id))
-     |> assign(:stale_ids, [])
-     |> assign(:stale_system_id, nil)
-     |> assign(:undo, [])
-     |> assign(:redo, [])
-     |> assign(:sys_form, sys_form_for(socket.assigns.systems, system_id))}
+     |> select_system(system_id)
+     |> open_system_modal(system_id)}
+  end
+
+  def handle_info(:toggle_favorite, socket) do
+    {:noreply, toggle_favorite(socket)}
   end
 
   def handle_info({:open_connection, conn_id}, socket) do
@@ -289,21 +288,11 @@ defmodule TripwireWeb.DashboardLive do
   def handle_event("settings-tab", _params, socket), do: {:noreply, socket}
 
   def handle_event("select-system", %{"id" => id}, socket) do
-    system_id = String.to_integer(id)
+    {:noreply, select_system(socket, String.to_integer(id))}
+  end
 
-    {:noreply,
-     socket
-     |> assign(:selected_system_id, system_id)
-     |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
-     |> assign(:signatures, Mapping.list_signatures(system_id))
-     |> assign(:comments, Mapping.list_comments(system_id))
-     |> assign(:flares, Mapping.list_flares(system_id))
-     |> assign(:system_stat, Mapping.get_system_stat(system_id))
-     |> assign(:stale_ids, [])
-     |> assign(:stale_system_id, nil)
-     |> assign(:undo, [])
-     |> assign(:redo, [])
-     |> assign(:sys_form, sys_form_for(socket.assigns.systems, system_id))}
+  def handle_event("toggle-favorite", _params, socket) do
+    {:noreply, toggle_favorite(socket)}
   end
 
   def handle_event("move-system", %{"id" => id, "x" => x, "y" => y}, socket) do
@@ -525,14 +514,23 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
+  def handle_event("close-sys-modal", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:sys_modal_open, false)
+     |> assign(:sys_edit_id, nil)
+     |> assign(:sys_errors, [])}
+  end
+
   def handle_event("update-system", %{"system" => params}, socket) do
-    case selected_system(socket) do
+    case socket.assigns.sys_edit_id && Mapping.get_system(socket.assigns.sys_edit_id) do
       nil ->
-        {:noreply, put_flash(socket, :error, "Select a system first")}
+        {:noreply, put_flash(socket, :error, "No system selected")}
 
       system ->
         attrs = %{
           alias: present(params["alias"]),
+          sys_class: present(params["sys_class"]),
           locked: params["locked"] in ["true", "on", true]
         }
 
@@ -541,11 +539,13 @@ defmodule TripwireWeb.DashboardLive do
             {:noreply,
              socket
              |> assign(:systems, Mapping.list_systems(socket.assigns.map.id))
-             |> assign(:sys_form, %{"alias" => attrs.alias || "", "locked" => attrs.locked})
+             |> assign(:sys_modal_open, false)
+             |> assign(:sys_edit_id, nil)
+             |> assign(:sys_errors, [])
              |> put_flash(:info, "System updated")}
 
           {:error, changeset} ->
-            {:noreply, flash_changeset_errors(socket, changeset)}
+            {:noreply, assign(socket, :sys_errors, changeset_errors(changeset))}
         end
     end
   end
@@ -566,6 +566,9 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:selected_system_name, nil)
          |> assign(:signatures, [])
          |> assign(:comments, [])
+         |> assign(:sys_modal_open, false)
+         |> assign(:sys_edit_id, nil)
+         |> assign(:sys_errors, [])
          |> put_flash(:info, "System removed")}
     end
   end
@@ -1045,10 +1048,52 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
+  defp select_system(socket, system_id) do
+    socket
+    |> assign(:selected_system_id, system_id)
+    |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
+    |> assign(:signatures, Mapping.list_signatures(system_id))
+    |> assign(:comments, Mapping.list_comments(system_id))
+    |> assign(:flares, Mapping.list_flares(system_id))
+    |> assign(:system_stat, Mapping.get_system_stat(system_id))
+    |> assign(:stale_ids, [])
+    |> assign(:stale_system_id, nil)
+    |> assign(:undo, [])
+    |> assign(:redo, [])
+    |> assign(:sys_form, sys_form_for(socket.assigns.systems, system_id))
+  end
+
+  defp open_system_modal(socket, system_id) do
+    socket
+    |> assign(:sys_modal_open, true)
+    |> assign(:sys_edit_id, system_id)
+    |> assign(:sys_errors, [])
+    |> assign(:sys_form, sys_form_for(socket.assigns.systems, system_id))
+  end
+
+  defp toggle_favorite(socket) do
+    case selected_system(socket) do
+      nil ->
+        put_flash(socket, :error, "Select a system first")
+
+      system ->
+        case Mapping.update_system(system, %{favorite: !system.favorite}) do
+          {:ok, _} ->
+            assign(socket, :systems, Mapping.list_systems(socket.assigns.map.id))
+
+          {:error, changeset} ->
+            flash_changeset_errors(socket, changeset)
+        end
+    end
+  end
+
   defp sys_form_for(systems, id) do
     case Enum.find(systems, &(&1.id == id)) do
-      %{alias: alias_, locked: locked} -> %{"alias" => alias_ || "", "locked" => locked || false}
-      _ -> %{"alias" => "", "locked" => false}
+      %{alias: alias_, locked: locked, sys_class: sys_class} ->
+        %{"alias" => alias_ || "", "sys_class" => sys_class || "", "locked" => locked || false}
+
+      _ ->
+        %{"alias" => "", "sys_class" => "", "locked" => false}
     end
   end
 
@@ -1095,7 +1140,10 @@ defmodule TripwireWeb.DashboardLive do
       "ship_size" => ""
     })
     |> assign(:conn_errors, [])
-    |> assign(:sys_form, %{"alias" => "", "locked" => false})
+    |> assign(:sys_form, %{"alias" => "", "sys_class" => "", "locked" => false})
+    |> assign(:sys_modal_open, false)
+    |> assign(:sys_edit_id, nil)
+    |> assign(:sys_errors, [])
     |> assign(:occupants, [])
     |> assign(:flares, [])
     |> assign(:system_stat, nil)

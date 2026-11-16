@@ -591,6 +591,7 @@ defmodule Tripwire.Mapping do
       name: "J150321",
       alias: "Home",
       sys_class: "C2",
+      favorite: true,
       x: 120.0,
       y: 120.0
     },

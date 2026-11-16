@@ -99,6 +99,70 @@
     </div>
   </div>
 
+  <div :if={@sys_modal_open} id="sys-modal" class="modal modal-open">
+    <div class="modal-box">
+      <h3 class="text-lg font-bold">Edit System</h3>
+      <p class="font-mono text-sm opacity-60">{selected_system_name(@systems, @sys_edit_id)}</p>
+      <p :if={@sys_errors != []} class="alert alert-error mt-2 py-2 text-sm">
+        {Enum.join(@sys_errors, ", ")}
+      </p>
+      <form phx-submit="update-system" class="mt-3 flex flex-col gap-3">
+        <label class="form-control">
+          <span class="label label-text">Alias</span>
+          <input
+            name="system[alias]"
+            value={@sys_form["alias"]}
+            placeholder="Blank shows the J-code"
+            autocomplete="off"
+            class="input input-bordered input-sm w-full"
+          />
+        </label>
+        <label class="form-control">
+          <span class="label label-text">Class</span>
+          <select name="system[sys_class]" class="select select-bordered select-sm w-full">
+            <option value="" selected={@sys_form["sys_class"] in [nil, ""]}>
+              Auto (from security)
+            </option>
+            <option
+              :for={opt <- Tripwire.Systems.classes()}
+              value={opt}
+              selected={@sys_form["sys_class"] == opt}
+            >
+              {opt}
+            </option>
+          </select>
+        </label>
+        <label class="label cursor-pointer justify-start gap-2">
+          <input
+            type="checkbox"
+            name="system[locked]"
+            value="true"
+            checked={@sys_form["locked"]}
+            class="checkbox checkbox-sm"
+          />
+          <span class="label-text">Lock position</span>
+        </label>
+        <div class="modal-action justify-between">
+          <button
+            type="button"
+            class="btn btn-error btn-sm"
+            phx-click="delete-system"
+            data-confirm="Remove this system from the map?"
+          >
+            Delete
+          </button>
+          <div class="flex gap-2">
+            <button type="button" class="btn btn-sm" phx-click="close-sys-modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-backdrop">
+      <button type="button" phx-click="close-sys-modal">Close</button>
+    </div>
+  </div>
+
   <div :if={@conn_modal_open} id="conn-modal" class="modal modal-open">
     <div class="modal-box">
       <h3 class="text-lg font-bold">Edit Connection</h3>

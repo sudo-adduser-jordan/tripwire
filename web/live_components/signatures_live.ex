@@ -157,7 +157,9 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                     {sig.sig_id}
                   </button>
                 </td>
-                <td class="text-center">{site_label(sig)}</td>
+                <td class="text-center">
+                  <span class={["badge badge-xs", site_badge(sig)]}>{site_label(sig)}</span>
+                </td>
                 <td class="cell-truncate text-center">{sig.type_name || "-"}</td>
                 <td class="text-center tabular-nums">{format_life_left(sig)}</td>
                 <td class="text-center">
@@ -209,6 +211,15 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
     do: String.capitalize(type)
 
   defp site_label(sig), do: kind_label(sig)
+
+  defp site_badge(%{kind: "anomaly"}), do: "badge-neutral"
+  defp site_badge(%{site_type: "wormhole"}), do: "badge-info"
+  defp site_badge(%{site_type: "combat"}), do: "badge-error"
+  defp site_badge(%{site_type: "data"}), do: "badge-warning"
+  defp site_badge(%{site_type: "relic"}), do: "badge-secondary"
+  defp site_badge(%{site_type: "ore"}), do: "badge-accent"
+  defp site_badge(%{site_type: "gas"}), do: "badge-success"
+  defp site_badge(_), do: "badge-ghost"
 
   defp format_life_left(%{inserted_at: inserted_at, life_length: life_length}) do
     seconds =

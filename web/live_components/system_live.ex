@@ -21,6 +21,11 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
     {:noreply, socket}
   end
 
+  def handle_event("toggle-favorite", _params, socket) do
+    send(self(), :toggle_favorite)
+    {:noreply, socket}
+  end
+
   def render(assigns) do
     ~H"""
     <div
@@ -61,7 +66,26 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
                   />
                 </svg>
               </button>
-              <.icon name="hero-star" class="size-5 opacity-60" />
+              <button
+                id="system-favorite"
+                class="btn btn-ghost btn-xs p-1"
+                title="Add/remove selected system from favorites"
+                phx-click="toggle-favorite"
+                phx-target={@myself}
+              >
+                <.icon
+                  name={
+                    if selected_favorite?(@systems, @selected_system_id),
+                      do: "hero-star-solid",
+                      else: "hero-star"
+                  }
+                  class={
+                    if selected_favorite?(@systems, @selected_system_id),
+                      do: "size-5 text-amber-400",
+                      else: "size-5 opacity-60"
+                  }
+                />
+              </button>
               <span class="ml-auto text-xs opacity-60">
                 {length(@systems)} systems
               </span>
@@ -91,6 +115,13 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
       </div>
     </div>
     """
+  end
+
+  defp selected_favorite?(systems, id) do
+    case Enum.find(systems, &(&1.id == id)) do
+      %{favorite: true} -> true
+      _ -> false
+    end
   end
 
   defp selected_name(_systems, nil), do: nil

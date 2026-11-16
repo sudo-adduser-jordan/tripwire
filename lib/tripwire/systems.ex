@@ -11,7 +11,31 @@ defmodule Tripwire.Systems do
   (ESI `security_status`) on each map system. The security fallback only
   applies to known-space (`security >= 0`); wormhole systems without a
   known class render a blank class line instead of being mislabeled `NS`.
+
+  Node colors mirror official Tripwire: wormhole classes render blue,
+  highsec green, lowsec amber, and nullsec red.
   """
+
+  @classes ~w(C1 C2 C3 C4 C5 C6 HS LS NS)
+
+  @colors %{
+    "C1" => "#4399F0",
+    "C2" => "#4399F0",
+    "C3" => "#4399F0",
+    "C4" => "#4399F0",
+    "C5" => "#4399F0",
+    "C6" => "#4399F0",
+    "HS" => "#50D25A",
+    "LS" => "#F5B544",
+    "NS" => "#FF4747"
+  }
+
+  @unknown_color "#6b7280"
+
+  @doc """
+  Returns the class labels a system can be assigned by hand.
+  """
+  def classes, do: @classes
 
   @doc """
   Returns the class label for a map system (`"C3"`, `"HS"`, `"LS"`,
@@ -22,6 +46,12 @@ defmodule Tripwire.Systems do
   def display_class(%{security: security}) when is_number(security) and security > 0.0, do: "LS"
   def display_class(%{security: security}) when is_number(security) and security >= 0.0, do: "NS"
   def display_class(_), do: nil
+
+  @doc """
+  Returns the node accent color (hex) for a map system, keyed by its
+  display class. Unknown classes fall back to a neutral gray.
+  """
+  def color(system), do: Map.get(@colors, display_class(system), @unknown_color)
 
   @doc """
   Builds system attributes from an ESI `GET /universe/systems/{id}/`

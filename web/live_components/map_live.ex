@@ -38,6 +38,16 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     end
   end
 
+  def handle_event("open-system", %{"id" => id}, socket) do
+    send(self(), {:open_system, String.to_integer(id)})
+    {:noreply, socket}
+  end
+
+  def handle_event("toggle-favorite", _params, socket) do
+    send(self(), :toggle_favorite)
+    {:noreply, socket}
+  end
+
   def handle_event("open-connection", %{"id" => id}, socket) do
     send(self(), {:open_connection, String.to_integer(id)})
     {:noreply, socket}
@@ -113,11 +123,31 @@ defmodule TripwireWeb.LiveComponents.MapLive do
             <button
               id="show-favorite"
               class="btn btn-ghost btn-xs"
+              title="Add/remove selected system from favorites"
+              phx-click="toggle-favorite"
+              phx-target={@myself}
+            >
+              <.icon
+                name={
+                  if selected_favorite?(@systems, @selected_system_id),
+                    do: "hero-star-solid",
+                    else: "hero-star"
+                }
+                class={
+                  if selected_favorite?(@systems, @selected_system_id),
+                    do: "size-4 text-amber-400",
+                    else: "size-4"
+                }
+              />
+            </button>
+            <button
+              id="toggle-lock"
+              class="btn btn-ghost btn-xs"
               title="Lock/unlock selected system"
               phx-click="toggle-lock"
               phx-target={@myself}
             >
-              <.icon name="hero-star" class="size-4" />
+              <.icon name="hero-lock-closed" class="size-4" />
             </button>
             <details id="show-chainLegend" class="dropdown">
               <summary
@@ -130,6 +160,15 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 <p><span class="badge badge-outline badge-xs">—</span> Stable</p>
                 <p><span class="badge badge-error badge-xs">- -</span> End of Life</p>
                 <p><span class="badge badge-warning badge-xs">—</span> Mass Critical</p>
+                <p class="mt-1 font-semibold">System class</p>
+                <p :for={cls <- Tripwire.Systems.classes()} class="flex items-center gap-1">
+                  <span
+                    class="inline-block size-2.5 rounded-sm"
+                    style={"background-color: #{Tripwire.Systems.color(%{sys_class: cls})}"}
+                  >
+                  </span>
+                  {cls}
+                </p>
               </div>
             </details>
             <span class="ml-auto text-xs tabular-nums opacity-60">
@@ -189,10 +228,11 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   width="100"
                   height="72"
                   rx="8"
+                  stroke={node_stroke(system, @selected_system_id)}
                   class={
                     if system.id == @selected_system_id,
                       do: "fill-primary/30 stroke-primary",
-                      else: "fill-base-200/75 stroke-base-content/40"
+                      else: "fill-base-200/75"
                   }
                   stroke-width="2"
                   stroke-dasharray={if system.locked, do: "4"}
@@ -201,7 +241,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   x="50"
                   y="16"
                   text-anchor="middle"
-                  class="fill-base-content text-[11px] font-semibold tracking-wider"
+                  fill={node_color(system)}
+                  class="text-[11px] font-semibold tracking-wider"
                 >
                   {node_class(system)}
                 </text>
@@ -211,7 +252,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   text-anchor="middle"
                   textLength="92"
                   lengthAdjust="spacingAndGlyphs"
-                  class="fill-base-content text-sm font-bold"
+                  class="fill-base-content text-sm font-bold cursor-pointer hover:underline"
+                  phx-click="open-system"
+                  phx-value-id={system.id}
+                  phx-target={@myself}
                 >
                   {system.alias || system.name}
                 </text>
@@ -248,6 +292,18 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   defp edge_class(_), do: "stroke-base-content/60 stroke-1"
 
   defp node_class(system), do: Tripwire.Systems.display_class(system)
+
+  defp node_color(system), do: Tripwire.Systems.color(system)
+
+  defp node_stroke(system, selected_id) when system.id == selected_id, do: nil
+  defp node_stroke(system, _selected_id), do: node_color(system)
+
+  defp selected_favorite?(systems, id) do
+    case Enum.find(systems, &(&1.id == id)) do
+      %{favorite: true} -> true
+      _ -> false
+    end
+  end
 
   defp incoming_type(connections, system_id) do
     case Enum.find(connections, fn {_conn, from, to} ->
