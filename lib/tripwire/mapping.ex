@@ -628,6 +628,24 @@ defmodule Tripwire.Mapping do
     %{solar_system_id: 31_000_005, name: "J150325", sys_class: "C6", x: 480.0, y: 470.0}
   ]
 
+  @demo_note """
+  **Bold** *italic* and _italic_ __underline__ ~~strike~~ `code`
+
+  > scanned chain, watch the N968
+
+  - check static
+  - roll when crit
+
+  1. bookmark in
+  2. bookmark out
+
+  [EVE University](https://wiki.eveuniversity.org)
+
+  ```
+  K162 ABC-123
+  ```
+  """
+
   @demo_links [
     {0, 1, "C247", "stable", "stable"},
     {1, 2, "K162", "destab", "stable"},
@@ -732,6 +750,7 @@ defmodule Tripwire.Mapping do
       end
 
     ensure_demo_signatures(systems)
+    ensure_demo_notes(systems, mask_id)
 
     {:ok, get_map!(map.id)}
   end
@@ -749,6 +768,20 @@ defmodule Tripwire.Mapping do
         end)
       end
     end)
+  end
+
+  defp ensure_demo_notes(systems, mask_id) do
+    case systems |> Enum.sort_by(& &1.id) |> List.first() do
+      nil ->
+        :ok
+
+      system ->
+        if list_comments(system.id) == [] do
+          {:ok, _} = create_comment(system, %{body: @demo_note, mask_id: mask_id})
+        end
+
+        :ok
+    end
   end
 
   defp merge_attrs(attrs, extra), do: Elixir.Map.merge(attrs, extra)

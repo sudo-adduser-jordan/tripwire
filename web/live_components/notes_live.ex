@@ -108,7 +108,9 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
             id={"comment-#{comment.id}"}
             class="mb-2 rounded bg-base-200/50 p-2"
           >
-            <p class="whitespace-pre-wrap">{comment.body}</p>
+            <div class="markdown space-y-1 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/40 [&_blockquote]:pl-2 [&_blockquote]:opacity-70 [&_code]:rounded [&_code]:bg-black/30 [&_code]:px-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-black/30 [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-5">
+              {Phoenix.HTML.raw(Tripwire.Markdown.to_html(comment.body))}
+            </div>
             <div class="mt-1 flex items-center justify-between text-xs opacity-60">
               <span>{comment.character && comment.character.name}</span>
               <button

@@ -67,6 +67,12 @@ defmodule Tripwire.MappingTest do
            ]
 
     assert hd(Mapping.list_systems(fresh.id)).alias == "Home"
+
+    [home | _] = Mapping.list_systems(fresh.id)
+
+    assert [%{body: body}] = Mapping.list_comments(home.id)
+    assert body =~ "**Bold**"
+    assert body =~ "[EVE University](https://wiki.eveuniversity.org)"
   end
 
   test "delete_map_full/1 removes systems, connections, and signatures", %{mask: mask} do
