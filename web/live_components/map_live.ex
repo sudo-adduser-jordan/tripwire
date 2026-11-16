@@ -263,7 +263,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   x="50"
                   y="61"
                   text-anchor="middle"
-                  class="fill-base-content/60 text-[10px]"
+                  class="fill-base-content/60 text-xs"
                 >
                   {incoming_type(@connections, system.id)}
                 </text>
