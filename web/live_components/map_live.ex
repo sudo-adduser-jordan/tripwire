@@ -166,10 +166,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               <line
                 :for={{conn, from, to} <- @connections}
                 id={"connection-#{conn.id}"}
-                x1={from.x + 40}
-                y1={from.y + 30}
-                x2={to.x + 40}
-                y2={to.y + 30}
+                x1={from.x + 50}
+                y1={from.y + 36}
+                x2={to.x + 50}
+                y2={to.y + 36}
                 stroke-dasharray={if conn.time_status == "eol", do: "4"}
                 class={edge_class(conn)}
               />
@@ -186,8 +186,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 phx-target={@myself}
               >
                 <rect
-                  width="80"
-                  height="60"
+                  width="100"
+                  height="72"
                   rx="8"
                   class={
                     if system.id == @selected_system_id,
@@ -198,28 +198,28 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   stroke-dasharray={if system.locked, do: "4"}
                 />
                 <text
-                  x="40"
-                  y="15"
+                  x="50"
+                  y="16"
                   text-anchor="middle"
-                  class="fill-base-content/60 text-[10px]"
+                  class="fill-base-content text-[11px] font-semibold tracking-wider"
                 >
                   {node_class(system)}
                 </text>
                 <text
-                  x="40"
-                  y="36"
+                  x="50"
+                  y="40"
                   text-anchor="middle"
-                  textLength="72"
+                  textLength="92"
                   lengthAdjust="spacingAndGlyphs"
-                  class="fill-base-content text-xs"
+                  class="fill-base-content text-sm font-bold"
                 >
                   {system.alias || system.name}
                 </text>
                 <text
-                  x="40"
-                  y="52"
+                  x="50"
+                  y="61"
                   text-anchor="middle"
-                  textLength="72"
+                  textLength="92"
                   lengthAdjust="spacingAndGlyphs"
                   class="fill-base-content/60 text-[10px]"
                 >

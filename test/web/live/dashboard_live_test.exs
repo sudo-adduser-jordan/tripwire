@@ -283,6 +283,31 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "J150321"
   end
 
+  test "map nodes show class above name with hole type below", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, _} = Mapping.update_system(system, %{sys_class: "C3"})
+
+    {:ok, other} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 200.0})
+
+    {:ok, _link, _new?} =
+      Mapping.upsert_connection(map.id, system.id, other.id, %{hole_type: "K162"})
+
+    {:ok, _view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    [_, node_html] = String.split(html, ~s|<g id="node-#{system.id}"|, parts: 2)
+    node_html = String.slice(node_html, 0, 2000)
+
+    {class_pos, _} = :binary.match(node_html, "C3")
+    {name_pos, _} = :binary.match(node_html, "J150321")
+    {hole_pos, _} = :binary.match(node_html, "K162")
+    assert class_pos < name_pos
+    assert name_pos < hole_pos
+  end
+
   test "top bar renders ESI fallbacks and grid lock toggles", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/dashboard/User")
 

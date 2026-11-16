@@ -137,9 +137,9 @@ defmodule Tripwire.Tracking do
     end
   end
 
-  # ViewBox is 1000x700 and nodes are 80x60, so origins clamp to 920x640.
-  @map_max_x 920.0
-  @map_max_y 640.0
+  # ViewBox is 1000x700 and nodes are 100x72, so origins clamp to 900x628.
+  @map_max_x 900.0
+  @map_max_y 628.0
   @map_center %{x: 460.0, y: 300.0}
   @placement_radius 170.0
 
