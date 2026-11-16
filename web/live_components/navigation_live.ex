@@ -148,22 +148,6 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
             </li>
           </ul>
         </div>
-        <button
-          id="waypoint-button"
-          phx-click="set-waypoint"
-          title="Set ESI waypoint to selected system"
-          class="btn btn-ghost btn-xs"
-        >
-          WP
-        </button>
-        <button
-          id="occupants-button"
-          phx-click="refresh-occupants"
-          title="Refresh occupants"
-          class="btn btn-ghost btn-xs"
-        >
-          Occupants
-        </button>
       </nav>
     </nav>
     """
