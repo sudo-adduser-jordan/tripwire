@@ -1,9 +1,6 @@
 import * as echarts from 'echarts'
 
 let stackedChart = null
-let stackedChartEl = null
-let stackedChartObserver = null
-let stackedChartTries = 0
 
 const stackedChartOptions = {
     animationDurationUpdate: 100,
@@ -84,43 +81,14 @@ const stackedChartOptions = {
 
 function initSystemChart() {
     const dom = document.getElementById('system-chart')
-    if (!dom) return
+    if (!dom || stackedChart) return
 
-    // LiveView may replace the node across patches; drop a stale instance.
-    if (stackedChart && stackedChartEl && stackedChartEl !== dom) {
-        stackedChart.dispose()
-        stackedChart = null
-        stackedChartEl = null
-    }
-
-    // echarts renders nothing (grid top included) when initialized in a
-    // zero-size container, which is exactly the state on first load before
-    // GridStack reveals the grid. Wait for layout instead of init-once.
-    if (dom.clientWidth === 0 || dom.clientHeight === 0) {
-        if (stackedChartTries < 60) {
-            stackedChartTries += 1
-            requestAnimationFrame(() => initSystemChart())
-        }
-        return
-    }
-    stackedChartTries = 0
-
-    if (!stackedChart) {
-        stackedChart = echarts.init(dom)
-        stackedChartEl = dom
-        stackedChart.setOption(stackedChartOptions)
-
-        stackedChartObserver = new ResizeObserver(() => {
-            if (stackedChart) stackedChart.resize()
-        })
-        stackedChartObserver.observe(dom)
-        return
-    }
-
-    // Re-assert the option (grid top included) and size on every mount/update
-    // so the first visible paint is never stuck with the hidden-state layout.
+    stackedChart = echarts.init(dom)
     stackedChart.setOption(stackedChartOptions)
-    stackedChart.resize()
+
+    new ResizeObserver(() => {
+        if (stackedChart) stackedChart.resize()
+    }).observe(dom)
 }
 
 document.addEventListener('DOMContentLoaded', initSystemChart)

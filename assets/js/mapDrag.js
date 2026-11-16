@@ -118,12 +118,6 @@ const MapDrag = {
 
 const ChartMount = {
   mounted() {
-    this._initChart()
-  },
-  updated() {
-    this._initChart()
-  },
-  _initChart() {
     const name = this.el.dataset.chartFn
     const init = name && window.TripwireCharts && window.TripwireCharts[name]
     if (typeof init === "function") init()

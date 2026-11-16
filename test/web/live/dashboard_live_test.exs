@@ -543,19 +543,25 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
 
+    # first load applies the top tree layout: parent above child, vertical edge
     {:ok, _view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
 
     assert html =~ "<path"
-    assert html =~ "M 60.0 44.0 H 210.0 V 244.0 H 360.0"
+    assert html =~ "M 520.0 104.0 V 184.0 H 520.0 V 264.0"
   end
 
   test "row guides and counts outline systems per row", %{conn: conn, character: character} do
     {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
 
+    # fork: both children land on the same tree row, so one row counts 2
     {:ok, other} =
       Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 0.0})
 
+    {:ok, third} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323", x: 600.0, y: 0.0})
+
     {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, third.id)
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
 
