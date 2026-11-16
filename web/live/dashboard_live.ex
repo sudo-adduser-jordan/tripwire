@@ -27,7 +27,11 @@ defmodule TripwireWeb.DashboardLive do
 
   defp mount_demo(socket) do
     {:ok, character} =
-      Accounts.upsert_character(%{eve_id: @demo_character_eve_id, name: @demo_character_name})
+      Accounts.upsert_character(%{
+        eve_id: @demo_character_eve_id,
+        name: @demo_character_name,
+        is_admin: true
+      })
 
     {:ok, mask} = Masks.ensure_demo_mask()
     {:ok, _} = Masks.add_membership(mask, character)
@@ -272,8 +276,12 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("settings-tab", %{"tab" => tab}, socket)
-      when tab in ~w(account map widgets themes) do
-    {:noreply, assign(socket, :settings_tab, tab)}
+      when tab in ~w(account map widgets themes admin) do
+    if tab == "admin" and not admin?(socket) do
+      {:noreply, put_flash(socket, :error, "Admin access required")}
+    else
+      {:noreply, assign(socket, :settings_tab, tab)}
+    end
   end
 
   def handle_event("settings-tab", _params, socket), do: {:noreply, socket}
@@ -309,6 +317,96 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("toggle-angled-lines", _params, socket) do
     {:noreply, update(socket, :angled_lines, &(!&1))}
+  end
+
+  def handle_event("create-corp-mask", _params, socket) do
+    with true <- admin?(socket),
+         {:ok, mask} <- scoped_create_corp_mask(socket) do
+      {:noreply,
+       socket
+       |> assign(:masks, masks_for_admin(socket))
+       |> put_flash(:info, "Created #{mask.name}")}
+    else
+      false -> {:noreply, put_flash(socket, :error, "Admin access required")}
+      {:error, :forbidden} -> {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
+      {:error, :no_corporation} -> {:noreply, put_flash(socket, :error, "No corporation on file")}
+      {:error, changeset} -> {:noreply, flash_changeset_errors(socket, changeset)}
+    end
+  end
+
+  def handle_event("add-mask-member", params, socket) do
+    with true <- admin?(socket),
+         {:ok, mask} <- scoped_mask(socket, params["mask_id"]),
+         {:ok, member} <- scoped_upsert_member(params),
+         {:ok, _} <- Masks.add_membership(mask, member) do
+      {:noreply,
+       socket
+       |> assign(:masks, masks_for_admin(socket))
+       |> put_flash(:info, "Added #{member.name} to #{mask.name}")}
+    else
+      false -> {:noreply, put_flash(socket, :error, "Admin access required")}
+      {:error, :forbidden} -> {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
+      {:error, :not_found} -> {:noreply, put_flash(socket, :error, "Mask not found")}
+      {:error, changeset} -> {:noreply, flash_changeset_errors(socket, changeset)}
+    end
+  end
+
+  def handle_event("remove-mask-member", params, socket) do
+    with true <- admin?(socket),
+         {:ok, mask} <- scoped_mask(socket, params["mask_id"] || params["mask-id"]),
+         member when not is_nil(member) <-
+           Accounts.get_character(params["character_id"] || params["character-id"]),
+         true <- scoped_member?(socket, mask, member),
+         {:ok, _} <- Masks.remove_membership(mask, member) do
+      {:noreply,
+       socket
+       |> assign(:masks, masks_for_admin(socket))
+       |> put_flash(:info, "Removed #{member.name} from #{mask.name}")}
+    else
+      false -> {:noreply, put_flash(socket, :error, "Admin access required")}
+      nil -> {:noreply, put_flash(socket, :error, "Member not found")}
+      {:error, :forbidden} -> {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
+      {:error, :not_found} -> {:noreply, put_flash(socket, :error, "Mask not found")}
+    end
+  end
+
+  def handle_event("delete-mask", %{"id" => id}, socket) do
+    with true <- admin?(socket),
+         {:ok, mask} <- scoped_mask(socket, id),
+         {:ok, _} <- Masks.delete_mask_full(mask) do
+      remaining = masks_for_admin(socket) |> Enum.reject(&(&1.id == mask.id))
+
+      socket =
+        if socket.assigns.mask.id == mask.id do
+          next = List.first(remaining) || elem(Masks.ensure_demo_mask(), 1)
+
+          next_map =
+            case Mapping.list_maps_for_mask(next.id) do
+              [] -> elem(Mapping.create_map(%{name: "Home", mask_id: next.id}), 1)
+              [m | _] -> m
+            end
+
+          socket
+          |> assign(:mask, next)
+          |> assign(:masks, remaining)
+          |> assign(:map, next_map)
+          |> assign(:maps, Mapping.list_maps_for_mask(next.id))
+          |> assign(:systems, Mapping.list_systems(next_map.id))
+          |> assign(:connections, Mapping.list_connections_with_endpoints(next_map.id))
+          |> assign(:selected_system_id, nil)
+          |> assign(:selected_system_name, nil)
+          |> assign(:signatures, [])
+          |> assign(:comments, [])
+        else
+          assign(socket, masks: remaining)
+        end
+
+      {:noreply, put_flash(socket, :info, "Deleted #{mask.name}")}
+    else
+      false -> {:noreply, put_flash(socket, :error, "Admin access required")}
+      {:error, :forbidden} -> {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
+      {:error, :not_found} -> {:noreply, put_flash(socket, :error, "Mask not found")}
+    end
   end
 
   def handle_event("global-paste", params, socket) do
@@ -884,6 +982,63 @@ defmodule TripwireWeb.DashboardLive do
         {:noreply, put_flash(socket, :info, "Jump logged")}
     end
   end
+
+  defp admin?(%{assigns: %{character: %{is_admin: true}}}), do: true
+  defp admin?(_), do: false
+
+  defp demo?(%{assigns: %{demo?: true}}), do: true
+  defp demo?(_), do: false
+
+  defp masks_for_admin(socket) do
+    if demo?(socket) do
+      socket.assigns.masks
+    else
+      Masks.list_masks_for_character(socket.assigns.character.id)
+    end
+  end
+
+  # Demo admins may only touch demo-kind masks they belong to.
+  defp scoped_mask(socket, id) do
+    with {mask_id, ""} <- Integer.parse(to_string(id || "")),
+         %{} = mask <-
+           Enum.find(socket.assigns.masks, &(&1.id == mask_id)) ||
+             Tripwire.Repo.get(Tripwire.Masks.Mask, mask_id) do
+      if demo?(socket) and mask.kind != "demo" do
+        {:error, :forbidden}
+      else
+        {:ok, mask}
+      end
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
+  defp scoped_member?(socket, mask, member) do
+    if demo?(socket) do
+      mask.kind == "demo" and not is_nil(member)
+    else
+      not is_nil(member)
+    end
+  end
+
+  defp scoped_create_corp_mask(socket) do
+    if demo?(socket) do
+      {:error, :forbidden}
+    else
+      Masks.ensure_corporation_mask(socket.assigns.character)
+    end
+  end
+
+  defp scoped_upsert_member(%{"eve_id" => eve_id, "name" => name}) do
+    with {id, ""} <- Integer.parse(to_string(eve_id || "")),
+         trimmed when trimmed != "" <- String.trim(to_string(name || "")) do
+      Accounts.upsert_character(%{eve_id: id, name: trimmed})
+    else
+      _ -> {:error, %Ecto.Changeset{errors: [member: {"is invalid", []}], data: %{}, params: %{}}}
+    end
+  end
+
+  defp scoped_upsert_member(_), do: {:error, :forbidden}
 
   defp apply_tree_layout(%{assigns: %{map: map}} = socket, layout) when not is_nil(map) do
     positions = layout_positions(socket.assigns.systems, socket.assigns.connections, layout)

@@ -2,6 +2,7 @@ defmodule Tripwire.Masks do
   import Ecto.Query
 
   alias Tripwire.Accounts.Character
+  alias Tripwire.Mapping
   alias Tripwire.Masks.{Mask, MaskMembership}
   alias Tripwire.Repo
 
@@ -75,6 +76,19 @@ defmodule Tripwire.Masks do
   end
 
   def delete_mask(%Mask{} = mask), do: Repo.delete(mask)
+
+  @doc """
+  Hard-deletes a mask with all of its maps (systems, connections,
+  signatures, comments, flares, stats) and memberships.
+  """
+  def delete_mask_full(%Mask{id: mask_id} = mask) do
+    mask_id
+    |> Mapping.list_maps_for_mask()
+    |> Enum.each(&Mapping.delete_map_full/1)
+
+    Repo.delete_all(from(mm in MaskMembership, where: mm.mask_id == ^mask_id))
+    Repo.delete(mask)
+  end
 
   def remove_membership(%Mask{} = mask, %Character{} = character) do
     Repo.delete_all(

@@ -14,6 +14,7 @@ defmodule Tripwire.Accounts.Character do
     field :scopes, {:array, :string}, default: []
     field :refresh_token, EncryptedBinary
     field :last_login_at, :utc_datetime
+    field :is_admin, :boolean, default: false
 
     timestamps(type: :utc_datetime)
   end
@@ -29,7 +30,8 @@ defmodule Tripwire.Accounts.Character do
       :alliance_name,
       :scopes,
       :refresh_token,
-      :last_login_at
+      :last_login_at,
+      :is_admin
     ])
     |> validate_required([:eve_id, :name])
     |> unique_constraint(:eve_id)

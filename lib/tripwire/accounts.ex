@@ -40,6 +40,39 @@ defmodule Tripwire.Accounts do
     }
   end
 
+  @admin_roles ~w(CEO Director)
+  @admin_titles ["Tripwire Admin"]
+
+  @doc """
+  Returns true when ESI corp roles/titles grant Tripwire admin.
+  Mirrors official Tripwire: CEO, Director, or Tripwire Admin.
+  """
+  def admin_grant?(roles, titles) when is_list(roles) and is_list(titles) do
+    Enum.any?(roles, &(&1 in @admin_roles)) or Enum.any?(titles, &(&1 in @admin_titles))
+  end
+
+  @doc """
+  Checks ESI for admin corp roles/titles. Returns `{:ok, boolean}` and
+  never fails login — ESI errors resolve to `{:ok, false}`.
+  """
+  def esi_admin?(eve_id, access_token) do
+    roles =
+      case Tripwire.ESI.get_character_roles(eve_id, access_token) do
+        {:ok, %{"roles" => roles}} when is_list(roles) -> roles
+        _ -> []
+      end
+
+    titles =
+      case Tripwire.ESI.get_character_titles(eve_id, access_token) do
+        {:ok, titles} when is_list(titles) -> titles
+        _ -> []
+      end
+
+    {:ok, admin_grant?(roles, titles)}
+  rescue
+    _ -> {:ok, false}
+  end
+
   def upsert_character_from_ueberauth(%Ueberauth.Auth{} = auth) do
     auth |> attrs_from_ueberauth() |> upsert_character()
   end

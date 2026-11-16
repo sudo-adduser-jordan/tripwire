@@ -44,6 +44,23 @@ defmodule Tripwire.AccountsTest do
     assert length(Accounts.list_characters()) == 1
   end
 
+  test "upsert_character/1 defaults is_admin to false and persists grants" do
+    assert {:ok, character} = Accounts.upsert_character(@valid_attrs)
+    refute character.is_admin
+
+    assert {:ok, updated} = Accounts.upsert_character(%{eve_id: 1234, is_admin: true})
+    assert updated.id == character.id
+    assert updated.is_admin
+  end
+
+  test "admin_grant?/2 mirrors official Tripwire corp roles" do
+    assert Accounts.admin_grant?(["Director"], [])
+    assert Accounts.admin_grant?(["CEO"], [])
+    assert Accounts.admin_grant?([], ["Tripwire Admin"])
+    refute Accounts.admin_grant?(["Member"], [])
+    refute Accounts.admin_grant?([], [])
+  end
+
   test "attrs_from_ueberauth/1 builds attributes from an auth struct" do
     auth = %Ueberauth.Auth{
       uid: 9876,

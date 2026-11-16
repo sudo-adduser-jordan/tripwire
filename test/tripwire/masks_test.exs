@@ -61,6 +61,24 @@ defmodule Tripwire.MasksTest do
     refute invalid.valid?
   end
 
+  test "delete_mask_full/1 hard-deletes the mask with maps and memberships" do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 5, name: "Admin Tester"})
+    {:ok, mask} = Masks.ensure_personal_mask(character)
+    {:ok, map} = Mapping.create_map(%{name: "Gone Chain", mask_id: mask.id})
+
+    {:ok, system} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_099, name: "J999999"})
+
+    {:ok, _} = Masks.add_membership(mask, character)
+
+    assert {:ok, _} = Masks.delete_mask_full(mask)
+
+    assert Masks.list_masks_for_character(character.id) == []
+    assert Mapping.list_maps_for_mask(mask.id) == []
+    assert Mapping.list_systems(map.id) == []
+    assert Mapping.list_signatures(system.id) == []
+  end
+
   defp signature_changeset(system, attrs) do
     Mapping.Signature.changeset(
       %Mapping.Signature{},

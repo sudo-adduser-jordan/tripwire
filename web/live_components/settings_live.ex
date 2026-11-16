@@ -2,6 +2,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   use Phoenix.Component
 
   alias TripwireWeb.LiveComponents.Settings.AccountLive
+  alias TripwireWeb.LiveComponents.Settings.AdminLive
   alias TripwireWeb.LiveComponents.Settings.MapLive
   alias TripwireWeb.LiveComponents.Settings.ThemesLive
   alias TripwireWeb.LiveComponents.Settings.WidgetsLive
@@ -52,6 +53,11 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
           />
           <WidgetsLive.settings_widgets_live settings_tab={@settings_tab} />
           <ThemesLive.settings_themes_live settings_tab={@settings_tab} />
+          <AdminLive.settings_admin_live
+            settings_tab={@settings_tab}
+            character={@character}
+            masks={@masks}
+          />
         </div>
       </div>
     </div>

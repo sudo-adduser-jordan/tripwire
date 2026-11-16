@@ -691,6 +691,75 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute html =~ "translate(572.5, 60.0)"
   end
 
+  test "demo user is admin and sees the Admin settings tab", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+
+    assert render(view) =~ "Admin"
+    assert render(view) =~ "Mask administration"
+  end
+
+  test "non-admin characters do not see the Admin tab and are rejected", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+
+    refute render(view) =~ "Mask administration"
+
+    html = render_click(view, "settings-tab", %{"tab" => "admin"})
+
+    assert html =~ "Admin access required"
+  end
+
+  test "admin can add and remove mask members", %{conn: conn, character: character} do
+    {:ok, admin} = Accounts.upsert_character(%{eve_id: character.eve_id, is_admin: true})
+    {:ok, mask} = Masks.ensure_personal_mask(admin)
+
+    {:ok, view, _html} = live(login(conn, admin), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+
+    html =
+      view
+      |> element(~s|#settings-widget form[phx-submit="add-mask-member"]|)
+      |> render_submit(%{"mask_id" => mask.id, "eve_id" => "555001", "name" => "New Member"})
+
+    assert html =~ "Added New Member"
+
+    member = Accounts.get_character_by_eve_id(555_001)
+    assert Masks.member?(mask, member)
+
+    html =
+      render_click(view, "remove-mask-member", %{
+        "mask_id" => mask.id,
+        "character_id" => member.id
+      })
+
+    assert html =~ "Removed New Member"
+    refute Masks.member?(mask, member)
+  end
+
+  test "demo admin is scoped to demo masks", %{conn: conn} do
+    {:ok, outsider} = Accounts.upsert_character(%{eve_id: 888_001, name: "Outsider"})
+    {:ok, personal} = Masks.ensure_personal_mask(outsider)
+
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+
+    html =
+      view
+      |> element(~s|#settings-widget form[phx-submit="add-mask-member"]|)
+      |> render_submit(%{"mask_id" => personal.id, "eve_id" => "555002", "name" => "Sneaky"})
+
+    assert html =~ "scoped to demo"
+    assert Accounts.get_character_by_eve_id(555_002) == nil
+  end
+
   test "delete then undo restores the signature", %{conn: conn, character: character} do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J000000")
 
