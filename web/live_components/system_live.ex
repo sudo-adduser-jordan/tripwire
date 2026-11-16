@@ -118,19 +118,12 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
               {link.label}
             </a>
           </div>
-          <div class="flex flex-row flex-wrap gap-1 p-2">
-            <button
-              :for={sys <- visible_systems(@systems, @connections, @selected_system_id)}
-              class={"btn btn-xs " <> (if sys.id == @selected_system_id, do: "btn-primary", else: "btn-ghost")}
-              phx-click="select-system"
-              phx-value-id={sys.id}
-              phx-target={@myself}
-            >
-              {sys.name}
-            </button>
-            <span :if={@systems == []} class="p-1 text-sm opacity-50">No systems on map yet</span>
-          </div>
-          <.chart_range_buttons chart_range={@chart_range} />
+          <.chart_range_buttons
+            chart_range={@chart_range}
+            systems={@systems}
+            connections={@connections}
+            selected_system_id={@selected_system_id}
+          />
           <div
             id="system-chart"
             phx-hook="ChartMount"
@@ -156,21 +149,40 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
   defp range_label(_), do: "24H"
 
   attr :chart_range, :string, default: "24h"
+  attr :systems, :list, default: []
+  attr :connections, :list, default: []
+  attr :selected_system_id, :any, default: nil
 
   defp chart_range_buttons(assigns) do
     ~H"""
-    <div class="flex items-center justify-center gap-1 px-2 pt-1" role="group" aria-label="Chart time range">
-      <button
-        :for={range <- ["week", "48h", "24h"]}
-        phx-click="chart-range"
-        phx-value-range={range}
-        class={
-          "btn btn-xs " <>
-            (if @chart_range == range, do: "btn-primary", else: "btn-ghost")
-        }
-      >
-        {range_label(range)}
-      </button>
+    <div class="flex flex-wrap items-center justify-between gap-1 px-2 pt-1">
+      <div class="flex min-w-0 flex-row flex-wrap items-center gap-1">
+        <button
+          :for={sys <- visible_systems(@systems, @connections, @selected_system_id)}
+          class={
+            "btn btn-xs " <>
+              (if sys.id == @selected_system_id, do: "btn-primary", else: "btn-ghost")
+          }
+          phx-click="select-system"
+          phx-value-id={sys.id}
+        >
+          {sys.name}
+        </button>
+        <span :if={@systems == []} class="p-1 text-sm opacity-50">No systems on map yet</span>
+      </div>
+      <div class="flex shrink-0 items-center gap-1" role="group" aria-label="Chart time range">
+        <button
+          :for={range <- ["week", "48h", "24h"]}
+          phx-click="chart-range"
+          phx-value-range={range}
+          class={
+            "btn btn-xs " <>
+              (if @chart_range == range, do: "btn-primary", else: "btn-ghost")
+          }
+        >
+          {range_label(range)}
+        </button>
+      </div>
     </div>
     """
   end
