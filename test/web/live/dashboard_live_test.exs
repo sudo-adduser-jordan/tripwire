@@ -22,7 +22,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert redirected_to(conn) == "/"
   end
 
-  test "demo mode mounts without a session and opens settings", %{conn: conn} do
+  test "demo mode mounts without a session and opens settings in the grid", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/dashboard/Admin")
 
     assert html =~ "Demo mode"
@@ -31,13 +31,13 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert has_element?(view, "#chain-map")
 
     view |> element("#settings-button") |> render_click()
-    assert has_element?(view, "#settings-modal")
+    assert has_element?(view, "#grid-stack #settings-widget")
     assert render(view) =~ "Theme"
 
     view
     |> render_keydown("toggle-settings", %{"key" => "Escape"})
 
-    refute has_element?(view, "#settings-modal")
+    refute has_element?(view, "#settings-widget")
   end
 
   test "demo mode provisions nothing", %{conn: conn} do

@@ -1,9 +1,9 @@
 import { GridStack } from 'gridstack'
 import 'gridstack/dist/gridstack.css'
 
-const gridEl = document.querySelector('.grid-stack')
+function initGrid(el) {
+    if (!el || el.gridstack) return el && el.gridstack
 
-if (gridEl) {
     let grid = GridStack.init({
         cellHeight: 80,
         columnOpts: {
@@ -11,8 +11,10 @@ if (gridEl) {
             breakpoints: [{ w: 700, c: 1 }, { w: 850, c: 2 }, { w: 950, c: 2 }, { w: 1100, c: 2 }]
         },
         staticGrid: true,
-    })
+    }, el)
     .on('change', (ev, gsItems) => { });
+
+    window.TripwireGrid = grid;
 
     // Store previous column count
     let previousColumn = grid.getColumn();
@@ -57,4 +59,38 @@ if (gridEl) {
             if (lockSvg) lockSvg.style.fill = isLocked ? "#605dff" : "#ff6700";
         });
     }
+
+    return grid
 }
+
+function destroyGrid() {
+    if (window.TripwireGrid) {
+        window.TripwireGrid.destroy(false)
+        window.TripwireGrid = null
+    }
+}
+
+// LiveView re-renders the dashboard subtree and drops attributes it did not
+// render (gridstack's CSS vars, gs-* position attributes, and inline styles),
+// so re-apply the grid state after each update.
+function refreshGrid(el) {
+    const grid = el.gridstack
+    if (!grid) return
+
+    grid._updateColumnVar()
+    el.style.setProperty('--gs-cell-height', `${grid.opts.cellHeight}${grid.opts.cellHeightUnit}`)
+    grid._setStaticClass()
+    if (grid.opts.animate !== false) el.classList.add('grid-stack-animate')
+
+    grid.engine.nodes.forEach((node) => {
+        node.el.classList.add('grid-stack-item')
+        grid._writeAttr(node.el, node)
+        grid.prepareDragDrop(node.el)
+    })
+
+    grid._updateContainerHeight()
+}
+
+// The dashboard grid is owned by LiveView, so it is initialized from the
+// GridStack hook once the view has mounted instead of at script load.
+window.TripwireGridStack = { init: initGrid, refresh: refreshGrid, destroy: destroyGrid }

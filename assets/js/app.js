@@ -4,8 +4,29 @@ import { LiveSocket } from "phoenix_live_view"
 import { hooks as colocatedHooks } from "phoenix-colocated/tripwire"
 import topbar from "../vendor/topbar"
 import mapDrag, { ChartMount } from "./mapDrag"
+import GridWidget from "./gridWidget"
 
-const hooks = { ...colocatedHooks, MapDrag: mapDrag, ChartMount: ChartMount }
+const GridStack = {
+    mounted() {
+        window.TripwireGridStack?.init(this.el)
+    },
+
+    updated() {
+        window.TripwireGridStack?.refresh(this.el)
+    },
+
+    destroyed() {
+        window.TripwireGridStack?.destroy()
+    },
+}
+
+const hooks = {
+    ...colocatedHooks,
+    MapDrag: mapDrag,
+    ChartMount: ChartMount,
+    GridStack: GridStack,
+    GridWidget: GridWidget,
+}
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {

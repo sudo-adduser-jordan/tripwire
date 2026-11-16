@@ -8,15 +8,19 @@ defmodule TripwireWeb.SettingsComponent do
   def settings(assigns) do
     ~H"""
     <div
-      id="settings-modal"
-      class="fixed inset-0 z-40"
+      id="settings-widget"
+      class="grid-stack-item"
+      gs-w="12"
+      gs-h="9"
+      gs-x="0"
+      gs-y="0"
+      tabindex="0"
+      phx-hook="GridWidget"
       phx-window-keydown="toggle-settings"
       phx-key="Escape"
     >
-      <div class="absolute inset-0 bg-black/60" phx-click="toggle-settings"></div>
-
-      <div class="absolute z-10 top-13 left-2 right-2 bottom-2 sm:left-4 sm:right-4 flex flex-col">
-        <div class="tabs tabs-box flex-1 overflow-hidden bg-base-100 rounded-lg border border-base-300 shadow-xl min-h-0">
+      <div class="grid-stack-item-content bg-base-100/50 overflow-hidden">
+        <div class="tabs tabs-box size-full overflow-hidden">
           <.settings_account />
           <.settings_map />
           <.settings_widgets />
