@@ -61,22 +61,6 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
         />
       </form>
       <div class="ml-auto flex flex-wrap items-center gap-2">
-        <button
-          id="lock-button"
-          phx-click="toggle-grid-lock"
-          title={if @grid_locked, do: "Unlock dashboard layout", else: "Lock dashboard layout"}
-        >
-          <svg
-            id="lock-svg"
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill={if @grid_locked, do: "#605dff", else: "#ff6700"}
-          >
-            <path d="M21 2h-5v20h5c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1M2 21c0 .6.4 1 1 1h11v-9H2zM2 3v8h12V2H3c-.6 0-1 .4-1 1" />
-          </svg>
-        </button>
         <div class="dropdown dropdown-start">
           <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline text-xs">
             {@character}
@@ -148,6 +132,22 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
             </li>
           </ul>
         </div>
+        <button
+          id="lock-button"
+          phx-click="toggle-grid-lock"
+          title={if @grid_locked, do: "Unlock dashboard layout", else: "Lock dashboard layout"}
+        >
+          <svg
+            id="lock-svg"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill={if @grid_locked, do: "#605dff", else: "#ff6700"}
+          >
+            <path d="M21 2h-5v20h5c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1M2 21c0 .6.4 1 1 1h11v-9H2zM2 3v8h12V2H3c-.6 0-1 .4-1 1" />
+          </svg>
+        </button>
         <.theme_toggle />
         <form :if={@current_user} action="/auth/logout" method="post">
           <input type="hidden" name="_method" value="delete" />
