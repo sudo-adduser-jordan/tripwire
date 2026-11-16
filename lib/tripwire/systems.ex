@@ -128,8 +128,28 @@ defmodule Tripwire.Systems do
          constellation: constellation_name,
          region: region_name,
          security: sys["security_status"],
-         sovereignty: sovereignty_for(solar_id)
+         sovereignty: sovereignty_holder(solar_id)
        }}
+    end
+  end
+
+  defp sovereignty_holder(solar_id) do
+    case sovereignty_for(solar_id) do
+      %{alliance_id: alliance_id} ->
+        %{kind: :alliance, id: alliance_id, name: alliance_name(alliance_id)}
+
+      %{faction_id: faction_id} ->
+        %{kind: :faction, id: faction_id, name: Tripwire.EveImages.faction_name(faction_id)}
+
+      _ ->
+        nil
+    end
+  end
+
+  defp alliance_name(alliance_id) do
+    case Tripwire.ESI.get_alliance(alliance_id) do
+      {:ok, %{"name" => name}} -> name
+      _ -> "Alliance #{alliance_id}"
     end
   end
 

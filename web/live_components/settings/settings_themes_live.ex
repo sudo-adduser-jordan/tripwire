@@ -1,6 +1,19 @@
 defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
   use Phoenix.Component
   alias Phoenix.LiveView.JS
+  alias Tripwire.EveImages
+
+  @faction_theme_ids %{
+    "amarr" => 500003,
+    "caldari" => 500001,
+    "gallente" => 500004,
+    "minmatar" => 500002,
+    "angel" => 500011,
+    "blood" => 500012,
+    "guristas" => 500010,
+    "sansha" => 500019,
+    "serpentis" => 500020
+  }
 
   @theme_sections [
     %{
@@ -32,6 +45,13 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
   def themes, do: Enum.flat_map(@theme_sections, & &1.themes)
 
   def theme_sections, do: @theme_sections
+
+  defp theme_icon(theme) do
+    case Map.get(@faction_theme_ids, theme) do
+      nil -> "/images/themes/" <> theme <> ".svg"
+      faction_id -> EveImages.faction_logo(faction_id, 32)
+    end
+  end
 
   attr :settings_tab, :string, default: "account"
 
@@ -72,11 +92,12 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
                     class="bg-base-100 text-base-content flex w-full min-w-0 cursor-pointer items-center gap-1.5 p-2 font-sans"
                   >
                     <img
-                      src={"/images/themes/" <> theme <> ".svg"}
+                      src={theme_icon(theme)}
                       alt=""
                       aria-hidden="true"
-                      class="size-3.5 shrink-0"
+                      class="size-3.5 shrink-0 rounded-[3px]"
                       loading="lazy"
+                      onerror="this.onerror=null;this.src='/images/alliance-default.png'"
                     />
                     <div class="truncate text-xs font-bold">{theme}</div>
                   </div>

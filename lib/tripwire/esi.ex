@@ -32,6 +32,8 @@ defmodule Tripwire.ESI do
 
   def get_corporation(corporation_id), do: public_get("/corporations/#{corporation_id}/")
 
+  def get_alliance(alliance_id), do: public_get("/alliances/#{alliance_id}/")
+
   def get_character_roles(character_id, access_token),
     do: authorized_get("/characters/#{character_id}/roles/", access_token)
 

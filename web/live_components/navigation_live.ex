@@ -4,6 +4,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
   import TripwireWeb.IconComponent
 
   alias Phoenix.LiveView.JS
+  alias Tripwire.EveImages
 
   attr :character, :string, required: true
   attr :characters, :list, default: []
@@ -88,7 +89,12 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
               <a>
                 <div class={["avatar", online_class(@character_online)]}>
                   <div class="w-12 rounded-xl">
-                    <img src="/images/alliance-default.png" alt="" loading="lazy" />
+                    <img
+                      src={character_avatar(character)}
+                      alt=""
+                      loading="lazy"
+                      onerror="this.onerror=null;this.src='/images/alliance-default.png'"
+                    />
                   </div>
                 </div>
                 {character_name(character)}
@@ -119,7 +125,12 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
               <button phx-click="switch-mask" phx-value-id={mask.id}>
                 <div class="avatar avatar-offline">
                   <div class="w-24 rounded-xl">
-                    <img src="/images/alliance-default.png" alt="" loading="lazy" />
+                    <img
+                      src={mask_avatar(mask)}
+                      alt=""
+                      loading="lazy"
+                      onerror="this.onerror=null;this.src='/images/alliance-default.png'"
+                    />
                   </div>
                 </div>
                 {mask.name} ({mask.kind})
@@ -195,6 +206,19 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
 
   defp character_name(%{name: name}), do: name
   defp character_name(name) when is_binary(name), do: name
+
+  defp character_avatar(%{eve_id: eve_id}) when is_integer(eve_id),
+    do: EveImages.character_portrait(eve_id, 64)
+
+  defp character_avatar(_), do: "/images/alliance-default.png"
+
+  defp mask_avatar(%{kind: "corporation", eve_owner_id: id}) when is_integer(id),
+    do: EveImages.corporation_logo(id, 64)
+
+  defp mask_avatar(%{kind: "alliance", eve_owner_id: id}) when is_integer(id),
+    do: EveImages.alliance_logo(id, 64)
+
+  defp mask_avatar(_), do: "/images/alliance-default.png"
 
   defp tq_title(true, players) when is_integer(players),
     do: "Tranquility online — #{players} players"

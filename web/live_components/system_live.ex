@@ -1,6 +1,7 @@
 defmodule TripwireWeb.LiveComponents.SystemLive do
   use TripwireWeb, :live_component
 
+  alias Tripwire.EveImages
   alias Tripwire.Mapping
   alias Tripwire.Systems
 
@@ -254,6 +255,22 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
           {info_line(@system, @system_info)}
         </span>
       </p>
+      <p
+        :if={sov_holder(@system_info)}
+        class="flex min-w-0 items-center gap-x-1.5 pt-0.5"
+      >
+        <img
+          src={sov_logo(sov_holder(@system_info))}
+          alt=""
+          aria-hidden="true"
+          class="size-4 shrink-0 rounded-sm"
+          loading="lazy"
+          onerror="this.onerror=null;this.src='/images/alliance-default.png'"
+        />
+        <span class="truncate opacity-60">
+          {sov_holder(@system_info).name}
+        </span>
+      </p>
     </div>
     """
   end
@@ -271,6 +288,13 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
   defp selected_system(systems, id) do
     Enum.find(systems, &(&1.id == id))
   end
+
+  defp sov_holder(%{sovereignty: %{name: _name} = holder}), do: holder
+  defp sov_holder(_), do: nil
+
+  defp sov_logo(%{kind: :alliance, id: id}), do: EveImages.alliance_logo(id, 32)
+  defp sov_logo(%{kind: :faction, id: id}), do: EveImages.faction_logo(id, 32)
+  defp sov_logo(_), do: "/images/alliance-default.png"
 
   defp system_links(systems, id) do
     case Enum.find(systems, &(&1.id == id)) do
