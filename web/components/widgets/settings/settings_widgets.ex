@@ -1,9 +1,19 @@
 defmodule TripwireWeb.SettingsWidgetsComponent do
   use Phoenix.Component
 
+  attr :settings_tab, :string, default: "account"
+
   def settings_widgets(assigns) do
     ~H"""
-    <input type="radio" name="my_tabs_6" class="tab" aria-label="Widgets" />
+    <input
+      type="radio"
+      name="my_tabs_6"
+      class="tab"
+      aria-label="Widgets"
+      checked={@settings_tab == "widgets"}
+      phx-click="settings-tab"
+      phx-value-tab="widgets"
+    />
     <div class="tab-content overflow-y-scroll bg-base-100/50 border-base-300 p-6  " enabled>
       Widgets
       <div class="p-4 flex flex-col gap-1">

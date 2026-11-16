@@ -123,6 +123,47 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert reloaded.y == 300.0
   end
 
+  test "map renders toolbar and connections between systems", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, other} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 200.0})
+
+    {:ok, link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
+
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    assert html =~ ~s|id="chain-map"|
+    assert html =~ "Map"
+    assert html =~ "2 systems · 1 links"
+    assert html =~ "connection-#{link.id}"
+    assert html =~ "J150321"
+    assert html =~ "J150322"
+
+    view
+    |> element("#system-container button", "J150321")
+    |> render_click()
+
+    assert render(view) =~ "J150321"
+  end
+
+  test "map-layout rearranges the tree", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/dashboard/User")
+
+    view |> element("#settings-button") |> render_click()
+
+    html =
+      view
+      |> element(~s|#settings-widget form[phx-change="map-layout"]|)
+      |> render_change(%{layout: "bottom"})
+
+    assert html =~ "translate(460.0, 590.0)"
+    refute html =~ "translate(460.0, 60.0)"
+  end
+
   test "delete then undo restores the signature", %{conn: conn, character: character} do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J000000")
 

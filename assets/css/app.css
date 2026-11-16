@@ -222,7 +222,7 @@
   to { visibility: visible; }
 }
 
-/* Settings slides in at the top; the grid animates the rest down. */
+/* Settings opens first at the top; it slides down while the grid pushes the rest down. */
 #settings-widget {
   animation: settings-slide-in 200ms ease-out;
 }

@@ -8,21 +8,41 @@ defmodule TripwireWeb.DashboardLive do
 
   @demo_users ~w(Admin User)
 
+  # In-memory demo chain so the map renders without provisioning anything.
+  @demo_systems [
+    %{id: -1, name: "J150321", x: 120.0, y: 120.0},
+    %{id: -2, name: "J150322", x: 360.0, y: 260.0},
+    %{id: -3, name: "J150323", x: 600.0, y: 140.0},
+    %{id: -4, name: "J150324", x: 780.0, y: 330.0},
+    %{id: -5, name: "J150325", x: 480.0, y: 470.0}
+  ]
+
+  @demo_links [
+    {-11, -1, -2, "C3", "stable"},
+    {-12, -2, -3, "K162", "stable"},
+    {-13, -3, -4, "EOL", "eol"},
+    {-14, -3, -5, "C2", "stable"}
+  ]
+
   @impl true
   def mount(%{"user" => user} = _params, _session, socket) when user in @demo_users do
+    {systems, connections} = demo_graph()
+
     {:ok,
      socket
      |> assign(:current_user, nil)
      |> assign(:nav_user, user)
      |> assign(:character, nil)
      |> assign(:map, nil)
-     |> assign(:systems, [])
-     |> assign(:connections, [])
+     |> assign(:systems, systems)
+     |> assign(:connections, connections)
      |> assign(:selected_system_id, nil)
      |> assign(:signatures, [])
      |> assign(:paste_open, false)
      |> assign(:paste_text, "")
      |> assign(:settings_open, false)
+     |> assign(:settings_tab, "account")
+     |> assign(:map_layout, "default")
      |> assign(:undo, [])
      |> assign(:redo, [])
      |> assign(:demo?, true)}
@@ -59,7 +79,7 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply,
      socket
      |> assign(:systems, Mapping.list_systems(map_id))
-     |> assign(:connections, Mapping.list_connections(map_id))}
+     |> assign(:connections, Mapping.list_connections_with_endpoints(map_id))}
   end
 
   def handle_info({:system_changed, %{character: name, system: system}}, socket) do
@@ -73,6 +93,13 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply, update(socket, :settings_open, &(!&1))}
   end
 
+  def handle_event("settings-tab", %{"tab" => tab}, socket)
+      when tab in ~w(account map widgets themes) do
+    {:noreply, assign(socket, :settings_tab, tab)}
+  end
+
+  def handle_event("settings-tab", _params, socket), do: {:noreply, socket}
+
   def handle_event("select-system", %{"id" => id}, socket) do
     system_id = String.to_integer(id)
     signatures = Mapping.list_signatures(system_id)
@@ -84,6 +111,20 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:undo, [])
      |> assign(:redo, [])}
   end
+
+  def handle_event("move-system", _params, %{assigns: %{demo?: true}} = socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("map-layout", %{"layout" => "default"}, socket),
+    do: {:noreply, assign(socket, :map_layout, "default")}
+
+  def handle_event("map-layout", %{"layout" => layout}, socket)
+      when layout in ~w(top bottom left right radial) do
+    {:noreply, socket |> assign(:map_layout, layout) |> apply_tree_layout(layout)}
+  end
+
+  def handle_event("map-layout", _params, socket), do: {:noreply, socket}
 
   def handle_event("move-system", %{"id" => id, "x" => x, "y" => y}, socket) do
     system = Mapping.get_system!(String.to_integer(id))
@@ -99,7 +140,7 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply,
      socket
      |> assign(:systems, systems)
-     |> assign(:connections, Mapping.list_connections(socket.assigns.map.id))}
+     |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))}
   end
 
   def handle_event("toggle-paste", _params, socket) do
@@ -179,6 +220,59 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
+  defp apply_tree_layout(%{assigns: %{demo?: true}} = socket, layout) do
+    positions = layout_positions(socket.assigns.systems, socket.assigns.connections, layout)
+
+    by_id =
+      socket.assigns.systems
+      |> Enum.map(fn s -> {s.id, Elixir.Map.merge(s, positions[s.id])} end)
+      |> Elixir.Map.new()
+
+    connections =
+      Enum.map(socket.assigns.connections, fn {c, f, t} -> {c, by_id[f.id], by_id[t.id]} end)
+
+    socket
+    |> assign(:systems, by_id |> Elixir.Map.values() |> Enum.sort_by(& &1.id))
+    |> assign(:connections, connections)
+  end
+
+  defp apply_tree_layout(%{assigns: %{map: map}} = socket, layout) when not is_nil(map) do
+    positions = layout_positions(socket.assigns.systems, socket.assigns.connections, layout)
+
+    Enum.each(socket.assigns.systems, fn s ->
+      pos = positions[s.id]
+      {:ok, _} = Mapping.update_system_position(Mapping.get_system!(s.id), pos.x, pos.y)
+    end)
+
+    socket
+    |> assign(:systems, Mapping.list_systems(map.id))
+    |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
+  end
+
+  # "top"/"bottom"/"left"/"right" name the side the tree is anchored to.
+  defp normalize_layout("top"), do: "down"
+  defp normalize_layout("bottom"), do: "up"
+  defp normalize_layout("left"), do: "right"
+  defp normalize_layout("right"), do: "left"
+
+  defp layout_positions(systems, connections, "radial"),
+    do: Mapping.radial_layout(systems, connections)
+
+  defp layout_positions(systems, connections, layout),
+    do: Mapping.tree_layout(systems, connections, normalize_layout(layout))
+
+  defp demo_graph do
+    by_id = Map.new(@demo_systems, &{&1.id, &1})
+
+    connections =
+      Enum.map(@demo_links, fn {id, from_id, to_id, hole_type, time_status} ->
+        {%{id: id, hole_type: hole_type, time_status: time_status, mass_status: "stable"},
+         by_id[from_id], by_id[to_id]}
+      end)
+
+    {@demo_systems, connections}
+  end
+
   defp provision(socket, character) do
     {:ok, mask} = Masks.ensure_personal_mask(character)
 
@@ -194,12 +288,13 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:character, character)
     |> assign(:map, map)
     |> assign(:systems, Mapping.list_systems(map.id))
-    |> assign(:connections, Mapping.list_connections(map.id))
+    |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
     |> assign(:selected_system_id, nil)
     |> assign(:signatures, [])
     |> assign(:paste_open, false)
     |> assign(:paste_text, "")
     |> assign(:settings_open, false)
+    |> assign(:map_layout, "default")
     |> assign(:undo, [])
     |> assign(:redo, [])
     |> assign(:demo?, false)

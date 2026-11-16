@@ -11,7 +11,7 @@
 
   <div class=" flex flex-col p-2 ">
     <div class="grid-stack grid-stack-loading" id="grid-stack" phx-hook="GridStack">
-      <.settings :if={@settings_open} />
+      <.settings :if={@settings_open} map_layout={@map_layout} settings_tab={@settings_tab} />
       <.system systems={@systems} selected_system_id={@selected_system_id} />
       <.notes />
       <.signatures
@@ -25,6 +25,7 @@
         systems={@systems}
         connections={@connections}
         selected_system_id={@selected_system_id}
+        map_name={if @map, do: @map.name, else: "Demo"}
       />
     </div>
   </div>

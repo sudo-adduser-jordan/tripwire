@@ -39,9 +39,19 @@ defmodule TripwireWeb.SettingsThemesComponent do
 
   def themes, do: @themes
 
+  attr :settings_tab, :string, default: "account"
+
   def settings_themes(assigns) do
     ~H"""
-    <input type="radio" name="my_tabs_6" class="tab" aria-label="Theme" />
+    <input
+      type="radio"
+      name="my_tabs_6"
+      class="tab"
+      aria-label="Theme"
+      checked={@settings_tab == "themes"}
+      phx-click="settings-tab"
+      phx-value-tab="themes"
+    />
     <div class="tab-content size-full overflow-y-scroll bg-base-100/50 border-base-300 p-6" enabled>
       Themes
       <div

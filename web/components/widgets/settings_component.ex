@@ -5,6 +5,9 @@ defmodule TripwireWeb.SettingsComponent do
   import TripwireWeb.SettingsWidgetsComponent
   import TripwireWeb.SettingsThemesComponent
 
+  attr :map_layout, :string, default: "default"
+  attr :settings_tab, :string, default: "account"
+
   def settings(assigns) do
     ~H"""
     <div
@@ -21,10 +24,10 @@ defmodule TripwireWeb.SettingsComponent do
     >
       <div class="grid-stack-item-content bg-base-100/50 overflow-hidden">
         <div class="tabs tabs-box size-full overflow-hidden">
-          <.settings_account />
-          <.settings_map />
-          <.settings_widgets />
-          <.settings_themes />
+          <.settings_account settings_tab={@settings_tab} />
+          <.settings_map map_layout={@map_layout} settings_tab={@settings_tab} />
+          <.settings_widgets settings_tab={@settings_tab} />
+          <.settings_themes settings_tab={@settings_tab} />
         </div>
       </div>
     </div>

@@ -47,8 +47,9 @@ defmodule Tripwire.Tracking do
   """
   def apply_location_change(map, character_name, prev_system, solar_system_id, opts \\ []) do
     name_fetcher = Keyword.get(opts, :name_fetcher, &fetch_system_name/1)
+    position = next_position(map, prev_system)
 
-    with {:ok, system} <- ensure_system(map, solar_system_id, name_fetcher) do
+    with {:ok, system} <- ensure_system(map, solar_system_id, name_fetcher, position) do
       connection_result =
         if is_struct(prev_system, MapSystem) and prev_system.id != system.id do
           case Mapping.upsert_connection(map.id, prev_system.id, system.id) do
@@ -78,7 +79,7 @@ defmodule Tripwire.Tracking do
     )
   end
 
-  defp ensure_system(map, solar_system_id, name_fetcher \\ &fetch_system_name/1) do
+  defp ensure_system(map, solar_system_id, name_fetcher, position) do
     existing =
       Repo.one(
         from(s in MapSystem,
@@ -93,12 +94,42 @@ defmodule Tripwire.Tracking do
       nil ->
         attrs = %{
           solar_system_id: solar_system_id,
-          name: name_fetcher.(solar_system_id)
+          name: name_fetcher.(solar_system_id),
+          x: position.x,
+          y: position.y
         }
 
         Mapping.add_system_to_map(map, attrs)
     end
   end
+
+  # ViewBox is 1000x700 and nodes are 80x50, so origins clamp to 920x650.
+  @map_max_x 920.0
+  @map_max_y 650.0
+  @map_center %{x: 460.0, y: 300.0}
+  @placement_radius 170.0
+
+  # New systems spawn on a golden-angle spiral around the previous system so
+  # tracked jumps lay out a readable chain instead of piling at the origin.
+  # Positions are only assigned on creation; user drags are never touched.
+  defp next_position(map, prev_system) do
+    count = Repo.aggregate(from(s in MapSystem, where: s.map_id == ^map.id), :count)
+
+    case prev_system do
+      %MapSystem{x: x, y: y} ->
+        angle = :math.pi() * (3 - :math.sqrt(5)) * count
+
+        %{
+          x: clamp(x * 1.0 + @placement_radius * :math.cos(angle), @map_max_x),
+          y: clamp(y * 1.0 + @placement_radius * :math.sin(angle), @map_max_y)
+        }
+
+      _ ->
+        @map_center
+    end
+  end
+
+  defp clamp(value, max), do: value |> max(0.0) |> min(max)
 
   defp fetch_system_name(solar_system_id) do
     case ESI.get_system(solar_system_id) do

@@ -1,9 +1,19 @@
 defmodule TripwireWeb.SettingsAccountComponent do
   use Phoenix.Component
 
+  attr :settings_tab, :string, default: "account"
+
   def settings_account(assigns) do
     ~H"""
-    <input type="radio" name="my_tabs_6" class="tab" aria-label="Account" checked />
+    <input
+      type="radio"
+      name="my_tabs_6"
+      class="tab"
+      aria-label="Account"
+      checked={@settings_tab == "account"}
+      phx-click="settings-tab"
+      phx-value-tab="account"
+    />
     <div class="tab-content overflow-hidden w-full  border-base-300 p-6" enabled>
       <div class="size-full flex flex-col gap-4 overflow-y-scroll">
         <p class="p-2">Account</p>

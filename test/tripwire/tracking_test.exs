@@ -51,6 +51,25 @@ defmodule Tripwire.TrackingTest do
     assert length(Mapping.list_connections(map.id)) == 1
   end
 
+  test "new systems are placed on the map instead of the origin", %{
+    map: map,
+    character: character
+  } do
+    opts = [name_fetcher: nf()]
+
+    {:ok, %{system: first}} =
+      Tracking.apply_location_change(map, character.name, nil, 31_000_001, opts)
+
+    assert {first.x, first.y} == {460.0, 300.0}
+
+    {:ok, %{system: second}} =
+      Tracking.apply_location_change(map, character.name, first, 32_000_002, opts)
+
+    assert {second.x, second.y} != {460.0, 300.0}
+    assert second.x >= 0.0 and second.x <= 920.0
+    assert second.y >= 0.0 and second.y <= 650.0
+  end
+
   test "broadcasts map updates to subscribers", %{map: map, character: character} do
     Phoenix.PubSub.subscribe(Tripwire.PubSub, Tracking.map_topic(map.id))
 

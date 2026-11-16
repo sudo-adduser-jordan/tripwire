@@ -36,6 +36,147 @@ defmodule Tripwire.Mapping do
   end
 
   @doc """
+  Lists connections as `{connection, from_system, to_system}` tuples for
+  direct use by the chain-map renderer.
+  """
+  def list_connections_with_endpoints(map_id) do
+    map_id
+    |> list_connections()
+    |> Enum.map(fn conn -> {conn, conn.from_system, conn.to_system} end)
+  end
+
+  # ViewBox is 1000x700 and nodes are 80x50, so origins clamp to 920x650.
+  @layout_max_x 920.0
+  @layout_max_y 650.0
+
+  @doc """
+  Groups system ids into `{depth, [id]}` layers, sorted by depth. Depths
+  come from breadth-first search over the undirected graph, seeded at
+  systems with no incoming links so disconnected components each form
+  their own subtree.
+  """
+  def depth_layers(systems, connections) do
+    ids = Enum.map(systems, & &1.id)
+
+    {adj, incoming} =
+      Enum.reduce(connections, {%{}, Elixir.MapSet.new()}, fn {_conn, from, to}, {adj, inc} ->
+        adj =
+          adj
+          |> Elixir.Map.update(from.id, [to.id], &[to.id | &1])
+          |> Elixir.Map.update(to.id, [from.id], &[from.id | &1])
+
+        {adj, Elixir.MapSet.put(inc, to.id)}
+      end)
+
+    adj = Enum.reduce(ids, adj, &Elixir.Map.put_new(&2, &1, []))
+    seeds = Enum.filter(ids, &(!Elixir.MapSet.member?(incoming, &1)))
+    seeds = if seeds == [], do: ids, else: seeds ++ (ids -- seeds)
+
+    depths =
+      Enum.reduce(seeds, %{}, fn seed, depths ->
+        if Elixir.Map.has_key?(depths, seed), do: depths, else: bfs_depths(adj, depths, seed)
+      end)
+
+    ids
+    |> Enum.group_by(&Elixir.Map.fetch!(depths, &1))
+    |> Enum.sort_by(&elem(&1, 0))
+    |> Enum.map(fn {depth, members} -> {depth, Enum.sort(members)} end)
+  end
+
+  @doc """
+  Arranges `systems` radially around the root: depth-0 systems sit at the
+  center and each deeper layer spreads evenly over a wider ring.
+  `connections` are `{conn, from, to}` endpoint tuples. Returns
+  `%{system_id => %{x: float, y: float}}`.
+  """
+  def radial_layout(systems, connections) do
+    systems
+    |> depth_layers(connections)
+    |> Enum.flat_map(fn {depth, members} ->
+      n = length(members)
+      radius = if depth == 0 and n == 1, do: 0.0, else: min(150.0 * max(depth, 1), 330.0)
+
+      Enum.with_index(members, fn id, i ->
+        angle = 2 * :math.pi() * i / max(n, 1) + depth * 0.5
+
+        {id,
+         {clamp_x(460.0 + radius * :math.cos(angle)),
+          clamp_y(325.0 + radius * :math.sin(angle))}}
+      end)
+    end)
+    |> Elixir.Map.new(fn {id, {x, y}} -> {id, %{x: x, y: y}} end)
+  end
+
+  @doc """
+  Arranges `systems` as a tree for the given `orientation`:
+
+  - `"down"` — root at the top, leaves grow down (default)
+  - `"up"` — root at the bottom, leaves grow up
+  - `"right"` — root at the left, leaves grow right
+  - `"left"` — root at the right, leaves grow left
+
+  `connections` are `{conn, from, to}` endpoint tuples. Returns
+  `%{system_id => %{x: float, y: float}}`.
+  """
+  def tree_layout(systems, connections, orientation \\ "down") do
+    systems
+    |> depth_layers(connections)
+    |> Enum.flat_map(fn {depth, members} ->
+      n = length(members)
+
+      Enum.with_index(members, fn id, i ->
+        {id, orient_position(orientation, depth, n, i)}
+      end)
+    end)
+    |> Elixir.Map.new(fn {id, {x, y}} -> {id, %{x: x, y: y}} end)
+  end
+
+  defp bfs_depths(adj, depths, seed) do
+    base = depths |> Elixir.Map.values() |> Enum.max(fn -> -1 end)
+    bfs_loop(adj, :queue.from_list([seed]), Elixir.Map.put(depths, seed, base + 1))
+  end
+
+  defp bfs_loop(adj, queue, depths) do
+    case :queue.out(queue) do
+      {:empty, _} ->
+        depths
+
+      {{:value, id}, rest} ->
+        depth = Elixir.Map.fetch!(depths, id)
+
+        {queue, depths} =
+          Enum.reduce(adj[id] || [], {rest, depths}, fn neighbor, {q, d} ->
+            if Elixir.Map.has_key?(d, neighbor),
+              do: {q, d},
+              else: {:queue.in(neighbor, q), Elixir.Map.put(d, neighbor, depth + 1)}
+          end)
+
+        bfs_loop(adj, queue, depths)
+    end
+  end
+
+  defp orient_position(orientation, depth, n, i) do
+    mid = (n - 1) / 2
+
+    case orientation do
+      "up" ->
+        {clamp_x(460.0 + (i - mid) * 150.0), clamp_y(590.0 - depth * 160.0)}
+
+      "left" ->
+        {clamp_x(860.0 - depth * 170.0), clamp_y(325.0 + (i - mid) * 120.0)}
+
+      "right" ->
+        {clamp_x(60.0 + depth * 170.0), clamp_y(325.0 + (i - mid) * 120.0)}
+
+      _ ->
+        {clamp_x(460.0 + (i - mid) * 150.0), clamp_y(60.0 + depth * 160.0)}
+    end
+  end
+
+  defp clamp_x(value), do: value |> max(0.0) |> min(@layout_max_x)
+  defp clamp_y(value), do: value |> max(0.0) |> min(@layout_max_y)
+
+  @doc """
   Finds a connection between two systems in either direction and updates it,
   or creates it if none exists. Returns {:ok, connection} and whether it is new.
   """
