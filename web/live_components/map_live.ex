@@ -132,7 +132,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 <p><span class="badge badge-warning badge-xs">—</span> Mass Critical</p>
               </div>
             </details>
-            <span class="text-xs tabular-nums opacity-60">
+            <span class="ml-auto text-xs tabular-nums opacity-60">
               {length(@systems)} systems
             </span>
             <button
