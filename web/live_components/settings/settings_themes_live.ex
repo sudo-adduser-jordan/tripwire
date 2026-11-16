@@ -20,6 +20,12 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
       label: "Pirate",
       icon: "hero-fire",
       themes: ["angel", "blood", "guristas", "sansha", "serpentis"]
+    },
+    %{
+      id: "mapper",
+      label: "Mapper",
+      icon: "hero-map",
+      themes: ["wanderer"]
     }
   ]
 

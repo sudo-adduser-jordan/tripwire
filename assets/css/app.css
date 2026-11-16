@@ -569,6 +569,40 @@
   --depth: 1;
   --noise: 0;
 }
+@plugin "daisyui/theme" {
+  name: "wanderer";
+  default: false;
+  prefersdark: false;
+  color-scheme: "dark";
+  --color-base-100: oklch(20.77% 0.04 265.75);
+  --color-base-200: oklch(16.5% 0.04 265);
+  --color-base-300: oklch(12.88% 0.041 264.7);
+  --color-base-content: oklch(92.88% 0.013 255.51);
+  --color-primary: oklch(66.64% 0.22 37.57);
+  --color-primary-content: oklch(20% 0.03 60);
+  --color-secondary: oklch(64.5% 0.215 16.44);
+  --color-secondary-content: oklch(97% 0.01 17);
+  --color-accent: oklch(75.35% 0.139 232.66);
+  --color-accent-content: oklch(18% 0.03 240);
+  --color-neutral: oklch(27.95% 0.037 260.03);
+  --color-neutral-content: oklch(92.88% 0.013 255.51);
+  --color-info: oklch(58% 0.158 241.966);
+  --color-info-content: oklch(97% 0.013 236.62);
+  --color-success: oklch(60% 0.118 184.704);
+  --color-success-content: oklch(98% 0.014 180.72);
+  --color-warning: oklch(66% 0.179 58.318);
+  --color-warning-content: oklch(98% 0.022 95.277);
+  --color-error: oklch(58% 0.253 17.585);
+  --color-error-content: oklch(96% 0.015 12.422);
+  --radius-selector: 0.25rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.21875rem;
+  --size-field: 0.21875rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
 @custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
 @custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
 @custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
