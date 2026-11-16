@@ -625,7 +625,12 @@ defmodule Tripwire.Mapping do
     %{solar_system_id: 31_000_002, name: "J150322", sys_class: "C3", x: 360.0, y: 260.0},
     %{solar_system_id: 31_000_003, name: "J150323", sys_class: "C5", x: 600.0, y: 140.0},
     %{solar_system_id: 31_000_004, name: "J150324", sys_class: "C4", x: 780.0, y: 330.0},
-    %{solar_system_id: 31_000_005, name: "J150325", sys_class: "C6", x: 480.0, y: 470.0}
+    %{solar_system_id: 31_000_005, name: "J150325", sys_class: "C6", x: 480.0, y: 470.0},
+    %{solar_system_id: 31_000_006, name: "J150326", sys_class: "C1", x: 880.0, y: 200.0},
+    %{solar_system_id: 30_000_142, name: "Jita", security: 0.9, x: 880.0, y: 380.0},
+    %{solar_system_id: 30_000_201, name: "Tama", security: 0.2, x: 700.0, y: 540.0},
+    %{solar_system_id: 30_000_301, name: "1DQ1-A", security: -1.0, x: 450.0, y: 560.0},
+    %{solar_system_id: 31_000_010, name: "Raravoss", alias: "Pochven", x: 200.0, y: 540.0}
   ]
 
   @demo_shortcuts """
@@ -651,7 +656,12 @@ defmodule Tripwire.Mapping do
     {0, 1, "C247", "stable", "stable"},
     {1, 2, "K162", "destab", "stable"},
     {2, 3, "N968", "stable", "eol"},
-    {2, 4, "B274", "critical", "stable"}
+    {2, 4, "B274", "critical", "stable"},
+    {4, 5, "K162", "stable", "stable"},
+    {5, 6, "C140", "stable", "stable"},
+    {6, 7, "K162", "stable", "stable"},
+    {7, 8, "N968", "stable", "stable"},
+    {8, 9, "K162", "stable", "stable"}
   ]
 
   @demo_signatures %{
@@ -716,6 +726,50 @@ defmodule Tripwire.Mapping do
         kind: "signature",
         site_type: "combat",
         type_name: "Blood Raider Naval Shipyard"
+      }
+    ],
+    5 => [
+      %{
+        sig_id: "NOP-012",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (K162)"
+      },
+      %{sig_id: "QRS-345", kind: "signature", site_type: "relic", type_name: "Ruined Relic Site"}
+    ],
+    6 => [
+      %{sig_id: "TUV-678", kind: "anomaly", site_type: "combat", type_name: "Forsaken Hub"},
+      %{sig_id: "WXY-901", kind: "signature", site_type: "data", type_name: "Central Data Site"}
+    ],
+    7 => [
+      %{
+        sig_id: "ZAB-234",
+        kind: "signature",
+        site_type: "combat",
+        type_name: "Serpentis Rally Point"
+      },
+      %{
+        sig_id: "CDE-567",
+        kind: "signature",
+        site_type: "gas",
+        type_name: "Vast Frontier Reservoir"
+      }
+    ],
+    8 => [
+      %{sig_id: "FGH-890", kind: "anomaly", site_type: "combat", type_name: "Sanctum"},
+      %{
+        sig_id: "IJK-123",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (K162)"
+      }
+    ],
+    9 => [
+      %{
+        sig_id: "LMN-456",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (K162)"
       }
     ]
   }

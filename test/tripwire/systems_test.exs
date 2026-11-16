@@ -15,9 +15,12 @@ defmodule Tripwire.SystemsTest do
   end
 
   test "display_class/1 is nil for wormhole-like systems without a class" do
-    assert Systems.display_class(%{sys_class: nil, security: -1.0}) == nil
     assert Systems.display_class(%{sys_class: nil, security: nil}) == nil
     assert Systems.display_class(%{}) == nil
+  end
+
+  test "display_class/1 treats negative security as nullsec" do
+    assert Systems.display_class(%{sys_class: nil, security: -1.0}) == "NS"
   end
 
   test "color/1 mirrors official Tripwire class colors" do
@@ -26,7 +29,8 @@ defmodule Tripwire.SystemsTest do
     assert Systems.color(%{sys_class: nil, security: 0.9}) == "#50D25A"
     assert Systems.color(%{sys_class: nil, security: 0.2}) == "#F5B544"
     assert Systems.color(%{sys_class: nil, security: 0.0}) == "#FF4747"
-    assert Systems.color(%{sys_class: nil, security: -1.0}) == "#6b7280"
+    assert Systems.color(%{sys_class: nil, security: -1.0}) == "#FF4747"
+    assert Systems.color(%{sys_class: nil, security: nil}) == "#6b7280"
   end
 
   test "classes/0 lists every assignable class" do

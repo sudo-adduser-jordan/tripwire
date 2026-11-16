@@ -44,7 +44,7 @@ defmodule Tripwire.Systems do
   def display_class(%{sys_class: class}) when is_binary(class) and class != "", do: class
   def display_class(%{security: security}) when is_number(security) and security >= 0.45, do: "HS"
   def display_class(%{security: security}) when is_number(security) and security > 0.0, do: "LS"
-  def display_class(%{security: security}) when is_number(security) and security >= 0.0, do: "NS"
+  def display_class(%{security: security}) when is_number(security), do: "NS"
   def display_class(_), do: nil
 
   @doc """
