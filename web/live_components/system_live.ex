@@ -100,6 +100,25 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
                 system_info={@system_info}
               />
             </li>
+            <li
+              :if={selected_system(@systems, @selected_system_id)}
+              class="px-2 pb-1"
+            >
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <a
+                  :for={
+                    link <-
+                      Systems.external_links(selected_system(@systems, @selected_system_id))
+                  }
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="link link-hover opacity-70 hover:opacity-100"
+                >
+                  {link.label}
+                </a>
+              </div>
+            </li>
           </ul>
           <div class="flex flex-row flex-wrap gap-1 p-2">
             <button
@@ -143,20 +162,6 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
             >
               {range_label(range)}
             </button>
-          </div>
-          <div
-            :if={selected_system(@systems, @selected_system_id)}
-            class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-2 pb-2 text-xs"
-          >
-            <a
-              :for={link <- Systems.external_links(selected_system(@systems, @selected_system_id))}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="link link-hover opacity-70 hover:opacity-100"
-            >
-              {link.label}
-            </a>
           </div>
         </div>
       </div>
@@ -235,47 +240,31 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
 
   defp system_info(assigns) do
     ~H"""
-    <div class="flex min-w-0 flex-col gap-0.5 text-xs">
-      <p class="flex flex-wrap items-center gap-x-2">
-        <span class="font-semibold" style={"color: #{Systems.color(@system)}"}>
+    <div class="min-w-0 text-xs">
+      <p class="flex min-w-0 items-center gap-x-2">
+        <span
+          class="shrink-0 font-semibold"
+          style={"color: #{Systems.color(@system)}"}
+        >
           {Systems.display_class(@system) || "Unknown"}
         </span>
-        <span class="opacity-70">
-          {Systems.security_label(@system)}{sec_suffix(@system)}
+        <span class="truncate opacity-60">
+          {info_line(@system, @system_info)}
         </span>
-        <span :if={@system.alias} class="truncate opacity-60">aka {@system.alias}</span>
-      </p>
-      <p class="truncate opacity-60">
-        {info_line(@system, @system_info)}
-      </p>
-      <p :if={sov_line(@system_info)} class="truncate opacity-60">
-        {sov_line(@system_info)}
       </p>
     </div>
     """
   end
 
-  defp sec_suffix(%{security: sec}) when is_number(sec),
-    do: " #{:erlang.float_to_binary(sec * 1.0, decimals: 1)}"
-
-  defp sec_suffix(_), do: ""
-
-  defp info_line(system, %{region: region, constellation: constellation}) do
-    "#{region} / #{constellation} · #{system.solar_system_id}"
+  defp info_line(_system, %{region: region, constellation: constellation}) do
+    "#{region} / #{constellation}"
   end
 
-  defp info_line(system, %{wormhole: true}) do
-    alias_text = if system.alias, do: " · #{system.alias}", else: ""
-    "W-Space#{alias_text} · #{system.solar_system_id}"
-  end
+  defp info_line(_system, %{wormhole: true}), do: "W-Space"
 
   defp info_line(system, _loading) do
     if Systems.esi_resolvable?(system), do: "Loading region…", else: "W-Space"
   end
-
-  defp sov_line(%{sovereignty: %{alliance_id: id}}), do: "Alliance: #{id}"
-  defp sov_line(%{sovereignty: %{faction_id: id}}), do: "Faction: #{id}"
-  defp sov_line(_), do: nil
 
   defp selected_system(systems, id) do
     Enum.find(systems, &(&1.id == id))
