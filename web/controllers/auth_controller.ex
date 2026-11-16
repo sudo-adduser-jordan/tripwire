@@ -1,7 +1,21 @@
 defmodule TripwireWeb.AuthController do
   use TripwireWeb, :controller
 
+  alias Tripwire.SSO
+
+  plug :require_sso
   plug Ueberauth
+
+  defp require_sso(conn, _opts) do
+    if SSO.demo?() do
+      conn
+      |> put_flash(:info, "EVE SSO is not configured, demo mode is active")
+      |> redirect(to: ~p"/dashboard/User")
+      |> halt()
+    else
+      conn
+    end
+  end
 
   def delete(conn, _params) do
     conn

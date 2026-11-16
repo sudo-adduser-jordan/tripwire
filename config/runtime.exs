@@ -7,6 +7,10 @@ end
 config :tripwire, TripwireWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+if sso_secret = System.get_env("EVESSO_SECRET_KEY") || System.get_env("EVESSO_CLIENT_SECRET") do
+  config :ueberauth, Ueberauth.Strategy.EVESSO.OAuth, client_secret: sso_secret
+end
+
 if config_env() == :prod do
   database_path = System.get_env("DATABASE_PATH")
 
@@ -24,25 +28,6 @@ if config_env() == :prod do
     journal_mode: :wal,
     busy_timeout: 5000
 
-  encryption_key =
-    System.get_env("TRIPWIRE_ENCRYPTION_KEY") ||
-      raise """
-      environment variable TRIPWIRE_ENCRYPTION_KEY is missing.
-      Generate one with: openssl rand -base64 32
-      """
-
-  config :tripwire, Tripwire.Vault,
-    ciphers: [
-      default: {Cloak.Ciphers.AES.GCM, tag: "AES.GCM.V1", key: Base.decode64!(encryption_key)}
-    ]
-
-  secret_key_base =
-    System.get_env("SECRET_KEY_BASE") ||
-      raise """
-      environment variable SECRET_KEY_BASE is missing.
-      You can generate one by calling: mix phx.gen.secret
-      """
-
   host = System.get_env("PHX_HOST") || "example.com"
 
   config :tripwire, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
@@ -51,6 +36,5 @@ if config_env() == :prod do
     url: [host: host, port: 443, scheme: "https"],
     http: [
       ip: {0, 0, 0, 0, 0, 0, 0, 0}
-    ],
-    secret_key_base: secret_key_base
+    ]
 end

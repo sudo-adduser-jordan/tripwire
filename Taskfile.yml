@@ -58,29 +58,30 @@ tasks:
       - MIX_ENV=test mix ecto.migrate
       - echo -e "{{.GREEN}}[migrate]{{.RESET}} migrations complete"
   start:
-    desc: Start the production server
-    preconditions:
-      - sh: test -n "${SECRET_KEY_BASE:-}"
-        msg: SECRET_KEY_BASE environment variable is required
-      - sh: test -n "${TRIPWIRE_ENCRYPTION_KEY:-}"
-        msg: TRIPWIRE_ENCRYPTION_KEY environment variable is required
+    desc: Restart the production server in the background
     cmds:
-      - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}DATABASE_PATH=${DATABASE_PATH:-./priv/db/tripwire-prod.db}{{.RESET}}"
-      - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}MIX_ENV=prod PHX_SERVER=true mix phx.server{{.RESET}}"
-      - DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" MIX_ENV=prod PHX_SERVER=true mix phx.server
+      - task: stop
+      - mkdir -p logs tmp
+      - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}mix phx.server{{.RESET}}"
+      - |
+        MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" \
+          setsid nohup mix phx.server > logs/prod.log 2>&1 &
+        echo $! > tmp/tripwire-prod.pid
+      - echo -e "{{.GREEN}}[start]{{.RESET}} http://localhost:${PORT:-4000}"
   stop:
     desc: Stop running Tripwire server processes
     cmds:
-      - echo -e "{{.YELLOW}}[stop]{{.RESET}} {{.CYAN}}pkill Tripwire server processes{{.RESET}}"
-      - cmd: pkill -f "tripwire.*phx.server"
-        ignore_error: true
-      - cmd: pkill -f "beam.*tripwire"
-        ignore_error: true
-      - echo -e "{{.GREEN}}[stop]{{.RESET}} server stopped"
+      - echo -e "{{.YELLOW}}[stop]{{.RESET}} {{.CYAN}}stopping tripwire{{.RESET}}"
+      - |
+        if [ -f tmp/tripwire-prod.pid ]; then
+          pid="$(cat tmp/tripwire-prod.pid)"
+          kill -TERM -- -"$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+          rm -f tmp/tripwire-prod.pid
+        fi
+        pkill -f '[m]ix phx\.server' 2>/dev/null || true
+      - echo -e "{{.GREEN}}[stop]{{.RESET}} stopped"
   dev:
-    desc: Start the development server with live reload
+    desc: Attach to the production server output
     cmds:
-      - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}mkdir -p logs/test logs/errors{{.RESET}}"
-      - mkdir -p logs/test logs/errors
-      - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}iex -S mix phx.server{{.RESET}}"
-      - iex -S mix phx.server
+      - touch logs/prod.log
+      - tail -f logs/prod.log

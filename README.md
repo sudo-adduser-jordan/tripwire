@@ -14,7 +14,7 @@ Structured wide-event logging via `Tripwire.Log` (`lib/tripwire/log.ex`).
 
 ## Task Automation
 
-Automation uses `Taskfile.yml` (Task v3). No external scripts; every task runs inline commands with colored log prefixes.
+Automation uses `Taskfile.yml` (Task v3); server lifecycle tasks run inline shell commands.
 
 | Task | Description |
 |---|---|
@@ -23,6 +23,10 @@ Automation uses `Taskfile.yml` (Task v3). No external scripts; every task runs i
 | `task remove` | Remove build artifacts and installed dependencies |
 | `task setup` | First-time setup of database, assets, and log directories |
 | `task migrate` | Run database migrations for dev and test |
-| `task start` | Start the production server (`DATABASE_PATH` defaults to `./priv/db/tripwire-prod.db`; requires `SECRET_KEY_BASE`, `TRIPWIRE_ENCRYPTION_KEY`) |
-| `task stop` | Stop running Tripwire server processes |
-| `task dev` | Start the development server with live reload |
+| `task start` | Restart the production server in the background (`DATABASE_PATH` defaults to `./priv/db/tripwire-prod.db`) |
+| `task stop` | Stop the background production server |
+| `task dev` | Attach to the last 100 lines and follow the server log; Ctrl-C detaches without stopping the server |
+
+## Demo Mode
+
+Tripwire needs no configuration to try it. When `EVESSO_CLIENT_ID` or `EVESSO_SECRET_KEY` is missing, the landing page sends visitors straight to the read-only demo dashboard (`/dashboard/User`). Set both variables to enable EVE SSO login and personal maps.

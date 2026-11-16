@@ -77,7 +77,7 @@ fix:
 - `lib/tripwire/` contexts: `accounts`, `esi`, `mapping`, `masks`, `signatures`, `tracking`, plus `sync_server`, `vault`, `repo`, `mailer`.
 - `lib/tripwire/log.ex`: `Tripwire.Log` wide-event logger.
 - `web/`: `endpoint.ex`, `router.ex`, `telemetry.ex`, `controllers/`, `live/`, `components/`, `plugs/wide_event.ex`.
-- `config/`: `config.exs` base plus `dev.exs`, `test.exs`, `prod.exs`, `runtime.exs` (prod requires `DATABASE_PATH`, `SECRET_KEY_BASE`, `TRIPWIRE_ENCRYPTION_KEY`).
+- `config/`: `config.exs` base plus `dev.exs`, `test.exs`, `prod.exs`, `runtime.exs` (prod requires `DATABASE_PATH`; EVE SSO is optional).
 - `priv/repo/` migrations and seeds; `assets/` Node front end (`package.json` deploy runs `mix assets.deploy`); `test/` mirrors `lib` and `web`.
 - Runtime log dirs (gitignored): `logs/test/`, `logs/errors/`.
 
@@ -92,7 +92,7 @@ fix:
 
 ## Task Automation
 
-`Taskfile.yml` (Task v3, `silent: true`, `output: group`, `set: [errexit, nounset, pipefail]`, `dotenv: [.env]`). Every task prints a colored `[name]` prefix before each inline command.
+`Taskfile.yml` (Task v3, `silent: true`, `output: group`, `set: [errexit, nounset, pipefail]`, `dotenv: [.env]`). Server lifecycle tasks run inline shell commands and write `tmp/tripwire-prod.pid` plus `logs/prod.log`; other tasks print colored `[name]` prefixes before commands.
 
 | Task | Runs |
 |---|---|
@@ -101,9 +101,9 @@ fix:
 | `task remove` | `rm -rf _build deps assets/node_modules priv/static/assets cover tmp` |
 | `task setup` | `mkdir -p logs/test logs/errors`, `mix deps.get`, `mix ecto.setup`, `mix assets.setup`, `mix assets.build` |
 | `task migrate` | `mix ecto.migrate`, `MIX_ENV=test mix ecto.migrate` |
-| `task start` | `MIX_ENV=prod PHX_SERVER=true mix phx.server` with `DATABASE_PATH` defaulting to `./priv/db/tripwire-prod.db` when empty (preconditions: `SECRET_KEY_BASE`, `TRIPWIRE_ENCRYPTION_KEY`) |
-| `task stop` | `pkill -f "tripwire.*phx.server"`, `pkill -f "beam.*tripwire"` (both `ignore_error: true`) |
-| `task dev` | `mkdir -p logs/test logs/errors`, `iex -S mix phx.server` |
+| `task start` | `task stop`, then launch detached with `DATABASE_PATH` defaulting to `./priv/db/tripwire-prod.db`; print web UI and app dashboard URLs |
+| `task stop` | stop the managed production process group recorded in `tmp/tripwire-prod.pid` |
+| `task dev` | attach to `logs/prod.log`; Ctrl-C detaches without stopping the server |
 
 ## Conventions
 
