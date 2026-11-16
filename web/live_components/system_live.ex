@@ -10,10 +10,16 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
         systems -> systems
       end
 
+    connections =
+      Map.get_lazy(assigns, :connections, fn ->
+        Mapping.list_connections_with_endpoints(assigns.map_id)
+      end)
+
     {:ok,
      socket
      |> assign(assigns)
-     |> assign(:systems, systems)}
+     |> assign(:systems, systems)
+     |> assign(:connections, connections)}
   end
 
   def handle_event("select-system", %{"id" => id}, socket) do
@@ -93,7 +99,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
           </ul>
           <div class="flex flex-row flex-wrap gap-1 p-2">
             <button
-              :for={sys <- @systems}
+              :for={sys <- visible_systems(@systems, @connections, @selected_system_id)}
               class={"btn btn-xs " <> (if sys.id == @selected_system_id, do: "btn-primary", else: "btn-ghost")}
               phx-click="select-system"
               phx-value-id={sys.id}
@@ -121,6 +127,25 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
     case Enum.find(systems, &(&1.id == id)) do
       %{favorite: true} -> true
       _ -> false
+    end
+  end
+
+  defp visible_systems(systems, _connections, nil), do: systems
+
+  defp visible_systems(systems, connections, selected_id) do
+    if Enum.any?(systems, &(&1.id == selected_id)) do
+      neighbor_ids =
+        for {_conn, from, to} <- connections,
+            from.id == selected_id or to.id == selected_id,
+            id <- [from.id, to.id],
+            id != selected_id,
+            into: MapSet.new() do
+          id
+        end
+
+      Enum.filter(systems, &(&1.id == selected_id or MapSet.member?(neighbor_ids, &1.id)))
+    else
+      systems
     end
   end
 

@@ -455,6 +455,37 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert html =~ "badge-error"
   end
 
+  test "system widget lists only the selected system and its connections", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, first} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, second} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 200.0})
+
+    {:ok, _other} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323", x: 600.0, y: 200.0})
+
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, first.id, second.id)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    container = view |> element("#system-container") |> render()
+    assert container =~ "J150321"
+    assert container =~ "J150322"
+    refute container =~ "J150323"
+
+    view
+    |> element("#system-container button", "J150322")
+    |> render_click()
+
+    container = view |> element("#system-container") |> render()
+    assert container =~ "J150321"
+    assert container =~ "J150322"
+    refute container =~ "J150323"
+  end
+
   test "top bar renders ESI fallbacks and grid lock toggles", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/dashboard/User")
 
@@ -497,8 +528,10 @@ defmodule TripwireWeb.DashboardLiveTest do
   } do
     {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
 
-    {:ok, _other} =
+    {:ok, other} =
       Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
+
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
 
     {:ok, view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
 
