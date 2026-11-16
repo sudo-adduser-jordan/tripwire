@@ -72,18 +72,52 @@ defmodule Tripwire.SyncServer do
       {:ok, count} -> Logger.info("Pruned #{count} expired signatures")
     end
 
+    case Mapping.prune_expired_flares() do
+      {:ok, 0} -> :ok
+      {:ok, count} -> Logger.info("Pruned #{count} expired flares")
+    end
+
     case ESI.get_system_jumps() do
-      {:ok, _jumps} -> :ok
+      {:ok, jumps} -> apply_system_activity(jumps, :jumps)
       {:error, reason} -> Logger.debug("System jumps sync skipped: #{inspect(reason)}")
     end
 
     case ESI.get_system_kills() do
-      {:ok, _kills} -> :ok
+      {:ok, kills} -> apply_system_activity(kills, :kills)
       {:error, reason} -> Logger.debug("System kills sync skipped: #{inspect(reason)}")
     end
 
     :ok
   end
+
+  defp apply_system_activity(rows, field) when is_list(rows) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    for row <- rows do
+      esi_id = row["solar_system_id"] || row["system_id"]
+      value = row["ship_jumps"] || row["ship_kills"] || row["kills"] || 0
+
+      if esi_id do
+        case Repo.get_by(Tripwire.Mapping.MapSystem, solar_system_id: esi_id) do
+          nil ->
+            :ok
+
+          system ->
+            attrs = %{field => value, recorded_at: now}
+
+            case Mapping.get_system_stat(system.id) do
+              nil ->
+                Mapping.upsert_system_stat(system, Map.put(attrs, :visits, 0))
+
+              stat ->
+                Mapping.upsert_system_stat(system, Map.put(attrs, :visits, stat.visits || 0))
+            end
+        end
+      end
+    end
+  end
+
+  defp apply_system_activity(_, _), do: :ok
 
   defp schedule(job, interval), do: Process.send_after(self(), {:run, job}, interval)
 end

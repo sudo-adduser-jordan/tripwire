@@ -60,6 +60,7 @@ defmodule Tripwire.Tracking do
           nil
         end
 
+      _ = Mapping.record_visit(system)
       broadcast_system_change(map.id, character_name, system)
       broadcast_map_update(map.id)
 

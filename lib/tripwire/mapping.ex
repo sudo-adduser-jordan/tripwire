@@ -402,6 +402,143 @@ defmodule Tripwire.Mapping do
 
   def get_comment!(id), do: Repo.get!(Tripwire.Mapping.Comment, id)
 
+  def move_comment(%Tripwire.Mapping.Comment{} = comment, to_system_id) do
+    comment
+    |> Tripwire.Mapping.Comment.changeset(%{map_system_id: to_system_id})
+    |> Repo.update()
+  end
+
+  def list_flares(system_id) do
+    Repo.all(
+      from(f in Tripwire.Mapping.Flare,
+        where: f.map_system_id == ^system_id,
+        order_by: [desc: f.id],
+        preload: [:created_by]
+      )
+    )
+  end
+
+  def create_flare(%MapSystem{} = system, attrs, character \\ nil, mask_id \\ nil) do
+    character_id = if is_struct(character, Character), do: character.id, else: nil
+    life_length = attrs[:life_length] || attrs["life_length"] || 3600
+
+    attrs =
+      attrs
+      |> Elixir.Map.put(:life_length, life_length)
+      |> Elixir.Map.put(
+        :expires_at,
+        DateTime.add(DateTime.utc_now(), life_length, :second) |> DateTime.truncate(:second)
+      )
+
+    %Tripwire.Mapping.Flare{}
+    |> Tripwire.Mapping.Flare.changeset(
+      merge_attrs(attrs, %{
+        map_system_id: system.id,
+        created_by_id: character_id,
+        mask_id: mask_id
+      })
+    )
+    |> Repo.insert()
+  end
+
+  def delete_flare(%Tripwire.Mapping.Flare{} = flare), do: Repo.delete(flare)
+
+  def prune_expired_flares(now \\ DateTime.utc_now()) do
+    {count, _} =
+      Repo.delete_all(
+        from(f in Tripwire.Mapping.Flare, where: not is_nil(f.expires_at) and f.expires_at < ^now)
+      )
+
+    {:ok, count}
+  end
+
+  def upsert_system_stat(%MapSystem{} = system, attrs) do
+    case Repo.get_by(Tripwire.Mapping.SystemStat, map_system_id: system.id) do
+      nil ->
+        %Tripwire.Mapping.SystemStat{}
+        |> Tripwire.Mapping.SystemStat.changeset(Elixir.Map.put(attrs, :map_system_id, system.id))
+        |> Repo.insert()
+
+      %Tripwire.Mapping.SystemStat{} = stat ->
+        stat
+        |> Tripwire.Mapping.SystemStat.changeset(attrs)
+        |> Repo.update()
+    end
+  end
+
+  def get_system_stat(system_id),
+    do: Repo.get_by(Tripwire.Mapping.SystemStat, map_system_id: system_id)
+
+  def record_visit(%MapSystem{} = system) do
+    case get_system_stat(system.id) do
+      nil ->
+        upsert_system_stat(system, %{
+          visits: 1,
+          recorded_at: DateTime.utc_now() |> DateTime.truncate(:second)
+        })
+
+      stat ->
+        upsert_system_stat(system, %{
+          visits: (stat.visits || 0) + 1,
+          recorded_at: DateTime.utc_now() |> DateTime.truncate(:second)
+        })
+    end
+  end
+
+  def log_connection_jump(
+        %MapConnection{} = connection,
+        character_name,
+        to_system_id \\ nil,
+        ship_type \\ nil
+      ) do
+    %Tripwire.Mapping.ConnectionJump{}
+    |> Tripwire.Mapping.ConnectionJump.changeset(%{
+      map_connection_id: connection.id,
+      character_name: character_name,
+      to_system_id: to_system_id,
+      ship_type: ship_type
+    })
+    |> Repo.insert()
+  end
+
+  def list_connection_jumps(connection_id) do
+    Repo.all(
+      from(j in Tripwire.Mapping.ConnectionJump,
+        where: j.map_connection_id == ^connection_id,
+        order_by: [desc: j.id],
+        limit: 50
+      )
+    )
+  end
+
+  def map_statistics(map_id) do
+    systems = list_systems(map_id)
+    system_ids = Enum.map(systems, & &1.id)
+
+    signatures =
+      if system_ids == [],
+        do: 0,
+        else: Repo.aggregate(from(s in Signature, where: s.map_system_id in ^system_ids), :count)
+
+    connections = length(list_connections(map_id))
+
+    comments =
+      if system_ids == [],
+        do: 0,
+        else:
+          Repo.aggregate(
+            from(c in Tripwire.Mapping.Comment, where: c.map_system_id in ^system_ids),
+            :count
+          )
+
+    %{
+      systems: length(systems),
+      connections: connections,
+      signatures: signatures,
+      comments: comments
+    }
+  end
+
   @demo_systems [
     %{solar_system_id: 31_000_001, name: "J150321", x: 120.0, y: 120.0},
     %{solar_system_id: 31_000_002, name: "J150322", x: 360.0, y: 260.0},

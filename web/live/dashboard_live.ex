@@ -125,6 +125,8 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
      |> assign(:signatures, Mapping.list_signatures(system_id))
      |> assign(:comments, Mapping.list_comments(system_id))
+     |> assign(:flares, Mapping.list_flares(system_id))
+     |> assign(:system_stat, Mapping.get_system_stat(system_id))
      |> assign(:stale_ids, [])
      |> assign(:stale_system_id, nil)
      |> assign(:undo, [])
@@ -282,10 +284,13 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
      |> assign(:signatures, Mapping.list_signatures(system_id))
      |> assign(:comments, Mapping.list_comments(system_id))
+     |> assign(:flares, Mapping.list_flares(system_id))
+     |> assign(:system_stat, Mapping.get_system_stat(system_id))
      |> assign(:stale_ids, [])
      |> assign(:stale_system_id, nil)
      |> assign(:undo, [])
-     |> assign(:redo, [])}
+     |> assign(:redo, [])
+     |> assign(:sys_form, sys_form_for(socket.assigns.systems, system_id))}
   end
 
   def handle_event("move-system", %{"id" => id, "x" => x, "y" => y}, socket) do
@@ -684,6 +689,101 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply, assign(socket, :occupants, occupants)}
   end
 
+  def handle_event("create-flare", %{"flare" => params}, socket) do
+    case selected_system(socket) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Select a system first")}
+
+      system ->
+        attrs = %{
+          color: params["color"] || "red",
+          reason: present(params["reason"]),
+          life_length: parse_life_length(params["life_length"])
+        }
+
+        case Mapping.create_flare(
+               system,
+               attrs,
+               socket.assigns.character,
+               socket.assigns.mask && socket.assigns.mask.id
+             ) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> assign(:flares, Mapping.list_flares(system.id))
+             |> put_flash(:info, "Flare set")}
+
+          {:error, changeset} ->
+            {:noreply, flash_changeset_errors(socket, changeset)}
+        end
+    end
+  end
+
+  def handle_event("delete-flare", %{"id" => id}, socket) do
+    flare = Tripwire.Repo.get!(Tripwire.Mapping.Flare, String.to_integer(id))
+    {:ok, _} = Mapping.delete_flare(flare)
+    system_id = socket.assigns.selected_system_id
+
+    {:noreply,
+     assign(socket, :flares, if(system_id, do: Mapping.list_flares(system_id), else: []))}
+  end
+
+  def handle_event("ping", %{"message" => message}, socket) do
+    system_name = socket.assigns.selected_system_name || "Unknown"
+
+    case Tripwire.Notifier.ping(system_name, message) do
+      :ok ->
+        {:noreply, put_flash(socket, :info, "Ping sent")}
+
+      {:error, :no_webhook} ->
+        {:noreply, put_flash(socket, :error, "Discord webhook not configured")}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Ping failed: #{inspect(reason)}")}
+    end
+  end
+
+  def handle_event("move-comment", %{"id" => id}, socket) do
+    case {Mapping.get_comment!(String.to_integer(id)), selected_system(socket)} do
+      {_comment, nil} ->
+        {:noreply, put_flash(socket, :error, "Select a destination system first")}
+
+      {comment, system} ->
+        case Mapping.move_comment(comment, system.id) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> assign(:comments, Mapping.list_comments(system.id))
+             |> put_flash(:info, "Note moved")}
+
+          {:error, changeset} ->
+            {:noreply, flash_changeset_errors(socket, changeset)}
+        end
+    end
+  end
+
+  def handle_event("log-jump", %{"connection_id" => conn_id, "ship" => ship}, socket) do
+    case Mapping.get_connection(conn_id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Connection not found")}
+
+      conn ->
+        name =
+          socket.assigns.nav_user || (socket.assigns.character && socket.assigns.character.name) ||
+            "Unknown"
+
+        {:ok, _} =
+          Mapping.log_connection_jump(
+            conn,
+            name,
+            socket.assigns.selected_system_id,
+            present(ship)
+          )
+
+        {:noreply, put_flash(socket, :info, "Jump logged")}
+    end
+  end
+
   defp apply_tree_layout(%{assigns: %{map: map}} = socket, layout) when not is_nil(map) do
     positions = layout_positions(socket.assigns.systems, socket.assigns.connections, layout)
 
@@ -867,6 +967,8 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:conn_errors, [])
     |> assign(:sys_form, %{"alias" => "", "locked" => false})
     |> assign(:occupants, [])
+    |> assign(:flares, [])
+    |> assign(:system_stat, nil)
   end
 
   defp schedule_topbar_load(socket) do

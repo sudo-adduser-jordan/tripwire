@@ -27,6 +27,14 @@ defmodule TripwireWeb.Router do
     plug :accepts, ["json"]
   end
 
+  scope "/api", TripwireWeb do
+    pipe_through :api
+    get "/signatures", ApiController, :signatures
+    get "/wormholes", ApiController, :wormholes
+    get "/comments", ApiController, :comments
+    get "/statistics", ApiController, :statistics
+  end
+
   scope "/", TripwireWeb do
     pipe_through :browser
     get "/", HomeController, :home
