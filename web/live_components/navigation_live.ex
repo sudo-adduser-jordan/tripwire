@@ -5,7 +5,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
 
   alias Phoenix.LiveView.JS
 
-  attr :user, :string, required: true
+  attr :character, :string, required: true
   attr :characters, :list, default: []
   attr :masks, :list, default: []
   attr :tq_online, :boolean, default: false
@@ -37,10 +37,10 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
           {if @tq_online, do: format_players(@tq_players), else: "Down"}
         </div>
       </div>
-      <p class="tabular-nums" title="EVE time (UTC)">{format_time(@topbar_now)}</p>
+      <p class="tabular-nums text-xs" title="EVE time (UTC)">{format_time(@topbar_now)}</p>
       <div
         id="topbar-system"
-        class="hover:cursor-pointer hover:underline place-content-center px-2 text-center"
+        class="hover:cursor-pointer hover:underline place-content-center px-2 text-center text-xs"
         title={if @character_online == false, do: "Character offline"}
       >
         {@selected_system_name || @current_system_name || "Jita"}
@@ -48,7 +48,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
       <div :if={@ship_name} class="hidden text-xs opacity-60 min-[400px]:block max-w-32 truncate">
         {@ship_name}
       </div>
-      <div class="hidden min-[400px]:flex items-center">&gt;</div>
+      <div class="hidden min-[400px]:flex items-center text-xs">&gt;</div>
       <form phx-submit="system-search-submit" class="hidden min-[400px]:block">
         <input
           id="system-search"
@@ -77,8 +77,8 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
           </svg>
         </button>
         <div class="dropdown dropdown-start">
-          <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline">
-            {@user}
+          <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline text-xs">
+            {@character}
           </div>
           <ul
             tabindex="-1"
@@ -101,14 +101,14 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
                     <img src="/images/alliance-default.png" alt="" loading="lazy" />
                   </div>
                 </div>
-                {@user}
+                {@character}
               </a>
             </li>
           </ul>
         </div>
-        <p>&gt;</p>
+        <p class="text-xs">&gt;</p>
         <div class="dropdown dropdown-end">
-          <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline">
+          <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline text-xs">
             Corporation
           </div>
           <ul

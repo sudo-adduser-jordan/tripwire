@@ -7,82 +7,71 @@ defmodule TripwireWeb.DashboardLive do
   alias Tripwire.Masks
   alias Tripwire.Signatures, as: SigParser
 
-  @demo_users ~w(Admin User)
-  @demo_eve_ids %{"Admin" => 9_000_001, "User" => 9_000_002}
+  @demo_character_eve_id 9_000_002
+  @demo_character_name "Demo User"
   @topbar_refresh_ms 60_000
 
   @impl true
-  def mount(%{"user" => user} = _params, _session, socket) when user in @demo_users do
+  def mount(_params, session, socket) do
+    case session["current_user"] do
+      %{"id" => eve_id} ->
+        case Accounts.get_character_by_eve_id(eve_id) do
+          nil -> {:ok, mount_demo(socket)}
+          character -> {:ok, provision(socket, character)}
+        end
+
+      _ ->
+        {:ok, mount_demo(socket)}
+    end
+  end
+
+  defp mount_demo(socket) do
     {:ok, character} =
-      Accounts.upsert_character(%{eve_id: Map.fetch!(@demo_eve_ids, user), name: user})
+      Accounts.upsert_character(%{eve_id: @demo_character_eve_id, name: @demo_character_name})
 
     {:ok, mask} = Masks.ensure_demo_mask()
     {:ok, _} = Masks.add_membership(mask, character)
     {:ok, map} = Mapping.ensure_demo_map(mask.id)
 
-    {:ok,
-     socket
-     |> assign(:current_user, nil)
-     |> assign(:nav_user, user)
-     |> assign(:character, character)
-     |> assign(:characters, [character])
-     |> assign(:mask, mask)
-     |> assign(:masks, [mask])
-     |> assign(:map, map)
-     |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
-     |> assign(:systems, Mapping.list_systems(map.id))
-     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
-     |> apply_tree_layout("top")
-     |> assign(:selected_system_id, nil)
-     |> assign(:selected_system_name, nil)
-     |> assign(:signatures, [])
-     |> assign(:comments, [])
-     |> autoselect_first_system()
-     |> assign(:stale_ids, [])
-     |> assign(:stale_system_id, nil)
-     |> assign(:settings_open, false)
-     |> assign(:settings_tab, "account")
-     |> assign(:map_layout, "top")
-     |> assign(:undo, [])
-     |> assign(:redo, [])
-     |> assign(:demo?, true)
-     |> assign(:sig_modal_open, false)
-     |> assign(:sig_edit_id, nil)
-     |> assign(:sig_form, %{
-       "sig_id" => "",
-       "kind" => "signature",
-       "site_type" => "unknown",
-       "type_name" => "",
-       "life_length" => "259200",
-       "bookmark" => ""
-     })
-     |> assign(:sig_errors, [])
-     |> assign_topbar_defaults()
-     |> assign(:sso_configured?, Tripwire.SSO.configured?())
-     |> subscribe_to_map(map.id)
-     |> schedule_topbar_load()}
-  end
-
-  def mount(_params, session, socket) do
-    case session["current_user"] do
-      %{"id" => eve_id} ->
-        character = Accounts.get_character_by_eve_id(eve_id)
-
-        cond do
-          is_nil(character) ->
-            {:ok,
-             put_flash(socket, :error, "Character not found, please log in again")
-             |> push_navigate(to: ~p"/")}
-
-          true ->
-            {:ok, provision(socket, character)}
-        end
-
-      _ ->
-        {:ok,
-         put_flash(socket, :error, "Please log in to view your dashboard")
-         |> push_navigate(to: ~p"/")}
-    end
+    socket
+    |> assign(:current_user, nil)
+    |> assign(:character, character)
+    |> assign(:characters, [character])
+    |> assign(:mask, mask)
+    |> assign(:masks, [mask])
+    |> assign(:map, map)
+    |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
+    |> assign(:systems, Mapping.list_systems(map.id))
+    |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
+    |> apply_tree_layout("top")
+    |> assign(:selected_system_id, nil)
+    |> assign(:selected_system_name, nil)
+    |> assign(:signatures, [])
+    |> assign(:comments, [])
+    |> autoselect_first_system()
+    |> assign(:stale_ids, [])
+    |> assign(:stale_system_id, nil)
+    |> assign(:settings_open, false)
+    |> assign(:settings_tab, "account")
+    |> assign(:map_layout, "top")
+    |> assign(:undo, [])
+    |> assign(:redo, [])
+    |> assign(:demo?, true)
+    |> assign(:sig_modal_open, false)
+    |> assign(:sig_edit_id, nil)
+    |> assign(:sig_form, %{
+      "sig_id" => "",
+      "kind" => "signature",
+      "site_type" => "unknown",
+      "type_name" => "",
+      "life_length" => "259200",
+      "bookmark" => ""
+    })
+    |> assign(:sig_errors, [])
+    |> assign_topbar_defaults()
+    |> assign(:sso_configured?, Tripwire.SSO.configured?())
+    |> subscribe_to_map(map.id)
+    |> schedule_topbar_load()
   end
 
   @impl true
@@ -187,8 +176,10 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_info({:system_changed, %{character: name, system: system}}, socket) do
+    current_name = socket.assigns.character && socket.assigns.character.name
+
     socket =
-      if socket.assigns.nav_user == name do
+      if current_name == name do
         assign(socket, :current_system_name, system.name)
       else
         socket
@@ -752,7 +743,7 @@ defmodule TripwireWeb.DashboardLive do
          {:ok, %{system: system}} <-
            Tripwire.Tracking.apply_location_change(
              socket.assigns.map,
-             socket.assigns.nav_user || socket.assigns.character.name,
+             socket.assigns.character.name,
              prev,
              solar_system_id
            ) do
@@ -875,7 +866,7 @@ defmodule TripwireWeb.DashboardLive do
 
       conn ->
         name =
-          socket.assigns.nav_user || (socket.assigns.character && socket.assigns.character.name) ||
+          (socket.assigns.character && socket.assigns.character.name) ||
             "Unknown"
 
         {:ok, _} =
@@ -942,7 +933,6 @@ defmodule TripwireWeb.DashboardLive do
 
     socket
     |> assign(:current_user, %{id: character.eve_id, name: character.name})
-    |> assign(:nav_user, character.name)
     |> assign(:character, character)
     |> assign(:characters, [character])
     |> assign(:mask, mask)

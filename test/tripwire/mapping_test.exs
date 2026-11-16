@@ -84,7 +84,6 @@ defmodule Tripwire.MappingTest do
     systems = Mapping.list_systems(fresh.id)
 
     assert Enum.map(systems, &Tripwire.Systems.display_class/1) |> Enum.sort() == [
-             nil,
              "C1",
              "C2",
              "C3",
@@ -93,7 +92,8 @@ defmodule Tripwire.MappingTest do
              "C6",
              "HS",
              "LS",
-             "NS"
+             "NS",
+             "Trig"
            ]
 
     assert hd(systems).alias == "Home"

@@ -32,7 +32,7 @@ defmodule TripwireWeb.AuthController do
 
     conn
     |> put_session(:current_user, %{id: character.eve_id, name: character.name})
-    |> redirect(to: ~p"/dashboard/#{character.name}")
+    |> redirect(to: ~p"/dashboard")
   end
 
   def callback(%{assigns: %{ueberauth_failure: _fails}} = conn, _params) do

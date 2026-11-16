@@ -17,13 +17,14 @@ defmodule TripwireWeb.DashboardLiveTest do
     })
   end
 
-  test "redirects anonymous visitors to the landing page", %{conn: conn} do
-    conn = get(conn, ~p"/dashboard/Kariyo Astrien")
-    assert redirected_to(conn) == "/"
+  test "anonymous visitors get the demo dashboard", %{conn: conn} do
+    {:ok, _view, html} = live(conn, ~p"/dashboard")
+    assert html =~ "Demo mode"
+    assert html =~ "Demo User"
   end
 
   test "demo mode explains missing SSO configuration", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/dashboard/User")
+    {:ok, _view, html} = live(conn, ~p"/dashboard")
 
     assert html =~ "Demo mode"
     assert html =~ "EVESSO_CLIENT_ID"
@@ -35,7 +36,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     System.put_env("EVESSO_SECRET_KEY", "test-secret")
 
     try do
-      {:ok, _view, html} = live(conn, ~p"/dashboard/User")
+      {:ok, _view, html} = live(conn, ~p"/dashboard")
 
       assert html =~ "Demo mode"
       assert html =~ "/auth/evesso"
@@ -47,7 +48,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   end
 
   test "demo mode mounts without a session and opens settings in the grid", %{conn: conn} do
-    {:ok, view, html} = live(conn, ~p"/dashboard/Admin")
+    {:ok, view, html} = live(conn, ~p"/dashboard")
 
     assert html =~ "Demo mode"
     assert has_element?(view, "#grid-stack")
@@ -68,7 +69,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   end
 
   test "demo mode provisions its own editable mask", %{conn: conn} do
-    {:ok, view, html} = live(conn, ~p"/dashboard/User")
+    {:ok, view, html} = live(conn, ~p"/dashboard")
     assert html =~ "Demo mode"
 
     [mask] = Repo.all(Masks.Mask)
@@ -99,7 +100,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     conn: conn,
     character: character
   } do
-    {:ok, view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
 
     assert html =~ "Kariyo Astrien"
     assert has_element?(view, "#grid-stack")
@@ -128,7 +129,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   } do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
     |> element("#system-container button", "J150321")
@@ -162,7 +163,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   } do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
     |> element("#system-container button", "J150321")
@@ -189,7 +190,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
     {:ok, _} = Mapping.create_signature(system, %{sig_id: "OLD-001"}, character)
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
     |> element("#system-container button", "J150321")
@@ -223,7 +224,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
     {:ok, _} = Mapping.create_signature(system, %{sig_id: "OLD-001"}, character)
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
     |> element("#system-container button", "J150321")
@@ -251,7 +252,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   } do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
     |> element("#system-container button", "J150321")
@@ -272,7 +273,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
 
-    {:ok, view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
 
     assert html =~ ~s|id="chain-map"|
     assert html =~ "J150321"
@@ -290,7 +291,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   } do
     {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
 
-    {:ok, _view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, _view, html} = live(login(conn, character), ~p"/dashboard")
 
     assert html =~ ~s|id="toggle-lock"|
     assert html =~ ~s|phx-hook="LockToggle"|
@@ -308,7 +309,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
 
-    {:ok, view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
 
     assert html =~ ~s|id="chain-map"|
     assert html =~ "Map"
@@ -336,7 +337,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, _link, _new?} =
       Mapping.upsert_connection(map.id, system.id, other.id, %{hole_type: "K162"})
 
-    {:ok, _view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, _view, html} = live(login(conn, character), ~p"/dashboard")
 
     [_, node_html] = String.split(html, ~s|<g id="node-#{system.id}"|, parts: 2)
     node_html = String.slice(node_html, 0, 2000)
@@ -358,7 +359,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, _link, _new?} =
       Mapping.upsert_connection(map.id, system.id, other.id, %{hole_type: "K162"})
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
     |> element("#system-container button", "J150322")
@@ -376,7 +377,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   } do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     refute render(view) =~ "sys-modal"
 
@@ -406,7 +407,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   } do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
     |> element("#chain-map text[phx-click='open-system']", "J150321")
@@ -428,7 +429,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   } do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
     |> element("#system-container button", "J150321")
@@ -471,7 +472,7 @@ defmodule TripwireWeb.DashboardLiveTest do
         character
       )
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
     |> element("#system-container button", "J150321")
@@ -496,7 +497,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, _link, _new?} = Mapping.upsert_connection(map.id, first.id, second.id)
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     container = view |> element("#system-container") |> render()
     assert container =~ "J150321"
@@ -521,7 +522,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
     |> element("#settings-button")
@@ -544,7 +545,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
 
     # first load applies the top tree layout: parent above child, vertical edge
-    {:ok, _view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, _view, html} = live(login(conn, character), ~p"/dashboard")
 
     assert html =~ "<path"
     assert html =~ "M 520.0 104.0 V 184.0 H 520.0 V 264.0"
@@ -563,7 +564,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
     {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, third.id)
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
     |> element("#settings-button")
@@ -583,7 +584,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   end
 
   test "top bar renders ESI fallbacks and grid lock toggles", %{conn: conn} do
-    {:ok, view, html} = live(conn, ~p"/dashboard/User")
+    {:ok, view, html} = live(conn, ~p"/dashboard")
 
     assert html =~ "Down"
     assert html =~ "sticky"
@@ -600,7 +601,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   test "system search selects a matching system", %{conn: conn, character: character} do
     {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     html =
       view
@@ -612,7 +613,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   end
 
   test "typing in system search sends nothing until submit", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/dashboard/User")
+    {:ok, _view, html} = live(conn, ~p"/dashboard")
 
     refute html =~ ~s|phx-change="system-search"|
     assert html =~ ~s|phx-submit="system-search-submit"|
@@ -629,7 +630,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
 
-    {:ok, view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
 
     assert html =~ ~s|id="system-copy"|
     assert view |> element("#topbar-system") |> render() =~ "J150321"
@@ -659,7 +660,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, _sig} = Mapping.create_signature(system, %{sig_id: "ABC-123"}, character)
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
     |> element("#system-container button", "J150321")
@@ -677,7 +678,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   end
 
   test "map-layout rearranges the tree", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/dashboard/User")
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
 
     view |> element("#settings-button") |> render_click()
 
@@ -693,7 +694,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   test "delete then undo restores the signature", %{conn: conn, character: character} do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J000000")
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     {:ok, sig} =
       Mapping.create_signature(system, %{sig_id: "XYZ-010"}, character)

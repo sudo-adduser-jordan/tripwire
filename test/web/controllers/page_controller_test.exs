@@ -15,7 +15,7 @@ defmodule TripwireWeb.PageControllerTest do
         assert html =~ "The modern wormhole mapping tool"
         assert html =~ ~s|aria-disabled="true"|
         refute html =~ ~s|href="/auth/evesso"|
-        assert html =~ ~s|href="/dashboard/User"|
+        assert html =~ ~s|href="/dashboard"|
         assert html =~ "Demo"
       end
     )
@@ -34,7 +34,7 @@ defmodule TripwireWeb.PageControllerTest do
         assert html =~ "The modern wormhole mapping tool"
         assert html =~ ~s|href="/auth/evesso"|
         refute html =~ ~s|aria-disabled="true"|
-        refute html =~ ~s|href="/dashboard/User"|
+        refute html =~ ~s|href="/dashboard"|
       end
     )
   end

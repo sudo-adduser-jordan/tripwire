@@ -609,7 +609,7 @@ defmodule Tripwire.Mapping do
     %{solar_system_id: 30_000_142, name: "Jita", security: 0.9, x: 880.0, y: 380.0},
     %{solar_system_id: 30_000_201, name: "Tama", security: 0.2, x: 700.0, y: 540.0},
     %{solar_system_id: 30_000_301, name: "1DQ1-A", security: -1.0, x: 450.0, y: 560.0},
-    %{solar_system_id: 31_000_010, name: "Raravoss", alias: "Pochven", x: 200.0, y: 540.0}
+    %{solar_system_id: 31_000_010, name: "Raravoss", alias: "Pochven", sys_class: "Trig", x: 200.0, y: 540.0}
   ]
 
   @demo_shortcuts """
@@ -638,9 +638,9 @@ defmodule Tripwire.Mapping do
     {2, 4, "B274", "critical", "stable"},
     {4, 5, "K162", "stable", "stable"},
     {5, 6, "C140", "stable", "stable"},
-    {6, 7, "K162", "stable", "stable"},
-    {7, 8, "N968", "stable", "stable"},
-    {8, 9, "K162", "stable", "stable"}
+    {4, 7, "K162", "stable", "stable"},
+    {3, 8, "N968", "stable", "stable"},
+    {2, 9, "K162", "stable", "stable"}
   ]
 
   @demo_signatures %{

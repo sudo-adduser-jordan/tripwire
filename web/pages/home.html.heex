@@ -65,14 +65,11 @@
           />
         </button>
 
-        <a :if={@demo?} class="btn btn-secondary" href={~p"/dashboard/User"}>Demo</a>
+        <a :if={@demo?} class="btn btn-secondary" href={~p"/dashboard"}>Demo</a>
 
         <%= if Application.get_env(:tripwire, :dev_routes) do %>
-          <button onclick="window.location.href='/dashboard/User';" class="btn btn-secondary ">
-            User Demo
-          </button>
-          <button onclick="window.location.href='/dashboard/Admin';" class="btn btn-secondary ">
-            Admin Demo
+          <button onclick="window.location.href='/dashboard';" class="btn btn-secondary ">
+            Demo User
           </button>
           <button onclick="window.location.href='/dev/dashboard';" class="btn btn-secondary ">
             Metrics

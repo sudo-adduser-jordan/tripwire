@@ -12,22 +12,24 @@ defmodule Tripwire.Systems do
   applies to known-space (`security >= 0`); wormhole systems without a
   known class render a blank class line instead of being mislabeled `NS`.
 
-  Node colors mirror official Tripwire: wormhole classes render blue,
-  highsec green, lowsec amber, and nullsec red.
+  Node colors: wormhole classes C1–C3 render blue, C4–C5 render
+  purple, C6 renders pink, highsec green, lowsec amber, and
+  nullsec plus Triglavian/Pochven red.
   """
 
-  @classes ~w(C1 C2 C3 C4 C5 C6 HS LS NS)
+  @classes ~w(C1 C2 C3 C4 C5 C6 HS LS NS Trig)
 
   @colors %{
     "C1" => "#4399F0",
     "C2" => "#4399F0",
     "C3" => "#4399F0",
-    "C4" => "#4399F0",
-    "C5" => "#4399F0",
-    "C6" => "#4399F0",
+    "C4" => "#A855F7",
+    "C5" => "#A855F7",
+    "C6" => "#EC4899",
     "HS" => "#50D25A",
     "LS" => "#F5B544",
-    "NS" => "#FF4747"
+    "NS" => "#FF4747",
+    "Trig" => "#FF4747"
   }
 
   @unknown_color "#6b7280"

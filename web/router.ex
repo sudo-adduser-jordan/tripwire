@@ -38,7 +38,7 @@ defmodule TripwireWeb.Router do
   scope "/", TripwireWeb do
     pipe_through :browser
     get "/", HomeController, :home
-    live "/dashboard/:user", DashboardLive
+    live "/dashboard", DashboardLive
   end
 
   scope "/auth", TripwireWeb do
