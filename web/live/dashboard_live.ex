@@ -10,6 +10,7 @@ defmodule TripwireWeb.DashboardLive do
   @demo_character_eve_id 9_000_002
   @demo_character_name "Demo User"
   @topbar_refresh_ms 60_000
+  @chart_refresh_ms 60_000
   @chart_ranges ~w(24h 48h week)
 
   @impl true
@@ -77,6 +78,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:sso_configured?, Tripwire.SSO.configured?())
     |> subscribe_to_map(map.id)
     |> schedule_topbar_load()
+    |> schedule_chart_refresh()
   end
 
   @impl true
@@ -245,7 +247,20 @@ defmodule TripwireWeb.DashboardLive do
       {:noreply,
        socket
        |> assign(:chart_data, data)
-       |> push_event("system-chart-data", chart_payload(data))}
+       |> push_event(
+         "system-chart-data",
+         chart_payload(data, socket.assigns[:chart_hidden] || MapSet.new())
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info(:refresh_chart, socket) do
+    schedule_chart_refresh()
+
+    if connected?(socket) && socket.assigns.selected_system_id do
+      {:noreply, schedule_chart_reload(socket)}
     else
       {:noreply, socket}
     end
@@ -324,6 +339,23 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("chart-range", _params, socket), do: {:noreply, socket}
+
+  def handle_event("chart-toggle-series", %{"series" => series}, socket)
+      when series in ~w(jumps ship_kills pod_kills npc_kills) do
+    hidden = socket.assigns[:chart_hidden] || MapSet.new()
+
+    hidden =
+      if MapSet.member?(hidden, series),
+        do: MapSet.delete(hidden, series),
+        else: MapSet.put(hidden, series)
+
+    {:noreply,
+     socket
+     |> assign(:chart_hidden, hidden)
+     |> push_event("system-chart-data", chart_payload(socket.assigns.chart_data, hidden))}
+  end
+
+  def handle_event("chart-toggle-series", _params, socket), do: {:noreply, socket}
 
   def handle_event("toggle-favorite", _params, socket) do
     {:noreply, toggle_favorite(socket)}
@@ -1190,6 +1222,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign_topbar_defaults()
     |> subscribe_to_map(map.id)
     |> schedule_topbar_load()
+    |> schedule_chart_refresh()
   end
 
   defp apply_inverse(:delete, signature, socket) do
@@ -1348,6 +1381,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:system_stat, nil)
     |> assign(:system_info, nil)
     |> assign(:chart_range, "24h")
+    |> assign(:chart_hidden, MapSet.new())
     |> assign(:chart_data, %{labels: [], jumps: [], ship_kills: [], pod_kills: [], npc_kills: []})
   end
 
@@ -1358,6 +1392,14 @@ defmodule TripwireWeb.DashboardLive do
 
   defp schedule_topbar_refresh do
     Process.send_after(self(), :refresh_topbar, @topbar_refresh_ms)
+  end
+
+  defp schedule_chart_refresh(socket \\ nil) do
+    if is_nil(socket) || connected?(socket) do
+      Process.send_after(self(), :refresh_chart, @chart_refresh_ms)
+    end
+
+    socket
   end
 
   defp topbar_esi_enabled? do
@@ -1476,35 +1518,59 @@ defmodule TripwireWeb.DashboardLive do
 
   defp chart_data_for(system, range) do
     labels = range_labels(range)
-    n = length(labels)
+    width = bucket_width_hours(range)
+    now = DateTime.utc_now()
 
-    if Tripwire.Systems.esi_resolvable?(system) do
-      activity = Tripwire.ESI.system_activity(system.solar_system_id)
-      pad = fn value -> List.duplicate(0, n - 1) ++ [value] end
+    {ship_kills, pod_kills} =
+      if Tripwire.Systems.esi_resolvable?(system) do
+        since = DateTime.add(now, -length(labels) * width * 3600, :second)
 
-      %{
-        labels: labels,
-        jumps: pad.(activity.jumps),
-        ship_kills: pad.(activity.ship_kills),
-        pod_kills: pad.(activity.pod_kills),
-        npc_kills: pad.(activity.npc_kills)
-      }
-    else
-      empty_chart_data(range)
-    end
+        case Tripwire.ZKill.kill_history(system.solar_system_id, since: since) do
+          {:ok, kills} -> Tripwire.ZKill.bucket(kills, now, length(labels), width)
+          {:error, _} -> {List.duplicate(0, length(labels)), List.duplicate(0, length(labels))}
+        end
+      else
+        {List.duplicate(0, length(labels)), List.duplicate(0, length(labels))}
+      end
+
+    # ESI publishes only the current hour's jumps/NPC kills with no history,
+    # so the live value lands in the newest bucket ("now" tip).
+    {jumps, npc_kills} =
+      if Tripwire.Systems.esi_resolvable?(system) do
+        activity = Tripwire.ESI.system_activity(system.solar_system_id)
+        tip = fn value -> List.duplicate(0, length(labels) - 1) ++ [value] end
+        {tip.(activity.jumps), tip.(activity.npc_kills)}
+      else
+        {List.duplicate(0, length(labels)), List.duplicate(0, length(labels))}
+      end
+
+    %{
+      labels: labels,
+      jumps: jumps,
+      ship_kills: ship_kills,
+      pod_kills: pod_kills,
+      npc_kills: npc_kills
+    }
   end
+
+  defp bucket_width_hours("48h"), do: 6
+  defp bucket_width_hours("week"), do: 24
+  defp bucket_width_hours(_), do: 3
 
   defp range_labels("48h"), do: ["48h", "42h", "36h", "30h", "24h", "18h", "12h", "6h", "0h"]
   defp range_labels("week"), do: ["7d", "6d", "5d", "4d", "3d", "2d", "1d", "0d"]
   defp range_labels(_), do: ["24h", "21h", "18h", "15h", "12h", "9h", "6h", "3h", "0h"]
 
-  defp chart_payload(data) do
+  defp chart_payload(data, hidden) do
+    data = data || %{labels: [], jumps: [], ship_kills: [], pod_kills: [], npc_kills: []}
+
     %{
       "labels" => data.labels,
       "jumps" => data.jumps,
       "ship_kills" => data.ship_kills,
       "pod_kills" => data.pod_kills,
-      "npc_kills" => data.npc_kills
+      "npc_kills" => data.npc_kills,
+      "hidden" => MapSet.to_list(hidden)
     }
   end
 

@@ -83,12 +83,13 @@ defmodule Tripwire.ESI do
   @doc """
   Returns live hourly activity for one solar system from the public
   universe endpoints. Missing rows mean zero activity this hour.
+  ESI keys these rows by `system_id`.
   """
   def system_activity(solar_system_id) do
     jumps =
       case get_system_jumps() do
         {:ok, rows} when is_list(rows) ->
-          case Enum.find(rows, &(&1["solar_system_id"] == solar_system_id)) do
+          case Enum.find(rows, &(&1["system_id"] == solar_system_id)) do
             %{"ship_jumps" => n} -> n || 0
             _ -> 0
           end
@@ -100,7 +101,7 @@ defmodule Tripwire.ESI do
     {ship_kills, pod_kills, npc_kills} =
       case get_system_kills() do
         {:ok, rows} when is_list(rows) ->
-          case Enum.find(rows, &(&1["solar_system_id"] == solar_system_id)) do
+          case Enum.find(rows, &(&1["system_id"] == solar_system_id)) do
             nil -> {0, 0, 0}
             row -> {row["ship_kills"] || 0, row["pod_kills"] || 0, row["npc_kills"] || 0}
           end

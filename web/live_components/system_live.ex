@@ -23,6 +23,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
      |> assign(:connections, connections)
      |> assign_new(:system_info, fn -> nil end)
      |> assign_new(:chart_range, fn -> "24h" end)
+     |> assign_new(:chart_hidden, fn -> MapSet.new() end)
      |> assign_new(:chart_data, fn ->
        %{labels: [], jumps: [], ship_kills: [], pod_kills: [], npc_kills: []}
      end)}
@@ -99,20 +100,6 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
                 system_info={@system_info}
               />
             </li>
-            <li
-              :if={selected_system(@systems, @selected_system_id)}
-              class="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 pb-2 text-xs"
-            >
-              <a
-                :for={link <- Systems.external_links(selected_system(@systems, @selected_system_id))}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="link link-hover opacity-70 hover:opacity-100"
-              >
-                {link.label}
-              </a>
-            </li>
           </ul>
           <div class="flex flex-row flex-wrap gap-1 p-2">
             <button
@@ -126,7 +113,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
             </button>
             <span :if={@systems == []} class="p-1 text-sm opacity-50">No systems on map yet</span>
           </div>
-          <.chart_legend chart_data={@chart_data} />
+          <.chart_legend chart_hidden={@chart_hidden} />
           <div
             id="system-chart"
             phx-hook="ChartMount"
@@ -141,7 +128,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
           >
           </div>
           <div
-            class="flex items-center justify-center gap-1 p-2"
+            class="flex items-center justify-center gap-1 p-2 pb-1"
             role="group"
             aria-label="Chart time range"
           >
@@ -157,6 +144,20 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
               {range_label(range)}
             </button>
           </div>
+          <div
+            :if={selected_system(@systems, @selected_system_id)}
+            class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-2 pb-2 text-xs"
+          >
+            <a
+              :for={link <- Systems.external_links(selected_system(@systems, @selected_system_id))}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="link link-hover opacity-70 hover:opacity-100"
+            >
+              {link.label}
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -167,31 +168,67 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
   defp range_label("48h"), do: "48H"
   defp range_label(_), do: "24H"
 
-  attr :chart_data, :map, required: true
+  attr :chart_hidden, :any, default: nil
 
   defp chart_legend(assigns) do
     ~H"""
-    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 pt-1 text-[11px] opacity-80">
-      <.legend_item color="#91cc75" label="Jumps" value={last_value(@chart_data[:jumps])} />
-      <.legend_item color="#fac858" label="Pod Kills" value={last_value(@chart_data[:pod_kills])} />
-      <.legend_item color="#ee6666" label="Ship Kills" value={last_value(@chart_data[:ship_kills])} />
-      <.legend_item color="#5470c6" label="NPC Kills" value={last_value(@chart_data[:npc_kills])} />
+    <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-2 pt-1 text-[11px]">
+      <.legend_toggle
+        series="jumps"
+        label="Jumps"
+        color="#91cc75"
+        hidden={hidden?(@chart_hidden, "jumps")}
+      />
+      <.legend_toggle
+        series="pod_kills"
+        label="Pod Kills"
+        color="#fac858"
+        hidden={hidden?(@chart_hidden, "pod_kills")}
+      />
+      <.legend_toggle
+        series="ship_kills"
+        label="Ship Kills"
+        color="#ee6666"
+        hidden={hidden?(@chart_hidden, "ship_kills")}
+      />
+      <.legend_toggle
+        series="npc_kills"
+        label="NPC Kills"
+        color="#5470c6"
+        hidden={hidden?(@chart_hidden, "npc_kills")}
+      />
     </div>
     """
   end
 
-  attr :color, :string, required: true
+  attr :series, :string, required: true
   attr :label, :string, required: true
-  attr :value, :integer, default: 0
+  attr :color, :string, required: true
+  attr :hidden, :boolean, default: false
 
-  defp legend_item(assigns) do
+  defp legend_toggle(assigns) do
     ~H"""
-    <span class="inline-flex items-center gap-1">
+    <button
+      type="button"
+      phx-click="chart-toggle-series"
+      phx-value-series={@series}
+      aria-pressed={to_string(!@hidden)}
+      title={"Toggle #{@label}"}
+      class={
+        "inline-flex cursor-pointer items-center gap-1 rounded px-1 transition-opacity hover:opacity-100 " <>
+          (if @hidden, do: "opacity-40", else: "opacity-80")
+      }
+    >
       <span class="inline-block size-2 rounded-full" style={"background-color: #{@color}"}></span>
-      {@label} {@value}
-    </span>
+      {@label}
+    </button>
     """
   end
+
+  defp hidden?(nil, _series), do: false
+  defp hidden?(%MapSet{} = hidden, series), do: MapSet.member?(hidden, series)
+  defp hidden?(hidden, series) when is_list(hidden), do: series in hidden
+  defp hidden?(_, _), do: false
 
   attr :system, :map, required: true
   attr :system_info, :any, default: nil
@@ -239,9 +276,6 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
   defp sov_line(%{sovereignty: %{alliance_id: id}}), do: "Alliance: #{id}"
   defp sov_line(%{sovereignty: %{faction_id: id}}), do: "Faction: #{id}"
   defp sov_line(_), do: nil
-
-  defp last_value(values) when is_list(values), do: List.last(values) || 0
-  defp last_value(_), do: 0
 
   defp selected_system(systems, id) do
     Enum.find(systems, &(&1.id == id))

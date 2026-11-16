@@ -149,12 +149,14 @@ function initSystemChart(dom) {
 
 function updateSystemChart(payload) {
     if (!stackedChart || !payload) return
+    const hidden = new Set(payload.hidden || [])
+    const mask = (key, values) => (hidden.has(key) ? (values || []).map(() => 0) : values || [])
     applyData({
-        labels: payload.labels || payload.Labels || [],
-        shipKills: payload.ship_kills || [],
-        podKills: payload.pod_kills || [],
-        jumps: payload.jumps || [],
-        npcKills: payload.npc_kills || [],
+        labels: payload.labels || [],
+        shipKills: mask('ship_kills', payload.ship_kills),
+        podKills: mask('pod_kills', payload.pod_kills),
+        jumps: mask('jumps', payload.jumps),
+        npcKills: mask('npc_kills', payload.npc_kills),
     })
 }
 
