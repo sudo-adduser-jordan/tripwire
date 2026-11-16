@@ -66,13 +66,13 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
               phx-target={@myself}
               class="flex gap-2 p-2"
             >
-              <input
+              <textarea
                 name="comment"
-                class="input input-sm w-full"
+                class="textarea textarea-sm w-full resize-y"
+                rows="2"
                 placeholder="Add a note for the selected system"
-                value={@comment_body}
                 autocomplete="off"
-              />
+              >{@comment_body}</textarea>
               <button type="submit" class="btn btn-primary btn-sm">
                 <.icon name="hero-plus" class="size-4" />
               </button>

@@ -541,6 +541,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> render_submit(%{comment: "scouted"})
 
     html = render(view)
+    assert html =~ "<textarea"
     assert html =~ "scouted"
     assert html =~ "1 notes"
     assert html =~ "ABC-123"
