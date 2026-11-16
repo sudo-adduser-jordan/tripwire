@@ -239,10 +239,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 />
                 <text
                   x="50"
-                  y="16"
+                  y="17"
                   text-anchor="middle"
                   fill={node_color(system)}
-                  class="text-[11px] font-semibold tracking-wider"
+                  class="text-sm font-semibold tracking-wider"
                 >
                   {node_class(system)}
                 </text>
@@ -263,8 +263,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   x="50"
                   y="61"
                   text-anchor="middle"
-                  textLength="92"
-                  lengthAdjust="spacingAndGlyphs"
                   class="fill-base-content/60 text-[10px]"
                 >
                   {incoming_type(@connections, system.id)}
