@@ -18,8 +18,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign(:systems, systems)
      |> assign(:connections, connections)
      |> assign_new(:map_locked, fn -> true end)
-     |> assign_new(:pan_x, fn -> 0 end)
-     |> assign_new(:pan_y, fn -> 0 end)}
+     |> assign_new(:pan_x, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 0) end)
+     |> assign_new(:pan_y, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 1) end)}
   end
 
   def handle_event("select-system", %{"id" => id}, socket) do
