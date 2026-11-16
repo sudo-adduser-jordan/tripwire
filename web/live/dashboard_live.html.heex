@@ -5,12 +5,16 @@
 <RootLayout.app flash={@flash} current_user={@current_user}>
   <.navigation user={@nav_user} />
 
-  <div :if={@demo?} class="alert alert-warning mx-2 py-2 text-sm">
+  <div :if={@demo?} class="alert alert-warning w-full py-2 text-sm">
     <span>Demo mode — log in with EVE SSO for a personal map.</span>
   </div>
 
-  <div class=" flex flex-col p-2 ">
-    <div class="grid-stack grid-stack-loading" id="grid-stack" phx-hook="GridStack">
+  <div class="flex w-full max-w-full flex-col gap-2 overflow-x-clip p-2 sm:p-3">
+    <div
+      class="grid-stack grid-stack-loading w-full max-w-full"
+      id="grid-stack"
+      phx-hook="GridStack"
+    >
       <.settings :if={@settings_open} map_layout={@map_layout} settings_tab={@settings_tab} />
       <.system systems={@systems} selected_system_id={@selected_system_id} />
       <.notes />

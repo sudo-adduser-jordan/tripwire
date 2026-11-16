@@ -12,22 +12,22 @@ defmodule TripwireWeb.SignaturesComponent do
 
   def signatures(assigns) do
     ~H"""
-    <div id={@id} class="grid-stack-item h-full" gs-w="12" gs-h="6" gs-x="0" gs-y="6" tabindex="0">
-      <div class="grid-stack-item-content bg-base-100/50 flex flex-col">
-        <div class="sticky top-0">
+    <div id={@id} class="grid-stack-item" gs-w="12" gs-h="6" gs-x="0" gs-y="6" tabindex="0">
+      <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
+        <div class="shrink-0">
           <ul class="list rounded-box shadow-md">
-            <li class="list-row h-fit p-1 flex items-center gap-1">
+            <li class="list-row h-fit items-center gap-1 p-1">
               <button
-                class="btn btn-xs btn-ghost"
+                class="btn btn-ghost btn-xs"
                 title="Paste scan results"
                 phx-click="toggle-paste"
               >
                 <.icon name="hero-plus-circle" class="size-5" /> Paste
               </button>
-              <button class="btn btn-xs btn-ghost" title="Undo" phx-click="undo">
+              <button class="btn btn-ghost btn-xs" title="Undo" phx-click="undo">
                 <.icon name="hero-arrow-uturn-left" class="size-5" />
               </button>
-              <button class="btn btn-xs btn-ghost" title="Redo" phx-click="redo">
+              <button class="btn btn-ghost btn-xs" title="Redo" phx-click="redo">
                 <.icon name="hero-arrow-uturn-right" class="size-5" />
               </button>
               <span class="ml-auto text-xs opacity-60">
@@ -35,7 +35,7 @@ defmodule TripwireWeb.SignaturesComponent do
               </span>
             </li>
 
-            <li :if={@paste_open} class="p-2 flex flex-col gap-2 border-b border-base-300">
+            <li :if={@paste_open} class="flex flex-col gap-2 border-b border-base-300 p-2">
               <textarea
                 class="textarea textarea-sm w-full font-mono"
                 rows="4"
@@ -43,34 +43,31 @@ defmodule TripwireWeb.SignaturesComponent do
                 phx-change="paste-update"
                 value={@paste_text}
               ></textarea>
-              <div class="flex gap-2 justify-end">
+              <div class="flex justify-end gap-2">
                 <button class="btn btn-xs" phx-click="toggle-paste">Cancel</button>
-                <button class="btn btn-xs btn-primary" phx-click="paste-submit">Import</button>
+                <button class="btn btn-primary btn-xs" phx-click="paste-submit">Import</button>
               </div>
             </li>
           </ul>
-
-          <table class="table table-xs w-full">
-            <thead class="sticky top-0 outline">
-              <tr>
-                <th class="outline outline-primary text-xs text-center p-0">ID</th>
-                <th class="outline outline-primary text-xs text-center p-0">Type</th>
-                <th class="outline outline-primary text-xs text-center p-0">Name</th>
-                <th class="outline outline-primary text-xs text-center p-0">Life</th>
-                <th class="outline outline-primary text-xs text-center p-0"></th>
-              </tr>
-            </thead>
-          </table>
         </div>
 
-        <div class="overflow-auto flex-1">
-          <table class="table table-xs w-full">
+        <div class="min-h-0 w-full max-w-full flex-1 overflow-auto">
+          <table class="widget-table table table-xs w-full">
+            <thead class="sticky top-0 z-10 bg-base-100">
+              <tr>
+                <th class="p-1 text-center text-xs">ID</th>
+                <th class="p-1 text-center text-xs">Type</th>
+                <th class="p-1 text-center text-xs">Name</th>
+                <th class="p-1 text-center text-xs">Life</th>
+                <th class="p-1 text-center text-xs"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
             <tbody>
               <tr :for={sig <- @signatures} id={"signature-#{sig.id}"}>
                 <td class="font-mono">{sig.sig_id}</td>
                 <td>{kind_label(sig)}</td>
-                <td>{sig.type_name || "-"}</td>
-                <td>{format_life_left(sig.inserted_at)}</td>
+                <td class="cell-truncate">{sig.type_name || "-"}</td>
+                <td class="tabular-nums">{format_life_left(sig.inserted_at)}</td>
                 <td class="text-right">
                   <button
                     class="btn btn-ghost btn-xs"
@@ -85,7 +82,7 @@ defmodule TripwireWeb.SignaturesComponent do
               </tr>
 
               <tr :if={@signatures == []}>
-                <td colspan="5" class="text-center text-sm opacity-50 py-4">
+                <td colspan="5" class="py-4 text-center text-sm opacity-50">
                   No signatures yet. Paste scan results for the selected system.
                 </td>
               </tr>

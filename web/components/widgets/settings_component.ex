@@ -14,7 +14,7 @@ defmodule TripwireWeb.SettingsComponent do
       id="settings-widget"
       class="grid-stack-item"
       gs-w="12"
-      gs-h="8"
+      gs-h="10"
       gs-x="0"
       gs-y="0"
       tabindex="0"
@@ -22,8 +22,8 @@ defmodule TripwireWeb.SettingsComponent do
       phx-window-keydown="toggle-settings"
       phx-key="Escape"
     >
-      <div class="grid-stack-item-content bg-base-100/50 overflow-hidden">
-        <div class="tabs tabs-box size-full overflow-hidden">
+      <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
+        <div class="tabs tabs-box max-w-full min-h-0 size-full">
           <.settings_account settings_tab={@settings_tab} />
           <.settings_map map_layout={@map_layout} settings_tab={@settings_tab} />
           <.settings_widgets settings_tab={@settings_tab} />

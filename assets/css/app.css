@@ -241,4 +241,99 @@
   #settings-widget { animation: none; }
 }
 
-/* This file is for your main application CSS */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+/* ---- Base: one font, no page-level horizontal scroll ---- */
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    overflow-x: clip;
+    min-height: 100vh;
+  }
+
+  svg text {
+    font-family: var(--font-sans);
+  }
+}
+
+/* ---- Dashboard grid: full width, no page overflow ---- */
+@layer components {
+  #grid-stack {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .grid-stack-item-content {
+    border-radius: var(--radius-box);
+    min-height: 0;
+    max-width: 100%;
+  }
+}
+
+/* ---- Settings: fit without vertical or horizontal scroll ---- */
+@layer components {
+  #settings-widget .tabs {
+    width: 100%;
+    max-width: 100%;
+    min-height: 0;
+  }
+
+  #settings-widget .tab {
+    min-width: 0;
+  }
+
+  #settings-widget .tab-content {
+    width: 100%;
+    max-width: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #settings-widget #theme-container {
+    width: 100%;
+    max-width: 100%;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  #settings-widget .theme-button {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+/* ---- Widget tables: single source of truth, ellipsis not overflow ---- */
+@layer components {
+  .widget-table th,
+  .widget-table td {
+    white-space: nowrap;
+  }
+
+  .widget-table .cell-truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 12rem;
+  }
+}
+
+/* ---- Mobile ---- */
+@media (max-width: 640px) {
+  #settings-widget .tab {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .widget-table .cell-truncate {
+    max-width: 7rem;
+  }
+}

@@ -5,8 +5,8 @@ defmodule TripwireWeb.NavigationComponent do
 
   def navigation(assigns) do
     ~H"""
-    <nav class="flex items-center content-center flex-col gap-2 sm:gap-0 sm:flex-row p-2">
-      <nav class="flex items-center content-center flex-row bg-base-200/75 rounded sm:rounded-none sm:rounded-l-lg p-2 h-12 w-full  gap-2">
+    <nav class="flex w-full max-w-full flex-col gap-2 p-2 sm:flex-row sm:gap-0 sm:p-3">
+      <nav class="flex h-auto min-h-12 w-full items-center gap-2 rounded bg-base-200/75 p-2 sm:rounded-none sm:rounded-l-lg">
         <div class="m-1 flex justify-center items-center gap-1">
           <div class="inline-grid *:[grid-area:1/1]">
             <div class="status status-error animate-ping"></div>
@@ -29,12 +29,12 @@ defmodule TripwireWeb.NavigationComponent do
         <div class="hidden min-[400px]:flex items-center">&gt;</div>
 
         <input
-          class="mx-1 px-2 py-1 bg-base-100 rounded h-7/10 w-36 sm:w-42 hidden min-[400px]:block"
+          class="mx-1 h-8 w-36 rounded bg-base-100 px-2 py-1 sm:w-44 hidden min-[400px]:block"
           placeholder="Search systems"
         />
       </nav>
 
-      <nav class="flex flex-row justify-start items-center sm:justify-end bg-base-200/75 sm:rounded-none  gap-2 rounded sm:rounded-r-lg  p-2 h-12 w-full">
+      <nav class="flex h-auto min-h-12 w-full flex-row items-center justify-start gap-2 rounded bg-base-200/75 p-2 sm:justify-end sm:rounded-none sm:rounded-r-lg">
         <button id="lock-button" class="">
           <svg
             id="lock-svg"

@@ -14,31 +14,35 @@ defmodule TripwireWeb.MapComponent do
     ~H"""
     <div
       id="map"
-      class="grid-stack-item h-full"
+      class="grid-stack-item"
       gs-w="12"
       gs-h="6"
       gs-x="0"
       gs-y="12"
       tabindex="0"
     >
-      <div class="grid-stack-item-content bg-base-100/50 overflow-hidden flex flex-col">
+      <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
         <ul class="list rounded-box shadow-md shrink-0">
-          <li class="list-row h-fit p-1 flex items-center gap-1">
-            <p class="text-lg font-semibold px-1">Map</p>
+          <li class="list-row h-fit items-center gap-1 p-1">
+            <p class="px-1 text-lg font-semibold">Map</p>
             <span class="text-xs opacity-60">{@map_name}</span>
-            <span class="ml-auto text-xs opacity-60">
+            <span class="ml-auto text-xs tabular-nums opacity-60">
               {length(@systems)} systems · {length(@connections)} links
             </span>
-            <span :if={selected_name(@systems, @selected_system_id)} class="badge badge-primary badge-sm">
+            <span
+              :if={selected_name(@systems, @selected_system_id)}
+              class="badge badge-primary badge-sm"
+            >
               {selected_name(@systems, @selected_system_id)}
             </span>
           </li>
         </ul>
-        <div class="flex-1 min-h-0">
+        <div class="min-h-0 w-full flex-1">
           <svg
             id="chain-map"
             viewBox={@view_box}
-            class="block size-full select-none touch-none"
+            preserveAspectRatio="xMidYMid meet"
+            class="block size-full touch-pan-y select-none"
             phx-hook="MapDrag"
             data-selected={@selected_system_id}
           >

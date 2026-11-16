@@ -14,32 +14,32 @@ defmodule TripwireWeb.SettingsWidgetsComponent do
       phx-click="settings-tab"
       phx-value-tab="widgets"
     />
-    <div class="tab-content overflow-y-scroll bg-base-100/50 border-base-300 p-6  " enabled>
-      Widgets
-      <div class="p-4 flex flex-col gap-1">
-        <div class="flex flex-row gap-4">
-          <input type="checkbox" checked="checked" class="checkbox checkbox-primary" />
-          <p>System</p>
+    <div class="tab-content w-full max-w-full overflow-hidden border-base-300 bg-base-100/50 p-3 sm:p-4">
+      <div class="flex min-h-0 w-full max-w-full flex-col gap-2 overflow-hidden">
+        <p class="text-sm font-semibold">Widgets</p>
+        <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <input type="checkbox" checked="checked" class="checkbox checkbox-primary checkbox-sm" />
+          <p class="text-sm">System</p>
         </div>
 
-        <div class="flex flex-row gap-4">
-          <input type="checkbox" checked="checked" class="checkbox checkbox-secondary" />
-          <p>Notes</p>
+        <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <input type="checkbox" checked="checked" class="checkbox checkbox-secondary checkbox-sm" />
+          <p class="text-sm">Notes</p>
         </div>
 
-        <div class="flex flex-row gap-4">
-          <input type="checkbox" checked="checked" class="checkbox checkbox-accent" />
-          <p>Signatures</p>
+        <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <input type="checkbox" checked="checked" class="checkbox checkbox-accent checkbox-sm" />
+          <p class="text-sm">Signatures</p>
         </div>
 
-        <div class="flex flex-row gap-4">
-          <input type="checkbox" checked="checked" class="checkbox checkbox-neutral" />
-          <p>Map</p>
+        <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <input type="checkbox" checked="checked" class="checkbox checkbox-neutral checkbox-sm" />
+          <p class="text-sm">Map</p>
         </div>
 
-        <div class="flex flex-row gap-4">
-          <input type="checkbox" checked="checked" class="checkbox checkbox-info" />
-          <p>Settings</p>
+        <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <input type="checkbox" checked="checked" class="checkbox checkbox-info checkbox-sm" />
+          <p class="text-sm">Settings</p>
         </div>
       </div>
     </div>
