@@ -29,11 +29,20 @@ if config_env() == :prod do
     busy_timeout: 5000
 
   host = System.get_env("PHX_HOST") || "example.com"
+  port = String.to_integer(System.get_env("PORT", "4000"))
 
   config :tripwire, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  # `task start` runs prod on http://localhost:$PORT for local checks, while a
+  # deployment is reached through PHX_HOST over TLS. Allow both, otherwise the
+  # LiveView socket is rejected and the reconnect toasts never go away.
   config :tripwire, TripwireWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
+    check_origin: [
+      "https://#{host}",
+      "http://localhost:#{port}",
+      "http://127.0.0.1:#{port}"
+    ],
     http: [
       ip: {0, 0, 0, 0, 0, 0, 0, 0}
     ]
