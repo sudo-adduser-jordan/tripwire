@@ -249,6 +249,52 @@ defmodule Tripwire.Mapping do
     Repo.delete(system)
   end
 
+  @doc """
+  Deletes a map with all of its systems, connections, signatures, and
+  related rows.
+  """
+  def delete_map_full(%Map{id: map_id} = map) do
+    system_ids = from(s in MapSystem, where: s.map_id == ^map_id, select: s.id)
+
+    connection_ids =
+      from(c in MapConnection, where: c.map_id == ^map_id, select: c.id)
+
+    Repo.delete_all(
+      from(j in Tripwire.Mapping.ConnectionJump,
+        where: j.map_connection_id in subquery(connection_ids)
+      )
+    )
+
+    Repo.delete_all(from(s in Signature, where: s.map_system_id in subquery(system_ids)))
+
+    Repo.delete_all(
+      from(c in Tripwire.Mapping.Comment, where: c.map_system_id in subquery(system_ids))
+    )
+
+    Repo.delete_all(
+      from(f in Tripwire.Mapping.Flare, where: f.map_system_id in subquery(system_ids))
+    )
+
+    Repo.delete_all(
+      from(s in Tripwire.Mapping.SystemStat, where: s.map_system_id in subquery(system_ids))
+    )
+
+    Repo.delete_all(from(c in MapConnection, where: c.map_id == ^map_id))
+    Repo.delete_all(from(s in MapSystem, where: s.map_id == ^map_id))
+    Repo.delete(map)
+  end
+
+  @doc """
+  Deletes every map on a mask and rebuilds the demo seed from scratch.
+  """
+  def reset_demo_maps(mask_id) do
+    mask_id
+    |> list_maps_for_mask()
+    |> Enum.each(&delete_map_full/1)
+
+    ensure_demo_map(mask_id)
+  end
+
   def get_connection!(id),
     do: Repo.get!(MapConnection, id) |> Repo.preload([:from_system, :to_system])
 
@@ -540,7 +586,14 @@ defmodule Tripwire.Mapping do
   end
 
   @demo_systems [
-    %{solar_system_id: 31_000_001, name: "J150321", sys_class: "C2", x: 120.0, y: 120.0},
+    %{
+      solar_system_id: 31_000_001,
+      name: "J150321",
+      alias: "Home",
+      sys_class: "C2",
+      x: 120.0,
+      y: 120.0
+    },
     %{solar_system_id: 31_000_002, name: "J150322", sys_class: "C3", x: 360.0, y: 260.0},
     %{solar_system_id: 31_000_003, name: "J150323", sys_class: "C5", x: 600.0, y: 140.0},
     %{solar_system_id: 31_000_004, name: "J150324", sys_class: "C4", x: 780.0, y: 330.0},
@@ -548,10 +601,10 @@ defmodule Tripwire.Mapping do
   ]
 
   @demo_links [
-    {0, 1, "C3", "stable"},
-    {1, 2, "K162", "stable"},
-    {2, 3, "EOL", "eol"},
-    {2, 4, "C2", "stable"}
+    {0, 1, "C247", "stable", "stable"},
+    {1, 2, "K162", "destab", "stable"},
+    {2, 3, "N968", "stable", "eol"},
+    {2, 4, "B274", "critical", "stable"}
   ]
 
   @demo_signatures %{
@@ -560,7 +613,7 @@ defmodule Tripwire.Mapping do
         sig_id: "ABC-123",
         kind: "signature",
         site_type: "wormhole",
-        type_name: "Unstable Wormhole (Z647)"
+        type_name: "Unstable Wormhole (C247)"
       },
       %{
         sig_id: "DEF-456",
@@ -591,7 +644,7 @@ defmodule Tripwire.Mapping do
         sig_id: "VWX-234",
         kind: "signature",
         site_type: "wormhole",
-        type_name: "Unstable Wormhole (C247)"
+        type_name: "Unstable Wormhole (N968)"
       },
       %{
         sig_id: "YZA-567",
@@ -606,7 +659,7 @@ defmodule Tripwire.Mapping do
         sig_id: "EFG-123",
         kind: "signature",
         site_type: "wormhole",
-        type_name: "Unstable Wormhole (A239)"
+        type_name: "Unstable Wormhole (B274)"
       }
     ],
     4 => [
@@ -635,13 +688,13 @@ defmodule Tripwire.Mapping do
             system
           end)
 
-        Enum.each(@demo_links, fn {from_idx, to_idx, hole_type, time_status} ->
+        Enum.each(@demo_links, fn {from_idx, to_idx, hole_type, mass_status, time_status} ->
           {:ok, _, _} =
             upsert_connection(
               map.id,
               Enum.at(created, from_idx).id,
               Enum.at(created, to_idx).id,
-              %{hole_type: hole_type, time_status: time_status}
+              %{hole_type: hole_type, mass_status: mass_status, time_status: time_status}
             )
         end)
 
