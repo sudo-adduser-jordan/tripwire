@@ -92,7 +92,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {mask, map, system}
   end
 
-  test "paste flow imports signatures for a selected system", %{
+  test "add button opens a modal and creates a signature", %{
     conn: conn,
     character: character
   } do
@@ -104,13 +104,44 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element("#system-container button", "J150321")
     |> render_click()
 
-    view |> element("button[phx-click='toggle-paste']") |> render_click()
+    refute render(view) =~ "sig-modal"
 
     view
-    |> element("#signatures textarea")
-    |> render_change(%{value: "ABC-123\tCosmic Signature\tUnstable Wormhole (Z647)"})
+    |> element("#signatures button[phx-click='open-add']")
+    |> render_click()
 
-    view |> element("button[phx-click='paste-submit']") |> render_click()
+    assert render(view) =~ "sig-modal"
+    assert render(view) =~ "Add Signature"
+
+    view
+    |> element("#sig-modal form[phx-submit='save-signature']")
+    |> render_submit(%{
+      "sig" => %{"sig_id" => "QWE-123", "kind" => "signature", "site_type" => "wormhole"}
+    })
+
+    html = render(view)
+    assert html =~ "QWE-123"
+    refute html =~ "sig-modal"
+
+    assert [%Mapping.Signature{sig_id: "QWE-123"}] = Mapping.list_signatures(system.id)
+  end
+
+  test "global paste imports signatures for a selected system", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    view
+    |> element("#system-container button", "J150321")
+    |> render_click()
+
+    view
+    |> render_click("global-paste", %{
+      "text" => "ABC-123\tCosmic Signature\tUnstable Wormhole (Z647)"
+    })
 
     html = render(view)
     assert html =~ "ABC-123"
@@ -119,6 +150,84 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert [%Mapping.Signature{} = sig] = Mapping.list_signatures(system.id)
     assert sig.sig_id == "ABC-123"
     assert sig.type_name == "Unstable Wormhole (Z647)"
+  end
+
+  test "global paste offers to delete signatures missing from the paste", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, _} = Mapping.create_signature(system, %{sig_id: "OLD-001"}, character)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    view
+    |> element("#system-container button", "J150321")
+    |> render_click()
+
+    assert render(view) =~ "OLD-001"
+
+    view
+    |> render_click("global-paste", %{"text" => "NEW-002\tCosmic Signature\tSerpentis Frigate Den"})
+
+    html = render(view)
+    assert html =~ "NEW-002"
+    assert html =~ "stale-toast"
+    assert html =~ "OLD-001"
+
+    view |> element("#stale-toast button[phx-click='delete-stale']") |> render_click()
+
+    html = render(view)
+    assert html =~ "NEW-002"
+    refute html =~ "OLD-001"
+    refute html =~ "stale-toast"
+    assert [%Mapping.Signature{sig_id: "NEW-002"}] = Mapping.list_signatures(system.id)
+  end
+
+  test "dismissing the stale toast keeps missing signatures", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, _} = Mapping.create_signature(system, %{sig_id: "OLD-001"}, character)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    view
+    |> element("#system-container button", "J150321")
+    |> render_click()
+
+    view
+    |> render_click("global-paste", %{"text" => "NEW-002\tCosmic Signature\tSerpentis Frigate Den"})
+
+    assert render(view) =~ "stale-toast"
+
+    view |> element("#stale-toast button[phx-click='dismiss-stale']") |> render_click()
+
+    html = render(view)
+    refute html =~ "stale-toast"
+    assert html =~ "OLD-001"
+    assert html =~ "NEW-002"
+    assert length(Mapping.list_signatures(system.id)) == 2
+  end
+
+  test "global paste with no valid signatures changes nothing", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    view
+    |> element("#system-container button", "J150321")
+    |> render_click()
+
+    view |> render_click("global-paste", %{"text" => "nothing to see here"})
+
+    html = render(view)
+    refute html =~ "stale-toast"
+    assert Mapping.list_signatures(system.id) == []
   end
 
   test "move-system persists dragged coordinates", %{conn: conn, character: character} do
@@ -208,25 +317,27 @@ defmodule TripwireWeb.DashboardLiveTest do
     conn: conn,
     character: character
   } do
-    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, _other} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
 
     {:ok, view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
 
     assert html =~ ~s|id="system-copy"|
-    assert view |> element("#system-copy") |> render() =~ ~s|data-copy="Jita"|
-    assert view |> element("#topbar-system") |> render() =~ "Jita"
-    assert view |> element("#system-container p") |> render() =~ "Jita"
-
-    view
-    |> element("#system-container button", "J150321")
-    |> render_click()
-
     assert view |> element("#topbar-system") |> render() =~ "J150321"
     assert view |> element("#system-container p") |> render() =~ "J150321"
 
+    view
+    |> element("#system-container button", "J150322")
+    |> render_click()
+
+    assert view |> element("#topbar-system") |> render() =~ "J150322"
+    assert view |> element("#system-container p") |> render() =~ "J150322"
+
     copy_html = view |> element("#system-copy") |> render()
-    assert copy_html =~ ~s|data-copy="J150321"|
-    assert copy_html =~ "Copy J150321"
+    assert copy_html =~ ~s|data-copy="J150322"|
+    assert copy_html =~ "Copy J150322"
     refute copy_html =~ "disabled"
 
     for id <- ["#system-container", "#notes", "#signatures", "#chain-map", "#grid-stack"] do

@@ -16,41 +16,8 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
      socket
      |> assign(assigns)
      |> assign(:signatures, signatures)
-     |> assign_new(:paste_open, fn -> false end)
-     |> assign_new(:paste_text, fn -> "" end)
      |> assign_new(:undo, fn -> [] end)
      |> assign_new(:redo, fn -> [] end)}
-  end
-
-  def handle_event("toggle-paste", _params, socket) do
-    {:noreply, update(socket, :paste_open, &(!&1))}
-  end
-
-  def handle_event("paste-update", %{"value" => value}, socket) do
-    {:noreply, assign(socket, :paste_text, value)}
-  end
-
-  def handle_event("paste-submit", _params, socket) do
-    with system when not is_nil(system) <- selected_system(socket),
-         entries <- SigParser.parse_paste(socket.assigns.paste_text),
-         false <- entries == [],
-         {added, updated} <- Mapping.upsert_signatures(system, entries, socket.assigns.character) do
-      send(self(), {:signatures_updated, system.id})
-
-      {:noreply,
-       socket
-       |> assign(:paste_text, "")
-       |> assign(:paste_open, false)
-       |> assign(:signatures, Mapping.list_signatures(system.id))
-       |> put_flash(
-         :info,
-         "Parsed #{added + updated} signatures (#{added} new, #{updated} known)"
-       )}
-    else
-      nil -> {:noreply, put_flash(socket, :error, "Select a system first")}
-      true -> {:noreply, put_flash(socket, :error, "No signatures found in paste")}
-      _ -> {:noreply, put_flash(socket, :error, "Could not save signatures")}
-    end
   end
 
   def handle_event("add-signature", %{"sig" => params}, socket) do
@@ -131,14 +98,13 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
       <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
         <div class="shrink-0">
           <ul class="list rounded-box shadow-md">
-            <li class="list-row h-fit items-center gap-1 p-1">
+            <li class="flex items-center gap-1 p-1">
               <button
                 class="btn btn-ghost btn-xs"
-                title="Paste scan results"
-                phx-click="toggle-paste"
-                phx-target={@myself}
+                title="Add signature"
+                phx-click="open-add"
               >
-                <.icon name="hero-plus-circle" class="size-5" /> Paste
+                <.icon name="hero-plus" class="size-5" /> Add
               </button>
               <button
                 class="btn btn-ghost btn-xs"
@@ -160,24 +126,6 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                 {system_label(@selected_system_id)}
               </span>
             </li>
-            <li :if={@paste_open} class="flex flex-col gap-2 border-b border-base-300 p-2">
-              <textarea
-                class="textarea textarea-sm w-full font-mono"
-                rows="4"
-                placeholder="Paste probe results, e.g.\nABC-123\tCosmic Signature\tUnstable Wormhole"
-                phx-change="paste-update"
-                phx-target={@myself}
-                value={@paste_text}
-              ></textarea>
-              <div class="flex justify-end gap-2">
-                <button class="btn btn-xs" phx-click="toggle-paste" phx-target={@myself}>
-                  Cancel
-                </button>
-                <button class="btn btn-primary btn-xs" phx-click="paste-submit" phx-target={@myself}>
-                  Import
-                </button>
-              </div>
-            </li>
           </ul>
         </div>
         <div class="min-h-0 w-full max-w-full flex-1 overflow-auto">
@@ -193,11 +141,28 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
             </thead>
             <tbody>
               <tr :for={sig <- @signatures} id={"signature-#{sig.id}"}>
-                <td class="font-mono">{sig.sig_id}</td>
-                <td>{kind_label(sig)}</td>
+                <td>
+                  <button
+                    class="font-mono link link-hover"
+                    title="Edit signature"
+                    phx-click="open-edit"
+                    phx-value-id={sig.id}
+                  >
+                    {sig.sig_id}
+                  </button>
+                </td>
+                <td>{site_label(sig)}</td>
                 <td class="cell-truncate">{sig.type_name || "-"}</td>
-                <td class="tabular-nums">{format_life_left(sig.inserted_at)}</td>
+                <td class="tabular-nums">{format_life_left(sig)}</td>
                 <td class="text-right">
+                  <button
+                    class="btn btn-ghost btn-xs"
+                    title="Edit signature"
+                    phx-click="open-edit"
+                    phx-value-id={sig.id}
+                  >
+                    <.icon name="hero-pencil" class="size-4" />
+                  </button>
                   <button
                     class="btn btn-ghost btn-xs"
                     title="Delete signature"
@@ -212,7 +177,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
               </tr>
               <tr :if={@signatures == []}>
                 <td colspan="5" class="py-4 text-center text-sm opacity-50">
-                  No signatures yet. Paste scan results for the selected system.
+                  No signatures yet. Click Add or paste scan results anywhere.
                 </td>
               </tr>
             </tbody>
@@ -232,8 +197,17 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   defp kind_label(%{kind: "anomaly"}), do: "Anomaly"
   defp kind_label(_), do: "Signature"
 
-  defp format_life_left(inserted_at) do
-    seconds = SigParser.life_left(DateTime.from_naive!(inserted_at, "Etc/UTC"))
+  defp site_label(%{kind: "anomaly"}), do: "Anomaly"
+  defp site_label(%{site_type: type}) when type in ~w(combat data relic ore gas wormhole), do: String.capitalize(type)
+  defp site_label(sig), do: kind_label(sig)
+
+  defp format_life_left(%{inserted_at: inserted_at, life_length: life_length}) do
+    seconds =
+      SigParser.life_left(
+        DateTime.from_naive!(inserted_at, "Etc/UTC"),
+        life_length || SigParser.default_life_length()
+      )
+
     hours = div(seconds, 3600)
     minutes = rem(seconds, 3600) |> div(60)
     "#{hours}h #{String.pad_leading(Integer.to_string(minutes), 2, "0")}m"
@@ -243,12 +217,31 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
     %{
       sig_id: params["sig_id"],
       kind: params["kind"] || "signature",
-      type_name: present(params["type_name"])
+      site_type: params["site_type"] || "unknown",
+      type_name: present(params["type_name"]),
+      bookmark: present(params["bookmark"]),
+      life_length: parse_life_length(params["life_length"])
     }
   end
 
+  defp parse_life_length(nil), do: 259_200
+  defp parse_life_length(""), do: 259_200
+  defp parse_life_length(value) when is_integer(value), do: value
+
+  defp parse_life_length(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {number, ""} -> number
+      _ -> 259_200
+    end
+  end
+
+  defp present(nil), do: nil
   defp present(""), do: nil
+  defp present(value) when is_binary(value), do: String.trim(value) |> nullify()
   defp present(value), do: value
+
+  defp nullify(""), do: nil
+  defp nullify(value), do: value
 
   defp changeset_errors(changeset) do
     changeset.errors |> Enum.map(fn {f, {m, _}} -> "#{f} #{m}" end) |> Enum.join(", ")

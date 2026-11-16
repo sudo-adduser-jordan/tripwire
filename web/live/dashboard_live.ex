@@ -35,14 +35,26 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:selected_system_name, nil)
      |> assign(:signatures, [])
      |> assign(:comments, [])
-     |> assign(:paste_open, false)
-     |> assign(:paste_text, "")
+     |> autoselect_first_system()
+     |> assign(:stale_ids, [])
+     |> assign(:stale_system_id, nil)
      |> assign(:settings_open, false)
      |> assign(:settings_tab, "account")
      |> assign(:map_layout, "default")
      |> assign(:undo, [])
      |> assign(:redo, [])
      |> assign(:demo?, true)
+     |> assign(:sig_modal_open, false)
+     |> assign(:sig_edit_id, nil)
+     |> assign(:sig_form, %{
+       "sig_id" => "",
+       "kind" => "signature",
+       "site_type" => "unknown",
+       "type_name" => "",
+       "life_length" => "259200",
+       "bookmark" => ""
+     })
+     |> assign(:sig_errors, [])
      |> assign_topbar_defaults()
      |> subscribe_to_map(map.id)
      |> schedule_topbar_load()}
@@ -89,6 +101,8 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
      |> assign(:signatures, Mapping.list_signatures(system_id))
      |> assign(:comments, Mapping.list_comments(system_id))
+     |> assign(:stale_ids, [])
+     |> assign(:stale_system_id, nil)
      |> assign(:undo, [])
      |> assign(:redo, [])}
   end
@@ -198,6 +212,8 @@ defmodule TripwireWeb.DashboardLive do
        |> assign(:selected_system_name, system.name)
        |> assign(:signatures, Mapping.list_signatures(system.id))
        |> assign(:comments, Mapping.list_comments(system.id))
+       |> assign(:stale_ids, [])
+       |> assign(:stale_system_id, nil)
        |> assign(:undo, [])
        |> assign(:redo, [])}
     else
@@ -221,6 +237,8 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
      |> assign(:signatures, Mapping.list_signatures(system_id))
      |> assign(:comments, Mapping.list_comments(system_id))
+     |> assign(:stale_ids, [])
+     |> assign(:stale_system_id, nil)
      |> assign(:undo, [])
      |> assign(:redo, [])}
   end
@@ -252,39 +270,62 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("map-layout", _params, socket), do: {:noreply, socket}
 
-  def handle_event("toggle-paste", _params, socket) do
-    {:noreply, update(socket, :paste_open, &(!&1))}
-  end
+  def handle_event("global-paste", params, socket) do
+    text = Map.get(params, "text", "") |> to_string()
 
-  def handle_event("paste-update", %{"value" => value}, socket) do
-    {:noreply, assign(socket, :paste_text, value)}
-  end
-
-  def handle_event("paste-submit", _params, socket) do
     with system when not is_nil(system) <- selected_system(socket),
-         entries <- SigParser.parse_paste(socket.assigns.paste_text),
-         false <- entries == [],
-         {added, updated} <-
-           Mapping.upsert_signatures(system, entries, socket.assigns.character) do
+         entries when entries != [] <- SigParser.parse_paste(text) do
+      before_ids =
+        system.id |> Mapping.list_signatures() |> Enum.map(& &1.sig_id) |> MapSet.new()
+
+      pasted_ids = entries |> Enum.map(& &1.sig_id) |> MapSet.new()
+
+      {added, updated} = Mapping.upsert_signatures(system, entries, socket.assigns.character)
+
+      missing = before_ids |> MapSet.difference(pasted_ids) |> Enum.sort()
+
       {:noreply,
        socket
-       |> assign(:paste_text, "")
-       |> assign(:paste_open, false)
+       |> assign(:stale_ids, missing)
+       |> assign(:stale_system_id, if(missing == [], do: nil, else: system.id))
        |> reload_signatures()
        |> put_flash(
          :info,
          "Parsed #{added + updated} signatures (#{added} new, #{updated} known)"
        )}
     else
-      nil ->
-        {:noreply, put_flash(socket, :error, "Select a system first")}
-
-      true ->
-        {:noreply, put_flash(socket, :error, "No signatures found in paste")}
-
-      _invalid ->
-        {:noreply, put_flash(socket, :error, "Could not save signatures")}
+      nil -> {:noreply, put_flash(socket, :error, "Select a system first")}
+      [] -> {:noreply, socket}
     end
+  end
+
+  def handle_event("delete-stale", _params, socket) do
+    case {socket.assigns.stale_system_id, socket.assigns.stale_ids} do
+      {nil, _} ->
+        {:noreply, socket}
+
+      {_, []} ->
+        {:noreply, socket}
+
+      {system_id, stale_ids} ->
+        stale_set = MapSet.new(stale_ids)
+
+        system_id
+        |> Mapping.list_signatures()
+        |> Enum.filter(&MapSet.member?(stale_set, &1.sig_id))
+        |> Enum.each(&Mapping.delete_signature/1)
+
+        {:noreply,
+         socket
+         |> assign(:stale_ids, [])
+         |> assign(:stale_system_id, nil)
+         |> reload_signatures()
+         |> put_flash(:info, "Deleted #{length(stale_ids)} missing signatures")}
+    end
+  end
+
+  def handle_event("dismiss-stale", _params, socket) do
+    {:noreply, socket |> assign(:stale_ids, []) |> assign(:stale_system_id, nil)}
   end
 
   def handle_event("add-signature", %{"sig" => params}, socket) do
@@ -295,6 +336,95 @@ defmodule TripwireWeb.DashboardLive do
     else
       nil -> {:noreply, put_flash(socket, :error, "Select a system first")}
       {:error, changeset} -> {:noreply, flash_changeset_errors(socket, changeset)}
+    end
+  end
+
+  def handle_event("open-add", _params, socket) do
+    case selected_system(socket) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Select a system first")}
+
+      _system ->
+        {:noreply,
+         socket
+         |> assign(:sig_modal_open, true)
+         |> assign(:sig_edit_id, nil)
+         |> assign(:sig_errors, [])
+         |> assign(:sig_form, %{
+           "sig_id" => "",
+           "kind" => "signature",
+           "site_type" => "unknown",
+           "type_name" => "",
+           "life_length" => "259200",
+           "bookmark" => ""
+         })}
+    end
+  end
+
+  def handle_event("open-edit", %{"id" => id}, socket) do
+    case Mapping.get_signature(id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Signature not found")}
+
+      sig ->
+        {:noreply,
+         socket
+         |> assign(:sig_modal_open, true)
+         |> assign(:sig_edit_id, sig.id)
+         |> assign(:sig_errors, [])
+         |> assign(:sig_form, %{
+           "sig_id" => sig.sig_id || "",
+           "kind" => sig.kind || "signature",
+           "site_type" => sig.site_type || "unknown",
+           "type_name" => sig.type_name || "",
+           "life_length" => to_string(sig.life_length || 259_200),
+           "bookmark" => sig.bookmark || ""
+         })}
+    end
+  end
+
+  def handle_event("close-sig-modal", _params, socket) do
+    {:noreply,
+     socket |> assign(:sig_modal_open, false) |> assign(:sig_edit_id, nil) |> assign(:sig_errors, [])}
+  end
+
+  def handle_event("save-signature", %{"sig" => params}, socket) do
+    with system when not is_nil(system) <- selected_system(socket) do
+      case socket.assigns.sig_edit_id do
+        nil ->
+          case Mapping.create_signature(system, sig_attrs(params), socket.assigns.character) do
+            {:ok, _} ->
+              {:noreply,
+               socket
+               |> assign(:sig_modal_open, false)
+               |> assign(:sig_edit_id, nil)
+               |> assign(:sig_errors, [])
+               |> reload_signatures()
+               |> put_flash(:info, "Signature added")}
+
+            {:error, changeset} ->
+              {:noreply, assign(socket, :sig_errors, changeset_errors(changeset))}
+          end
+
+        id ->
+          sig = Mapping.get_signature!(id)
+
+          case Mapping.update_signature(sig, sig_attrs(params), socket.assigns.character) do
+            {:ok, _} ->
+              {:noreply,
+               socket
+               |> assign(:sig_modal_open, false)
+               |> assign(:sig_edit_id, nil)
+               |> assign(:sig_errors, [])
+               |> reload_signatures()
+               |> put_flash(:info, "Signature updated")}
+
+            {:error, changeset} ->
+              {:noreply, assign(socket, :sig_errors, changeset_errors(changeset))}
+          end
+      end
+    else
+      nil -> {:noreply, put_flash(socket, :error, "Select a system first")}
     end
   end
 
@@ -377,13 +507,25 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:selected_system_name, nil)
     |> assign(:signatures, [])
     |> assign(:comments, [])
-    |> assign(:paste_open, false)
-    |> assign(:paste_text, "")
+    |> autoselect_first_system()
+    |> assign(:stale_ids, [])
+    |> assign(:stale_system_id, nil)
     |> assign(:settings_open, false)
     |> assign(:map_layout, "default")
     |> assign(:undo, [])
     |> assign(:redo, [])
     |> assign(:demo?, false)
+    |> assign(:sig_modal_open, false)
+    |> assign(:sig_edit_id, nil)
+    |> assign(:sig_form, %{
+      "sig_id" => "",
+      "kind" => "signature",
+      "site_type" => "unknown",
+      "type_name" => "",
+      "life_length" => "259200",
+      "bookmark" => ""
+    })
+    |> assign(:sig_errors, [])
     |> assign_topbar_defaults()
     |> subscribe_to_map(map.id)
     |> schedule_topbar_load()
@@ -401,7 +543,10 @@ defmodule TripwireWeb.DashboardLive do
             %{
               sig_id: signature.sig_id,
               kind: signature.kind,
-              type_name: signature.type_name
+              site_type: signature.site_type,
+              type_name: signature.type_name,
+              bookmark: signature.bookmark,
+              life_length: signature.life_length
             },
             socket.assigns.character
           )
@@ -432,6 +577,18 @@ defmodule TripwireWeb.DashboardLive do
       id -> assign(socket, :signatures, Mapping.list_signatures(id))
     end
   end
+
+  defp autoselect_first_system(
+         %{assigns: %{selected_system_id: nil, systems: [%{id: id, name: name} | _]}} = socket
+       ) do
+    socket
+    |> assign(:selected_system_id, id)
+    |> assign(:selected_system_name, name)
+    |> assign(:signatures, Mapping.list_signatures(id))
+    |> assign(:comments, Mapping.list_comments(id))
+  end
+
+  defp autoselect_first_system(socket), do: socket
 
   defp subscribe_to_map(socket, map_id) do
     Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map_id))
@@ -552,15 +709,49 @@ defmodule TripwireWeb.DashboardLive do
     put_flash(socket, :error, message)
   end
 
+  defp changeset_errors(changeset) do
+    Enum.map(changeset.errors, fn {field, {message, _}} -> "#{field} #{message}" end)
+  end
+
+  defp life_options do
+    [
+      {"24 hours", 86_400},
+      {"48 hours", 172_800},
+      {"72 hours", 259_200},
+      {"7 days", 604_800}
+    ]
+  end
+
   defp sig_attrs(params) do
     %{
       sig_id: params["sig_id"],
       kind: params["kind"] || "signature",
-      type_name: present(params["type_name"])
+      site_type: params["site_type"] || "unknown",
+      type_name: present(params["type_name"]),
+      bookmark: present(params["bookmark"]),
+      life_length: parse_life_length(params["life_length"])
     }
   end
 
+  defp parse_life_length(nil), do: 259_200
+  defp parse_life_length(""), do: 259_200
+  defp parse_life_length(value) when is_integer(value), do: value
+
+  defp parse_life_length(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {number, ""} -> number
+      _ -> 259_200
+    end
+  end
+
+  defp present(nil), do: nil
   defp present(""), do: nil
+  defp present(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
   defp present(value), do: value
 
   defp coord(value) when is_binary(value) do

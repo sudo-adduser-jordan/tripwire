@@ -6,6 +6,7 @@ import topbar from "../vendor/topbar"
 import mapDrag, { ChartMount } from "./mapDrag"
 import GridWidget from "./gridWidget"
 import CopyText from "./copyText"
+import GlobalPaste from "./globalPaste"
 
 const GridStack = {
     mounted() {
@@ -51,6 +52,7 @@ const hooks = {
     GridStack: GridStack,
     GridWidget: GridWidget,
     CopyText: CopyText,
+    GlobalPaste: GlobalPaste,
 }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")

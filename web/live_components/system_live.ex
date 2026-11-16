@@ -35,7 +35,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
       <div class="grid-stack-item-content bg-base-100/50 flex flex-col overflow-hidden">
         <div class="flex min-h-0 size-full flex-col">
           <ul class="list rounded-box shadow-md shrink-0">
-            <li class="list-row h-fit items-center gap-1 p-1">
+            <li class="flex items-center gap-1 p-1">
               <p class="px-1 text-lg font-semibold">
                 {selected_name(@systems, @selected_system_id) || "Jita"}
               </p>

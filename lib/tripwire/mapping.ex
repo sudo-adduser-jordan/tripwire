@@ -299,6 +299,8 @@ defmodule Tripwire.Mapping do
 
   def get_signature!(id), do: Repo.get!(Signature, id)
 
+  def get_signature(id), do: Repo.get(Signature, id)
+
   def list_comments(system_id) do
     Repo.all(
       from(c in Tripwire.Mapping.Comment,
@@ -338,6 +340,32 @@ defmodule Tripwire.Mapping do
     {2, 4, "C2", "stable"}
   ]
 
+  @demo_signatures %{
+    0 => [
+      %{sig_id: "ABC-123", kind: "signature", site_type: "wormhole", type_name: "Unstable Wormhole (Z647)"},
+      %{sig_id: "DEF-456", kind: "signature", site_type: "combat", type_name: "Serpentis Frigate Den"},
+      %{sig_id: "GHI-789", kind: "signature", site_type: "data", type_name: "Ruined Data Site"}
+    ],
+    1 => [
+      %{sig_id: "JKL-012", kind: "signature", site_type: "wormhole", type_name: "Unstable Wormhole (K162)"},
+      %{sig_id: "MNO-345", kind: "signature", site_type: "relic", type_name: "Ruined Relic Site"},
+      %{sig_id: "PQR-678", kind: "anomaly", site_type: "combat", type_name: "Forsaken Hub"}
+    ],
+    2 => [
+      %{sig_id: "STU-901", kind: "signature", site_type: "gas", type_name: "Sizeable Perimeter Withdrawal"},
+      %{sig_id: "VWX-234", kind: "signature", site_type: "wormhole", type_name: "Unstable Wormhole (C247)"},
+      %{sig_id: "YZA-567", kind: "signature", site_type: "ore", type_name: "Rarified Core Deposit"}
+    ],
+    3 => [
+      %{sig_id: "BCD-890", kind: "anomaly", site_type: "combat", type_name: "Sanctum"},
+      %{sig_id: "EFG-123", kind: "signature", site_type: "wormhole", type_name: "Unstable Wormhole (A239)"}
+    ],
+    4 => [
+      %{sig_id: "HIJ-456", kind: "signature", site_type: "data", type_name: "Central Data Site"},
+      %{sig_id: "KLM-789", kind: "signature", site_type: "combat", type_name: "Blood Raider Naval Shipyard"}
+    ]
+  }
+
   def ensure_demo_map(mask_id) do
     map =
       case list_maps_for_mask(mask_id) do
@@ -345,25 +373,47 @@ defmodule Tripwire.Mapping do
         [] -> elem(create_map(%{name: "Demo", mask_id: mask_id}), 1)
       end
 
-    if list_systems(map.id) == [] do
-      systems =
-        Enum.map(@demo_systems, fn attrs ->
-          {:ok, system} = add_system_to_map(map, attrs)
-          system
+    systems =
+      if list_systems(map.id) == [] do
+        created =
+          Enum.map(@demo_systems, fn attrs ->
+            {:ok, system} = add_system_to_map(map, attrs)
+            system
+          end)
+
+        Enum.each(@demo_links, fn {from_idx, to_idx, hole_type, time_status} ->
+          {:ok, _, _} =
+            upsert_connection(
+              map.id,
+              Enum.at(created, from_idx).id,
+              Enum.at(created, to_idx).id,
+              %{hole_type: hole_type, time_status: time_status}
+            )
         end)
 
-      Enum.each(@demo_links, fn {from_idx, to_idx, hole_type, time_status} ->
-        {:ok, _, _} =
-          upsert_connection(
-            map.id,
-            Enum.at(systems, from_idx).id,
-            Enum.at(systems, to_idx).id,
-            %{hole_type: hole_type, time_status: time_status}
-          )
-      end)
-    end
+        created
+      else
+        list_systems(map.id)
+      end
+
+    ensure_demo_signatures(systems)
 
     {:ok, get_map!(map.id)}
+  end
+
+  defp ensure_demo_signatures(systems) do
+    systems
+    |> Enum.sort_by(& &1.id)
+    |> Enum.with_index()
+    |> Enum.each(fn {system, idx} ->
+      if list_signatures(system.id) == [] do
+        Enum.each(Elixir.Map.get(@demo_signatures, idx, []), fn attrs ->
+          %Signature{}
+          |> Signature.changeset(Elixir.Map.put(attrs, :map_system_id, system.id))
+          |> Repo.insert(on_conflict: :nothing)
+        end)
+      end
+    end)
   end
 
   defp merge_attrs(attrs, extra), do: Elixir.Map.merge(attrs, extra)
