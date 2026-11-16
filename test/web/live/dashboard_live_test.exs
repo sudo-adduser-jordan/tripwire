@@ -269,7 +269,6 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert html =~ ~s|id="chain-map"|
     assert html =~ "Map"
-    assert html =~ "2 systems · 1 links"
     assert html =~ "connection-#{link.id}"
     assert html =~ "J150321"
     assert html =~ "J150322"

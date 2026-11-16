@@ -53,9 +53,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
           <li class="list-row h-fit items-center gap-1 p-1">
             <p class="px-1 text-lg font-semibold">Map</p>
             <span class="text-xs opacity-60">{@map_name}</span>
-            <span class="ml-auto text-xs tabular-nums opacity-60">
-              {length(@systems)} systems · {length(@connections)} links
-            </span>
             <span
               :if={selected_name(@systems, @selected_system_id)}
               class="badge badge-primary badge-sm"
