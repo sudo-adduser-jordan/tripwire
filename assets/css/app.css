@@ -222,4 +222,23 @@
   to { visibility: visible; }
 }
 
+/* Settings slides in at the top; the grid animates the rest down. */
+#settings-widget {
+  animation: settings-slide-in 200ms ease-out;
+}
+@keyframes settings-slide-in {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* Settings shares the other widgets' translucent background instead of
+   daisyUI's solid tabs-box fill (unlayered beats daisyUI's layered rule). */
+#settings-widget .tabs-box {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #settings-widget { animation: none; }
+}
+
 /* This file is for your main application CSS */
