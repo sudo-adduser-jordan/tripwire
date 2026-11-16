@@ -2,42 +2,30 @@ defmodule TripwireWeb.SettingsThemesComponent do
   use Phoenix.Component
   alias Phoenix.LiveView.JS
 
-  @themes [
-    "tripwire",
-    "native",
-    "native-dark",
-    "light",
-    "dark",
-    "cupcake",
-    "bumblebee",
-    "emerald",
-    "corporate",
-    "synthwave",
-    "retro",
-    "cyberpunk",
-    "valentine",
-    "halloween",
-    "garden",
-    "forest",
-    "aqua",
-    "lofi",
-    "pastel",
-    "fantasy",
-    "wireframe",
-    "black",
-    "luxury",
-    "dracula",
-    "cmyk",
-    "autumn",
-    "business",
-    "acid",
-    "lemonade",
-    "night",
-    "coffee",
-    "winter"
+  @theme_sections [
+    %{
+      id: "core",
+      label: "Core",
+      icon: "hero-cube",
+      themes: ["tripwire", "native", "native-dark", "light", "dark", "eve", "carbon"]
+    },
+    %{
+      id: "faction",
+      label: "Faction",
+      icon: "hero-flag",
+      themes: ["amarr", "caldari", "gallente", "minmatar"]
+    },
+    %{
+      id: "pirate",
+      label: "Pirate",
+      icon: "hero-fire",
+      themes: ["angel", "blood", "guristas", "sansha", "serpentis"]
+    }
   ]
 
-  def themes, do: @themes
+  def themes, do: Enum.flat_map(@theme_sections, & &1.themes)
+
+  def theme_sections, do: @theme_sections
 
   attr :settings_tab, :string, default: "account"
 
@@ -52,50 +40,45 @@ defmodule TripwireWeb.SettingsThemesComponent do
       phx-click="settings-tab"
       phx-value-tab="themes"
     />
-    <div class="tab-content w-full max-w-full overflow-hidden p-3 sm:p-4">
-      <div class="flex min-h-0 w-full max-w-full flex-col gap-2 overflow-hidden">
+    <div class="tab-content w-full max-w-full overflow-hidden border-base-300 bg-base-100/50 p-3 sm:p-4">
+      <div class="flex min-h-0 w-full max-w-full flex-col gap-4 overflow-hidden">
         <p class="text-sm font-semibold">Themes</p>
-        <div
-          id="theme-container"
-          class="grid w-full max-w-full grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-5"
-        >
-          <%= for theme <- themes() do %>
-            <button
-              id={"theme-button-" <> theme}
-              class="theme-button border-base-content/20 hover:border-base-content/40 focus-visible:outline-primary min-w-0 overflow-hidden rounded-lg border focus-visible:outline-2 focus-visible:outline-offset-2"
-              phx-click={JS.dispatch("phx:set-theme")}
-              data-phx-theme={theme}
-              tabindex="0"
+        <%= for section <- theme_sections() do %>
+          <div class="flex min-h-0 w-full max-w-full flex-col gap-2 overflow-hidden">
+            <div class="flex items-center gap-1.5">
+              <span class={[section.icon, "size-4 opacity-60"]} />
+              <p class="text-xs font-semibold uppercase tracking-wider opacity-70">{section.label}</p>
+            </div>
+            <div
+              id={"theme-container-" <> section.id}
+              class="rounded-box grid w-full max-w-full grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-5"
             >
-              <div
-                data-theme={theme}
-                class="bg-base-100 text-base-content w-full cursor-pointer font-sans"
-              >
-                <div class="grid grid-cols-5 grid-rows-3">
-                  <div class="bg-base-200 col-start-1 row-span-2 row-start-1"></div>
-                  <div class="bg-base-300 col-start-1 row-start-3"></div>
-                  <div class="bg-base-100 col-span-4 col-start-2 row-span-3 row-start-1 flex min-w-0 flex-col gap-1 p-1.5">
+              <%= for theme <- section.themes do %>
+                <button
+                  id={"theme-button-" <> theme}
+                  class="theme-button border-base-content/20 hover:border-base-content/40 min-w-0 overflow-hidden rounded-lg border outline-offset-2"
+                  phx-click={JS.dispatch("phx:set-theme")}
+                  data-phx-theme={theme}
+                  tabindex="0"
+                >
+                  <div
+                    data-theme={theme}
+                    class="bg-base-100 text-base-content flex w-full min-w-0 cursor-pointer items-center gap-1.5 p-2 font-sans"
+                  >
+                    <img
+                      src={"/images/themes/" <> theme <> ".svg"}
+                      alt=""
+                      aria-hidden="true"
+                      class="size-3.5 shrink-0"
+                      loading="lazy"
+                    />
                     <div class="truncate text-xs font-bold">{theme}</div>
-                    <div class="flex flex-wrap gap-1">
-                      <div class="bg-primary flex aspect-square w-4 items-center justify-center rounded">
-                        <div class="text-primary-content text-xs font-bold">A</div>
-                      </div>
-                      <div class="bg-secondary flex aspect-square w-4 items-center justify-center rounded">
-                        <div class="text-secondary-content text-xs font-bold">A</div>
-                      </div>
-                      <div class="bg-accent flex aspect-square w-4 items-center justify-center rounded">
-                        <div class="text-accent-content text-xs font-bold">A</div>
-                      </div>
-                      <div class="bg-neutral flex aspect-square w-4 items-center justify-center rounded">
-                        <div class="text-neutral-content text-xs font-bold">A</div>
-                      </div>
-                    </div>
                   </div>
-                </div>
-              </div>
-            </button>
-          <% end %>
-        </div>
+                </button>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
       </div>
     </div>
     """
