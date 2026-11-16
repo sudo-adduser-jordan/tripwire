@@ -47,7 +47,7 @@ const stackedChartOptions = {
             color: '#ee6666',
             lineStyle: { width: 2, color: '#ee6666' },
             itemStyle: { color: 'transparent', borderColor: '#ee6666', borderWidth: 2 },
-            areaStyle: {},
+            areaStyle: { color: '#ee6666', opacity: 0.25 },
             emphasis: {
                 focus: 'series',
             },
@@ -63,7 +63,7 @@ const stackedChartOptions = {
             color: '#fac858',
             lineStyle: { width: 2, color: '#fac858' },
             itemStyle: { color: 'transparent', borderColor: '#fac858', borderWidth: 2 },
-            areaStyle: {},
+            areaStyle: { color: '#fac858', opacity: 0.25 },
             emphasis: {
                 focus: 'series',
             },
@@ -79,7 +79,7 @@ const stackedChartOptions = {
             color: '#91cc75',
             lineStyle: { width: 2, color: '#91cc75' },
             itemStyle: { color: 'transparent', borderColor: '#91cc75', borderWidth: 2 },
-            areaStyle: {},
+            areaStyle: { color: '#91cc75', opacity: 0.25 },
             emphasis: {
                 focus: 'series',
             },
@@ -95,7 +95,7 @@ const stackedChartOptions = {
             color: '#5470c6',
             lineStyle: { width: 2, color: '#5470c6' },
             itemStyle: { color: 'transparent', borderColor: '#5470c6', borderWidth: 2 },
-            areaStyle: {},
+            areaStyle: { color: '#5470c6', opacity: 0.25 },
             emphasis: {
                 focus: 'series',
             },

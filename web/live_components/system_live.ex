@@ -47,30 +47,21 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
         <div class="flex min-h-0 size-full flex-col">
           <ul class="list rounded-box shadow-md shrink-0">
             <li class="flex items-center gap-1 p-1">
-              <p class="px-1 text-lg font-semibold">
-                {selected_name(@systems, @selected_system_id) || "Jita"}
-              </p>
               <button
                 id="system-copy"
-                class="btn btn-ghost btn-xs p-1"
+                class="group flex min-w-0 cursor-pointer items-center gap-1 rounded px-1 hover:bg-base-200"
                 title={"Copy #{selected_name(@systems, @selected_system_id) || "Jita"}"}
                 phx-hook="CopyText"
                 data-copy={selected_name(@systems, @selected_system_id) || "Jita"}
               >
-                <svg
-                  class="size-5 opacity-60"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke-width="1.5"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"
-                  />
-                </svg>
+                <span class="truncate text-lg font-semibold">
+                  {selected_name(@systems, @selected_system_id) || "Jita"}
+                </span>
+                <.icon
+                  name="hero-clipboard"
+                  class="copy-icon size-4 shrink-0 opacity-0 transition-opacity group-hover:opacity-60"
+                />
+                <.icon name="hero-check" class="copied-icon hidden size-4 shrink-0 text-success" />
               </button>
               <button
                 id="system-favorite"

@@ -31,32 +31,34 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
           <p class="text-xs font-medium opacity-70">Characters</p>
           <span class="badge badge-ghost badge-xs tabular-nums">{length(@characters)}</span>
         </div>
-        <div class="grid w-full max-w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        <div class="grid w-full max-w-full grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4">
           <div
             :for={entry <- @characters}
             class={[
-              "stats shadow min-w-0",
-              current_character?(@character, entry) && "outline outline-primary"
+              "flex min-w-0 items-center gap-2 rounded-lg border bg-base-100/50 p-2",
+              current_character?(@character, entry) &&
+                "border-primary ring-1 ring-primary",
+              !current_character?(@character, entry) && "border-base-300"
             ]}
             tabindex="0"
           >
-            <div class="stat min-w-0 gap-1 p-2">
-              <div class={[
-                "avatar",
-                (current_character?(@character, entry) && "avatar-online") || "avatar-offline"
-              ]}>
-                <div class="w-10 rounded-xl">
-                  <img
-                    src={portrait(entry)}
-                    onerror="this.onerror=null;this.src='/images/alliance-default.png'"
-                    alt=""
-                    loading="lazy"
-                  />
-                </div>
+            <div class={[
+              "avatar shrink-0",
+              (current_character?(@character, entry) && "avatar-online") || "avatar-offline"
+            ]}>
+              <div class="w-8 rounded-lg">
+                <img
+                  src={portrait(entry)}
+                  onerror="this.onerror=null;this.src='/images/alliance-default.png'"
+                  alt=""
+                  loading="lazy"
+                />
               </div>
-              <div class="truncate text-sm font-semibold">{entry.name}</div>
-              <div class="truncate text-xs opacity-70">{corporation(entry)}</div>
-              <div class="flex min-w-0 flex-row flex-wrap gap-1">
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="truncate text-xs font-semibold">{entry.name}</div>
+              <div class="truncate text-[11px] opacity-70">{corporation(entry)}</div>
+              <div class="mt-0.5 flex min-w-0 flex-row flex-wrap gap-1">
                 <div :if={entry.alliance_name} class="badge badge-info badge-xs truncate max-w-full">
                   {entry.alliance_name}
                 </div>
@@ -69,7 +71,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
               </div>
             </div>
           </div>
-          <div :if={@characters == []} class="rounded-box bg-base-200/50 p-3 text-xs opacity-60">
+          <div :if={@characters == []} class="col-span-full rounded-box bg-base-200/50 p-3 text-xs opacity-60">
             No characters yet. Log in with EVE SSO to add one.
           </div>
         </div>
@@ -78,24 +80,28 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
           <p class="text-xs font-medium opacity-70">Masks</p>
           <span class="badge badge-ghost badge-xs tabular-nums">{length(@masks)}</span>
         </div>
-        <div class="grid w-full max-w-full grid-cols-1 gap-2 sm:grid-cols-2">
+        <div class="grid w-full max-w-full grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4">
           <div
             :for={entry <- @masks}
-            class={["stats shadow min-w-0", current_mask?(@mask, entry) && "outline outline-primary"]}
+            class={[
+              "flex min-w-0 items-center gap-2 rounded-lg border bg-base-100/50 p-2",
+              current_mask?(@mask, entry) && "border-primary ring-1 ring-primary",
+              !current_mask?(@mask, entry) && "border-base-300"
+            ]}
             tabindex="0"
           >
-            <div class="stat min-w-0 gap-1 p-2">
-              <div class={[
-                "avatar",
-                (current_mask?(@mask, entry) && "avatar-online") || "avatar-offline"
-              ]}>
-                <div class="w-10 rounded-xl">
-                  <img src="/images/alliance-default.png" alt="" loading="lazy" />
-                </div>
+            <div class={[
+              "avatar shrink-0",
+              (current_mask?(@mask, entry) && "avatar-online") || "avatar-offline"
+            ]}>
+              <div class="w-8 rounded-lg">
+                <img src="/images/alliance-default.png" alt="" loading="lazy" />
               </div>
-              <div class="truncate text-sm font-semibold">{entry.name}</div>
-              <div class="truncate text-xs opacity-70 capitalize">{entry.kind || "custom"}</div>
-              <div class="flex min-w-0 flex-row flex-wrap gap-1">
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="truncate text-xs font-semibold">{entry.name}</div>
+              <div class="truncate text-[11px] opacity-70 capitalize">{entry.kind || "custom"}</div>
+              <div class="mt-0.5 flex min-w-0 flex-row flex-wrap gap-1">
                 <div class={["badge badge-xs", mask_badge(entry.kind)]}>{entry.kind || "custom"}</div>
                 <div :if={current_mask?(@mask, entry)} class="badge badge-success badge-xs">
                   Current
@@ -103,7 +109,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
               </div>
             </div>
           </div>
-          <div :if={@masks == []} class="rounded-box bg-base-200/50 p-3 text-xs opacity-60">
+          <div :if={@masks == []} class="col-span-full rounded-box bg-base-200/50 p-3 text-xs opacity-60">
             No masks yet. Masks are created automatically for each character.
           </div>
         </div>
