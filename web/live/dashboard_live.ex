@@ -2,12 +2,14 @@ defmodule TripwireWeb.DashboardLive do
   use TripwireWeb, :live_view
 
   alias Tripwire.Accounts
+  alias Tripwire.ESI
   alias Tripwire.Mapping
   alias Tripwire.Masks
   alias Tripwire.Signatures, as: SigParser
 
   @demo_users ~w(Admin User)
   @demo_eve_ids %{"Admin" => 9_000_001, "User" => 9_000_002}
+  @topbar_refresh_ms 60_000
 
   @impl true
   def mount(%{"user" => user} = _params, _session, socket) when user in @demo_users do
@@ -40,7 +42,9 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:undo, [])
      |> assign(:redo, [])
      |> assign(:demo?, true)
-     |> subscribe_to_map(map.id)}
+     |> assign_topbar_defaults()
+     |> subscribe_to_map(map.id)
+     |> schedule_topbar_load()}
   end
 
   def mount(_params, session, socket) do
@@ -118,7 +122,50 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_info({:system_changed, %{character: name, system: system}}, socket) do
+    socket =
+      if socket.assigns.nav_user == name do
+        assign(socket, :current_system_name, system.name)
+      else
+        socket
+      end
+
     {:noreply, put_flash(socket, :info, "#{name} jumped into #{system.name}")}
+  end
+
+  def handle_info(:load_topbar, socket) do
+    if topbar_esi_enabled?() do
+      pid = self()
+      character = socket.assigns.character
+      Task.start(fn -> send(pid, {:topbar_loaded, fetch_topbar_data(character)}) end)
+    end
+
+    schedule_topbar_refresh()
+    {:noreply, socket}
+  end
+
+  def handle_info(:refresh_topbar, socket) do
+    if topbar_esi_enabled?() do
+      pid = self()
+      character = socket.assigns.character
+      Task.start(fn -> send(pid, {:topbar_loaded, fetch_topbar_data(character)}) end)
+    end
+
+    schedule_topbar_refresh()
+    {:noreply, socket}
+  end
+
+  def handle_info({:topbar_loaded, data}, socket) do
+    {:noreply,
+     socket
+     |> assign(:tq_online, data.tq_online)
+     |> assign(:tq_players, data.tq_players)
+     |> assign(
+       :current_system_name,
+       data.current_system_name || socket.assigns.current_system_name
+     )
+     |> assign(:character_online, data.character_online)
+     |> assign(:ship_name, data.ship_name)
+     |> assign(:topbar_now, data.now)}
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
@@ -126,6 +173,37 @@ defmodule TripwireWeb.DashboardLive do
   @impl true
   def handle_event("toggle-settings", _params, socket) do
     {:noreply, update(socket, :settings_open, &(!&1))}
+  end
+
+  def handle_event("toggle-grid-lock", _params, socket) do
+    {:noreply, update(socket, :grid_locked, &(!&1))}
+  end
+
+  def handle_event("system-search", %{"search" => search}, socket) do
+    {:noreply, assign(socket, :system_search, search)}
+  end
+
+  def handle_event("system-search-submit", %{"search" => search}, socket) do
+    trimmed = String.trim(search || "")
+
+    system =
+      Enum.find(socket.assigns.systems, fn s ->
+        String.downcase(s.name) == String.downcase(trimmed)
+      end)
+
+    socket = assign(socket, :system_search, search)
+
+    if system do
+      {:noreply,
+       socket
+       |> assign(:selected_system_id, system.id)
+       |> assign(:signatures, Mapping.list_signatures(system.id))
+       |> assign(:comments, Mapping.list_comments(system.id))
+       |> assign(:undo, [])
+       |> assign(:redo, [])}
+    else
+      {:noreply, put_flash(socket, :error, "No system matching #{inspect(trimmed)} on this map")}
+    end
   end
 
   def handle_event("settings-tab", %{"tab" => tab}, socket)
@@ -305,7 +383,9 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:undo, [])
     |> assign(:redo, [])
     |> assign(:demo?, false)
+    |> assign_topbar_defaults()
     |> subscribe_to_map(map.id)
+    |> schedule_topbar_load()
   end
 
   defp apply_inverse(:delete, signature, socket) do
@@ -348,6 +428,88 @@ defmodule TripwireWeb.DashboardLive do
   defp subscribe_to_map(socket, map_id) do
     Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map_id))
     socket
+  end
+
+  defp assign_topbar_defaults(socket) do
+    socket
+    |> assign(:tq_online, false)
+    |> assign(:tq_players, nil)
+    |> assign(:current_system_name, nil)
+    |> assign(:character_online, nil)
+    |> assign(:ship_name, nil)
+    |> assign(:topbar_now, DateTime.utc_now())
+    |> assign(:grid_locked, true)
+    |> assign(:system_search, "")
+  end
+
+  defp schedule_topbar_load(socket) do
+    if connected?(socket), do: send(self(), :load_topbar)
+    socket
+  end
+
+  defp schedule_topbar_refresh do
+    Process.send_after(self(), :refresh_topbar, @topbar_refresh_ms)
+  end
+
+  defp topbar_esi_enabled? do
+    Application.get_env(:tripwire, :topbar_esi, true)
+  end
+
+  defp fetch_topbar_data(character) do
+    {tq_online, tq_players} =
+      case ESI.get_status() do
+        {:ok, %{"players" => players}} -> {true, players}
+        _ -> {false, nil}
+      end
+
+    {current_system_name, character_online, ship_name} = fetch_character_presence(character)
+
+    %{
+      tq_online: tq_online,
+      tq_players: tq_players,
+      current_system_name: current_system_name,
+      character_online: character_online,
+      ship_name: ship_name,
+      now: DateTime.utc_now()
+    }
+  end
+
+  defp fetch_character_presence(nil), do: {nil, nil, nil}
+  defp fetch_character_presence(%{refresh_token: nil}), do: {nil, nil, nil}
+
+  defp fetch_character_presence(character) do
+    with {:ok, token} <- ESI.valid_access_token(character),
+         {:ok, location} <- ESI.get_character_location(character.eve_id, token) do
+      online =
+        case ESI.get_character_online(character.eve_id, token) do
+          {:ok, %{"online" => online}} -> online
+          _ -> nil
+        end
+
+      ship =
+        case ESI.get_character_ship(character.eve_id, token) do
+          {:ok, %{"ship_name" => name}} -> name
+          _ -> nil
+        end
+
+      system_name =
+        case location do
+          %{"solar_system_id" => id} ->
+            case ESI.get_system(id) do
+              {:ok, %{"name" => name}} -> name
+              _ -> nil
+            end
+
+          _ ->
+            nil
+        end
+
+      {system_name, online, ship}
+    else
+      _ -> {nil, nil, nil}
+    end
+  rescue
+    _ -> {nil, nil, nil}
   end
 
   defp push_undo(socket, op), do: update(socket, :undo, &[op | &1])

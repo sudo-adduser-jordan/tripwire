@@ -49,6 +49,8 @@ defmodule Tripwire.ESI do
 
   def get_system_kills, do: public_get("/universe/system_kills/")
 
+  def get_status, do: public_get("/status/")
+
   def get_system(system_id), do: public_get("/universe/systems/#{system_id}/")
 
   @doc """

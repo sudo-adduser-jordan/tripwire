@@ -168,6 +168,35 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "J150321"
   end
 
+  test "top bar renders ESI fallbacks and grid lock toggles", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/dashboard/User")
+
+    assert html =~ "TQ"
+    assert html =~ "Down"
+    assert html =~ ~s|id="lock-button"|
+    assert html =~ ~s|data-grid-locked="true"|
+
+    view |> element("#lock-button") |> render_click()
+    assert render(view) =~ ~s|data-grid-locked="false"|
+
+    view |> element("#lock-button") |> render_click()
+    assert render(view) =~ ~s|data-grid-locked="true"|
+  end
+
+  test "system search selects a matching system", %{conn: conn, character: character} do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    html =
+      view
+      |> element(~s|nav form[phx-submit="system-search-submit"]|)
+      |> render_submit(%{search: "j150321"})
+
+    assert html =~ "system selected"
+    assert render(view) =~ "J150321"
+  end
+
   test "map-layout rearranges the tree", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/dashboard/User")
 

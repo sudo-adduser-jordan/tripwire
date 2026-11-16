@@ -3,7 +3,19 @@
 </script>
 
 <RootLayout.app flash={@flash} current_user={@current_user}>
-  <.navigation_live user={@nav_user} characters={@characters} masks={@masks} />
+  <.navigation_live
+    user={@nav_user}
+    characters={@characters}
+    masks={@masks}
+    tq_online={@tq_online}
+    tq_players={@tq_players}
+    current_system_name={@current_system_name}
+    character_online={@character_online}
+    ship_name={@ship_name}
+    topbar_now={@topbar_now}
+    grid_locked={@grid_locked}
+    system_search={@system_search}
+  />
 
   <div :if={@demo?} class="px-2 sm:px-3">
     <div class="alert alert-warning py-2 text-sm">
@@ -16,6 +28,7 @@
       class="grid-stack grid-stack-loading w-full max-w-full"
       id="grid-stack"
       phx-hook="GridStack"
+      data-grid-locked={to_string(@grid_locked)}
     >
       <.settings_live
         :if={@settings_open}

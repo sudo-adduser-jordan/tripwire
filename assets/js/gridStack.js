@@ -1,26 +1,19 @@
 import { GridStack } from 'gridstack'
 import 'gridstack/dist/gridstack.css'
 
-// Locked by default; module scope so the choice survives grid re-init.
-let isLocked = true
-let lockHandlerAttached = false
+// Lock state is owned by LiveView (`data-grid-locked` on the grid element,
+// toggled via the `toggle-grid-lock` event). This module only applies it.
 
-// Toggle the dashboard layout lock. Delegated on `document` so it survives
-// LiveView re-renders of the nav button.
-function ensureLockHandler() {
-    if (lockHandlerAttached) return
-    lockHandlerAttached = true
+function gridLocked(el) {
+    return !el || el.dataset.gridLocked !== 'false'
+}
 
-    document.addEventListener('click', (e) => {
-        const button = e.target && e.target.closest ? e.target.closest('#lock-button') : null
-        if (!button) return
-        const grid = window.TripwireGrid
-        if (!grid) return
-        isLocked = !isLocked
-        grid.setStatic(isLocked)
-        const lockSvg = document.getElementById('lock-svg')
-        if (lockSvg) lockSvg.style.fill = isLocked ? "#605dff" : "#ff6700"
-    })
+function syncLock(el) {
+    const grid = window.TripwireGrid
+    if (!grid || typeof grid.setStatic !== 'function') return
+    grid.setStatic(gridLocked(el))
+    const lockSvg = document.getElementById('lock-svg')
+    if (lockSvg) lockSvg.style.fill = gridLocked(el) ? '#605dff' : '#ff6700'
 }
 
 // Reveal the grid on first layout so pre-init paint never shows a pile-up.
@@ -37,6 +30,7 @@ function initGrid(el) {
     if (!el) return null
     // Already initialized (e.g. hook remounted): still ensure visibility.
     if (el.gridstack) {
+        syncLock(el)
         reveal(el)
         return el.gridstack
     }
@@ -47,11 +41,11 @@ function initGrid(el) {
             breakpointForWindow: true,
             breakpoints: [{ w: 700, c: 1 }, { w: 850, c: 2 }, { w: 950, c: 2 }, { w: 1100, c: 2 }]
         },
-        staticGrid: isLocked,
+        staticGrid: gridLocked(el),
     }, el)
 
     window.TripwireGrid = grid
-    ensureLockHandler()
+    syncLock(el)
     reveal(el)
 
     return grid
@@ -108,6 +102,7 @@ function refreshGrid(el) {
     })
 
     if (typeof grid._updateContainerHeight === 'function') grid._updateContainerHeight()
+    syncLock(el)
     reveal(el)
 }
 

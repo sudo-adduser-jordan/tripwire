@@ -14,6 +14,7 @@ config :tripwire, TripwireWeb.Endpoint,
 
 config :tripwire, Tripwire.Mailer, adapter: Swoosh.Adapters.Test
 config :swoosh, :api_client, false
+config :tripwire, :topbar_esi, false
 config :logger, level: :warning
 config :phoenix, :plug_init_mode, :runtime
 
