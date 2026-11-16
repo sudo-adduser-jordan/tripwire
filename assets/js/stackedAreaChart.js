@@ -3,6 +3,7 @@ import * as echarts from 'echarts'
 let stackedChart = null
 
 const stackedChartOptions = {
+    backgroundColor: 'transparent',
     animationDurationUpdate: 100,
     grid: {
         top: '10%',
@@ -40,6 +41,10 @@ const stackedChartOptions = {
             name: 'Ships Destoryed',
             type: 'line',
             stack: 'Total',
+            symbol: 'circle',
+            showSymbol: false,
+            symbolSize: 6,
+            itemStyle: { color: 'transparent', borderWidth: 2 },
             areaStyle: {},
             emphasis: {
                 focus: 'series',
@@ -50,6 +55,10 @@ const stackedChartOptions = {
             name: 'Pods Destroyed',
             type: 'line',
             stack: 'Total',
+            symbol: 'circle',
+            showSymbol: false,
+            symbolSize: 6,
+            itemStyle: { color: 'transparent', borderWidth: 2 },
             areaStyle: {},
             emphasis: {
                 focus: 'series',
@@ -60,6 +69,10 @@ const stackedChartOptions = {
             name: 'Jumps',
             type: 'line',
             stack: 'Total',
+            symbol: 'circle',
+            showSymbol: false,
+            symbolSize: 6,
+            itemStyle: { color: 'transparent', borderWidth: 2 },
             areaStyle: {},
             emphasis: {
                 focus: 'series',
@@ -70,6 +83,10 @@ const stackedChartOptions = {
             name: 'NPCs Destroyed',
             type: 'line',
             stack: 'Total',
+            symbol: 'circle',
+            showSymbol: false,
+            symbolSize: 6,
+            itemStyle: { color: 'transparent', borderWidth: 2 },
             areaStyle: {},
             emphasis: {
                 focus: 'series',
