@@ -16,12 +16,12 @@ defmodule Tripwire.MappingTest do
       end
 
     assert Mapping.clamp_pan(systems, 0.0, 0.0) == {0.0, 0.0}
-    assert Mapping.clamp_pan(systems, -10_000.0, -10_000.0) == {-160.0, -172.0}
-    assert Mapping.clamp_pan(systems, 10_000.0, 10_000.0) == {280.0, 60.0}
+    assert Mapping.clamp_pan(systems, -10_000.0, -10_000.0) == {-800.0, -800.0}
+    assert Mapping.clamp_pan(systems, 10_000.0, 10_000.0) == {800.0, 60.0}
     assert Mapping.clamp_pan([], 10_000.0, -10_000.0) == {800.0, -800.0}
 
     small = [%Mapping.MapSystem{x: 100.0, y: 100.0}]
-    assert Mapping.clamp_pan(small, 999.0, 999.0) == {-60.0, 60.0}
+    assert Mapping.clamp_pan(small, 999.0, 999.0) == {800.0, 60.0}
   end
 
   test "reset_demo_maps/1 clears custom content and restores the seed", %{mask: mask} do

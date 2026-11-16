@@ -50,32 +50,22 @@ defmodule Tripwire.Mapping do
   @layout_max_y 612.0
 
   @pan_free_limit 800
-  @node_width 120
-  @node_height 88
-  @view_width 1000
-  @view_height 700
-  @pan_pad_x 160
   @pan_pad_y 40
 
   @doc """
-  Clamps a chain-map pan origin so the viewport cannot move past the
-  outermost nodes, keeping a small vertical margin and a wider
-  horizontal one around them. Returns `{x, y}` floats.
+  Clamps a chain-map pan origin. Nodes may extend past the left, right,
+  and bottom viewport edges, but never past the top edge, keeping a
+  small margin above the topmost node. Returns `{x, y}` floats.
   """
   def clamp_pan(systems, x, y) do
-    {clamp_axis(systems, & &1.x, x, @node_width, @view_width, @pan_pad_x),
-     clamp_axis(systems, & &1.y, y, @node_height, @view_height, @pan_pad_y)}
+    {clamp_number(x, -@pan_free_limit, @pan_free_limit), clamp_top(systems, y)}
   end
 
-  defp clamp_axis([], _pos, value, _node_size, _view_size, _pad),
-    do: clamp_number(value, -@pan_free_limit, @pan_free_limit)
+  defp clamp_top([], value), do: clamp_number(value, -@pan_free_limit, @pan_free_limit)
 
-  defp clamp_axis(systems, pos, value, node_size, view_size, pad) do
-    positions = Enum.map(systems, pos)
-    touch_low = Enum.min(positions) - pad
-    touch_high = Enum.max(positions) + node_size + pad - view_size
-
-    clamp_number(value, min(touch_low, touch_high), max(touch_low, touch_high))
+  defp clamp_top(systems, value) do
+    top = systems |> Enum.map(&(&1.y - @pan_pad_y)) |> Enum.min()
+    value |> max(-@pan_free_limit) |> min(top)
   end
 
   defp clamp_number(value, min, max), do: value |> max(min) |> min(max)

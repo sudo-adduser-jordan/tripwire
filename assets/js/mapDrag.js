@@ -2,9 +2,6 @@ const DRAG_THRESHOLD = 4
 const FREE_LIMIT = 800
 const VIEW_W = 1000
 const VIEW_H = 700
-const NODE_W = 120
-const NODE_H = 88
-const PAD_X = 160
 const PAD_Y = 40
 
 const MapDrag = {
@@ -97,31 +94,25 @@ const MapDrag = {
   },
 
   clampView(x, y) {
+    const top = this.topBound()
     return {
-      x: this.clampAxis(x, this.axisBounds("x", NODE_W, VIEW_W, PAD_X)),
-      y: this.clampAxis(y, this.axisBounds("y", NODE_H, VIEW_H, PAD_Y)),
+      x: Math.max(-FREE_LIMIT, Math.min(x, FREE_LIMIT)),
+      y:
+        top === null
+          ? Math.max(-FREE_LIMIT, Math.min(y, FREE_LIMIT))
+          : Math.min(Math.max(y, -FREE_LIMIT), top),
     }
   },
 
-  axisBounds(axis, nodeSize, viewSize, pad) {
+  topBound() {
     const nodes = this.svg.querySelectorAll("g[data-system-id]")
     if (!nodes.length) return null
     let min = Infinity
-    let max = -Infinity
     nodes.forEach((node) => {
-      const [x, y] = parseTransform(node.getAttribute("transform"))
-      const v = axis === "x" ? x : y
-      if (v < min) min = v
-      if (v > max) max = v
+      const [_x, y] = parseTransform(node.getAttribute("transform"))
+      if (y < min) min = y
     })
-    const low = min - pad
-    const high = max + nodeSize + pad - viewSize
-    return { low: Math.min(low, high), high: Math.max(low, high) }
-  },
-
-  clampAxis(value, bounds) {
-    if (!bounds) return Math.max(-FREE_LIMIT, Math.min(value, FREE_LIMIT))
-    return Math.max(bounds.low, Math.min(value, bounds.high))
+    return min - PAD_Y
   },
 }
 
