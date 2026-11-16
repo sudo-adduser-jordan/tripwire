@@ -102,6 +102,22 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
               />
             </li>
           </ul>
+          <div
+            :if={selected_system(@systems, @selected_system_id)}
+            class="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 pb-1 text-xs"
+          >
+            <a
+              :for={
+                link <- Systems.external_links(selected_system(@systems, @selected_system_id))
+              }
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="link link-hover opacity-70 hover:opacity-100"
+            >
+              {link.label}
+            </a>
+          </div>
           <div class="flex flex-row flex-wrap gap-1 p-2">
             <button
               :for={sys <- visible_systems(@systems, @connections, @selected_system_id)}
@@ -114,10 +130,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
             </button>
             <span :if={@systems == []} class="p-1 text-sm opacity-50">No systems on map yet</span>
           </div>
-          <.chart_range_buttons
-            chart_range={@chart_range}
-            links={system_links(@systems, @selected_system_id)}
-          />
+          <.chart_range_buttons chart_range={@chart_range} />
           <div
             id="system-chart"
             phx-hook="ChartMount"
@@ -143,35 +156,21 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
   defp range_label(_), do: "24H"
 
   attr :chart_range, :string, default: "24h"
-  attr :links, :list, default: []
 
   defp chart_range_buttons(assigns) do
     ~H"""
-    <div class="flex items-center justify-between gap-1 px-2 pt-1">
-      <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-        <a
-          :for={link <- @links}
-          href={link.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="link link-hover opacity-70 hover:opacity-100"
-        >
-          {link.label}
-        </a>
-      </div>
-      <div class="flex items-center gap-1" role="group" aria-label="Chart time range">
-        <button
-          :for={range <- ["week", "48h", "24h"]}
-          phx-click="chart-range"
-          phx-value-range={range}
-          class={
-            "btn btn-xs " <>
-              (if @chart_range == range, do: "btn-primary", else: "btn-ghost")
-          }
-        >
-          {range_label(range)}
-        </button>
-      </div>
+    <div class="flex items-center justify-center gap-1 px-2 pt-1" role="group" aria-label="Chart time range">
+      <button
+        :for={range <- ["week", "48h", "24h"]}
+        phx-click="chart-range"
+        phx-value-range={range}
+        class={
+          "btn btn-xs " <>
+            (if @chart_range == range, do: "btn-primary", else: "btn-ghost")
+        }
+      >
+        {range_label(range)}
+      </button>
     </div>
     """
   end
@@ -295,13 +294,6 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
   defp sov_logo(%{kind: :alliance, id: id}), do: EveImages.alliance_logo(id, 32)
   defp sov_logo(%{kind: :faction, id: id}), do: EveImages.faction_logo(id, 32)
   defp sov_logo(_), do: "/images/alliance-default.png"
-
-  defp system_links(systems, id) do
-    case Enum.find(systems, &(&1.id == id)) do
-      nil -> []
-      system -> Systems.external_links(system)
-    end
-  end
 
   defp selected_favorite?(systems, id) do
     case Enum.find(systems, &(&1.id == id)) do
