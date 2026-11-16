@@ -30,3 +30,38 @@ Automation uses `Taskfile.yml` (Task v3); server lifecycle tasks run inline shel
 ## Demo Mode
 
 Tripwire needs no configuration to try it. When `EVESSO_CLIENT_ID` or `EVESSO_SECRET_KEY` is missing, the landing page still opens at `/` with the EVE SSO button disabled; a **Demo** button enters the read-only demo dashboard (`/dashboard/User`). Set both variables to enable EVE SSO login and personal maps.
+
+## Deploy
+
+Deploys run the server in `MIX_ENV=prod` and are driven by the `start`, `stop`, and `dev` tasks.
+
+1. Install dependencies and prepare the database, logs, and assets:
+
+   ```sh
+   task install
+   task setup
+   MIX_ENV=prod mix ecto.migrate
+   ```
+
+2. Export the runtime configuration:
+
+   | Variable | Required | Description |
+   |---|---|---|
+   | `DATABASE_PATH` | yes | SQLite file on a persistent volume, e.g. `/data/tripwire-prod.db` |
+   | `PORT` | no | HTTP port, defaults to `4000` |
+   | `POOL_SIZE` | no | Database pool size, defaults to `10` |
+   | `PHX_HOST` | no | Public host used for generated URLs, defaults to `example.com` |
+   | `EVESSO_CLIENT_ID` | no | EVE SSO client ID; login stays in demo mode when unset |
+   | `EVESSO_SECRET_KEY` | no | EVE SSO client secret, alias of `EVESSO_CLIENT_SECRET` |
+
+3. Start the server:
+
+   ```sh
+   task start   # digest assets, boot in prod, log to logs/prod.log
+   task dev     # follow logs/prod.log
+   task stop    # stop the background server
+   ```
+
+`task start` runs `mix phx.digest` before boot so `cache_static_manifest` resolves, then waits until the endpoint reports it is listening before printing the URL. If the port is already taken the task fails and prints the tail of `logs/prod.log`.
+
+Production sets `force_ssl` with `rewrite_on: [:x_forwarded_proto]`, so terminate TLS in a reverse proxy (or a platform edge) and forward `X-Forwarded-Proto: https`. Plain `http://` requests to a non-loopback host are redirected to `https`.
