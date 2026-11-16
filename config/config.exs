@@ -31,7 +31,6 @@ config :tripwire, Tripwire.Vault,
   ]
 
 config :tripwire, TripwireWeb.Endpoint,
-  server: true,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
