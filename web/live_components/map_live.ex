@@ -16,26 +16,15 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      socket
      |> assign(assigns)
      |> assign(:systems, systems)
-     |> assign(:connections, connections)}
+     |> assign(:connections, connections)
+     |> assign_new(:map_locked, fn -> true end)
+     |> assign_new(:pan_x, fn -> 0 end)
+     |> assign_new(:pan_y, fn -> 0 end)}
   end
 
   def handle_event("select-system", %{"id" => id}, socket) do
     send(self(), {:select_system, String.to_integer(id)})
     {:noreply, socket}
-  end
-
-  def handle_event("move-system", %{"id" => id, "x" => x, "y" => y}, socket) do
-    system = Mapping.get_system!(String.to_integer(id))
-    system = if system.locked, do: system, else: system
-
-    case Mapping.update_system_position(system, coord(x), coord(y)) do
-      {:ok, _} ->
-        send(self(), {:systems_updated, socket.assigns.map_id})
-        {:noreply, socket}
-
-      {:error, _} ->
-        {:noreply, socket}
-    end
   end
 
   def handle_event("open-system", %{"id" => id}, socket) do
@@ -69,8 +58,12 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   end
 
   def handle_event("toggle-lock", _params, socket) do
-    send(self(), {:toggle_lock})
-    {:noreply, socket}
+    {:noreply, assign(socket, :map_locked, !Map.get(socket.assigns, :map_locked, true))}
+  end
+
+  def handle_event("pan-map", %{"x" => x, "y" => y}, socket) do
+    {pan_x, pan_y} = Mapping.clamp_pan(socket.assigns.systems, coord(x), coord(y))
+    {:noreply, socket |> assign(:pan_x, pan_x) |> assign(:pan_y, pan_y)}
   end
 
   def handle_event("map-layout", %{"layout" => layout}, socket) do
@@ -79,8 +72,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   end
 
   def render(assigns) do
-    assigns = assign(assigns, :view_box, "0 0 1000 700")
-
     ~H"""
     <div id="map" class="grid-stack-item" gs-w="12" gs-h="6" gs-x="0" gs-y="12" tabindex="0">
       <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
@@ -143,11 +134,14 @@ defmodule TripwireWeb.LiveComponents.MapLive do
             <button
               id="toggle-lock"
               class="btn btn-ghost btn-xs"
-              title="Lock/unlock selected system"
+              title={if @map_locked, do: "Unlock map", else: "Lock map"}
               phx-click="toggle-lock"
               phx-target={@myself}
             >
-              <.icon name="hero-lock-closed" class="size-4" />
+              <.icon
+                name={if @map_locked, do: "hero-lock-closed", else: "hero-lock-open"}
+                class="size-4"
+              />
             </button>
             <details id="show-chainLegend" class="dropdown">
               <summary
@@ -195,7 +189,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
         <div class="min-h-0 w-full flex-1">
           <svg
             id="chain-map"
-            viewBox={@view_box}
+            viewBox={"#{@pan_x} #{@pan_y} 1000 700"}
             preserveAspectRatio="xMidYMid meet"
             class="block size-full touch-pan-y select-none"
             phx-hook="MapDrag"
@@ -235,7 +229,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                       else: "fill-base-200/75"
                   }
                   stroke-width="2"
-                  stroke-dasharray={if system.locked, do: "4"}
                 />
                 <text
                   x="60"

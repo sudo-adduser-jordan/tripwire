@@ -49,6 +49,39 @@ defmodule Tripwire.Mapping do
   @layout_max_x 880.0
   @layout_max_y 612.0
 
+  @pan_free_limit 800
+  @node_width 120
+  @node_height 88
+  @view_width 1000
+  @view_height 700
+  @pan_pad_x 160
+  @pan_pad_y 40
+
+  @doc """
+  Clamps a chain-map pan origin so the viewport cannot move past the
+  outermost nodes, keeping a small vertical margin and a wider
+  horizontal one around them. Returns `{x, y}` floats.
+  """
+  def clamp_pan(systems, x, y) do
+    {clamp_axis(systems, & &1.x, x, @node_width, @view_width, @pan_pad_x),
+     clamp_axis(systems, & &1.y, y, @node_height, @view_height, @pan_pad_y)}
+  end
+
+  defp clamp_axis([], _pos, value, _node_size, _view_size, _pad),
+    do: clamp_number(value, -@pan_free_limit, @pan_free_limit)
+
+  defp clamp_axis(systems, pos, value, node_size, view_size, pad) do
+    positions = Enum.map(systems, pos)
+    low = Enum.min(positions) - pad
+    high = Enum.max(positions) + node_size + pad - view_size
+
+    if low <= high,
+      do: clamp_number(value, low, high),
+      else: (Enum.min(positions) + Enum.max(positions) + node_size) / 2 - view_size / 2
+  end
+
+  defp clamp_number(value, min, max), do: value |> max(min) |> min(max)
+
   @doc """
   Groups system ids into `{depth, [id]}` layers, sorted by depth. Depths
   come from breadth-first search over the undirected graph, seeded at
@@ -221,10 +254,6 @@ defmodule Tripwire.Mapping do
     %MapSystem{map_id: map.id}
     |> MapSystem.changeset(attrs)
     |> Repo.insert()
-  end
-
-  def update_system_position(%MapSystem{locked: true}, _x, _y) do
-    {:error, Ecto.Changeset.add_error(Ecto.Changeset.change(%MapSystem{}), :locked, "is locked")}
   end
 
   def update_system_position(%MapSystem{} = system, x, y) do

@@ -59,13 +59,11 @@ defmodule TripwireWeb.DashboardLiveTest do
     system = hd(Mapping.list_systems(map.id))
 
     view
-    |> render_click("move-system", %{
-      "id" => Integer.to_string(system.id),
-      "x" => "500",
-      "y" => "300"
-    })
+    |> element("#chain-zoom-reset")
+    |> render_click()
 
-    assert Mapping.get_system!(system.id).x == 500.0
+    assert_push_event(view, "reset-pan", %{})
+    assert Mapping.get_system!(system.id).x == 120.0
   end
 
   test "mounts with session character and provisions a personal map", %{
@@ -237,8 +235,8 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert Mapping.list_signatures(system.id) == []
   end
 
-  test "move-system persists dragged coordinates", %{conn: conn, character: character} do
-    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+  test "reset zoom notifies the map to reset its pan", %{conn: conn, character: character} do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
 
     {:ok, view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
 
@@ -246,15 +244,33 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert html =~ "J150321"
 
     view
-    |> render_click("move-system", %{
-      "id" => Integer.to_string(system.id),
-      "x" => "500",
-      "y" => "300"
-    })
+    |> element("#chain-zoom-reset")
+    |> render_click()
 
-    reloaded = Mapping.get_system!(system.id)
-    assert reloaded.x == 500.0
-    assert reloaded.y == 300.0
+    assert_push_event(view, "reset-pan", %{})
+  end
+
+  test "header lock button toggles its icon without touching systems", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+
+    assert render(view) =~ "hero-lock-closed"
+
+    view
+    |> element("#toggle-lock")
+    |> render_click()
+
+    assert render(view) =~ "hero-lock-open"
+
+    view
+    |> element("#toggle-lock")
+    |> render_click()
+
+    assert render(view) =~ "hero-lock-closed"
   end
 
   test "map renders toolbar and connections between systems", %{
@@ -350,7 +366,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     view
     |> element("#sys-modal form[phx-submit='update-system']")
     |> render_submit(%{
-      "system" => %{"alias" => "Home", "sys_class" => "C3", "locked" => "true"}
+      "system" => %{"alias" => "Home", "sys_class" => "C3"}
     })
 
     refute render(view) =~ "sys-modal"
@@ -358,7 +374,6 @@ defmodule TripwireWeb.DashboardLiveTest do
     reloaded = Mapping.get_system!(system.id)
     assert reloaded.alias == "Home"
     assert reloaded.sys_class == "C3"
-    assert reloaded.locked
   end
 
   test "system editor rejects an unknown class and keeps the modal open", %{

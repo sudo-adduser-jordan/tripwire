@@ -238,8 +238,6 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_info({:add_viewing}, socket), do: handle_event("add-viewing", %{}, socket)
 
-  def handle_info({:toggle_lock}, socket), do: handle_event("toggle-lock", %{}, socket)
-
   def handle_info({:map_layout, layout}, socket),
     do: handle_event("map-layout", %{"layout" => layout}, socket)
 
@@ -295,25 +293,9 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply, toggle_favorite(socket)}
   end
 
-  def handle_event("move-system", %{"id" => id, "x" => x, "y" => y}, socket) do
-    system = Mapping.get_system!(String.to_integer(id))
-
-    {:ok, moved} =
-      Mapping.update_system_position(system, coord(x), coord(y))
-
-    systems =
-      Enum.map(socket.assigns.systems, fn s ->
-        if s.id == moved.id, do: %{s | x: moved.x, y: moved.y}, else: s
-      end)
-
-    {:noreply,
-     socket
-     |> assign(:systems, systems)
-     |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))}
+  def handle_event("map-layout", %{"layout" => "default"}, socket) do
+    {:noreply, socket |> assign(:map_layout, "default") |> push_event("reset-pan", %{})}
   end
-
-  def handle_event("map-layout", %{"layout" => "default"}, socket),
-    do: {:noreply, assign(socket, :map_layout, "default")}
 
   def handle_event("map-layout", %{"layout" => layout}, socket)
       when layout in ~w(top bottom left right radial) do
@@ -530,8 +512,7 @@ defmodule TripwireWeb.DashboardLive do
       system ->
         attrs = %{
           alias: present(params["alias"]),
-          sys_class: present(params["sys_class"]),
-          locked: params["locked"] in ["true", "on", true]
+          sys_class: present(params["sys_class"])
         }
 
         case Mapping.update_system(system, attrs) do
@@ -776,25 +757,6 @@ defmodule TripwireWeb.DashboardLive do
        |> put_flash(:info, "Added viewing system #{system.name}")}
     else
       _ -> {:noreply, put_flash(socket, :error, "ESI location unavailable")}
-    end
-  end
-
-  def handle_event("toggle-lock", _params, socket) do
-    case selected_system(socket) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "Select a system first")}
-
-      system ->
-        case Mapping.update_system(system, %{locked: !system.locked}) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> assign(:systems, Mapping.list_systems(socket.assigns.map.id))
-             |> put_flash(:info, if(system.locked, do: "Unlocked", else: "Locked"))}
-
-          {:error, changeset} ->
-            {:noreply, flash_changeset_errors(socket, changeset)}
-        end
     end
   end
 
@@ -1089,11 +1051,11 @@ defmodule TripwireWeb.DashboardLive do
 
   defp sys_form_for(systems, id) do
     case Enum.find(systems, &(&1.id == id)) do
-      %{alias: alias_, locked: locked, sys_class: sys_class} ->
-        %{"alias" => alias_ || "", "sys_class" => sys_class || "", "locked" => locked || false}
+      %{alias: alias_, sys_class: sys_class} ->
+        %{"alias" => alias_ || "", "sys_class" => sys_class || ""}
 
       _ ->
-        %{"alias" => "", "sys_class" => "", "locked" => false}
+        %{"alias" => "", "sys_class" => ""}
     end
   end
 
@@ -1140,7 +1102,7 @@ defmodule TripwireWeb.DashboardLive do
       "ship_size" => ""
     })
     |> assign(:conn_errors, [])
-    |> assign(:sys_form, %{"alias" => "", "sys_class" => "", "locked" => false})
+    |> assign(:sys_form, %{"alias" => "", "sys_class" => ""})
     |> assign(:sys_modal_open, false)
     |> assign(:sys_edit_id, nil)
     |> assign(:sys_errors, [])
@@ -1297,11 +1259,4 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp present(value), do: value
-
-  defp coord(value) when is_binary(value) do
-    {number, ""} = Integer.parse(value)
-    number * 1.0
-  end
-
-  defp coord(number) when is_number(number), do: number * 1.0
 end
