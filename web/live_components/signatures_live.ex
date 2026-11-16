@@ -161,7 +161,10 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                   </button>
                 </td>
                 <td class="text-center">
-                  <span class={["badge badge-xs", site_badge(sig)]}>{site_label(sig)}</span>
+                  <span class={["badge badge-xs gap-1", site_badge(sig)]}>
+                    <.icon name={site_icon(sig)} class={["size-3.5", site_icon_class(sig)]} />
+                    {site_label(sig)}
+                  </span>
                 </td>
                 <td class="cell-truncate text-center">
               <a
@@ -237,6 +240,19 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   defp site_badge(%{site_type: "ore"}), do: "badge-accent"
   defp site_badge(%{site_type: "gas"}), do: "badge-success"
   defp site_badge(_), do: "badge-ghost"
+
+  defp site_icon(%{kind: "anomaly"}), do: "hero-sparkles"
+  defp site_icon(%{site_type: "wormhole"}), do: "hero-globe-alt"
+  defp site_icon(%{site_type: "combat"}), do: "hero-bolt"
+  defp site_icon(%{site_type: "data"}), do: "hero-circle-stack"
+  defp site_icon(%{site_type: "relic"}), do: "hero-archive-box"
+  defp site_icon(%{site_type: "gas"}), do: "hero-cloud"
+  defp site_icon(%{site_type: "ore"}), do: "hero-cube"
+  defp site_icon(_), do: "hero-x-mark"
+
+  defp site_icon_class(%{kind: "anomaly"}), do: nil
+  defp site_icon_class(%{site_type: type}) when type in ~w(wormhole combat data relic ore gas), do: nil
+  defp site_icon_class(_), do: "text-red-500"
 
   defp format_life_left(%{inserted_at: inserted_at, life_length: life_length}) do
     seconds =
