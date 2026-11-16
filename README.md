@@ -29,4 +29,4 @@ Automation uses `Taskfile.yml` (Task v3); server lifecycle tasks run inline shel
 
 ## Demo Mode
 
-Tripwire needs no configuration to try it. When `EVESSO_CLIENT_ID` or `EVESSO_SECRET_KEY` is missing, the landing page sends visitors straight to the read-only demo dashboard (`/dashboard/User`). Set both variables to enable EVE SSO login and personal maps.
+Tripwire needs no configuration to try it. When `EVESSO_CLIENT_ID` or `EVESSO_SECRET_KEY` is missing, the landing page still opens at `/` with the EVE SSO button disabled; a **Demo** button enters the read-only demo dashboard (`/dashboard/User`). Set both variables to enable EVE SSO login and personal maps.

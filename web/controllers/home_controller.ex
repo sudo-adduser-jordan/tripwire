@@ -4,10 +4,6 @@ defmodule TripwireWeb.HomeController do
   alias Tripwire.SSO
 
   def home(conn, _params) do
-    if SSO.demo?() do
-      redirect(conn, to: ~p"/dashboard/User")
-    else
-      render(conn, :home)
-    end
+    render(conn, :home, demo?: SSO.demo?())
   end
 end

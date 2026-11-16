@@ -173,8 +173,11 @@
 
   <div class="w-screen h-screen flex items-center justify-center">
     <fieldset class="fieldset bg-base-100 border-base-300 rounded w-fit  border m-4 p-4">
-      <%!-- <a class="btn  p-0" href={~p"/auth/evesso"} autofocus> --%>
-      <a class="btn  p-0" href={~p"/auth/evesso"}>
+      <a
+        :if={!@demo?}
+        class="btn  p-0"
+        href={~p"/auth/evesso"}
+      >
         <img
           class="size-full sso-white"
           src="/images/eve-sso-login-white-small.png"
@@ -186,6 +189,28 @@
           alt="EVE SSO Logo"
         />
       </a>
+
+      <button
+        :if={@demo?}
+        class="btn  p-0 btn-disabled cursor-not-allowed opacity-60"
+        aria-disabled="true"
+        disabled
+        tabindex="-1"
+        title="EVE SSO is not configured"
+      >
+        <img
+          class="size-full sso-white"
+          src="/images/eve-sso-login-white-small.png"
+          alt="EVE SSO Logo"
+        />
+        <img
+          class="size-full sso-black"
+          src="/images/eve-sso-login-black-small.png"
+          alt="EVE SSO Logo"
+        />
+      </button>
+
+      <a :if={@demo?} class="btn btn-secondary" href={~p"/dashboard/User"}>Demo</a>
 
       <%= if Application.get_env(:tripwire, :dev_routes) do %>
         <button onclick="window.location.href='/dashboard/User';" class="btn btn-secondary ">

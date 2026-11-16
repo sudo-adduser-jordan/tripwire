@@ -10,7 +10,7 @@ defmodule TripwireWeb.AuthController do
     if SSO.demo?() do
       conn
       |> put_flash(:info, "EVE SSO is not configured, demo mode is active")
-      |> redirect(to: ~p"/dashboard/User")
+      |> redirect(to: ~p"/")
       |> halt()
     else
       conn
