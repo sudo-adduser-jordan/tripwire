@@ -138,7 +138,12 @@ const ChartMount = {
   mounted() {
     const name = this.el.dataset.chartFn
     const init = name && window.TripwireCharts && window.TripwireCharts[name]
-    if (typeof init === "function") init()
+    if (typeof init === "function") init(this.el)
+    this.handleEvent("system-chart-data", (payload) => {
+      if (window.TripwireCharts && typeof window.TripwireCharts.updateSystemChart === "function") {
+        window.TripwireCharts.updateSystemChart(payload)
+      }
+    })
   },
 }
 

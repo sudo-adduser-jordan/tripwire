@@ -10,6 +10,7 @@ defmodule TripwireWeb.DashboardLive do
   @demo_character_eve_id 9_000_002
   @demo_character_name "Demo User"
   @topbar_refresh_ms 60_000
+  @chart_ranges ~w(24h 48h week)
 
   @impl true
   def mount(_params, session, socket) do
@@ -89,11 +90,14 @@ defmodule TripwireWeb.DashboardLive do
                &(String.downcase(&1.name) == String.downcase(system_name))
              ) do
           %{id: id, name: name} ->
-            socket
-            |> assign(:selected_system_id, id)
-            |> assign(:selected_system_name, name)
-            |> assign(:signatures, Mapping.list_signatures(id))
-            |> assign(:comments, Mapping.list_comments(id))
+            socket =
+              socket
+              |> assign(:selected_system_id, id)
+              |> assign(:selected_system_name, name)
+              |> assign(:signatures, Mapping.list_signatures(id))
+              |> assign(:comments, Mapping.list_comments(id))
+
+            schedule_system_detail(socket, id)
 
           nil ->
             socket
@@ -228,6 +232,25 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:topbar_now, data.now)}
   end
 
+  def handle_info({:system_info_loaded, system_id, info}, socket) do
+    if socket.assigns.selected_system_id == system_id do
+      {:noreply, assign(socket, :system_info, info_to_assign(info))}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:chart_data_loaded, system_id, range, data}, socket) do
+    if socket.assigns.selected_system_id == system_id and socket.assigns.chart_range == range do
+      {:noreply,
+       socket
+       |> assign(:chart_data, data)
+       |> push_event("system-chart-data", chart_payload(data))}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info({:new_map}, socket), do: handle_event("new-map", %{}, socket)
 
   def handle_info({:switch_map, map_id}, socket),
@@ -269,7 +292,8 @@ defmodule TripwireWeb.DashboardLive do
        |> assign(:stale_ids, [])
        |> assign(:stale_system_id, nil)
        |> assign(:undo, [])
-       |> assign(:redo, [])}
+       |> assign(:redo, [])
+       |> schedule_system_detail(system.id)}
     else
       {:noreply, put_flash(socket, :error, "No system matching #{inspect(trimmed)} on this map")}
     end
@@ -289,6 +313,17 @@ defmodule TripwireWeb.DashboardLive do
   def handle_event("select-system", %{"id" => id}, socket) do
     {:noreply, select_system(socket, String.to_integer(id))}
   end
+
+  def handle_event("chart-range", %{"range" => range}, socket) when range in @chart_ranges do
+    socket =
+      socket
+      |> assign(:chart_range, range)
+      |> schedule_chart_reload()
+
+    {:noreply, socket}
+  end
+
+  def handle_event("chart-range", _params, socket), do: {:noreply, socket}
 
   def handle_event("toggle-favorite", _params, socket) do
     {:noreply, toggle_favorite(socket)}
@@ -327,10 +362,17 @@ defmodule TripwireWeb.DashboardLive do
        |> assign(:masks, masks_for_admin(socket))
        |> put_flash(:info, "Created #{mask.name}")}
     else
-      false -> {:noreply, put_flash(socket, :error, "Admin access required")}
-      {:error, :forbidden} -> {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
-      {:error, :no_corporation} -> {:noreply, put_flash(socket, :error, "No corporation on file")}
-      {:error, changeset} -> {:noreply, flash_changeset_errors(socket, changeset)}
+      false ->
+        {:noreply, put_flash(socket, :error, "Admin access required")}
+
+      {:error, :forbidden} ->
+        {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
+
+      {:error, :no_corporation} ->
+        {:noreply, put_flash(socket, :error, "No corporation on file")}
+
+      {:error, changeset} ->
+        {:noreply, flash_changeset_errors(socket, changeset)}
     end
   end
 
@@ -344,10 +386,17 @@ defmodule TripwireWeb.DashboardLive do
        |> assign(:masks, masks_for_admin(socket))
        |> put_flash(:info, "Added #{member.name} to #{mask.name}")}
     else
-      false -> {:noreply, put_flash(socket, :error, "Admin access required")}
-      {:error, :forbidden} -> {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
-      {:error, :not_found} -> {:noreply, put_flash(socket, :error, "Mask not found")}
-      {:error, changeset} -> {:noreply, flash_changeset_errors(socket, changeset)}
+      false ->
+        {:noreply, put_flash(socket, :error, "Admin access required")}
+
+      {:error, :forbidden} ->
+        {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
+
+      {:error, :not_found} ->
+        {:noreply, put_flash(socket, :error, "Mask not found")}
+
+      {:error, changeset} ->
+        {:noreply, flash_changeset_errors(socket, changeset)}
     end
   end
 
@@ -363,10 +412,17 @@ defmodule TripwireWeb.DashboardLive do
        |> assign(:masks, masks_for_admin(socket))
        |> put_flash(:info, "Removed #{member.name} from #{mask.name}")}
     else
-      false -> {:noreply, put_flash(socket, :error, "Admin access required")}
-      nil -> {:noreply, put_flash(socket, :error, "Member not found")}
-      {:error, :forbidden} -> {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
-      {:error, :not_found} -> {:noreply, put_flash(socket, :error, "Mask not found")}
+      false ->
+        {:noreply, put_flash(socket, :error, "Admin access required")}
+
+      nil ->
+        {:noreply, put_flash(socket, :error, "Member not found")}
+
+      {:error, :forbidden} ->
+        {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
+
+      {:error, :not_found} ->
+        {:noreply, put_flash(socket, :error, "Mask not found")}
     end
   end
 
@@ -403,9 +459,14 @@ defmodule TripwireWeb.DashboardLive do
 
       {:noreply, put_flash(socket, :info, "Deleted #{mask.name}")}
     else
-      false -> {:noreply, put_flash(socket, :error, "Admin access required")}
-      {:error, :forbidden} -> {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
-      {:error, :not_found} -> {:noreply, put_flash(socket, :error, "Mask not found")}
+      false ->
+        {:noreply, put_flash(socket, :error, "Admin access required")}
+
+      {:error, :forbidden} ->
+        {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
+
+      {:error, :not_found} ->
+        {:noreply, put_flash(socket, :error, "Mask not found")}
     end
   end
 
@@ -859,6 +920,7 @@ defmodule TripwireWeb.DashboardLive do
        |> assign(:comments, Mapping.list_comments(system.id))
        |> assign(:flares, Mapping.list_flares(system.id))
        |> assign(:system_stat, Mapping.get_system_stat(system.id))
+       |> schedule_system_detail(system.id)
        |> put_flash(:info, "Added viewing system #{system.name}")}
     else
       _ -> {:noreply, put_flash(socket, :error, "ESI location unavailable")}
@@ -1174,18 +1236,23 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp select_system(socket, system_id) do
-    socket
-    |> assign(:selected_system_id, system_id)
-    |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
-    |> assign(:signatures, Mapping.list_signatures(system_id))
-    |> assign(:comments, Mapping.list_comments(system_id))
-    |> assign(:flares, Mapping.list_flares(system_id))
-    |> assign(:system_stat, Mapping.get_system_stat(system_id))
-    |> assign(:stale_ids, [])
-    |> assign(:stale_system_id, nil)
-    |> assign(:undo, [])
-    |> assign(:redo, [])
-    |> assign(:sys_form, sys_form_for(socket.assigns.systems, system_id))
+    socket =
+      socket
+      |> assign(:selected_system_id, system_id)
+      |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
+      |> assign(:signatures, Mapping.list_signatures(system_id))
+      |> assign(:comments, Mapping.list_comments(system_id))
+      |> assign(:flares, Mapping.list_flares(system_id))
+      |> assign(:system_stat, Mapping.get_system_stat(system_id))
+      |> assign(:system_info, nil)
+      |> assign(:chart_data, empty_chart_data(socket.assigns[:chart_range] || "24h"))
+      |> assign(:stale_ids, [])
+      |> assign(:stale_system_id, nil)
+      |> assign(:undo, [])
+      |> assign(:redo, [])
+      |> assign(:sys_form, sys_form_for(socket.assigns.systems, system_id))
+
+    schedule_system_detail(socket, system_id)
   end
 
   defp open_system_modal(socket, system_id) do
@@ -1232,11 +1299,14 @@ defmodule TripwireWeb.DashboardLive do
   defp autoselect_first_system(
          %{assigns: %{selected_system_id: nil, systems: [%{id: id, name: name} | _]}} = socket
        ) do
-    socket
-    |> assign(:selected_system_id, id)
-    |> assign(:selected_system_name, name)
-    |> assign(:signatures, Mapping.list_signatures(id))
-    |> assign(:comments, Mapping.list_comments(id))
+    socket =
+      socket
+      |> assign(:selected_system_id, id)
+      |> assign(:selected_system_name, name)
+      |> assign(:signatures, Mapping.list_signatures(id))
+      |> assign(:comments, Mapping.list_comments(id))
+
+    schedule_system_detail(socket, id)
   end
 
   defp autoselect_first_system(socket), do: socket
@@ -1276,6 +1346,9 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:occupants, [])
     |> assign(:flares, [])
     |> assign(:system_stat, nil)
+    |> assign(:system_info, nil)
+    |> assign(:chart_range, "24h")
+    |> assign(:chart_data, %{labels: [], jumps: [], ship_kills: [], pod_kills: [], npc_kills: []})
   end
 
   defp schedule_topbar_load(socket) do
@@ -1349,6 +1422,91 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp push_undo(socket, op), do: update(socket, :undo, &[op | &1])
+
+  defp schedule_system_detail(socket, system_id) do
+    if connected?(socket) do
+      pid = self()
+      system = Enum.find(socket.assigns.systems, &(&1.id == system_id))
+      range = socket.assigns[:chart_range] || "24h"
+
+      Task.start(fn ->
+        info =
+          case system do
+            nil -> {:error, :not_found}
+            s -> Tripwire.Systems.fetch_info(s)
+          end
+
+        send(pid, {:system_info_loaded, system_id, info})
+      end)
+
+      Task.start(fn ->
+        send(pid, {:chart_data_loaded, system_id, range, chart_data_for(system, range)})
+      end)
+    end
+
+    socket
+  end
+
+  defp schedule_chart_reload(socket) do
+    if connected?(socket) do
+      pid = self()
+      system_id = socket.assigns.selected_system_id
+      system = Enum.find(socket.assigns.systems, &(&1.id == system_id))
+      range = socket.assigns[:chart_range] || "24h"
+
+      Task.start(fn ->
+        send(pid, {:chart_data_loaded, system_id, range, chart_data_for(system, range)})
+      end)
+    end
+
+    socket
+  end
+
+  defp info_to_assign({:ok, info}), do: info
+  defp info_to_assign({:error, :wormhole}), do: %{wormhole: true}
+  defp info_to_assign(_), do: nil
+
+  defp empty_chart_data(range) do
+    labels = range_labels(range)
+    zeros = List.duplicate(0, length(labels))
+    %{labels: labels, jumps: zeros, ship_kills: zeros, pod_kills: zeros, npc_kills: zeros}
+  end
+
+  defp chart_data_for(nil, range), do: empty_chart_data(range)
+
+  defp chart_data_for(system, range) do
+    labels = range_labels(range)
+    n = length(labels)
+
+    if Tripwire.Systems.esi_resolvable?(system) do
+      activity = Tripwire.ESI.system_activity(system.solar_system_id)
+      pad = fn value -> List.duplicate(0, n - 1) ++ [value] end
+
+      %{
+        labels: labels,
+        jumps: pad.(activity.jumps),
+        ship_kills: pad.(activity.ship_kills),
+        pod_kills: pad.(activity.pod_kills),
+        npc_kills: pad.(activity.npc_kills)
+      }
+    else
+      empty_chart_data(range)
+    end
+  end
+
+  defp range_labels("48h"), do: ["48h", "42h", "36h", "30h", "24h", "18h", "12h", "6h", "0h"]
+  defp range_labels("week"), do: ["7d", "6d", "5d", "4d", "3d", "2d", "1d", "0d"]
+  defp range_labels(_), do: ["24h", "21h", "18h", "15h", "12h", "9h", "6h", "3h", "0h"]
+
+  defp chart_payload(data) do
+    %{
+      "labels" => data.labels,
+      "jumps" => data.jumps,
+      "ship_kills" => data.ship_kills,
+      "pod_kills" => data.pod_kills,
+      "npc_kills" => data.npc_kills
+    }
+  end
 
   defp pop_undo(socket) do
     case socket.assigns.undo do

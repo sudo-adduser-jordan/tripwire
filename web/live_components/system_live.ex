@@ -2,6 +2,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
   use TripwireWeb, :live_component
 
   alias Tripwire.Mapping
+  alias Tripwire.Systems
 
   def update(assigns, socket) do
     systems =
@@ -19,7 +20,12 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
      socket
      |> assign(assigns)
      |> assign(:systems, systems)
-     |> assign(:connections, connections)}
+     |> assign(:connections, connections)
+     |> assign_new(:system_info, fn -> nil end)
+     |> assign_new(:chart_range, fn -> "24h" end)
+     |> assign_new(:chart_data, fn ->
+       %{labels: [], jumps: [], ship_kills: [], pod_kills: [], npc_kills: []}
+     end)}
   end
 
   def handle_event("select-system", %{"id" => id}, socket) do
@@ -87,6 +93,26 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
                 {length(@systems)} systems
               </span>
             </li>
+            <li :if={selected_system(@systems, @selected_system_id)} class="px-2 pb-1">
+              <.system_info
+                system={selected_system(@systems, @selected_system_id)}
+                system_info={@system_info}
+              />
+            </li>
+            <li
+              :if={selected_system(@systems, @selected_system_id)}
+              class="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 pb-2 text-xs"
+            >
+              <a
+                :for={link <- Systems.external_links(selected_system(@systems, @selected_system_id))}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link link-hover opacity-70 hover:opacity-100"
+              >
+                {link.label}
+              </a>
+            </li>
           </ul>
           <div class="flex flex-row flex-wrap gap-1 p-2">
             <button
@@ -100,18 +126,125 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
             </button>
             <span :if={@systems == []} class="p-1 text-sm opacity-50">No systems on map yet</span>
           </div>
+          <.chart_legend chart_data={@chart_data} />
           <div
             id="system-chart"
             phx-hook="ChartMount"
             data-chart-fn="initSystemChart"
+            data-labels={Jason.encode!(@chart_data[:labels] || [])}
+            data-jumps={Jason.encode!(@chart_data[:jumps] || [])}
+            data-ship-kills={Jason.encode!(@chart_data[:ship_kills] || [])}
+            data-pod-kills={Jason.encode!(@chart_data[:pod_kills] || [])}
+            data-npc-kills={Jason.encode!(@chart_data[:npc_kills] || [])}
             phx-update="ignore"
             class="min-h-0 w-full flex-1"
           >
+          </div>
+          <div
+            class="flex items-center justify-center gap-1 p-2"
+            role="group"
+            aria-label="Chart time range"
+          >
+            <button
+              :for={range <- ["week", "48h", "24h"]}
+              phx-click="chart-range"
+              phx-value-range={range}
+              class={
+                "btn btn-xs " <>
+                  (if @chart_range == range, do: "btn-primary", else: "btn-ghost")
+              }
+            >
+              {range_label(range)}
+            </button>
           </div>
         </div>
       </div>
     </div>
     """
+  end
+
+  defp range_label("week"), do: "Week"
+  defp range_label("48h"), do: "48H"
+  defp range_label(_), do: "24H"
+
+  attr :chart_data, :map, required: true
+
+  defp chart_legend(assigns) do
+    ~H"""
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 pt-1 text-[11px] opacity-80">
+      <.legend_item color="#91cc75" label="Jumps" value={last_value(@chart_data[:jumps])} />
+      <.legend_item color="#fac858" label="Pod Kills" value={last_value(@chart_data[:pod_kills])} />
+      <.legend_item color="#ee6666" label="Ship Kills" value={last_value(@chart_data[:ship_kills])} />
+      <.legend_item color="#5470c6" label="NPC Kills" value={last_value(@chart_data[:npc_kills])} />
+    </div>
+    """
+  end
+
+  attr :color, :string, required: true
+  attr :label, :string, required: true
+  attr :value, :integer, default: 0
+
+  defp legend_item(assigns) do
+    ~H"""
+    <span class="inline-flex items-center gap-1">
+      <span class="inline-block size-2 rounded-full" style={"background-color: #{@color}"}></span>
+      {@label} {@value}
+    </span>
+    """
+  end
+
+  attr :system, :map, required: true
+  attr :system_info, :any, default: nil
+
+  defp system_info(assigns) do
+    ~H"""
+    <div class="flex min-w-0 flex-col gap-0.5 text-xs">
+      <p class="flex flex-wrap items-center gap-x-2">
+        <span class="font-semibold" style={"color: #{Systems.color(@system)}"}>
+          {Systems.display_class(@system) || "Unknown"}
+        </span>
+        <span class="opacity-70">
+          {Systems.security_label(@system)}{sec_suffix(@system)}
+        </span>
+        <span :if={@system.alias} class="truncate opacity-60">aka {@system.alias}</span>
+      </p>
+      <p class="truncate opacity-60">
+        {info_line(@system, @system_info)}
+      </p>
+      <p :if={sov_line(@system_info)} class="truncate opacity-60">
+        {sov_line(@system_info)}
+      </p>
+    </div>
+    """
+  end
+
+  defp sec_suffix(%{security: sec}) when is_number(sec),
+    do: " #{:erlang.float_to_binary(sec * 1.0, decimals: 1)}"
+
+  defp sec_suffix(_), do: ""
+
+  defp info_line(system, %{region: region, constellation: constellation}) do
+    "#{region} / #{constellation} · #{system.solar_system_id}"
+  end
+
+  defp info_line(system, %{wormhole: true}) do
+    alias_text = if system.alias, do: " · #{system.alias}", else: ""
+    "W-Space#{alias_text} · #{system.solar_system_id}"
+  end
+
+  defp info_line(system, _loading) do
+    if Systems.esi_resolvable?(system), do: "Loading region…", else: "W-Space"
+  end
+
+  defp sov_line(%{sovereignty: %{alliance_id: id}}), do: "Alliance: #{id}"
+  defp sov_line(%{sovereignty: %{faction_id: id}}), do: "Faction: #{id}"
+  defp sov_line(_), do: nil
+
+  defp last_value(values) when is_list(values), do: List.last(values) || 0
+  defp last_value(_), do: 0
+
+  defp selected_system(systems, id) do
+    Enum.find(systems, &(&1.id == id))
   end
 
   defp selected_favorite?(systems, id) do

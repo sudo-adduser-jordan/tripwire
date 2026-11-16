@@ -73,6 +73,45 @@ defmodule Tripwire.ESI do
 
   def get_system(system_id), do: public_get("/universe/systems/#{system_id}/")
 
+  def get_constellation(constellation_id),
+    do: public_get("/universe/constellations/#{constellation_id}/")
+
+  def get_region(region_id), do: public_get("/universe/regions/#{region_id}/")
+
+  def get_sovereignty_map, do: public_get("/universe/sovereignty/map/")
+
+  @doc """
+  Returns live hourly activity for one solar system from the public
+  universe endpoints. Missing rows mean zero activity this hour.
+  """
+  def system_activity(solar_system_id) do
+    jumps =
+      case get_system_jumps() do
+        {:ok, rows} when is_list(rows) ->
+          case Enum.find(rows, &(&1["solar_system_id"] == solar_system_id)) do
+            %{"ship_jumps" => n} -> n || 0
+            _ -> 0
+          end
+
+        _ ->
+          0
+      end
+
+    {ship_kills, pod_kills, npc_kills} =
+      case get_system_kills() do
+        {:ok, rows} when is_list(rows) ->
+          case Enum.find(rows, &(&1["solar_system_id"] == solar_system_id)) do
+            nil -> {0, 0, 0}
+            row -> {row["ship_kills"] || 0, row["pod_kills"] || 0, row["npc_kills"] || 0}
+          end
+
+        _ ->
+          {0, 0, 0}
+      end
+
+    %{jumps: jumps, ship_kills: ship_kills, pod_kills: pod_kills, npc_kills: npc_kills}
+  end
+
   @doc """
   Returns an unexpired access token for the character, refreshing it when needed.
   """

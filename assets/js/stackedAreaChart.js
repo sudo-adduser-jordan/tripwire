@@ -6,7 +6,7 @@ const stackedChartOptions = {
     backgroundColor: 'transparent',
     animationDurationUpdate: 100,
     grid: {
-        top: '10%',
+        top: '8%',
         bottom: '20%',
         left: '7%',
         right: '7%',
@@ -22,13 +22,13 @@ const stackedChartOptions = {
         },
     },
     legend: {
-        data: ['Ships Destoryed', 'Pods Destroyed', 'NPCs Destroyed', 'Jumps'],
+        show: false,
     },
     xAxis: [
         {
             type: 'category',
             boundaryGap: false,
-            data: ['00:00', '00:00', '00:00', '00:00', '00:00', '00:00', '00:00'],
+            data: [],
         },
     ],
     yAxis: [
@@ -38,7 +38,7 @@ const stackedChartOptions = {
     ],
     series: [
         {
-            name: 'Ships Destoryed',
+            name: 'Ship Kills',
             type: 'line',
             stack: 'Total',
             symbol: 'circle',
@@ -51,10 +51,10 @@ const stackedChartOptions = {
             emphasis: {
                 focus: 'series',
             },
-            data: [0, 0, 1, 6, 0, 0, 1],
+            data: [],
         },
         {
-            name: 'Pods Destroyed',
+            name: 'Pod Kills',
             type: 'line',
             stack: 'Total',
             symbol: 'circle',
@@ -67,7 +67,7 @@ const stackedChartOptions = {
             emphasis: {
                 focus: 'series',
             },
-            data: [0, 0, 0, 5, 0, 0, 1],
+            data: [],
         },
         {
             name: 'Jumps',
@@ -83,10 +83,10 @@ const stackedChartOptions = {
             emphasis: {
                 focus: 'series',
             },
-            data: [10, 15, 12, 50, 5, 1, 15],
+            data: [],
         },
         {
-            name: 'NPCs Destroyed',
+            name: 'NPC Kills',
             type: 'line',
             stack: 'Total',
             symbol: 'circle',
@@ -99,24 +99,67 @@ const stackedChartOptions = {
             emphasis: {
                 focus: 'series',
             },
-            data: [150, 200, 100, 165, 250, 96, 153],
+            data: [],
         },
     ],
 }
 
-function initSystemChart() {
-    const dom = document.getElementById('system-chart')
-    if (!dom || stackedChart) return
+function readDataset(dom) {
+    const parse = (key) => {
+        try {
+            const raw = dom.dataset[key]
+            const value = raw ? JSON.parse(raw) : []
+            return Array.isArray(value) ? value : []
+        } catch {
+            return []
+        }
+    }
+    return {
+        labels: parse('labels'),
+        shipKills: parse('shipKills'),
+        podKills: parse('podKills'),
+        jumps: parse('jumps'),
+        npcKills: parse('npcKills'),
+    }
+}
 
-    stackedChart = echarts.init(dom)
+function applyData({ labels, shipKills, podKills, jumps, npcKills }) {
+    if (!stackedChart) return
+    stackedChart.setOption({
+        xAxis: [{ data: labels }],
+        series: [{ data: shipKills }, { data: podKills }, { data: jumps }, { data: npcKills }],
+    })
+}
+
+function initSystemChart(dom) {
+    const target = dom || document.getElementById('system-chart')
+    if (!target || stackedChart) {
+        if (target && stackedChart) applyData(readDataset(target))
+        return
+    }
+
+    stackedChart = echarts.init(target)
     stackedChart.setOption(stackedChartOptions)
+    applyData(readDataset(target))
 
     new ResizeObserver(() => {
         if (stackedChart) stackedChart.resize()
-    }).observe(dom)
+    }).observe(target)
 }
 
-document.addEventListener('DOMContentLoaded', initSystemChart)
+function updateSystemChart(payload) {
+    if (!stackedChart || !payload) return
+    applyData({
+        labels: payload.labels || payload.Labels || [],
+        shipKills: payload.ship_kills || [],
+        podKills: payload.pod_kills || [],
+        jumps: payload.jumps || [],
+        npcKills: payload.npc_kills || [],
+    })
+}
+
+document.addEventListener('DOMContentLoaded', () => initSystemChart())
 
 window.TripwireCharts = window.TripwireCharts || {}
 window.TripwireCharts.initSystemChart = initSystemChart
+window.TripwireCharts.updateSystemChart = updateSystemChart
