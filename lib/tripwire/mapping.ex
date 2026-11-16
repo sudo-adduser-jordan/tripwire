@@ -72,12 +72,10 @@ defmodule Tripwire.Mapping do
 
   defp clamp_axis(systems, pos, value, node_size, view_size, pad) do
     positions = Enum.map(systems, pos)
-    low = Enum.min(positions) - pad
-    high = Enum.max(positions) + node_size + pad - view_size
+    touch_low = Enum.min(positions) - pad
+    touch_high = Enum.max(positions) + node_size + pad - view_size
 
-    if low <= high,
-      do: clamp_number(value, low, high),
-      else: (Enum.min(positions) + Enum.max(positions) + node_size) / 2 - view_size / 2
+    clamp_number(value, min(touch_low, touch_high), max(touch_low, touch_high))
   end
 
   defp clamp_number(value, min, max), do: value |> max(min) |> min(max)

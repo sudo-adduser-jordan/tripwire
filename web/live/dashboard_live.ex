@@ -294,7 +294,9 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("map-layout", %{"layout" => "default"}, socket) do
-    {:noreply, socket |> assign(:map_layout, "default") |> push_event("reset-pan", %{})}
+    {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
+
+    {:noreply, socket |> assign(:map_layout, "default") |> push_event("reset-pan", %{x: x, y: y})}
   end
 
   def handle_event("map-layout", %{"layout" => layout}, socket)

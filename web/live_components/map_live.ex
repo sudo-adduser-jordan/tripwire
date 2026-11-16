@@ -61,11 +61,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     {:noreply, assign(socket, :map_locked, !Map.get(socket.assigns, :map_locked, true))}
   end
 
-  def handle_event("pan-map", %{"x" => x, "y" => y}, socket) do
-    {pan_x, pan_y} = Mapping.clamp_pan(socket.assigns.systems, coord(x), coord(y))
-    {:noreply, socket |> assign(:pan_x, pan_x) |> assign(:pan_y, pan_y)}
-  end
-
   def handle_event("map-layout", %{"layout" => layout}, socket) do
     send(self(), {:map_layout, layout})
     {:noreply, socket}
@@ -304,11 +299,4 @@ defmodule TripwireWeb.LiveComponents.MapLive do
       nil -> ""
     end
   end
-
-  defp coord(value) when is_binary(value) do
-    {number, ""} = Integer.parse(value)
-    number * 1.0
-  end
-
-  defp coord(number) when is_number(number), do: number * 1.0
 end

@@ -15,6 +15,9 @@ const MapDrag = {
     this.suppressed = false
     this.start = null
     this.origin = null
+    const at = this.viewOrigin()
+    this.ox = at.x
+    this.oy = at.y
 
     this.onPointerDown = (ev) => {
       if (ev.target.closest("g[data-system-id]")) return
@@ -40,12 +43,7 @@ const MapDrag = {
     }
 
     this.onPointerUp = (_ev) => {
-      if (!this.panning) return
       this.panning = false
-      if (this.suppressed) {
-        const at = this.viewOrigin()
-        this.pushEvent("pan-map", { x: Math.round(at.x), y: Math.round(at.y) })
-      }
     }
 
     this.onClick = (ev) => {
@@ -55,16 +53,19 @@ const MapDrag = {
       ev.preventDefault()
     }
 
-    this.handleEvent("reset-pan", () => {
-      const next = this.clampView(0, 0)
+    this.handleEvent("reset-pan", ({ x, y }) => {
+      const next = this.clampView(x, y)
       this.setView(next.x, next.y)
-      this.pushEvent("pan-map", { x: Math.round(next.x), y: Math.round(next.y) })
     })
 
     this.svg.addEventListener("pointerdown", this.onPointerDown)
     this.svg.addEventListener("click", this.onClick, true)
     window.addEventListener("pointermove", this.onPointerMove)
     window.addEventListener("pointerup", this.onPointerUp)
+  },
+
+  updated() {
+    this.setView(this.ox, this.oy)
   },
 
   destroyed() {
@@ -90,6 +91,8 @@ const MapDrag = {
   },
 
   setView(x, y) {
+    this.ox = x
+    this.oy = y
     this.svg.setAttribute("viewBox", `${x} ${y} ${VIEW_W} ${VIEW_H}`)
   },
 
@@ -113,9 +116,7 @@ const MapDrag = {
     })
     const low = min - pad
     const high = max + nodeSize + pad - viewSize
-    if (low <= high) return { low, high }
-    const center = (min + max + nodeSize) / 2 - viewSize / 2
-    return { low: center, high: center }
+    return { low: Math.min(low, high), high: Math.max(low, high) }
   },
 
   clampAxis(value, bounds) {

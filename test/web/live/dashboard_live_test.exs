@@ -62,7 +62,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element("#chain-zoom-reset")
     |> render_click()
 
-    assert_push_event(view, "reset-pan", %{})
+    assert_push_event(view, "reset-pan", %{x: 0, y: 0})
     assert Mapping.get_system!(system.id).x == 120.0
   end
 
@@ -236,7 +236,12 @@ defmodule TripwireWeb.DashboardLiveTest do
   end
 
   test "reset zoom notifies the map to reset its pan", %{conn: conn, character: character} do
-    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, other} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 880.0, y: 612.0})
+
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
 
     {:ok, view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
 
@@ -247,7 +252,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element("#chain-zoom-reset")
     |> render_click()
 
-    assert_push_event(view, "reset-pan", %{})
+    assert_push_event(view, "reset-pan", %{x: 0, y: 0})
   end
 
   test "header lock button toggles its icon without touching systems", %{
