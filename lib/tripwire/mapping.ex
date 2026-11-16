@@ -926,7 +926,9 @@ defmodule Tripwire.Mapping do
     ],
     6 => [
       %{sig_id: "TUV-678", kind: "anomaly", site_type: "combat", type_name: "Forsaken Hub"},
-      %{sig_id: "WXY-901", kind: "signature", site_type: "data", type_name: "Central Data Site"}
+      %{sig_id: "WXY-901", kind: "signature", site_type: "data", type_name: "Central Data Site"},
+      %{sig_id: "AAA-111", kind: "signature", site_type: "unknown"},
+      %{sig_id: "BBB-222", kind: "signature", site_type: "unknown"}
     ],
     7 => [
       %{
@@ -940,7 +942,8 @@ defmodule Tripwire.Mapping do
         kind: "signature",
         site_type: "gas",
         type_name: "Vast Frontier Reservoir"
-      }
+      },
+      %{sig_id: "CCC-333", kind: "signature", site_type: "unknown"}
     ],
     8 => [
       %{sig_id: "FGH-890", kind: "anomaly", site_type: "combat", type_name: "Sanctum"},

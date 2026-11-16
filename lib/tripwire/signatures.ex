@@ -100,6 +100,91 @@ defmodule Tripwire.Signatures do
 
   def default_life_length, do: 72 * 3600
 
+  @known_sites [
+    "Average Frontier Deposit",
+    "Barren Perimeter Reservoir",
+    "Bountiful Frontier Reservoir",
+    "Common Perimeter Deposit",
+    "Core Bastion",
+    "Core Citadel",
+    "Core Garrison",
+    "Core Stronghold",
+    "Exceptional Core Deposit",
+    "Forgotten Core Assembly Hall",
+    "Forgotten Core Circuitry Disassembler",
+    "Forgotten Core Data Field",
+    "Forgotten Core Information Pen",
+    "Forgotten Frontier Conversion Module",
+    "Forgotten Frontier Evacuation Center",
+    "Forgotten Frontier Quarantine Outpost",
+    "Forgotten Frontier Recursive Depot",
+    "Forgotten Perimeter Coronation Platform",
+    "Forgotten Perimeter Gateway",
+    "Forgotten Perimeter Habitation Coils",
+    "Forgotten Perimeter Power Array",
+    "Fortification Frontier Stronghold",
+    "Frontier Barracks",
+    "Frontier Command Post",
+    "Infrequent Core Deposit",
+    "Instrumental Core Reservoir",
+    "Integrated Terminus",
+    "Isolated Core Deposit",
+    "Minor Perimeter Reservoir",
+    "Ordinary Perimeter Reservoir",
+    "Ordinary Permiter Deposit",
+    "Oruze Osobnyk",
+    "Outpost Frontier Stronghold",
+    "Perimeter Ambush Point",
+    "Perimeter Camp",
+    "Perimeter Checkpoint",
+    "Perimeter Hangar",
+    "Phase Catalyst Node",
+    "Quarantine Area",
+    "Rarified Core Deposit",
+    "Sizeable Perimeter Reservoir",
+    "Sleeper Data Sanctuary",
+    "Sleeper Information Sanctum",
+    "Solar Cell",
+    "Strange Energy Readings",
+    "The Line",
+    "The Mirror",
+    "The Oruze Construct",
+    "The Ruins of Enclave Cohort 27",
+    "Token Perimeter Reservoir",
+    "Uncommon Core Deposit",
+    "Unexceptional Frontier Deposit",
+    "Unsecured Core Backup Array",
+    "Unsecured Core Emergence",
+    "Unsecured Frontier Database",
+    "Unsecured Frontier Digital Nexus",
+    "Unsecured Frontier Enclave Relay",
+    "Unsecured Frontier Receiver",
+    "Unsecured Frontier Server Bank",
+    "Unsecured Frontier Trinary Hub",
+    "Unsecured Perimeter Amplifier",
+    "Unsecured Perimeter Comms Relay",
+    "Unsecured Perimeter Information Center",
+    "Unsecured Perimeter Transponder Farm",
+    "Unusual Core Deposit",
+    "Vast Frontier Reservoir",
+    "Vital Core Reservoir"
+  ]
+
+  @known_site_set MapSet.new(@known_sites)
+
+  @doc """
+  Returns the eve-survival guide URL for a known site name, matching
+  official Tripwire, or nil when the name has no external guide.
+  """
+  @spec external_link(String.t() | nil) :: String.t() | nil
+  def external_link(name) when is_binary(name) do
+    if MapSet.member?(@known_site_set, name) do
+      "https://eve-survival.org/wikka.php?wakka=" <> String.replace(name, " ", "")
+    end
+  end
+
+  def external_link(_), do: nil
+
   defp columns_after_id(trimmed, raw_id) do
     rest =
       binary_part(trimmed, String.length(raw_id), String.length(trimmed) - String.length(raw_id))

@@ -163,7 +163,18 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                 <td class="text-center">
                   <span class={["badge badge-xs", site_badge(sig)]}>{site_label(sig)}</span>
                 </td>
-                <td class="cell-truncate text-center">{sig.type_name || "-"}</td>
+                <td class="cell-truncate text-center">
+              <a
+                :if={sig_link(sig)}
+                href={sig_link(sig)}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link link-hover text-yellow-400"
+              >
+                {sig.type_name}
+              </a>
+              <span :if={is_nil(sig_link(sig))}>{sig.type_name || "-"}</span>
+            </td>
                 <td class="text-center tabular-nums">{format_life_left(sig)}</td>
                 <td class="text-center">
                   <button
@@ -204,6 +215,9 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
 
   defp system_label(nil), do: "no system selected"
   defp system_label(_), do: "system selected"
+
+  defp sig_link(%{type_name: name}), do: SigParser.external_link(name)
+  defp sig_link(_), do: nil
 
   defp kind_label(%{kind: "anomaly"}), do: "Anomaly"
   defp kind_label(_), do: "Signature"
