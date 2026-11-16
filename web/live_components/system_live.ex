@@ -1,11 +1,27 @@
-defmodule TripwireWeb.SystemComponent do
-  use Phoenix.Component
-  import TripwireWeb.IconComponent
+defmodule TripwireWeb.LiveComponents.SystemLive do
+  use TripwireWeb, :live_component
 
-  attr :systems, :list, default: []
-  attr :selected_system_id, :integer, default: nil
+  alias Tripwire.Mapping
 
-  def system(assigns) do
+  def update(assigns, socket) do
+    systems =
+      case Map.get(assigns, :systems) do
+        nil -> Mapping.list_systems(assigns.map_id)
+        systems -> systems
+      end
+
+    {:ok,
+     socket
+     |> assign(assigns)
+     |> assign(:systems, systems)}
+  end
+
+  def handle_event("select-system", %{"id" => id}, socket) do
+    send(self(), {:select_system, String.to_integer(id)})
+    {:noreply, socket}
+  end
+
+  def render(assigns) do
     ~H"""
     <div
       id="system-container"
@@ -21,7 +37,6 @@ defmodule TripwireWeb.SystemComponent do
           <ul class="list rounded-box shadow-md shrink-0">
             <li class="list-row h-fit items-center gap-1 p-1">
               <p class="px-1 text-lg font-semibold">System</p>
-
               <svg
                 tabindex="0"
                 class="size-5 opacity-60"
@@ -37,27 +52,24 @@ defmodule TripwireWeb.SystemComponent do
                   d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"
                 />
               </svg>
-
               <.icon name="hero-star" class="size-5 opacity-60" />
-
               <span class="ml-auto text-xs opacity-60">
                 {length(@systems)} systems
               </span>
             </li>
           </ul>
-
           <div class="flex flex-row flex-wrap gap-1 p-2">
             <button
               :for={sys <- @systems}
               class={"btn btn-xs " <> (if sys.id == @selected_system_id, do: "btn-primary", else: "btn-ghost")}
               phx-click="select-system"
               phx-value-id={sys.id}
+              phx-target={@myself}
             >
               {sys.name}
             </button>
             <span :if={@systems == []} class="p-1 text-sm opacity-50">No systems on map yet</span>
           </div>
-
           <div
             id="system-chart"
             phx-hook="ChartMount"

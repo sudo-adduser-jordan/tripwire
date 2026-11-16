@@ -1,4 +1,4 @@
-defmodule TripwireWeb.SettingsThemesComponent do
+defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
   use Phoenix.Component
   alias Phoenix.LiveView.JS
 
@@ -29,7 +29,7 @@ defmodule TripwireWeb.SettingsThemesComponent do
 
   attr :settings_tab, :string, default: "account"
 
-  def settings_themes(assigns) do
+  def settings_themes_live(assigns) do
     ~H"""
     <input
       type="radio"

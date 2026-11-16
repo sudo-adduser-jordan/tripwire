@@ -46,9 +46,16 @@ defmodule Tripwire.SyncServer do
     for character <- Accounts.list_characters() do
       case ESI.get_character(character.eve_id) do
         {:ok, %{"corporation_id" => corporation_id} = body} ->
+          corporation_name =
+            case ESI.get_corporation(corporation_id) do
+              {:ok, %{"name" => name}} -> name
+              _ -> character.corporation_name
+            end
+
           character
           |> Ecto.Changeset.change(%{
             corporation_id: corporation_id,
+            corporation_name: corporation_name,
             alliance_id: body["alliance_id"]
           })
           |> Repo.update()

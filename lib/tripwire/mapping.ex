@@ -100,8 +100,7 @@ defmodule Tripwire.Mapping do
         angle = 2 * :math.pi() * i / max(n, 1) + depth * 0.5
 
         {id,
-         {clamp_x(460.0 + radius * :math.cos(angle)),
-          clamp_y(325.0 + radius * :math.sin(angle))}}
+         {clamp_x(460.0 + radius * :math.cos(angle)), clamp_y(325.0 + radius * :math.sin(angle))}}
       end)
     end)
     |> Elixir.Map.new(fn {id, {x, y}} -> {id, %{x: x, y: y}} end)
@@ -299,6 +298,73 @@ defmodule Tripwire.Mapping do
   def delete_signature(%Signature{} = signature), do: Repo.delete(signature)
 
   def get_signature!(id), do: Repo.get!(Signature, id)
+
+  def list_comments(system_id) do
+    Repo.all(
+      from(c in Tripwire.Mapping.Comment,
+        where: c.map_system_id == ^system_id,
+        order_by: [asc: c.id],
+        preload: [:character]
+      )
+    )
+  end
+
+  def create_comment(%MapSystem{} = system, attrs, character \\ nil) do
+    character_id = if is_struct(character, Character), do: character.id, else: nil
+
+    %Tripwire.Mapping.Comment{}
+    |> Tripwire.Mapping.Comment.changeset(
+      merge_attrs(attrs, %{map_system_id: system.id, character_id: character_id})
+    )
+    |> Repo.insert()
+  end
+
+  def delete_comment(%Tripwire.Mapping.Comment{} = comment), do: Repo.delete(comment)
+
+  def get_comment!(id), do: Repo.get!(Tripwire.Mapping.Comment, id)
+
+  @demo_systems [
+    %{solar_system_id: 31_000_001, name: "J150321", x: 120.0, y: 120.0},
+    %{solar_system_id: 31_000_002, name: "J150322", x: 360.0, y: 260.0},
+    %{solar_system_id: 31_000_003, name: "J150323", x: 600.0, y: 140.0},
+    %{solar_system_id: 31_000_004, name: "J150324", x: 780.0, y: 330.0},
+    %{solar_system_id: 31_000_005, name: "J150325", x: 480.0, y: 470.0}
+  ]
+
+  @demo_links [
+    {0, 1, "C3", "stable"},
+    {1, 2, "K162", "stable"},
+    {2, 3, "EOL", "eol"},
+    {2, 4, "C2", "stable"}
+  ]
+
+  def ensure_demo_map(mask_id) do
+    map =
+      case list_maps_for_mask(mask_id) do
+        [map | _] -> map
+        [] -> elem(create_map(%{name: "Demo", mask_id: mask_id}), 1)
+      end
+
+    if list_systems(map.id) == [] do
+      systems =
+        Enum.map(@demo_systems, fn attrs ->
+          {:ok, system} = add_system_to_map(map, attrs)
+          system
+        end)
+
+      Enum.each(@demo_links, fn {from_idx, to_idx, hole_type, time_status} ->
+        {:ok, _, _} =
+          upsert_connection(
+            map.id,
+            Enum.at(systems, from_idx).id,
+            Enum.at(systems, to_idx).id,
+            %{hole_type: hole_type, time_status: time_status}
+          )
+      end)
+    end
+
+    {:ok, get_map!(map.id)}
+  end
 
   defp merge_attrs(attrs, extra), do: Elixir.Map.merge(attrs, extra)
 end

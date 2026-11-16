@@ -1,26 +1,41 @@
-defmodule TripwireWeb.MapComponent do
-  use Phoenix.Component
+defmodule TripwireWeb.LiveComponents.MapLive do
+  use TripwireWeb, :live_component
 
-  attr :systems, :list, required: true
-  attr :connections, :list, default: []
-  attr :selected_system_id, :integer, default: nil
-  attr :map_name, :string, default: "Map"
+  alias Tripwire.Mapping
 
-  @view_box {0, 0, 1000, 700}
+  def update(assigns, socket) do
+    map_id = Map.get(assigns, :map_id)
+    systems = Map.get_lazy(assigns, :systems, fn -> Mapping.list_systems(map_id) end)
 
-  def map(assigns) do
-    assigns = assign(assigns, :view_box, @view_box |> Tuple.to_list() |> Enum.join(" "))
+    connections =
+      Map.get_lazy(assigns, :connections, fn ->
+        Mapping.list_connections_with_endpoints(map_id)
+      end)
+
+    {:ok,
+     socket
+     |> assign(assigns)
+     |> assign(:systems, systems)
+     |> assign(:connections, connections)}
+  end
+
+  def handle_event("select-system", %{"id" => id}, socket) do
+    send(self(), {:select_system, String.to_integer(id)})
+    {:noreply, socket}
+  end
+
+  def handle_event("move-system", %{"id" => id, "x" => x, "y" => y}, socket) do
+    system = Mapping.get_system!(String.to_integer(id))
+    {:ok, _} = Mapping.update_system_position(system, coord(x), coord(y))
+    send(self(), {:systems_updated, socket.assigns.map_id})
+    {:noreply, socket}
+  end
+
+  def render(assigns) do
+    assigns = assign(assigns, :view_box, "0 0 1000 700")
 
     ~H"""
-    <div
-      id="map"
-      class="grid-stack-item"
-      gs-w="12"
-      gs-h="6"
-      gs-x="0"
-      gs-y="12"
-      tabindex="0"
-    >
+    <div id="map" class="grid-stack-item" gs-w="12" gs-h="6" gs-x="0" gs-y="12" tabindex="0">
       <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
         <ul class="list rounded-box shadow-md shrink-0">
           <li class="list-row h-fit items-center gap-1 p-1">
@@ -67,7 +82,6 @@ defmodule TripwireWeb.MapComponent do
                 {conn.hole_type || "?"}
               </text>
             </g>
-
             <g id="map-nodes">
               <g
                 :for={system <- @systems}
@@ -77,6 +91,7 @@ defmodule TripwireWeb.MapComponent do
                 data-system-id={system.id}
                 phx-click="select-system"
                 phx-value-id={system.id}
+                phx-target={@myself}
               >
                 <rect
                   width="80"
@@ -120,4 +135,11 @@ defmodule TripwireWeb.MapComponent do
   defp edge_class(%{time_status: "eol"}), do: "stroke-error stroke-1"
   defp edge_class(%{mass_status: "critical"}), do: "stroke-warning stroke-1"
   defp edge_class(_), do: "stroke-base-content/60 stroke-1"
+
+  defp coord(value) when is_binary(value) do
+    {number, ""} = Integer.parse(value)
+    number * 1.0
+  end
+
+  defp coord(number) when is_number(number), do: number * 1.0
 end

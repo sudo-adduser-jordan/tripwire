@@ -1,9 +1,9 @@
-defmodule TripwireWeb.SettingsWidgetsComponent do
+defmodule TripwireWeb.LiveComponents.Settings.WidgetsLive do
   use Phoenix.Component
 
   attr :settings_tab, :string, default: "account"
 
-  def settings_widgets(assigns) do
+  def settings_widgets_live(assigns) do
     ~H"""
     <input
       type="radio"

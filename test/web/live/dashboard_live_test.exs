@@ -41,10 +41,28 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute has_element?(view, "#settings-widget")
   end
 
-  test "demo mode provisions nothing", %{conn: conn} do
-    live(conn, ~p"/dashboard/User")
-    assert Repo.all(Masks.Mask) == []
-    assert Repo.all(Mapping.Map) == []
+  test "demo mode provisions its own editable mask", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/dashboard/User")
+    assert html =~ "Demo mode"
+
+    [mask] = Repo.all(Masks.Mask)
+    assert mask.kind == "demo"
+    assert mask.name == "Demo"
+
+    [map] = Repo.all(Mapping.Map)
+    assert map.mask_id == mask.id
+    assert length(Mapping.list_systems(map.id)) == 5
+
+    system = hd(Mapping.list_systems(map.id))
+
+    view
+    |> render_click("move-system", %{
+      "id" => Integer.to_string(system.id),
+      "x" => "500",
+      "y" => "300"
+    })
+
+    assert Mapping.get_system!(system.id).x == 500.0
   end
 
   test "mounts with session character and provisions a personal map", %{

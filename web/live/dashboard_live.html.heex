@@ -3,7 +3,7 @@
 </script>
 
 <RootLayout.app flash={@flash} current_user={@current_user}>
-  <.navigation user={@nav_user} />
+  <.navigation_live user={@nav_user} characters={@characters} masks={@masks} />
 
   <div :if={@demo?} class="px-2 sm:px-3">
     <div class="alert alert-warning py-2 text-sm">
@@ -17,17 +17,39 @@
       id="grid-stack"
       phx-hook="GridStack"
     >
-      <.settings :if={@settings_open} map_layout={@map_layout} settings_tab={@settings_tab} />
-      <.system systems={@systems} selected_system_id={@selected_system_id} />
-      <.notes />
-      <.signatures
-        id="signatures"
-        signatures={@signatures}
-        selected_system_id={@selected_system_id}
-        paste_open={@paste_open}
-        paste_text={@paste_text}
+      <.settings_live
+        :if={@settings_open}
+        map_layout={@map_layout}
+        settings_tab={@settings_tab}
+        characters={@characters}
+        masks={@masks}
+        character={@character}
       />
-      <.map
+      <.live_component
+        module={TripwireWeb.LiveComponents.SystemLive}
+        id="system-live"
+        map_id={@map && @map.id}
+        systems={@systems}
+        selected_system_id={@selected_system_id}
+      />
+      <.live_component
+        module={TripwireWeb.LiveComponents.NotesLive}
+        id="notes-live"
+        selected_system_id={@selected_system_id}
+        comments={@comments}
+        character={@character}
+      />
+      <.live_component
+        module={TripwireWeb.LiveComponents.SignaturesLive}
+        id="signatures"
+        selected_system_id={@selected_system_id}
+        signatures={@signatures}
+        character={@character}
+      />
+      <.live_component
+        module={TripwireWeb.LiveComponents.MapLive}
+        id="map-live"
+        map_id={@map && @map.id}
         systems={@systems}
         connections={@connections}
         selected_system_id={@selected_system_id}

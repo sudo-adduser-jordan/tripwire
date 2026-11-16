@@ -5,7 +5,7 @@ defmodule Tripwire.Mapping.MapConnection do
   alias Tripwire.Mapping.Map
   alias Tripwire.Mapping.MapSystem
 
-  @mass_statuses ~w(stable degraded critical)
+  @mass_statuses ~w(stable destab critical)
   @time_statuses ~w(stable eol)
   @ship_sizes ~w(mass medium small)
 
@@ -14,6 +14,7 @@ defmodule Tripwire.Mapping.MapConnection do
     field :mass_status, :string, default: "stable"
     field :time_status, :string, default: "stable"
     field :ship_size, :string
+    field :parent, :string
 
     belongs_to :map, Map
     belongs_to :from_system, MapSystem, foreign_key: :from_system_id
@@ -31,7 +32,8 @@ defmodule Tripwire.Mapping.MapConnection do
       :hole_type,
       :mass_status,
       :time_status,
-      :ship_size
+      :ship_size,
+      :parent
     ])
     |> validate_required([:map_id, :from_system_id, :to_system_id])
     |> validate_inclusion(:mass_status, @mass_statuses)

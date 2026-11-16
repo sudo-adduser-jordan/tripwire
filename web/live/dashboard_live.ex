@@ -7,37 +7,31 @@ defmodule TripwireWeb.DashboardLive do
   alias Tripwire.Signatures, as: SigParser
 
   @demo_users ~w(Admin User)
-
-  # In-memory demo chain so the map renders without provisioning anything.
-  @demo_systems [
-    %{id: -1, name: "J150321", x: 120.0, y: 120.0},
-    %{id: -2, name: "J150322", x: 360.0, y: 260.0},
-    %{id: -3, name: "J150323", x: 600.0, y: 140.0},
-    %{id: -4, name: "J150324", x: 780.0, y: 330.0},
-    %{id: -5, name: "J150325", x: 480.0, y: 470.0}
-  ]
-
-  @demo_links [
-    {-11, -1, -2, "C3", "stable"},
-    {-12, -2, -3, "K162", "stable"},
-    {-13, -3, -4, "EOL", "eol"},
-    {-14, -3, -5, "C2", "stable"}
-  ]
+  @demo_eve_ids %{"Admin" => 9_000_001, "User" => 9_000_002}
 
   @impl true
   def mount(%{"user" => user} = _params, _session, socket) when user in @demo_users do
-    {systems, connections} = demo_graph()
+    {:ok, character} =
+      Accounts.upsert_character(%{eve_id: Map.fetch!(@demo_eve_ids, user), name: user})
+
+    {:ok, mask} = Masks.ensure_demo_mask()
+    {:ok, _} = Masks.add_membership(mask, character)
+    {:ok, map} = Mapping.ensure_demo_map(mask.id)
 
     {:ok,
      socket
      |> assign(:current_user, nil)
      |> assign(:nav_user, user)
-     |> assign(:character, nil)
-     |> assign(:map, nil)
-     |> assign(:systems, systems)
-     |> assign(:connections, connections)
+     |> assign(:character, character)
+     |> assign(:characters, [character])
+     |> assign(:mask, mask)
+     |> assign(:masks, [mask])
+     |> assign(:map, map)
+     |> assign(:systems, Mapping.list_systems(map.id))
+     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
      |> assign(:selected_system_id, nil)
      |> assign(:signatures, [])
+     |> assign(:comments, [])
      |> assign(:paste_open, false)
      |> assign(:paste_text, "")
      |> assign(:settings_open, false)
@@ -45,7 +39,8 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:map_layout, "default")
      |> assign(:undo, [])
      |> assign(:redo, [])
-     |> assign(:demo?, true)}
+     |> assign(:demo?, true)
+     |> subscribe_to_map(map.id)}
   end
 
   def mount(_params, session, socket) do
@@ -82,6 +77,46 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:connections, Mapping.list_connections_with_endpoints(map_id))}
   end
 
+  def handle_info({:select_system, system_id}, socket) do
+    {:noreply,
+     socket
+     |> assign(:selected_system_id, system_id)
+     |> assign(:signatures, Mapping.list_signatures(system_id))
+     |> assign(:comments, Mapping.list_comments(system_id))
+     |> assign(:undo, [])
+     |> assign(:redo, [])}
+  end
+
+  def handle_info({:signatures_updated, system_id}, socket) do
+    socket =
+      if socket.assigns.selected_system_id == system_id do
+        assign(socket, :signatures, Mapping.list_signatures(system_id))
+      else
+        socket
+      end
+
+    {:noreply, socket}
+  end
+
+  def handle_info({:systems_updated, map_id}, %{assigns: %{map: map}} = socket)
+      when not is_nil(map) and map_id == map.id do
+    {:noreply,
+     socket
+     |> assign(:systems, Mapping.list_systems(map_id))
+     |> assign(:connections, Mapping.list_connections_with_endpoints(map_id))}
+  end
+
+  def handle_info({:comments_updated, system_id}, socket) do
+    socket =
+      if socket.assigns.selected_system_id == system_id do
+        assign(socket, :comments, Mapping.list_comments(system_id))
+      else
+        socket
+      end
+
+    {:noreply, socket}
+  end
+
   def handle_info({:system_changed, %{character: name, system: system}}, socket) do
     {:noreply, put_flash(socket, :info, "#{name} jumped into #{system.name}")}
   end
@@ -102,29 +137,15 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("select-system", %{"id" => id}, socket) do
     system_id = String.to_integer(id)
-    signatures = Mapping.list_signatures(system_id)
 
     {:noreply,
      socket
      |> assign(:selected_system_id, system_id)
-     |> assign(:signatures, signatures)
+     |> assign(:signatures, Mapping.list_signatures(system_id))
+     |> assign(:comments, Mapping.list_comments(system_id))
      |> assign(:undo, [])
      |> assign(:redo, [])}
   end
-
-  def handle_event("move-system", _params, %{assigns: %{demo?: true}} = socket) do
-    {:noreply, socket}
-  end
-
-  def handle_event("map-layout", %{"layout" => "default"}, socket),
-    do: {:noreply, assign(socket, :map_layout, "default")}
-
-  def handle_event("map-layout", %{"layout" => layout}, socket)
-      when layout in ~w(top bottom left right radial) do
-    {:noreply, socket |> assign(:map_layout, layout) |> apply_tree_layout(layout)}
-  end
-
-  def handle_event("map-layout", _params, socket), do: {:noreply, socket}
 
   def handle_event("move-system", %{"id" => id, "x" => x, "y" => y}, socket) do
     system = Mapping.get_system!(String.to_integer(id))
@@ -142,6 +163,16 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:systems, systems)
      |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))}
   end
+
+  def handle_event("map-layout", %{"layout" => "default"}, socket),
+    do: {:noreply, assign(socket, :map_layout, "default")}
+
+  def handle_event("map-layout", %{"layout" => layout}, socket)
+      when layout in ~w(top bottom left right radial) do
+    {:noreply, socket |> assign(:map_layout, layout) |> apply_tree_layout(layout)}
+  end
+
+  def handle_event("map-layout", _params, socket), do: {:noreply, socket}
 
   def handle_event("toggle-paste", _params, socket) do
     {:noreply, update(socket, :paste_open, &(!&1))}
@@ -220,22 +251,6 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
-  defp apply_tree_layout(%{assigns: %{demo?: true}} = socket, layout) do
-    positions = layout_positions(socket.assigns.systems, socket.assigns.connections, layout)
-
-    by_id =
-      socket.assigns.systems
-      |> Enum.map(fn s -> {s.id, Elixir.Map.merge(s, positions[s.id])} end)
-      |> Elixir.Map.new()
-
-    connections =
-      Enum.map(socket.assigns.connections, fn {c, f, t} -> {c, by_id[f.id], by_id[t.id]} end)
-
-    socket
-    |> assign(:systems, by_id |> Elixir.Map.values() |> Enum.sort_by(& &1.id))
-    |> assign(:connections, connections)
-  end
-
   defp apply_tree_layout(%{assigns: %{map: map}} = socket, layout) when not is_nil(map) do
     positions = layout_positions(socket.assigns.systems, socket.assigns.connections, layout)
 
@@ -261,18 +276,6 @@ defmodule TripwireWeb.DashboardLive do
   defp layout_positions(systems, connections, layout),
     do: Mapping.tree_layout(systems, connections, normalize_layout(layout))
 
-  defp demo_graph do
-    by_id = Map.new(@demo_systems, &{&1.id, &1})
-
-    connections =
-      Enum.map(@demo_links, fn {id, from_id, to_id, hole_type, time_status} ->
-        {%{id: id, hole_type: hole_type, time_status: time_status, mass_status: "stable"},
-         by_id[from_id], by_id[to_id]}
-      end)
-
-    {@demo_systems, connections}
-  end
-
   defp provision(socket, character) do
     {:ok, mask} = Masks.ensure_personal_mask(character)
 
@@ -286,11 +289,15 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:current_user, %{id: character.eve_id, name: character.name})
     |> assign(:nav_user, character.name)
     |> assign(:character, character)
+    |> assign(:characters, [character])
+    |> assign(:mask, mask)
+    |> assign(:masks, [mask | Masks.list_masks_for_character(character.id)])
     |> assign(:map, map)
     |> assign(:systems, Mapping.list_systems(map.id))
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
     |> assign(:selected_system_id, nil)
     |> assign(:signatures, [])
+    |> assign(:comments, [])
     |> assign(:paste_open, false)
     |> assign(:paste_text, "")
     |> assign(:settings_open, false)

@@ -30,6 +30,25 @@ defmodule Tripwire.ESI do
 
   def get_character(character_id), do: public_get("/characters/#{character_id}/")
 
+  def get_corporation(corporation_id), do: public_get("/corporations/#{corporation_id}/")
+
+  def get_character_roles(character_id, access_token),
+    do: authorized_get("/characters/#{character_id}/roles/", access_token)
+
+  def get_character_titles(character_id, access_token) do
+    case authorized_get("/characters/#{character_id}/titles/", access_token) do
+      {:ok, titles} when is_list(titles) -> {:ok, Enum.map(titles, & &1["name"])}
+      other -> other
+    end
+  end
+
+  def get_character_ship(character_id, access_token),
+    do: authorized_get("/characters/#{character_id}/ship/", access_token)
+
+  def get_system_jumps, do: public_get("/universe/system_jumps/")
+
+  def get_system_kills, do: public_get("/universe/system_kills/")
+
   def get_system(system_id), do: public_get("/universe/systems/#{system_id}/")
 
   @doc """

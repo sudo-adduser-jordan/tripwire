@@ -1,10 +1,10 @@
-defmodule TripwireWeb.SettingsMapComponent do
+defmodule TripwireWeb.LiveComponents.Settings.MapLive do
   use Phoenix.Component
 
   attr :settings_tab, :string, default: "account"
   attr :map_layout, :string, default: "default"
 
-  def settings_map(assigns) do
+  def settings_map_live(assigns) do
     ~H"""
     <input
       type="radio"

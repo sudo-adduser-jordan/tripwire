@@ -78,7 +78,7 @@ fix:
 
 - `lib/tripwire/` contexts: `accounts`, `esi`, `mapping`, `masks`, `signatures`, `tracking`, plus `sync_server`, `vault`, `repo`, `mailer`.
 - `lib/tripwire/log.ex`: `Tripwire.Log` wide-event logger.
-- `web/`: `endpoint.ex`, `router.ex`, `telemetry.ex`, `controllers/`, `live/`, `components/`, `plugs/wide_event.ex`.
+- `web/`: `endpoint.ex`, `router.ex`, `telemetry.ex`, `controllers/`, `live/` (DashboardLive orchestrator), `live_components/` (System/Map/Signatures/Notes LiveComponents wired to Mapping plus Navigation/Settings function components), `components/` (presentational Core/Flash/Table/List/Input/Icon/Button/Header), `plugs/wide_event.ex`.
 - `config/`: `config.exs` base plus `dev.exs`, `test.exs`, `prod.exs`, `runtime.exs` (prod requires `DATABASE_PATH`; EVE SSO is optional).
 - `priv/repo/` migrations and seeds; `assets/` Node front end (`package.json` deploy runs `mix assets.deploy`); `test/` mirrors `lib` and `web`.
 - Runtime log dirs (gitignored): `logs/test/`, `logs/errors/`.
@@ -102,7 +102,7 @@ fix:
 | `task update` | `mix deps.update --all`, `npm update --prefix assets` |
 | `task remove` | `rm -rf _build deps assets/node_modules priv/static/assets cover tmp` |
 | `task setup` | `mkdir -p logs/test logs/errors`, `mix deps.get`, `mix ecto.setup`, `mix assets.setup`, `mix assets.build` |
-| `task migrate` | `mix ecto.migrate`, `MIX_ENV=test mix ecto.migrate` |
+| `task migrate` | `mix ecto.migrate`, `MIX_ENV=test mix ecto.migrate`, `MIX_ENV=prod mix ecto.migrate` |
 | `task start` | `task stop`, then launch detached with `DATABASE_PATH` defaulting to `./priv/db/tripwire-prod.db`; block until `logs/prod.log` reports a running endpoint, then print the URL (fails with the log tail if the server dies while booting) |
 | `task stop` | stop the managed production process group recorded in `tmp/tripwire-prod.pid`, then wait for the process and port to be released |
 | `task dev` | attach to `logs/prod.log`; Ctrl-C detaches without stopping the server |

@@ -50,12 +50,14 @@ tasks:
       - mix assets.build
       - echo -e "{{.GREEN}}[setup]{{.RESET}} setup complete"
   migrate:
-    desc: Run database migrations for dev and test
+    desc: Run database migrations for dev, test, and prod
     cmds:
       - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}mix ecto.migrate{{.RESET}}"
       - mix ecto.migrate
       - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=test mix ecto.migrate{{.RESET}}"
       - MIX_ENV=test mix ecto.migrate
+      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix ecto.migrate{{.RESET}}"
+      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix ecto.migrate
       - echo -e "{{.GREEN}}[migrate]{{.RESET}} migrations complete"
   start:
     desc: Restart the production server in the background
