@@ -62,6 +62,8 @@ tasks:
     cmds:
       - task: stop
       - mkdir -p logs tmp
+      - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix phx.digest{{.RESET}}"
+      - MIX_ENV=prod mix phx.digest
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}mix phx.server{{.RESET}}"
       - |
         sh -c 'MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" \
