@@ -14,7 +14,7 @@ defmodule TripwireWeb.SettingsAccountComponent do
       phx-click="settings-tab"
       phx-value-tab="account"
     />
-    <div class="tab-content w-full max-w-full overflow-hidden border-base-300 p-3 sm:p-4">
+    <div class="tab-content w-full max-w-full overflow-hidden p-3 sm:p-4">
       <div class="flex min-h-0 w-full max-w-full flex-col gap-2 overflow-hidden">
         <div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <p class="text-sm font-semibold">Account</p>

@@ -14,7 +14,7 @@ defmodule TripwireWeb.SettingsWidgetsComponent do
       phx-click="settings-tab"
       phx-value-tab="widgets"
     />
-    <div class="tab-content w-full max-w-full overflow-hidden border-base-300 bg-base-100/50 p-3 sm:p-4">
+    <div class="tab-content w-full max-w-full overflow-hidden p-3 sm:p-4">
       <div class="flex min-h-0 w-full max-w-full flex-col gap-2 overflow-hidden">
         <p class="text-sm font-semibold">Widgets</p>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">

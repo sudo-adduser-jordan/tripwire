@@ -52,17 +52,17 @@ defmodule TripwireWeb.SettingsThemesComponent do
       phx-click="settings-tab"
       phx-value-tab="themes"
     />
-    <div class="tab-content w-full max-w-full overflow-hidden border-base-300 bg-base-100/50 p-3 sm:p-4">
+    <div class="tab-content w-full max-w-full overflow-hidden p-3 sm:p-4">
       <div class="flex min-h-0 w-full max-w-full flex-col gap-2 overflow-hidden">
         <p class="text-sm font-semibold">Themes</p>
         <div
           id="theme-container"
-          class="rounded-box grid w-full max-w-full grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-5"
+          class="grid w-full max-w-full grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-5"
         >
           <%= for theme <- themes() do %>
             <button
               id={"theme-button-" <> theme}
-              class="theme-button border-base-content/20 hover:border-base-content/40 min-w-0 overflow-hidden rounded-lg border outline-offset-2"
+              class="theme-button border-base-content/20 hover:border-base-content/40 focus-visible:outline-primary min-w-0 overflow-hidden rounded-lg border focus-visible:outline-2 focus-visible:outline-offset-2"
               phx-click={JS.dispatch("phx:set-theme")}
               data-phx-theme={theme}
               tabindex="0"

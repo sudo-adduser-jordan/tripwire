@@ -41,6 +41,7 @@ defmodule TripwireWeb.RootLayout do
               class="btn btn-primary btn-sm h-8 min-h-8"
               id="settings-button"
               phx-click="toggle-settings"
+              autofocus
             >
               Settings <span aria-hidden="true" id="settings-button-span"> &rarr; </span>
             </button>
