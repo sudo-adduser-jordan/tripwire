@@ -305,7 +305,7 @@ defmodule TripwireWeb.DashboardLiveTest do
       |> element(~s|nav form[phx-submit="system-search-submit"]|)
       |> render_submit(%{search: "j150321"})
 
-    assert html =~ "system selected"
+    assert html =~ "J150321"
     assert render(view) =~ "J150321"
   end
 

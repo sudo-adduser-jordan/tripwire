@@ -75,10 +75,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     <div id="map" class="grid-stack-item" gs-w="12" gs-h="6" gs-x="0" gs-y="12" tabindex="0">
       <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
         <ul class="list rounded-box shadow-md shrink-0">
-          <li class="list-row h-fit flex-wrap items-center gap-1 p-1">
-            <p class="px-1 text-lg font-semibold">Map</p>
-            <span class="text-xs opacity-60">{@map_name}</span>
-            <span id="chainTabs" class="join">
+          <li class="list-row h-fit flex-wrap items-center justify-end gap-1 p-1">
+            <span id="chainTabs" class="join ml-auto">
               <button
                 :for={tab <- Map.get(assigns, :maps, [])}
                 class={[
@@ -134,7 +132,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 <p><span class="badge badge-warning badge-xs">—</span> Mass Critical</p>
               </div>
             </details>
-            <span class="ml-auto text-xs tabular-nums opacity-60">
+            <span class="text-xs tabular-nums opacity-60">
               {length(@systems)} systems
             </span>
             <button

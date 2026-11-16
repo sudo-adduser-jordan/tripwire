@@ -122,7 +122,13 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
               >
                 <.icon name="hero-arrow-uturn-right" class="size-5" />
               </button>
-              <span class="ml-auto text-xs opacity-60">
+              <span
+                :if={Map.get(assigns, :selected_system_name)}
+                class="badge badge-primary badge-sm ml-auto"
+              >
+                {Map.get(assigns, :selected_system_name)}
+              </span>
+              <span :if={!Map.get(assigns, :selected_system_name)} class="ml-auto text-xs opacity-60">
                 {system_label(@selected_system_id)}
               </span>
             </li>
@@ -139,9 +145,9 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                 <th class="p-1 text-center text-xs"><span class="sr-only">Actions</span></th>
               </tr>
             </thead>
-            <tbody>
+            <tbody class="text-center">
               <tr :for={sig <- @signatures} id={"signature-#{sig.id}"}>
-                <td>
+                <td class="text-center">
                   <button
                     class="font-mono link link-hover"
                     title="Edit signature"
@@ -151,10 +157,10 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                     {sig.sig_id}
                   </button>
                 </td>
-                <td>{site_label(sig)}</td>
-                <td class="cell-truncate">{sig.type_name || "-"}</td>
-                <td class="tabular-nums">{format_life_left(sig)}</td>
-                <td class="text-right">
+                <td class="text-center">{site_label(sig)}</td>
+                <td class="cell-truncate text-center">{sig.type_name || "-"}</td>
+                <td class="text-center tabular-nums">{format_life_left(sig)}</td>
+                <td class="text-center">
                   <button
                     class="btn btn-ghost btn-xs"
                     title="Edit signature"
