@@ -168,7 +168,9 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "OLD-001"
 
     view
-    |> render_click("global-paste", %{"text" => "NEW-002\tCosmic Signature\tSerpentis Frigate Den"})
+    |> render_click("global-paste", %{
+      "text" => "NEW-002\tCosmic Signature\tSerpentis Frigate Den"
+    })
 
     html = render(view)
     assert html =~ "NEW-002"
@@ -198,7 +200,9 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> render_click()
 
     view
-    |> render_click("global-paste", %{"text" => "NEW-002\tCosmic Signature\tSerpentis Frigate Den"})
+    |> render_click("global-paste", %{
+      "text" => "NEW-002\tCosmic Signature\tSerpentis Frigate Den"
+    })
 
     assert render(view) =~ "stale-toast"
 

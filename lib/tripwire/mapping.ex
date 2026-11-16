@@ -223,10 +223,57 @@ defmodule Tripwire.Mapping do
     |> Repo.insert()
   end
 
+  def update_system_position(%MapSystem{locked: true}, _x, _y) do
+    {:error, Ecto.Changeset.add_error(Ecto.Changeset.change(%MapSystem{}), :locked, "is locked")}
+  end
+
   def update_system_position(%MapSystem{} = system, x, y) do
     system
     |> Ecto.Changeset.change(x: x, y: y)
     |> Repo.update()
+  end
+
+  def update_system(%MapSystem{} = system, attrs) do
+    system
+    |> MapSystem.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_system(%MapSystem{} = system) do
+    Repo.delete_all(
+      from(c in MapConnection,
+        where: c.from_system_id == ^system.id or c.to_system_id == ^system.id
+      )
+    )
+
+    Repo.delete(system)
+  end
+
+  def get_connection!(id),
+    do: Repo.get!(MapConnection, id) |> Repo.preload([:from_system, :to_system])
+
+  def get_connection(id),
+    do:
+      (case Repo.get(MapConnection, id) do
+         nil -> nil
+         conn -> Repo.preload(conn, [:from_system, :to_system])
+       end)
+
+  def update_connection(%MapConnection{} = connection, attrs) do
+    connection
+    |> MapConnection.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_connection(%MapConnection{} = connection), do: Repo.delete(connection)
+
+  def prune_expired_signatures(now \\ DateTime.utc_now()) do
+    {count, _} =
+      Repo.delete_all(
+        from(s in Signature, where: not is_nil(s.expires_at) and s.expires_at < ^now)
+      )
+
+    {:ok, count}
   end
 
   def list_signatures(system_id) do
@@ -246,11 +293,17 @@ defmodule Tripwire.Mapping do
   def upsert_signatures(%MapSystem{} = system, entries, %Character{id: character_id})
       when is_list(entries) do
     Enum.reduce(entries, {0, 0}, fn entry, {added, updated} ->
+      life_length = 259_200
+
       attrs = %{
         map_system_id: system.id,
         sig_id: entry.sig_id,
         kind: to_string(entry.kind),
         type_name: entry.name || entry.wormhole_type,
+        site_type: to_string(entry.category || :unknown),
+        life_length: life_length,
+        expires_at:
+          DateTime.add(DateTime.utc_now(), life_length, :second) |> DateTime.truncate(:second),
         updated_by_id: character_id
       }
 
@@ -278,6 +331,8 @@ defmodule Tripwire.Mapping do
   end
 
   def create_signature(%MapSystem{} = system, attrs, %Character{id: character_id}) do
+    attrs = with_expires_at(attrs)
+
     %Signature{}
     |> Signature.changeset(
       merge_attrs(attrs, %{
@@ -290,9 +345,31 @@ defmodule Tripwire.Mapping do
   end
 
   def update_signature(%Signature{} = signature, attrs, %Character{id: character_id}) do
+    attrs = with_expires_at(attrs, signature)
+
     signature
     |> Signature.changeset(merge_attrs(attrs, %{updated_by_id: character_id}))
     |> Repo.update()
+  end
+
+  defp with_expires_at(attrs, existing \\ nil) do
+    life_length =
+      attrs[:life_length] || attrs["life_length"] || (existing && existing.life_length) || 259_200
+
+    life_length =
+      if is_binary(life_length),
+        do:
+          (case Integer.parse(life_length) do
+             {n, ""} -> n
+             _ -> 259_200
+           end),
+        else: life_length
+
+    expires_at =
+      attrs[:expires_at] || attrs["expires_at"] ||
+        DateTime.add(DateTime.utc_now(), life_length, :second) |> DateTime.truncate(:second)
+
+    attrs |> Elixir.Map.put(:life_length, life_length) |> Elixir.Map.put(:expires_at, expires_at)
   end
 
   def delete_signature(%Signature{} = signature), do: Repo.delete(signature)
@@ -342,27 +419,67 @@ defmodule Tripwire.Mapping do
 
   @demo_signatures %{
     0 => [
-      %{sig_id: "ABC-123", kind: "signature", site_type: "wormhole", type_name: "Unstable Wormhole (Z647)"},
-      %{sig_id: "DEF-456", kind: "signature", site_type: "combat", type_name: "Serpentis Frigate Den"},
+      %{
+        sig_id: "ABC-123",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (Z647)"
+      },
+      %{
+        sig_id: "DEF-456",
+        kind: "signature",
+        site_type: "combat",
+        type_name: "Serpentis Frigate Den"
+      },
       %{sig_id: "GHI-789", kind: "signature", site_type: "data", type_name: "Ruined Data Site"}
     ],
     1 => [
-      %{sig_id: "JKL-012", kind: "signature", site_type: "wormhole", type_name: "Unstable Wormhole (K162)"},
+      %{
+        sig_id: "JKL-012",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (K162)"
+      },
       %{sig_id: "MNO-345", kind: "signature", site_type: "relic", type_name: "Ruined Relic Site"},
       %{sig_id: "PQR-678", kind: "anomaly", site_type: "combat", type_name: "Forsaken Hub"}
     ],
     2 => [
-      %{sig_id: "STU-901", kind: "signature", site_type: "gas", type_name: "Sizeable Perimeter Withdrawal"},
-      %{sig_id: "VWX-234", kind: "signature", site_type: "wormhole", type_name: "Unstable Wormhole (C247)"},
-      %{sig_id: "YZA-567", kind: "signature", site_type: "ore", type_name: "Rarified Core Deposit"}
+      %{
+        sig_id: "STU-901",
+        kind: "signature",
+        site_type: "gas",
+        type_name: "Sizeable Perimeter Withdrawal"
+      },
+      %{
+        sig_id: "VWX-234",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (C247)"
+      },
+      %{
+        sig_id: "YZA-567",
+        kind: "signature",
+        site_type: "ore",
+        type_name: "Rarified Core Deposit"
+      }
     ],
     3 => [
       %{sig_id: "BCD-890", kind: "anomaly", site_type: "combat", type_name: "Sanctum"},
-      %{sig_id: "EFG-123", kind: "signature", site_type: "wormhole", type_name: "Unstable Wormhole (A239)"}
+      %{
+        sig_id: "EFG-123",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (A239)"
+      }
     ],
     4 => [
       %{sig_id: "HIJ-456", kind: "signature", site_type: "data", type_name: "Central Data Site"},
-      %{sig_id: "KLM-789", kind: "signature", site_type: "combat", type_name: "Blood Raider Naval Shipyard"}
+      %{
+        sig_id: "KLM-789",
+        kind: "signature",
+        site_type: "combat",
+        type_name: "Blood Raider Naval Shipyard"
+      }
     ]
   }
 

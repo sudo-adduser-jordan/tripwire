@@ -58,6 +58,9 @@ defmodule Tripwire.Tracking.Poller do
     {:noreply, new_state}
   end
 
+  @impl true
+  def handle_call(:state, _from, state), do: {:reply, state, state}
+
   defp fetch_current_system(character) do
     with {:ok, token} <- ESI.valid_access_token(character),
          {:ok, %{"solar_system_id" => solar_system_id}} <-

@@ -198,7 +198,10 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   defp kind_label(_), do: "Signature"
 
   defp site_label(%{kind: "anomaly"}), do: "Anomaly"
-  defp site_label(%{site_type: type}) when type in ~w(combat data relic ore gas wormhole), do: String.capitalize(type)
+
+  defp site_label(%{site_type: type}) when type in ~w(combat data relic ore gas wormhole),
+    do: String.capitalize(type)
+
   defp site_label(sig), do: kind_label(sig)
 
   defp format_life_left(%{inserted_at: inserted_at, life_length: life_length}) do

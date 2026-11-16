@@ -9,7 +9,7 @@ defmodule Tripwire.SyncServer do
 
   require Logger
 
-  alias Tripwire.{Accounts, ESI, Repo}
+  alias Tripwire.{Accounts, ESI, Mapping, Repo}
 
   @corp_sync_interval 3 * 60 * 1000
   @activity_interval 60 * 60 * 1000
@@ -67,7 +67,21 @@ defmodule Tripwire.SyncServer do
   end
 
   defp run_activity_sync do
-    Logger.debug("zKillboard activity sync tick")
+    case Mapping.prune_expired_signatures() do
+      {:ok, 0} -> :ok
+      {:ok, count} -> Logger.info("Pruned #{count} expired signatures")
+    end
+
+    case ESI.get_system_jumps() do
+      {:ok, _jumps} -> :ok
+      {:error, reason} -> Logger.debug("System jumps sync skipped: #{inspect(reason)}")
+    end
+
+    case ESI.get_system_kills() do
+      {:ok, _kills} -> :ok
+      {:error, reason} -> Logger.debug("System kills sync skipped: #{inspect(reason)}")
+    end
+
     :ok
   end
 

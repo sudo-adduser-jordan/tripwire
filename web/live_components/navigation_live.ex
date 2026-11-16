@@ -127,14 +127,14 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
             class="menu dropdown-content bg-base-200/75 rounded-box z-1 mt-4 w-52 p-2 shadow-sm"
           >
             <li :for={mask <- @masks}>
-              <a>
+              <button phx-click="switch-mask" phx-value-id={mask.id}>
                 <div class="avatar avatar-offline">
                   <div class="w-24 rounded-xl">
                     <img src="/images/alliance-default.png" alt="" loading="lazy" />
                   </div>
                 </div>
-                {mask.name}
-              </a>
+                {mask.name} ({mask.kind})
+              </button>
             </li>
             <li :if={@masks == []}>
               <a>
@@ -148,6 +148,22 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
             </li>
           </ul>
         </div>
+        <button
+          id="waypoint-button"
+          phx-click="set-waypoint"
+          title="Set ESI waypoint to selected system"
+          class="btn btn-ghost btn-xs"
+        >
+          WP
+        </button>
+        <button
+          id="occupants-button"
+          phx-click="refresh-occupants"
+          title="Refresh occupants"
+          class="btn btn-ghost btn-xs"
+        >
+          Occupants
+        </button>
       </nav>
     </nav>
     """

@@ -26,8 +26,20 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
   def handle_event("move-system", %{"id" => id, "x" => x, "y" => y}, socket) do
     system = Mapping.get_system!(String.to_integer(id))
-    {:ok, _} = Mapping.update_system_position(system, coord(x), coord(y))
-    send(self(), {:systems_updated, socket.assigns.map_id})
+    system = if system.locked, do: system, else: system
+
+    case Mapping.update_system_position(system, coord(x), coord(y)) do
+      {:ok, _} ->
+        send(self(), {:systems_updated, socket.assigns.map_id})
+        {:noreply, socket}
+
+      {:error, _} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("open-connection", %{"id" => id}, socket) do
+    send(self(), {:open_connection, String.to_integer(id)})
     {:noreply, socket}
   end
 
@@ -103,20 +115,43 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                       else: "fill-base-200/75 stroke-base-content/40"
                   }
                   stroke-width="2"
+                  stroke-dasharray={if system.locked, do: "4"}
                 />
                 <text
                   x="40"
-                  y="28"
+                  y={if system.alias, do: "22", else: "28"}
                   text-anchor="middle"
                   textLength="72"
                   lengthAdjust="spacingAndGlyphs"
                   class="fill-base-content text-xs"
+                >
+                  {system.alias || system.name}
+                </text>
+                <text
+                  :if={system.alias}
+                  x="40"
+                  y="36"
+                  text-anchor="middle"
+                  textLength="72"
+                  lengthAdjust="spacingAndGlyphs"
+                  class="fill-base-content/60 text-[10px]"
                 >
                   {system.name}
                 </text>
               </g>
             </g>
           </svg>
+          <div class="flex flex-wrap gap-1 p-1 text-xs">
+            <button
+              :for={{conn, from, to} <- @connections}
+              class="badge badge-outline badge-sm"
+              phx-click="open-connection"
+              phx-value-id={conn.id}
+            >
+              {from.name}→{to.name}: {conn.hole_type || "?"} {conn.mass_status}/{conn.time_status}{if conn.ship_size,
+                do: "/#{conn.ship_size}"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

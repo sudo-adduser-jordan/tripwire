@@ -92,6 +92,129 @@
         selected_system_id={@selected_system_id}
         map_name={if @map, do: @map.name, else: "Demo"}
       />
+      <div class="grid-stack-item" gs-w="6" gs-h="4" gs-x="0" gs-y="18">
+        <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col gap-2 p-2">
+          <p class="text-lg font-semibold">System</p>
+          <form phx-submit="update-system" class="flex flex-col gap-2">
+            <label class="form-control">
+              <span class="label label-text">Alias</span>
+              <input
+                name="system[alias]"
+                value={@sys_form["alias"]}
+                placeholder="Optional alias"
+                autocomplete="off"
+                class="input input-bordered input-sm w-full"
+              />
+            </label>
+            <label class="label cursor-pointer justify-start gap-2">
+              <input
+                type="checkbox"
+                name="system[locked]"
+                value="true"
+                checked={@sys_form["locked"] in [true, "true", "on"]}
+                class="checkbox checkbox-sm"
+              />
+              <span class="label-text">Locked</span>
+            </label>
+            <div class="flex gap-2">
+              <button type="submit" class="btn btn-primary btn-sm">Save</button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm"
+                phx-click="delete-system"
+                data-confirm="Delete this system?"
+              >
+                Delete
+              </button>
+            </div>
+          </form>
+          <div id="occupants">
+            <p class="text-sm font-semibold">Occupants ({length(@occupants)})</p>
+            <ul class="text-xs">
+              <li :for={occ <- @occupants}>{occ.character_name} — {occ.system_name}</li>
+            </ul>
+            <p :if={@occupants == []} class="text-xs opacity-50">No tracked occupants.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div :if={@conn_modal_open} id="conn-modal" class="modal modal-open">
+    <div class="modal-box">
+      <h3 class="text-lg font-bold">Edit Connection</h3>
+      <p :if={@conn_errors != []} class="alert alert-error mt-2 py-2 text-sm">
+        {Enum.join(@conn_errors, ", ")}
+      </p>
+      <form phx-submit="save-connection" class="mt-3 flex flex-col gap-3">
+        <label class="form-control">
+          <span class="label label-text">Wormhole type</span>
+          <input
+            name="conn[hole_type]"
+            value={@conn_form["hole_type"]}
+            placeholder="K162, C3, EOL…"
+            autocomplete="off"
+            class="input input-bordered input-sm w-full font-mono uppercase"
+          />
+        </label>
+        <div class="grid grid-cols-3 gap-3">
+          <label class="form-control">
+            <span class="label label-text">Mass</span>
+            <select name="conn[mass_status]" class="select select-bordered select-sm w-full">
+              <option
+                :for={opt <- ~w(stable destab critical)}
+                value={opt}
+                selected={@conn_form["mass_status"] == opt}
+              >
+                {opt}
+              </option>
+            </select>
+          </label>
+          <label class="form-control">
+            <span class="label label-text">Time</span>
+            <select name="conn[time_status]" class="select select-bordered select-sm w-full">
+              <option
+                :for={opt <- ~w(stable eol)}
+                value={opt}
+                selected={@conn_form["time_status"] == opt}
+              >
+                {opt}
+              </option>
+            </select>
+          </label>
+          <label class="form-control">
+            <span class="label label-text">Ship size</span>
+            <select name="conn[ship_size]" class="select select-bordered select-sm w-full">
+              <option value="" selected={@conn_form["ship_size"] in [nil, ""]}>—</option>
+              <option
+                :for={opt <- ~w(mass medium small)}
+                value={opt}
+                selected={@conn_form["ship_size"] == opt}
+              >
+                {opt}
+              </option>
+            </select>
+          </label>
+        </div>
+        <div class="modal-action justify-between">
+          <button
+            type="button"
+            class="btn btn-error btn-sm"
+            phx-click="delete-connection"
+            phx-value-id={@conn_edit_id}
+            data-confirm="Delete this connection?"
+          >
+            Delete
+          </button>
+          <div class="flex gap-2">
+            <button type="button" class="btn btn-sm" phx-click="close-conn-modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-backdrop">
+      <button type="button" phx-click="close-conn-modal">Close</button>
     </div>
   </div>
 

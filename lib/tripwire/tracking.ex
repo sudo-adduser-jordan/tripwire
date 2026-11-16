@@ -71,6 +71,32 @@ defmodule Tripwire.Tracking do
     PubSub.broadcast(Tripwire.PubSub, map_topic(map_id), {:map_updated, map_id})
   end
 
+  def list_occupants(map_id) do
+    Registry.select(Tripwire.TrackingRegistry, [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
+    |> Enum.flat_map(fn {_eve_id, pid} ->
+      case GenServer.call(pid, :state) do
+        %{character: character, map: %{id: ^map_id}, last_system_row: system}
+        when not is_nil(system) ->
+          [
+            %{
+              character_name: character.name,
+              eve_id: character.eve_id,
+              system_id: system.id,
+              system_name: system.name,
+              solar_system_id: system.solar_system_id
+            }
+          ]
+
+        _ ->
+          []
+      end
+    end)
+  rescue
+    _ -> []
+  catch
+    _, _ -> []
+  end
+
   defp broadcast_system_change(map_id, character_name, system) do
     PubSub.broadcast(
       Tripwire.PubSub,
