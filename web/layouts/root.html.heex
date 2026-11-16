@@ -32,19 +32,122 @@
       window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
       window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
     </script>
+    <style>
+      /* eveonline.com hero art: the Fractured Skies loop over its still frame */
+      .eve-hero {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+        background: #010204;
+      }
+
+      .eve-hero picture,
+      .eve-hero img {
+        position: absolute;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .eve-hero img {
+        z-index: 0;
+        object-fit: cover;
+        object-position: center top;
+      }
+
+      /* Hero loop docked right like the EVE site, blended at its left edge. */
+      .eve-hero video {
+        z-index: 0;
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(58vw, 1100px);
+        height: 100%;
+        object-fit: cover;
+        object-position: center top;
+        pointer-events: none;
+        -webkit-mask-image: linear-gradient(to right, transparent 0, #000 22%);
+        mask-image: linear-gradient(to right, transparent 0, #000 22%);
+      }
+
+      /* Never expose playback chrome on this decorative loop. */
+      .eve-hero video::-webkit-media-controls,
+      .eve-hero video::-webkit-media-controls-enclosure,
+      .eve-hero video::-webkit-media-controls-panel,
+      .eve-hero video::-webkit-media-controls-play-button,
+      .eve-hero video::-webkit-media-controls-start-playback-button,
+      .eve-hero video::-webkit-media-controls-overlay-play-button {
+        display: none !important;
+        -webkit-appearance: none;
+      }
+
+      .eve-hero-shade {
+        z-index: 1;
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          to right,
+          rgba(1, 2, 4, 0.82) 0,
+          rgba(1, 2, 4, 0.62) 45%,
+          rgba(1, 2, 4, 0.34) 100%
+        );
+      }
+
+      @media (max-width: 900px) {
+        .eve-hero video {
+          display: none;
+          top: 0;
+          right: 0;
+          bottom: auto;
+          width: 100%;
+          height: auto;
+          max-height: 62vh;
+          object-fit: contain;
+          -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+        }
+
+        .eve-hero-shade {
+          background: linear-gradient(
+            to bottom,
+            rgba(1, 2, 4, 0.88) 0,
+            rgba(1, 2, 4, 0.9) 45%,
+            rgba(1, 2, 4, 0.94) 100%
+          );
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .eve-hero video {
+          display: none;
+        }
+      }
+    </style>
   </head>
 
   <body class="">
-    <div class="fixed inset-0 flex items-center justify-center bg-[url('/images/stars.jpg')] bg-cover">
+    <div class="eve-hero" aria-hidden="true">
+      <picture>
+        <source media="(max-width: 900px)" srcset={~p"/images/FracturedSkies-mobile2.jpg"} />
+        <img src={~p"/images/FracturedSkies-bg.jpg"} alt="" />
+      </picture>
       <video
-        class="object-cover w-fit h-screen opacity-50"
         autoplay
         muted
+        loop
         playsinline
+        preload="auto"
+        poster={~p"/images/FracturedSkies-bg.jpg"}
+        disablepictureinpicture
+        disableremoteplayback
       >
-        <source src="/images/EVE_Catalyst_WH.webm" type="video/webm" />
+        <source src={~p"/images/FracturedSkies-WH.webm"} type="video/webm" />
       </video>
-      <div class="absolute inset-0 bg-black/40"></div>
+      <div class="eve-hero-shade"></div>
     </div>
 
     <div class="relative z-10">
