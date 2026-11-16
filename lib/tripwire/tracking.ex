@@ -46,7 +46,7 @@ defmodule Tripwire.Tracking do
   data operation that can be exercised without ESI access.
   """
   def apply_location_change(map, character_name, prev_system, solar_system_id, opts \\ []) do
-    name_fetcher = Keyword.get(opts, :name_fetcher, &fetch_system_name/1)
+    name_fetcher = Keyword.get(opts, :name_fetcher, &fetch_system_info/1)
     position = next_position(map, prev_system)
 
     with {:ok, system} <- ensure_system(map, solar_system_id, name_fetcher, position) do
@@ -119,9 +119,16 @@ defmodule Tripwire.Tracking do
         {:ok, system}
 
       nil ->
+        {name, security} =
+          case name_fetcher.(solar_system_id) do
+            {fetched_name, fetched_security} -> {fetched_name, fetched_security}
+            fetched_name when is_binary(fetched_name) -> {fetched_name, nil}
+          end
+
         attrs = %{
           solar_system_id: solar_system_id,
-          name: name_fetcher.(solar_system_id),
+          name: name,
+          security: security,
           x: position.x,
           y: position.y
         }
@@ -130,9 +137,9 @@ defmodule Tripwire.Tracking do
     end
   end
 
-  # ViewBox is 1000x700 and nodes are 80x50, so origins clamp to 920x650.
+  # ViewBox is 1000x700 and nodes are 80x60, so origins clamp to 920x640.
   @map_max_x 920.0
-  @map_max_y 650.0
+  @map_max_y 640.0
   @map_center %{x: 460.0, y: 300.0}
   @placement_radius 170.0
 
@@ -158,10 +165,10 @@ defmodule Tripwire.Tracking do
 
   defp clamp(value, max), do: value |> max(0.0) |> min(max)
 
-  defp fetch_system_name(solar_system_id) do
+  defp fetch_system_info(solar_system_id) do
     case ESI.get_system(solar_system_id) do
-      {:ok, %{"name" => name}} -> name
-      _ -> "System ##{solar_system_id}"
+      {:ok, %{"name" => name} = body} -> {name, body["security_status"]}
+      _ -> {"System ##{solar_system_id}", nil}
     end
   end
 end

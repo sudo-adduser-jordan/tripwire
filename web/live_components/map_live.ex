@@ -167,21 +167,12 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 :for={{conn, from, to} <- @connections}
                 id={"connection-#{conn.id}"}
                 x1={from.x + 40}
-                y1={from.y + 25}
+                y1={from.y + 30}
                 x2={to.x + 40}
-                y2={to.y + 25}
+                y2={to.y + 30}
                 stroke-dasharray={if conn.time_status == "eol", do: "4"}
                 class={edge_class(conn)}
               />
-              <text
-                :for={{conn, from, to} <- @connections}
-                x={(from.x + to.x) / 2 + 40}
-                y={(from.y + to.y) / 2 + 22}
-                text-anchor="middle"
-                class="fill-base-content/60 text-[10px]"
-              >
-                {conn.hole_type || "?"}
-              </text>
             </g>
             <g id="map-nodes">
               <g
@@ -196,7 +187,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               >
                 <rect
                   width="80"
-                  height="50"
+                  height="60"
                   rx="8"
                   class={
                     if system.id == @selected_system_id,
@@ -208,7 +199,15 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 />
                 <text
                   x="40"
-                  y={if system.alias, do: "22", else: "28"}
+                  y="15"
+                  text-anchor="middle"
+                  class="fill-base-content/60 text-[10px]"
+                >
+                  {node_class(system)}
+                </text>
+                <text
+                  x="40"
+                  y="36"
                   text-anchor="middle"
                   textLength="72"
                   lengthAdjust="spacingAndGlyphs"
@@ -217,15 +216,14 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   {system.alias || system.name}
                 </text>
                 <text
-                  :if={system.alias}
                   x="40"
-                  y="36"
+                  y="52"
                   text-anchor="middle"
                   textLength="72"
                   lengthAdjust="spacingAndGlyphs"
                   class="fill-base-content/60 text-[10px]"
                 >
-                  {system.name}
+                  {incoming_type(@connections, system.id)}
                 </text>
               </g>
             </g>
@@ -248,6 +246,17 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   defp edge_class(%{time_status: "eol"}), do: "stroke-error stroke-1"
   defp edge_class(%{mass_status: "critical"}), do: "stroke-warning stroke-1"
   defp edge_class(_), do: "stroke-base-content/60 stroke-1"
+
+  defp node_class(system), do: Tripwire.Systems.display_class(system)
+
+  defp incoming_type(connections, system_id) do
+    case Enum.find(connections, fn {_conn, from, to} ->
+           from.id == system_id or to.id == system_id
+         end) do
+      {conn, _, _} -> conn.hole_type || ""
+      nil -> ""
+    end
+  end
 
   defp coord(value) when is_binary(value) do
     {number, ""} = Integer.parse(value)

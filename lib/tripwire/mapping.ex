@@ -45,9 +45,9 @@ defmodule Tripwire.Mapping do
     |> Enum.map(fn conn -> {conn, conn.from_system, conn.to_system} end)
   end
 
-  # ViewBox is 1000x700 and nodes are 80x50, so origins clamp to 920x650.
+  # ViewBox is 1000x700 and nodes are 80x60, so origins clamp to 920x640.
   @layout_max_x 920.0
-  @layout_max_y 650.0
+  @layout_max_y 640.0
 
   @doc """
   Groups system ids into `{depth, [id]}` layers, sorted by depth. Depths
@@ -540,11 +540,11 @@ defmodule Tripwire.Mapping do
   end
 
   @demo_systems [
-    %{solar_system_id: 31_000_001, name: "J150321", x: 120.0, y: 120.0},
-    %{solar_system_id: 31_000_002, name: "J150322", x: 360.0, y: 260.0},
-    %{solar_system_id: 31_000_003, name: "J150323", x: 600.0, y: 140.0},
-    %{solar_system_id: 31_000_004, name: "J150324", x: 780.0, y: 330.0},
-    %{solar_system_id: 31_000_005, name: "J150325", x: 480.0, y: 470.0}
+    %{solar_system_id: 31_000_001, name: "J150321", sys_class: "C2", x: 120.0, y: 120.0},
+    %{solar_system_id: 31_000_002, name: "J150322", sys_class: "C3", x: 360.0, y: 260.0},
+    %{solar_system_id: 31_000_003, name: "J150323", sys_class: "C5", x: 600.0, y: 140.0},
+    %{solar_system_id: 31_000_004, name: "J150324", sys_class: "C4", x: 780.0, y: 330.0},
+    %{solar_system_id: 31_000_005, name: "J150325", sys_class: "C6", x: 480.0, y: 470.0}
   ]
 
   @demo_links [

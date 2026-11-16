@@ -53,6 +53,9 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert map.mask_id == mask.id
     assert length(Mapping.list_systems(map.id)) == 5
 
+    assert html =~ "C3"
+    assert html =~ "K162"
+
     system = hd(Mapping.list_systems(map.id))
 
     view

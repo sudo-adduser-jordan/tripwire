@@ -21,7 +21,7 @@ const MapDrag = {
       const pt = this.toSvgPoint(ev)
       if (!pt) return
       const x = Math.max(0, Math.min(pt.x - this.offset.x, 920))
-      const y = Math.max(0, Math.min(pt.y - this.offset.y, 650))
+      const y = Math.max(0, Math.min(pt.y - this.offset.y, 640))
       this.selected.setAttribute("transform", `translate(${x}, ${y})`)
       ev.preventDefault()
     }
