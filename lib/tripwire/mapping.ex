@@ -629,21 +629,11 @@ defmodule Tripwire.Mapping do
   ]
 
   @demo_note """
-  **Bold** *italic* and _italic_ __underline__ ~~strike~~ `code`
-
-  > scanned chain, watch the N968
-
-  - check static
-  - roll when crit
-
-  1. bookmark in
-  2. bookmark out
-
-  [EVE University](https://wiki.eveuniversity.org)
-
-  ```
-  K162 ABC-123
-  ```
+  **Bold**
+  *italic* and _italic_
+  __underline__
+  ~~strike~~
+  `code`
   """
 
   @demo_links [

@@ -72,7 +72,7 @@ defmodule Tripwire.MappingTest do
 
     assert [%{body: body}] = Mapping.list_comments(home.id)
     assert body =~ "**Bold**"
-    assert body =~ "[EVE University](https://wiki.eveuniversity.org)"
+    assert body =~ "__underline__"
   end
 
   test "delete_map_full/1 removes systems, connections, and signatures", %{mask: mask} do
