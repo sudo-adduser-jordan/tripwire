@@ -101,9 +101,11 @@ fix:
 | `task remove` | `rm -rf _build deps assets/node_modules priv/static/assets cover tmp` |
 | `task setup` | `mkdir -p logs/test logs/errors`, `mix deps.get`, `mix ecto.setup`, `mix assets.setup`, `mix assets.build` |
 | `task migrate` | `mix ecto.migrate`, `MIX_ENV=test mix ecto.migrate` |
-| `task start` | `task stop`, then launch detached with `DATABASE_PATH` defaulting to `./priv/db/tripwire-prod.db`; print web UI and app dashboard URLs |
-| `task stop` | stop the managed production process group recorded in `tmp/tripwire-prod.pid` |
+| `task start` | `task stop`, then launch detached with `DATABASE_PATH` defaulting to `./priv/db/tripwire-prod.db`; block until `logs/prod.log` reports a running endpoint, then print the URL (fails with the log tail if the server dies while booting) |
+| `task stop` | stop the managed production process group recorded in `tmp/tripwire-prod.pid`, then wait for the process and port to be released |
 | `task dev` | attach to `logs/prod.log`; Ctrl-C detaches without stopping the server |
+
+Server lifecycle blocks run under `sh -c` because Task's built-in shell does not implement `$!` or `kill`.
 
 ## Conventions
 

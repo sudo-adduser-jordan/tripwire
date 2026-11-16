@@ -21,9 +21,9 @@ Automation uses `Taskfile.yml` (Task v3); server lifecycle tasks run inline shel
 | `task install` | Install Elixir, Node, and asset dependencies |
 | `task update` | Update Elixir and Node dependencies |
 | `task remove` | Remove build artifacts and installed dependencies |
-| `task setup` | First-time setup of database, assets, and log directories |
+| `task setup` | First-time setup of database, assets, and log directories; safe to run while the server is up |
 | `task migrate` | Run database migrations for dev and test |
-| `task start` | Restart the production server in the background (`DATABASE_PATH` defaults to `./priv/db/tripwire-prod.db`) |
+| `task start` | Restart the production server in the background (`DATABASE_PATH` defaults to `./priv/db/tripwire-prod.db`) and wait until it answers before printing the URL |
 | `task stop` | Stop the background production server |
 | `task dev` | Attach to the last 100 lines and follow the server log; Ctrl-C detaches without stopping the server |
 

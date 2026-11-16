@@ -64,21 +64,45 @@ tasks:
       - mkdir -p logs tmp
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}mix phx.server{{.RESET}}"
       - |
-        MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" \
-          setsid nohup mix phx.server > logs/prod.log 2>&1 &
-        echo $! > tmp/tripwire-prod.pid
+        sh -c 'MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" \
+          setsid nohup mix phx.server > logs/prod.log 2>&1 & echo $! > tmp/tripwire-prod.pid'
+      - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}waiting for port ${PORT:-4000}{{.RESET}}"
+      - |
+        sh -c 'pid="$(cat tmp/tripwire-prod.pid)"
+        for _ in $(seq 1 1800); do
+          if grep -q "\[info\] Running TripwireWeb.Endpoint with" logs/prod.log 2>/dev/null; then
+            exit 0
+          fi
+          if ! kill -0 "$pid" 2>/dev/null; then
+            echo -e "{{.RED}}[start]{{.RESET}} server exited during boot"
+            tail -20 logs/prod.log
+            exit 1
+          fi
+          sleep 0.2
+        done
+        echo -e "{{.RED}}[start]{{.RESET}} server did not report a running endpoint"
+        tail -20 logs/prod.log
+        exit 1'
       - echo -e "{{.GREEN}}[start]{{.RESET}} http://localhost:${PORT:-4000}"
   stop:
     desc: Stop running Tripwire server processes
     cmds:
       - echo -e "{{.YELLOW}}[stop]{{.RESET}} {{.CYAN}}stopping tripwire{{.RESET}}"
       - |
-        if [ -f tmp/tripwire-prod.pid ]; then
+        sh -c 'if [ -f tmp/tripwire-prod.pid ]; then
           pid="$(cat tmp/tripwire-prod.pid)"
-          kill -TERM -- -"$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+          kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
           rm -f tmp/tripwire-prod.pid
+          for _ in $(seq 1 100); do
+            kill -0 "$pid" 2>/dev/null || break
+            sleep 0.1
+          done
         fi
-        pkill -f '[m]ix phx\.server' 2>/dev/null || true
+        pkill -f "mi[x] phx\.server" 2>/dev/null || true
+        for _ in $(seq 1 25); do
+          curl -s -o /dev/null "http://localhost:${PORT:-4000}/" || break
+          sleep 0.2
+        done'
       - echo -e "{{.GREEN}}[stop]{{.RESET}} stopped"
   dev:
     desc: Attach to the production server output
