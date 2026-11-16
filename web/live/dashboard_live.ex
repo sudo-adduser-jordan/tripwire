@@ -29,6 +29,7 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:mask, mask)
      |> assign(:masks, [mask])
      |> assign(:map, map)
+     |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
      |> assign(:systems, Mapping.list_systems(map.id))
      |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
      |> assign(:selected_system_id, nil)
@@ -230,6 +231,18 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:ship_name, data.ship_name)
      |> assign(:topbar_now, data.now)}
   end
+
+  def handle_info({:new_map}, socket), do: handle_event("new-map", %{}, socket)
+
+  def handle_info({:switch_map, map_id}, socket),
+    do: handle_event("switch-map", %{"id" => to_string(map_id)}, socket)
+
+  def handle_info({:add_viewing}, socket), do: handle_event("add-viewing", %{}, socket)
+
+  def handle_info({:toggle_lock}, socket), do: handle_event("toggle-lock", %{}, socket)
+
+  def handle_info({:map_layout, layout}, socket),
+    do: handle_event("map-layout", %{"layout" => layout}, socket)
 
   def handle_info(_message, socket), do: {:noreply, socket}
 
@@ -656,13 +669,129 @@ defmodule TripwireWeb.DashboardLive do
          socket
          |> assign(:mask, mask)
          |> assign(:map, map)
+         |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
          |> assign(:systems, Mapping.list_systems(map.id))
          |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
          |> assign(:selected_system_id, nil)
          |> assign(:selected_system_name, nil)
          |> assign(:signatures, [])
          |> assign(:comments, [])
+         |> assign(:flares, [])
+         |> assign(:system_stat, nil)
          |> put_flash(:info, "Switched to #{mask.name}")}
+    end
+  end
+
+  def handle_event("new-map", _params, socket) do
+    mask = socket.assigns.mask
+    count = length(Mapping.list_maps_for_mask(mask.id))
+    name = "Chain #{count + 1}"
+
+    case Mapping.create_map(%{name: name, mask_id: mask.id}) do
+      {:ok, map} ->
+        Phoenix.PubSub.unsubscribe(
+          Tripwire.PubSub,
+          Tripwire.Tracking.map_topic(socket.assigns.map.id)
+        )
+
+        Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map.id))
+
+        {:noreply,
+         socket
+         |> assign(:map, map)
+         |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
+         |> assign(:systems, [])
+         |> assign(:connections, [])
+         |> assign(:selected_system_id, nil)
+         |> assign(:selected_system_name, nil)
+         |> assign(:signatures, [])
+         |> assign(:comments, [])
+         |> assign(:flares, [])
+         |> assign(:system_stat, nil)
+         |> put_flash(:info, "Created #{name}")}
+
+      {:error, changeset} ->
+        {:noreply, flash_changeset_errors(socket, changeset)}
+    end
+  end
+
+  def handle_event("switch-map", %{"id" => id}, socket) do
+    map_id = String.to_integer(id)
+
+    case Mapping.get_map!(map_id) do
+      %{mask_id: mask_id} = map when mask_id == socket.assigns.mask.id ->
+        Phoenix.PubSub.unsubscribe(
+          Tripwire.PubSub,
+          Tripwire.Tracking.map_topic(socket.assigns.map.id)
+        )
+
+        Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map.id))
+
+        {:noreply,
+         socket
+         |> assign(:map, map)
+         |> assign(:systems, Mapping.list_systems(map.id))
+         |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
+         |> assign(:selected_system_id, nil)
+         |> assign(:selected_system_name, nil)
+         |> assign(:signatures, [])
+         |> assign(:comments, [])
+         |> assign(:flares, [])
+         |> assign(:system_stat, nil)
+         |> put_flash(:info, "Switched to #{map.name}")}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "Map not found")}
+    end
+  rescue
+    _ -> {:noreply, put_flash(socket, :error, "Map not found")}
+  end
+
+  def handle_event("add-viewing", _params, socket) do
+    with %{refresh_token: token} when not is_nil(token) <- socket.assigns.character,
+         {:ok, access} <- ESI.valid_access_token(socket.assigns.character),
+         {:ok, %{"solar_system_id" => solar_system_id}} <-
+           ESI.get_character_location(socket.assigns.character.eve_id, access),
+         prev = selected_system(socket),
+         {:ok, %{system: system}} <-
+           Tripwire.Tracking.apply_location_change(
+             socket.assigns.map,
+             socket.assigns.nav_user || socket.assigns.character.name,
+             prev,
+             solar_system_id
+           ) do
+      {:noreply,
+       socket
+       |> assign(:systems, Mapping.list_systems(socket.assigns.map.id))
+       |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))
+       |> assign(:selected_system_id, system.id)
+       |> assign(:selected_system_name, system.name)
+       |> assign(:signatures, Mapping.list_signatures(system.id))
+       |> assign(:comments, Mapping.list_comments(system.id))
+       |> assign(:flares, Mapping.list_flares(system.id))
+       |> assign(:system_stat, Mapping.get_system_stat(system.id))
+       |> put_flash(:info, "Added viewing system #{system.name}")}
+    else
+      _ -> {:noreply, put_flash(socket, :error, "ESI location unavailable")}
+    end
+  end
+
+  def handle_event("toggle-lock", _params, socket) do
+    case selected_system(socket) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Select a system first")}
+
+      system ->
+        case Mapping.update_system(system, %{locked: !system.locked}) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> assign(:systems, Mapping.list_systems(socket.assigns.map.id))
+             |> put_flash(:info, if(system.locked, do: "Unlocked", else: "Locked"))}
+
+          {:error, changeset} ->
+            {:noreply, flash_changeset_errors(socket, changeset)}
+        end
     end
   end
 
@@ -842,6 +971,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:mask, mask)
     |> assign(:masks, masks)
     |> assign(:map, map)
+    |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
     |> assign(:systems, Mapping.list_systems(map.id))
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
     |> assign(:selected_system_id, nil)

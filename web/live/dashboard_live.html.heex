@@ -87,6 +87,8 @@
         module={TripwireWeb.LiveComponents.MapLive}
         id="map-live"
         map_id={@map && @map.id}
+        map={@map}
+        maps={Map.get(assigns, :maps, [])}
         systems={@systems}
         connections={@connections}
         selected_system_id={@selected_system_id}

@@ -43,6 +43,31 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     {:noreply, socket}
   end
 
+  def handle_event("new-map", _params, socket) do
+    send(self(), {:new_map})
+    {:noreply, socket}
+  end
+
+  def handle_event("switch-map", %{"id" => id}, socket) do
+    send(self(), {:switch_map, String.to_integer(id)})
+    {:noreply, socket}
+  end
+
+  def handle_event("add-viewing", _params, socket) do
+    send(self(), {:add_viewing})
+    {:noreply, socket}
+  end
+
+  def handle_event("toggle-lock", _params, socket) do
+    send(self(), {:toggle_lock})
+    {:noreply, socket}
+  end
+
+  def handle_event("map-layout", %{"layout" => layout}, socket) do
+    send(self(), {:map_layout, layout})
+    {:noreply, socket}
+  end
+
   def render(assigns) do
     assigns = assign(assigns, :view_box, "0 0 1000 700")
 
@@ -50,9 +75,78 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     <div id="map" class="grid-stack-item" gs-w="12" gs-h="6" gs-x="0" gs-y="12" tabindex="0">
       <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
         <ul class="list rounded-box shadow-md shrink-0">
-          <li class="list-row h-fit items-center gap-1 p-1">
+          <li class="list-row h-fit flex-wrap items-center gap-1 p-1">
             <p class="px-1 text-lg font-semibold">Map</p>
             <span class="text-xs opacity-60">{@map_name}</span>
+            <span id="chainTabs" class="join">
+              <button
+                :for={tab <- Map.get(assigns, :maps, [])}
+                class={[
+                  "join-item btn btn-xs",
+                  if(@map_id == tab.id, do: "btn-primary", else: "btn-ghost")
+                ]}
+                title={tab.name}
+                phx-click="switch-map"
+                phx-value-id={tab.id}
+                phx-target={@myself}
+              >
+                {tab.name}
+              </button>
+            </span>
+            <button
+              id="newTab"
+              class="btn btn-ghost btn-xs"
+              title="New tab"
+              phx-click="new-map"
+              phx-target={@myself}
+            >
+              <.icon name="hero-plus" class="size-4" />
+            </button>
+            <span class="opacity-30">|</span>
+            <button
+              id="show-viewing"
+              class="btn btn-ghost btn-xs"
+              title="Add viewing system to chain"
+              phx-click="add-viewing"
+              phx-target={@myself}
+            >
+              <.icon name="hero-eye" class="size-4" />
+            </button>
+            <button
+              id="show-favorite"
+              class="btn btn-ghost btn-xs"
+              title="Lock/unlock selected system"
+              phx-click="toggle-lock"
+              phx-target={@myself}
+            >
+              <.icon name="hero-star" class="size-4" />
+            </button>
+            <details id="show-chainLegend" class="dropdown">
+              <summary
+                class="btn btn-ghost btn-xs"
+                title="Chain legend: stable, end of life, mass destabbed, mass critical, frigate"
+              >
+                <.icon name="hero-share" class="size-4" />
+              </summary>
+              <div class="dropdown-content z-10 rounded bg-base-200 p-2 text-xs shadow">
+                <p><span class="badge badge-outline badge-xs">—</span> Stable</p>
+                <p><span class="badge badge-error badge-xs">- -</span> End of Life</p>
+                <p><span class="badge badge-warning badge-xs">—</span> Mass Critical</p>
+              </div>
+            </details>
+            <span class="ml-auto text-xs tabular-nums opacity-60">
+              {length(@systems)} systems
+            </span>
+            <button
+              id="chain-zoom-reset"
+              class="btn btn-ghost btn-xs"
+              title="Reset Zoom"
+              phx-click="map-layout"
+              phx-value-layout="default"
+              phx-target={@myself}
+            >
+              Reset Zoom
+            </button>
             <span
               :if={selected_name(@systems, @selected_system_id)}
               class="badge badge-primary badge-sm"
