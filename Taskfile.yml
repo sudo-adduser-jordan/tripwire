@@ -36,10 +36,12 @@ tasks:
       - rm -rf _build deps assets/node_modules priv/static/assets cover tmp
       - echo -e "{{.GREEN}}[remove]{{.RESET}} artifacts removed"
   setup:
-    desc: First-time setup of database, assets, and log directories
+    desc: First-time setup of database, assets, SDE, and log directories
     cmds:
-      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mkdir -p logs/test logs/errors{{.RESET}}"
-      - mkdir -p logs/test logs/errors
+      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mkdir -p priv/sde logs/test logs/errors{{.RESET}}"
+      - mkdir -p priv/sde logs/test logs/errors
+      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}curl eve-online-static-data-latest-jsonl.zip{{.RESET}}"
+      - curl -L --etag-save priv/sde/sde.etag --etag-compare priv/sde/sde.etag -o priv/sde/eve-online-static-data-latest-jsonl.zip https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip
       - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix deps.get{{.RESET}}"
       - mix deps.get
       - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix ecto.setup{{.RESET}}"

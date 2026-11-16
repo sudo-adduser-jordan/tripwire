@@ -101,7 +101,7 @@ fix:
 | `task install` | `mix deps.get`, `mix assets.setup`, `npm ci --prefix assets` |
 | `task update` | `mix deps.update --all`, `npm update --prefix assets` |
 | `task remove` | `rm -rf _build deps assets/node_modules priv/static/assets cover tmp` |
-| `task setup` | `mkdir -p logs/test logs/errors`, `mix deps.get`, `mix ecto.setup`, `mix assets.setup`, `mix assets.build` |
+| `task setup` | `mkdir -p priv/sde logs/test logs/errors`, `curl` official JSONL SDE to `priv/sde/eve-online-static-data-latest-jsonl.zip` with ETag conditional fetch, `mix deps.get`, `mix ecto.setup`, `mix assets.setup`, `mix assets.build` |
 | `task migrate` | `mix ecto.migrate`, `MIX_ENV=test mix ecto.migrate`, `MIX_ENV=prod mix ecto.migrate` |
 | `task start` | `task stop`, then launch detached with `DATABASE_PATH` defaulting to `./priv/db/tripwire-prod.db`; block until `logs/prod.log` reports a running endpoint, then print the URL (fails with the log tail if the server dies while booting) |
 | `task stop` | stop the managed production process group recorded in `tmp/tripwire-prod.pid`, then wait for the process and port to be released |
