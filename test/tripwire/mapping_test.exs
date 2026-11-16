@@ -9,19 +9,19 @@ defmodule Tripwire.MappingTest do
     %{mask: mask}
   end
 
-  test "clamp_pan/3 keeps the viewport within the outermost nodes" do
+  test "clamp_pan/3 only clamps to the top edge" do
     systems =
       for x <- [0.0, 500.0, 1000.0], y <- [100.0, 400.0] do
         %Mapping.MapSystem{x: x, y: y}
       end
 
-    assert Mapping.clamp_pan(systems, 0.0, 0.0) == {0.0, 0.0}
-    assert Mapping.clamp_pan(systems, -10_000.0, -10_000.0) == {-5000.0, -5000.0}
-    assert Mapping.clamp_pan(systems, 10_000.0, 10_000.0) == {5000.0, 60.0}
-    assert Mapping.clamp_pan([], 10_000.0, -10_000.0) == {5000.0, -5000.0}
+    assert Mapping.clamp_pan(systems, 0.0, 0.0) == {0.0, 60.0}
+    assert Mapping.clamp_pan(systems, -10_000.0, -10_000.0) == {-10_000.0, 60.0}
+    assert Mapping.clamp_pan(systems, 10_000.0, 10_000.0) == {10_000.0, 10_000.0}
+    assert Mapping.clamp_pan([], 10_000.0, -10_000.0) == {10_000.0, -10_000.0}
 
     small = [%Mapping.MapSystem{x: 100.0, y: 100.0}]
-    assert Mapping.clamp_pan(small, 999.0, 999.0) == {999.0, 60.0}
+    assert Mapping.clamp_pan(small, 999.0, 999.0) == {999.0, 999.0}
   end
 
   test "reset_demo_maps/1 clears custom content and restores the seed", %{mask: mask} do

@@ -1,5 +1,4 @@
 const DRAG_THRESHOLD = 4
-const FREE_LIMIT = 5000
 const VIEW_W = 1000
 const VIEW_H = 700
 const PAD_Y = 40
@@ -10,37 +9,65 @@ const MapDrag = {
     if (!this.svg) return
     this.panning = false
     this.suppressed = false
-    this.start = null
+    this.startClient = null
     this.origin = null
+    this.scale = null
+    this._top = null
+    this._raf = 0
+    this._pending = null
     const at = this.viewOrigin()
     this.ox = at.x
     this.oy = at.y
+    this._top = this.topBound()
 
     this.onPointerDown = (ev) => {
       if (ev.target.closest("g[data-system-id]")) return
-      const pt = this.toSvgPoint(ev)
-      if (!pt) return
+      // Cache the screen-to-SVG scale once per drag: it only depends on the
+      // rendered size, not the pan origin, so per-move getScreenCTM() lookups
+      // (which force layout) are unnecessary and caused the stutter.
+      const ctm = this.svg.getScreenCTM()
+      if (!ctm || !ctm.a || !ctm.d) return
       this.panning = true
       this.suppressed = false
-      this.start = pt
+      this.startClient = { x: ev.clientX, y: ev.clientY }
+      this.scale = { x: ctm.a, y: ctm.d }
       this.origin = this.viewOrigin()
+      this._top = this.topBound()
       ev.preventDefault()
     }
 
     this.onPointerMove = (ev) => {
-      if (!this.panning) return
-      const pt = this.toSvgPoint(ev)
-      if (!pt) return
-      const dx = pt.x - this.start.x
-      const dy = pt.y - this.start.y
+      if (!this.panning || !this.startClient) return
+      const dx = (ev.clientX - this.startClient.x) / this.scale.x
+      const dy = (ev.clientY - this.startClient.y) / this.scale.y
       if (!this.suppressed && Math.hypot(dx, dy) > DRAG_THRESHOLD) this.suppressed = true
-      const next = this.clampView(this.origin.x - dx, this.origin.y - dy)
-      this.setView(next.x, next.y)
+      this._pending = this.clampView(this.origin.x - dx, this.origin.y - dy)
+      // Coalesce moves to one viewBox write per frame.
+      if (!this._raf) {
+        this._raf = requestAnimationFrame(() => {
+          this._raf = 0
+          if (this._pending) {
+            const next = this._pending
+            this._pending = null
+            this.setView(next.x, next.y)
+          }
+        })
+      }
       ev.preventDefault()
     }
 
     this.onPointerUp = (_ev) => {
       this.panning = false
+      this.startClient = null
+      if (this._raf) {
+        cancelAnimationFrame(this._raf)
+        this._raf = 0
+        if (this._pending) {
+          const next = this._pending
+          this._pending = null
+          this.setView(next.x, next.y)
+        }
+      }
     }
 
     this.onClick = (ev) => {
@@ -51,35 +78,32 @@ const MapDrag = {
     }
 
     this.handleEvent("reset-pan", ({ x, y }) => {
+      this._top = this.topBound()
       const next = this.clampView(x, y)
       this.setView(next.x, next.y)
     })
 
     this.svg.addEventListener("pointerdown", this.onPointerDown)
     this.svg.addEventListener("click", this.onClick, true)
-    window.addEventListener("pointermove", this.onPointerMove)
+    window.addEventListener("pointermove", this.onPointerMove, { passive: false })
     window.addEventListener("pointerup", this.onPointerUp)
   },
 
   updated() {
-    this.setView(this.ox, this.oy)
+    this._top = this.topBound()
+    // Re-assert the client pan after LiveView patches, but skip the write
+    // when the viewBox already matches to avoid redundant layout.
+    const at = this.viewOrigin()
+    if (at.x !== this.ox || at.y !== this.oy) this.setView(this.ox, this.oy)
   },
 
   destroyed() {
+    if (this._raf) cancelAnimationFrame(this._raf)
     if (!this.svg) return
     this.svg.removeEventListener("pointerdown", this.onPointerDown)
     this.svg.removeEventListener("click", this.onClick, true)
     window.removeEventListener("pointermove", this.onPointerMove)
     window.removeEventListener("pointerup", this.onPointerUp)
-  },
-
-  toSvgPoint(ev) {
-    const ctm = this.svg.getScreenCTM()
-    if (!ctm) return null
-    return {
-      x: (ev.clientX - ctm.e) / ctm.a,
-      y: (ev.clientY - ctm.f) / ctm.d,
-    }
   },
 
   viewOrigin() {
@@ -94,14 +118,8 @@ const MapDrag = {
   },
 
   clampView(x, y) {
-    const top = this.topBound()
-    return {
-      x: Math.max(-FREE_LIMIT, Math.min(x, FREE_LIMIT)),
-      y:
-        top === null
-          ? Math.max(-FREE_LIMIT, Math.min(y, FREE_LIMIT))
-          : Math.min(Math.max(y, -FREE_LIMIT), top),
-    }
+    const top = this._top
+    return { x, y: top === null || top === undefined ? y : Math.max(y, top) }
   },
 
   topBound() {

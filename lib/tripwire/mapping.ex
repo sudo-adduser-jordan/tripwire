@@ -45,26 +45,23 @@ defmodule Tripwire.Mapping do
     |> Enum.map(fn conn -> {conn, conn.from_system, conn.to_system} end)
   end
 
-  @pan_free_limit 5000
   @pan_pad_y 40
 
   @doc """
-  Clamps a chain-map pan origin. Nodes may extend past the left, right,
-  and bottom viewport edges, but never past the top edge, keeping a
-  small margin above the topmost node. Returns `{x, y}` floats.
+  Clamps a chain-map pan origin only to the top edge: the viewport never
+  pans above the topmost node, keeping a small margin above it. All other
+  directions pan freely. Returns `{x, y}` floats.
   """
   def clamp_pan(systems, x, y) do
-    {clamp_number(x, -@pan_free_limit, @pan_free_limit), clamp_top(systems, y)}
+    {x, clamp_top(systems, y)}
   end
 
-  defp clamp_top([], value), do: clamp_number(value, -@pan_free_limit, @pan_free_limit)
+  defp clamp_top([], value), do: value
 
   defp clamp_top(systems, value) do
     top = systems |> Enum.map(&(&1.y - @pan_pad_y)) |> Enum.min()
-    value |> max(-@pan_free_limit) |> min(top)
+    max(value, top)
   end
-
-  defp clamp_number(value, min, max), do: value |> max(min) |> min(max)
 
   @doc """
   Groups system ids into `{depth, [id]}` layers, sorted by depth. Depths

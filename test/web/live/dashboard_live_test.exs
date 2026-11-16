@@ -88,7 +88,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element("#chain-zoom-reset")
     |> render_click()
 
-    assert_push_event(view, "reset-pan", %{x: 0, y: 0})
+    assert_push_event(view, "reset-pan", %{x: 0, y: 20.0})
 
     reloaded = Mapping.get_system!(system.id)
     assert reloaded.x == 460.0
@@ -281,7 +281,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element("#chain-zoom-reset")
     |> render_click()
 
-    assert_push_event(view, "reset-pan", %{x: 0, y: 0})
+    assert_push_event(view, "reset-pan", %{x: 0, y: 20.0})
   end
 
   test "header lock button renders locked and toggles client-side", %{
