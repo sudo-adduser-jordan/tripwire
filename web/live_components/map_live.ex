@@ -20,7 +20,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign_new(:pan_x, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 0) end)
      |> assign_new(:pan_y, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 1) end)
      |> assign_new(:show_row_guides, fn -> false end)
-     |> assign_new(:show_row_counts, fn -> false end)}
+     |> assign_new(:show_row_counts, fn -> false end)
+     |> assign_new(:angled_lines, fn -> true end)}
   end
 
   def handle_event("select-system", %{"id" => id}, socket) do
@@ -211,7 +212,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               <path
                 :for={{conn, from, to} <- @connections}
                 id={"connection-#{conn.id}"}
-                d={edge_path(from, to)}
+                d={edge_path(from, to, Map.get(assigns, :angled_lines, true))}
                 fill="none"
                 stroke-dasharray={if conn.time_status == "eol", do: "4"}
                 class={edge_class(conn)}
@@ -255,7 +256,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   x="60"
                   y="46"
                   text-anchor="middle"
-                  class="fill-base-content text-sm font-bold cursor-pointer hover:underline"
+                  class="fill-base-content text-base font-bold cursor-pointer hover:underline"
                   phx-click="open-system"
                   phx-value-id={system.id}
                   phx-target={@myself}
@@ -292,7 +293,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   defp edge_class(%{mass_status: "critical"}), do: "stroke-warning stroke-1"
   defp edge_class(_), do: "stroke-base-content/60 stroke-1"
 
-  defp edge_path(from, to) do
+  defp edge_path(from, to, angled?) do
     x1 = from.x + 60
     y1 = from.y + 44
     x2 = to.x + 60
@@ -300,8 +301,19 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
     if x1 == x2 and y1 == y2 do
       "M #{x1} #{y1} C #{x1 - 40} #{y1 - 50}, #{x1 + 40} #{y1 - 50}, #{x1} #{y1}"
-    else
+    else if angled? do
       "M #{x1} #{y1} L #{x2} #{y2}"
+    else
+      # Orthogonal with 2 90° bends, originating from the center of the
+      # top-level (parent) node.
+      {tx, ty, bx, by} = if y1 <= y2, do: {x1, y1, x2, y2}, else: {x2, y2, x1, y1}
+
+      if abs(by - ty) >= abs(bx - tx) do
+        "M #{tx} #{ty} V #{(ty + by) / 2} H #{bx} V #{by}"
+      else
+        "M #{tx} #{ty} H #{(tx + bx) / 2} V #{by} H #{bx}"
+      end
+    end
     end
   end
 

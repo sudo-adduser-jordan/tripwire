@@ -5,6 +5,7 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
   attr :map_layout, :string, default: "top"
   attr :show_row_guides, :boolean, default: false
   attr :show_row_counts, :boolean, default: false
+  attr :angled_lines, :boolean, default: true
 
   def settings_map_live(assigns) do
     ~H"""
@@ -63,6 +64,16 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
             checked={@show_row_counts}
             phx-click="toggle-row-counts"
             class="toggle toggle-secondary toggle-sm"
+          />
+        </div>
+        <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Angled Lines</p>
+          <input
+            id="toggle-angled-lines"
+            type="checkbox"
+            checked={@angled_lines}
+            phx-click="toggle-angled-lines"
+            class="toggle toggle-accent toggle-sm"
           />
         </div>
 

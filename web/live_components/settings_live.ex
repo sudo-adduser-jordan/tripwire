@@ -9,6 +9,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   attr :map_layout, :string, default: "top"
   attr :show_row_guides, :boolean, default: false
   attr :show_row_counts, :boolean, default: false
+  attr :angled_lines, :boolean, default: true
   attr :settings_tab, :string, default: "account"
   attr :characters, :list, default: []
   attr :masks, :list, default: []
@@ -47,6 +48,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
             settings_tab={@settings_tab}
             show_row_guides={@show_row_guides}
             show_row_counts={@show_row_counts}
+            angled_lines={@angled_lines}
           />
           <WidgetsLive.settings_widgets_live settings_tab={@settings_tab} />
           <ThemesLive.settings_themes_live settings_tab={@settings_tab} />

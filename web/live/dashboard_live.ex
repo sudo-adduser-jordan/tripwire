@@ -307,6 +307,10 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply, update(socket, :show_row_counts, &(!&1))}
   end
 
+  def handle_event("toggle-angled-lines", _params, socket) do
+    {:noreply, update(socket, :angled_lines, &(!&1))}
+  end
+
   def handle_event("global-paste", params, socket) do
     text = Map.get(params, "text", "") |> to_string()
 
@@ -1099,6 +1103,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:system_search, "")
     |> assign(:show_row_guides, false)
     |> assign(:show_row_counts, false)
+    |> assign(:angled_lines, true)
     |> assign(:sso_configured?, false)
     |> assign(:conn_modal_open, false)
     |> assign(:conn_edit_id, nil)
