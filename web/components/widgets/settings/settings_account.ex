@@ -15,7 +15,7 @@ defmodule TripwireWeb.SettingsAccountComponent do
             <div class="stat overflow-hidden flex flex-col">
               <div class="avatar avatar-online">
                 <div class="w-16 rounded-xl">
-                  <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
+                  <img src="/images/alliance-default.png" />
                 </div>
               </div>
               <div class="stat-value text-lg lg:stat-value">Characer Name1</div>
@@ -33,7 +33,7 @@ defmodule TripwireWeb.SettingsAccountComponent do
             <div class="stat overflow-hidden flex flex-col">
               <div class="avatar avatar-offline">
                 <div class="w-16 rounded-xl">
-                  <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
+                  <img src="/images/alliance-default.png" />
                 </div>
               </div>
               <div class="stat-value text-lg lg:stat-value">Characer Name1</div>
@@ -51,7 +51,7 @@ defmodule TripwireWeb.SettingsAccountComponent do
             <div class="stat overflow-hidden flex flex-col">
               <div class="avatar avatar-offline">
                 <div class="w-16 rounded-xl">
-                  <img src="https://img.daisyui.com/images/profile/demo/anakeen@192.webp" />
+                  <img src="/images/alliance-default.png" />
                 </div>
               </div>
               <div class="stat-value text-lg lg:stat-value">Characer Name1</div>
@@ -71,7 +71,7 @@ defmodule TripwireWeb.SettingsAccountComponent do
             <div class="stat overflow-hidden flex flex-col">
               <div class="avatar avatar-online">
                 <div class="w-16 rounded-xl">
-                  <img src="https://img.daisyui.com/images/profile/demo/gordon@192.webp" />
+                  <img src="/images/alliance-default.png" />
                 </div>
               </div>
               <div class="stat-value text-lg lg:stat-value">Mask 1</div>
@@ -89,7 +89,7 @@ defmodule TripwireWeb.SettingsAccountComponent do
             <div class="stat overflow-hidden flex flex-col">
               <div class="avatar avatar-offline">
                 <div class="w-16 rounded-xl">
-                  <img src="https://img.daisyui.com/images/profile/demo/gordon@192.webp" />
+                  <img src="/images/alliance-default.png" />
                 </div>
               </div>
               <div class="stat-value text-lg lg:stat-value">Mask 2</div>

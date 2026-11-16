@@ -60,7 +60,7 @@ defmodule TripwireWeb.NavigationComponent do
               <a>
                 <div class="avatar avatar-online">
                   <div class="w-12 rounded-xl">
-                    <img src="https://img.daisyui.com/images/profile/demo/yellingwoman@192.webp" />
+                    <img src="/images/alliance-default.png" />
                   </div>
                 </div>
                 Character 1
@@ -70,7 +70,7 @@ defmodule TripwireWeb.NavigationComponent do
               <a>
                 <div class="avatar avatar-offline">
                   <div class="w-12 rounded-xl">
-                    <img src="https://img.daisyui.com/images/profile/demo/yellingcat@192.webp" />
+                    <img src="/images/alliance-default.png" />
                   </div>
                 </div>
                 Character 2
@@ -80,7 +80,7 @@ defmodule TripwireWeb.NavigationComponent do
               <a>
                 <div class="avatar avatar-offline">
                   <div class="rounded-xl w-12">
-                    <img src="https://img.daisyui.com/images/profile/demo/distracted2@192.webp" />
+                    <img src="/images/alliance-default.png" />
                   </div>
                 </div>
                 Character 3
@@ -103,7 +103,7 @@ defmodule TripwireWeb.NavigationComponent do
               <a>
                 <div class="avatar avatar-online">
                   <div class="w-24 rounded-xl">
-                    <img src="https://img.daisyui.com/images/profile/demo/gordon@192.webp" />
+                    <img src="/images/alliance-default.png" />
                   </div>
                 </div>
                 Mask 1
@@ -113,7 +113,7 @@ defmodule TripwireWeb.NavigationComponent do
               <a>
                 <div class="avatar avatar-offline">
                   <div class="w-24 rounded-xl">
-                    <img src="https://img.daisyui.com/images/profile/demo/gordon@192.webp" />
+                    <img src="/images/alliance-default.png" />
                   </div>
                 </div>
                 Mask 2
