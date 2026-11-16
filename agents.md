@@ -66,6 +66,8 @@ fix:
 
 # Project Reference
 
+- similar to https://bitbucket.org/daimian/tripwire
+
 ## Stack
 
 - Elixir (~> 1.19) with Phoenix (~> 1.8), Ecto + SQLite (`ecto_sqlite3`), Bandit adapter, LiveView, Swoosh mailer, Cloak vault, Ueberauth EVE Online.
