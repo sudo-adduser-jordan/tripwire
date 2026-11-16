@@ -141,17 +141,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               </g>
             </g>
           </svg>
-          <div class="flex flex-wrap gap-1 p-1 text-xs">
-            <button
-              :for={{conn, from, to} <- @connections}
-              class="badge badge-outline badge-sm"
-              phx-click="open-connection"
-              phx-value-id={conn.id}
-            >
-              {from.name}→{to.name}: {conn.hole_type || "?"} {conn.mass_status}/{conn.time_status}{if conn.ship_size,
-                do: "/#{conn.ship_size}"}
-            </button>
-          </div>
         </div>
       </div>
     </div>
