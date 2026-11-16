@@ -57,6 +57,7 @@ defmodule TripwireWeb.DashboardLive do
      })
      |> assign(:sig_errors, [])
      |> assign_topbar_defaults()
+     |> assign(:sso_configured?, Tripwire.SSO.configured?())
      |> subscribe_to_map(map.id)
      |> schedule_topbar_load()}
   end
@@ -1095,6 +1096,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:topbar_now, DateTime.utc_now())
     |> assign(:grid_locked, true)
     |> assign(:system_search, "")
+    |> assign(:sso_configured?, false)
     |> assign(:conn_modal_open, false)
     |> assign(:conn_edit_id, nil)
     |> assign(:conn_form, %{

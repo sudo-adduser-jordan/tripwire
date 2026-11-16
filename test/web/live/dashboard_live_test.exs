@@ -22,6 +22,30 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert redirected_to(conn) == "/"
   end
 
+  test "demo mode explains missing SSO configuration", %{conn: conn} do
+    {:ok, _view, html} = live(conn, ~p"/dashboard/User")
+
+    assert html =~ "Demo mode"
+    assert html =~ "EVESSO_CLIENT_ID"
+    refute html =~ "/auth/evesso"
+  end
+
+  test "demo mode shows the official SSO button when credentials exist", %{conn: conn} do
+    System.put_env("EVESSO_CLIENT_ID", "test-id")
+    System.put_env("EVESSO_SECRET_KEY", "test-secret")
+
+    try do
+      {:ok, _view, html} = live(conn, ~p"/dashboard/User")
+
+      assert html =~ "Demo mode"
+      assert html =~ "/auth/evesso"
+      refute html =~ "EVESSO_CLIENT_ID"
+    after
+      System.delete_env("EVESSO_CLIENT_ID")
+      System.delete_env("EVESSO_SECRET_KEY")
+    end
+  end
+
   test "demo mode mounts without a session and opens settings in the grid", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/dashboard/Admin")
 

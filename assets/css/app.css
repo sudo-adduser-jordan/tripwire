@@ -771,3 +771,16 @@
     max-width: 7rem;
   }
 }
+
+/* EVE SSO button: show the image matching the active theme. */
+.sso-black {
+  display: none;
+}
+
+html[data-theme="light"] .sso-white {
+  display: none;
+}
+
+html[data-theme="light"] .sso-black {
+  display: inline;
+}

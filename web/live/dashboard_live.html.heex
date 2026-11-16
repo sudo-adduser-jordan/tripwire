@@ -21,8 +21,25 @@
   />
 
   <div :if={@demo?} class="px-2 pt-3 sm:px-3">
-    <div class="alert alert-warning py-2 text-sm">
-      <span>Demo mode — log in with EVE SSO for a personal map.</span>
+    <div class="alert alert-warning flex-wrap gap-2 py-2 text-sm">
+      <span :if={!@sso_configured?}>
+        Demo mode — EVE SSO is not configured. Set <code>EVESSO_CLIENT_ID</code>
+        and <code>EVESSO_SECRET_KEY</code>
+        to enable EVE login.
+      </span>
+      <span :if={@sso_configured?}>Demo mode — log in with EVE SSO for a personal map.</span>
+      <a :if={@sso_configured?} class="btn btn-sm ml-auto p-0" href={~p"/auth/evesso"}>
+        <img
+          class="h-8 sso-white"
+          src="/images/eve-sso-login-white-small.png"
+          alt="Log in with EVE SSO"
+        />
+        <img
+          class="h-8 sso-black"
+          src="/images/eve-sso-login-black-small.png"
+          alt="Log in with EVE SSO"
+        />
+      </a>
     </div>
   </div>
 
