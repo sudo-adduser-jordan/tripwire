@@ -8,11 +8,34 @@ import GridWidget from "./gridWidget"
 
 const GridStack = {
     mounted() {
-        window.TripwireGridStack?.init(this.el)
+        this._tries = 0
+        this._ensure()
     },
 
     updated() {
-        window.TripwireGridStack?.refresh(this.el)
+        if (window.TripwireGridStack) {
+            window.TripwireGridStack.init(this.el)
+            window.TripwireGridStack.refresh(this.el)
+        } else {
+            this._ensure()
+        }
+    },
+
+    // dashboard.js (gridstack lib) is 3MB+ and may still be downloading when
+    // LiveView mounts. Retry instead of leaving the grid hidden forever.
+    _ensure() {
+        if (window.TripwireGridStack) {
+            window.TripwireGridStack.init(this.el)
+            window.TripwireGridStack.refresh(this.el)
+            return
+        }
+        if (this._tries < 100) {
+            this._tries += 1
+            setTimeout(() => this._ensure(), 100)
+            return
+        }
+        // Last resort: never leave the dashboard invisible.
+        this.el.classList.remove('grid-stack-loading')
     },
 
     destroyed() {

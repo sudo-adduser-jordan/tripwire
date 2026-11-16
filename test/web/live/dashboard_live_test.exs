@@ -27,6 +27,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert html =~ "Demo mode"
     assert has_element?(view, "#grid-stack")
+    assert has_element?(view, "#grid-stack[phx-hook='GridStack']")
     assert has_element?(view, "#system-chart")
     assert has_element?(view, "#chain-map")
 

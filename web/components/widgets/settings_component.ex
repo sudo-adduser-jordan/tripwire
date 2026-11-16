@@ -13,7 +13,7 @@ defmodule TripwireWeb.SettingsComponent do
       gs-w="12"
       gs-h="9"
       gs-x="0"
-      gs-y="0"
+      gs-y="18"
       tabindex="0"
       phx-hook="GridWidget"
       phx-window-keydown="toggle-settings"

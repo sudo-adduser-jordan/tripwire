@@ -196,4 +196,30 @@
 /* Make LiveView wrapper divs transparent for layout */
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
+/* GridStack layout fallbacks: keep widgets positioned even if LiveView
+   strips GridStack's runtime inline styles during a morph. */
+#grid-stack {
+  --gs-column-width: calc(100% / 12);
+  --gs-cell-height: 80px;
+  --gs-item-margin-top: 10px;
+  --gs-item-margin-right: 10px;
+  --gs-item-margin-bottom: 10px;
+  --gs-item-margin-left: 10px;
+}
+#grid-stack.gs-1 { --gs-column-width: 100%; }
+#grid-stack.gs-2 { --gs-column-width: 50%; }
+
+/* Hide the unpositioned pile-up before the GridStack hook initializes.
+   The gs-reveal animation is a dead-man's switch: if JS never initializes
+   the grid, the content still becomes visible after 3s (unpositioned but
+   readable) instead of staying hidden forever. */
+#grid-stack.grid-stack-loading {
+  visibility: hidden;
+  min-height: 60vh;
+  animation: gs-reveal 0s 3s forwards;
+}
+@keyframes gs-reveal {
+  to { visibility: visible; }
+}
+
 /* This file is for your main application CSS */

@@ -17,7 +17,7 @@ defmodule TripwireWeb.MapComponent do
       gs-w="6"
       gs-h="6"
       gs-x="6"
-      gs-y="0"
+      gs-y="12"
       tabindex="0"
     >
       <div class="grid-stack-item-content bg-base-100/50 overflow-hidden">
