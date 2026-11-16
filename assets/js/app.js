@@ -4,6 +4,7 @@ import { LiveSocket } from "phoenix_live_view"
 import { hooks as colocatedHooks } from "phoenix-colocated/tripwire"
 import topbar from "../vendor/topbar"
 import mapDrag, { ChartMount } from "./mapDrag"
+import LockToggle from "./lockToggle"
 import GridWidget from "./gridWidget"
 import CopyText from "./copyText"
 import GlobalPaste from "./globalPaste"
@@ -48,6 +49,7 @@ const GridStack = {
 const hooks = {
     ...colocatedHooks,
     MapDrag: mapDrag,
+    LockToggle: LockToggle,
     ChartMount: ChartMount,
     GridStack: GridStack,
     GridWidget: GridWidget,

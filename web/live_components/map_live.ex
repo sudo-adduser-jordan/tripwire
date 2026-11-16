@@ -17,7 +17,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign(assigns)
      |> assign(:systems, systems)
      |> assign(:connections, connections)
-     |> assign_new(:map_locked, fn -> true end)
      |> assign_new(:pan_x, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 0) end)
      |> assign_new(:pan_y, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 1) end)}
   end
@@ -55,10 +54,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   def handle_event("add-viewing", _params, socket) do
     send(self(), {:add_viewing})
     {:noreply, socket}
-  end
-
-  def handle_event("toggle-lock", _params, socket) do
-    {:noreply, assign(socket, :map_locked, !Map.get(socket.assigns, :map_locked, true))}
   end
 
   def handle_event("map-layout", %{"layout" => layout}, socket) do
@@ -129,14 +124,11 @@ defmodule TripwireWeb.LiveComponents.MapLive do
             <button
               id="toggle-lock"
               class="btn btn-ghost btn-xs"
-              title={if @map_locked, do: "Unlock map", else: "Lock map"}
-              phx-click="toggle-lock"
-              phx-target={@myself}
+              title="Unlock map"
+              phx-hook="LockToggle"
+              data-locked="true"
             >
-              <.icon
-                name={if @map_locked, do: "hero-lock-closed", else: "hero-lock-open"}
-                class="size-4"
-              />
+              <.icon name="hero-lock-closed" class="size-4" />
             </button>
             <details id="show-chainLegend" class="dropdown">
               <summary

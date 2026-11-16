@@ -255,27 +255,17 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert_push_event(view, "reset-pan", %{x: 0, y: 0})
   end
 
-  test "header lock button toggles its icon without touching systems", %{
+  test "header lock button renders locked and toggles client-side", %{
     conn: conn,
     character: character
   } do
-    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
 
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
+    {:ok, _view, html} = live(login(conn, character), ~p"/dashboard/#{character.name}")
 
-    assert render(view) =~ "hero-lock-closed"
-
-    view
-    |> element("#toggle-lock")
-    |> render_click()
-
-    assert render(view) =~ "hero-lock-open"
-
-    view
-    |> element("#toggle-lock")
-    |> render_click()
-
-    assert render(view) =~ "hero-lock-closed"
+    assert html =~ ~s|id="toggle-lock"|
+    assert html =~ ~s|phx-hook="LockToggle"|
+    assert html =~ "hero-lock-closed"
   end
 
   test "map renders toolbar and connections between systems", %{
