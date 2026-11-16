@@ -41,7 +41,7 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:stale_system_id, nil)
      |> assign(:settings_open, false)
      |> assign(:settings_tab, "account")
-     |> assign(:map_layout, "default")
+     |> assign(:map_layout, "top")
      |> assign(:undo, [])
      |> assign(:redo, [])
      |> assign(:demo?, true)
@@ -295,7 +295,7 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("map-layout", %{"layout" => "default"}, socket) do
-    socket = socket |> assign(:map_layout, "default") |> apply_tree_layout("top")
+    socket = socket |> assign(:map_layout, "top") |> apply_tree_layout("top")
     {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
     {:noreply, push_event(socket, "reset-pan", %{x: x, y: y})}
   end
@@ -959,7 +959,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:stale_system_id, nil)
     |> assign(:settings_open, false)
     |> assign(:settings_tab, "account")
-    |> assign(:map_layout, "default")
+    |> assign(:map_layout, "top")
     |> assign(:undo, [])
     |> assign(:redo, [])
     |> assign(:demo?, false)

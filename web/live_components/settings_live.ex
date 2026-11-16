@@ -6,7 +6,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   alias TripwireWeb.LiveComponents.Settings.ThemesLive
   alias TripwireWeb.LiveComponents.Settings.WidgetsLive
 
-  attr :map_layout, :string, default: "default"
+  attr :map_layout, :string, default: "top"
   attr :show_row_guides, :boolean, default: false
   attr :show_row_counts, :boolean, default: false
   attr :settings_tab, :string, default: "account"
