@@ -129,18 +129,238 @@ defmodule Tripwire.Mapping do
 
   `connections` are `{conn, from, to}` endpoint tuples. Returns
   `%{system_id => %{x: float, y: float}}`.
+
+  Children are centered beneath their parent (tidy tree) at their
+  breadth-first depth from the root, mirroring the Tripwire chain
+  tree: each jump lands one level down and siblings share a row.
   """
   def tree_layout(systems, connections, orientation \\ "down") do
-    systems
-    |> depth_layers(connections)
-    |> Enum.flat_map(fn {depth, members} ->
-      n = length(members)
+    ids = Enum.map(systems, & &1.id)
 
-      Enum.with_index(members, fn id, i ->
-        {id, orient_position(orientation, depth, n, i)}
-      end)
+    if ids == [] do
+      %{}
+    else
+      adj = undirected_adj(ids, connections)
+    roots = tree_roots(ids, connections)
+    {parent, children, depths} = spanning_tree(adj, roots, ids)
+    _ = parent
+    x_index = assign_x_index(roots, children)
+
+    leaf_count =
+      case Elixir.Map.values(x_index) do
+        [] -> 1
+        values -> values |> Enum.max() |> Kernel.+(1)
+      end
+
+    mid = (leaf_count - 1) / 2
+
+    Elixir.Map.new(ids, fn id ->
+      xi = Elixir.Map.get(x_index, id, mid)
+      depth = Elixir.Map.get(depths, id, 0)
+      {x, y} = orient_tidy_position(orientation, depth, xi, mid)
+      {id, %{x: x, y: y}}
     end)
-    |> Elixir.Map.new(fn {id, {x, y}} -> {id, %{x: x, y: y}} end)
+    end
+  end
+
+  @doc """
+  Returns the ids of systems that sit on a loop (cycle), including
+  self-loops, as a `MapSet`. `connections` are `{conn, from, to}`
+  endpoint tuples.
+  """
+  def loop_system_ids(connections) do
+    {degree, neighbors, self_loops} =
+      Enum.reduce(connections, {%{}, %{}, Elixir.MapSet.new()}, fn
+        {_conn, from, to}, {deg, nbrs, loops} when from.id == to.id ->
+          {deg, nbrs, Elixir.MapSet.put(loops, from.id)}
+
+        {_conn, from, to}, {deg, nbrs, loops} ->
+          deg =
+            deg
+            |> Elixir.Map.update(from.id, 1, &(&1 + 1))
+            |> Elixir.Map.update(to.id, 1, &(&1 + 1))
+
+          nbrs =
+            nbrs
+            |> Elixir.Map.update(from.id, [to.id], &[to.id | &1])
+            |> Elixir.Map.update(to.id, [from.id], &[from.id | &1])
+
+          {deg, nbrs, loops}
+      end)
+
+    queue =
+      degree
+      |> Enum.filter(fn {_id, d} -> d <= 1 end)
+      |> Enum.map(&elem(&1, 0))
+      |> :queue.from_list()
+
+    pruned = prune_leaves(queue, degree, neighbors, Elixir.MapSet.new())
+
+    cycle_ids =
+      degree
+      |> Elixir.Map.keys()
+      |> Enum.reject(&Elixir.MapSet.member?(pruned, &1))
+
+    Enum.reduce(cycle_ids, self_loops, &Elixir.MapSet.put(&2, &1))
+  end
+
+  defp prune_leaves(queue, degree, neighbors, pruned) do
+    case :queue.out(queue) do
+      {:empty, _} ->
+        pruned
+
+      {{:value, id}, rest} ->
+        if Elixir.MapSet.member?(pruned, id) do
+          prune_leaves(rest, degree, neighbors, pruned)
+        else
+          pruned = Elixir.MapSet.put(pruned, id)
+
+          {queue, degree} =
+            Enum.reduce(Elixir.Map.get(neighbors, id, []), {rest, degree}, fn nbr,
+                                                                             {q, deg} ->
+              if Elixir.MapSet.member?(pruned, nbr) do
+                {q, deg}
+              else
+                new_deg = Elixir.Map.get(deg, nbr, 1) - 1
+                deg = Elixir.Map.put(deg, nbr, new_deg)
+
+                if new_deg <= 1 do
+                  {:queue.in(nbr, q), deg}
+                else
+                  {q, deg}
+                end
+              end
+            end)
+
+          prune_leaves(queue, degree, neighbors, pruned)
+        end
+    end
+  end
+
+  defp undirected_adj(ids, connections) do
+    base =
+      Enum.reduce(connections, %{}, fn {_conn, from, to}, acc ->
+        if from.id == to.id do
+          Elixir.Map.put_new(acc, from.id, [])
+        else
+          acc
+          |> Elixir.Map.update(from.id, [to.id], &[to.id | &1])
+          |> Elixir.Map.update(to.id, [from.id], &[from.id | &1])
+        end
+      end)
+
+    Enum.reduce(ids, base, fn id, acc ->
+      acc
+      |> Elixir.Map.put_new(id, [])
+      |> Elixir.Map.update!(id, &(&1 |> Enum.uniq() |> Enum.sort()))
+    end)
+  end
+
+  defp tree_roots(ids, connections) do
+    incoming =
+      Enum.reduce(connections, Elixir.MapSet.new(), fn {_conn, _from, to}, acc ->
+        Elixir.MapSet.put(acc, to.id)
+      end)
+
+    roots = Enum.filter(ids, &(!Elixir.MapSet.member?(incoming, &1)))
+    if roots == [], do: [ids |> Enum.sort() |> hd()], else: Enum.sort(roots)
+  end
+
+  defp spanning_tree(adj, roots, ids) do
+    depths = Elixir.Map.new(roots, &{&1, 0})
+    parent = Elixir.Map.new(roots, &{&1, nil})
+    children = Elixir.Map.new(ids, &{&1, []})
+    queue = :queue.from_list(roots)
+    visited = Elixir.MapSet.new(roots)
+    {depths, parent, children, visited} = bfs_fill(queue, adj, visited, depths, parent, children)
+
+    Enum.reduce(Enum.sort(ids), {parent, children, depths, visited}, fn
+      id, {par, ch, dep, vis} ->
+        if Elixir.MapSet.member?(vis, id) do
+          {par, ch, dep, vis}
+        else
+          max_depth = dep |> Elixir.Map.values() |> Enum.max(fn -> -1 end)
+          dep = Elixir.Map.put(dep, id, max_depth + 1)
+          par = Elixir.Map.put(par, id, nil)
+          vis = Elixir.MapSet.put(vis, id)
+          bfs_fill(:queue.from_list([id]), adj, vis, dep, par, ch)
+        end
+    end)
+    |> then(fn {par, ch, dep, _vis} -> {par, ch, dep} end)
+  end
+
+  defp bfs_fill(queue, adj, visited, depths, parent, children) do
+    case :queue.out(queue) do
+      {:empty, _} ->
+        {depths, parent, children, visited}
+
+      {{:value, id}, rest} ->
+        depth = Elixir.Map.fetch!(depths, id)
+
+        {queue, visited, depths, parent, children} =
+          Enum.reduce(Elixir.Map.get(adj, id, []), {rest, visited, depths, parent, children}, fn
+            neighbor, {q, vis, dep, par, ch} ->
+              if Elixir.MapSet.member?(vis, neighbor) do
+                {q, vis, dep, par, ch}
+              else
+                vis = Elixir.MapSet.put(vis, neighbor)
+                dep = Elixir.Map.put(dep, neighbor, depth + 1)
+                par = Elixir.Map.put(par, neighbor, id)
+                ch = Elixir.Map.update!(ch, id, &(&1 ++ [neighbor]))
+                {:queue.in(neighbor, q), vis, dep, par, ch}
+              end
+          end)
+
+        bfs_fill(queue, adj, visited, depths, parent, children)
+    end
+  end
+
+  defp assign_x_index(roots, children) do
+    {positions, _} =
+      Enum.reduce(roots, {%{}, 0}, fn root, {pos, counter} ->
+        assign_subtree(root, children, pos, counter)
+      end)
+
+    positions
+  end
+
+  defp assign_subtree(id, children, positions, counter) do
+    case Elixir.Map.get(children, id, []) do
+      [] ->
+        {Elixir.Map.put(positions, id, counter * 1.0), counter + 1}
+
+      kids ->
+        {positions, counter} =
+          Enum.reduce(kids, {positions, counter}, fn kid, {pos, c} ->
+            assign_subtree(kid, children, pos, c)
+          end)
+
+        mean =
+          kids
+          |> Enum.map(&Elixir.Map.fetch!(positions, &1))
+          |> Enum.sum()
+          |> Kernel./(length(kids))
+
+        {Elixir.Map.put(positions, id, mean), counter}
+    end
+  end
+
+  defp orient_tidy_position(orientation, depth, xi, mid) do
+    x = 460.0 + (xi - mid) * 150.0
+
+    case orientation do
+      "up" ->
+        {x, 590.0 - depth * 160.0}
+
+      "left" ->
+        {860.0 - depth * 170.0, 325.0 + (xi - mid) * 120.0}
+
+      "right" ->
+        {60.0 + depth * 170.0, 325.0 + (xi - mid) * 120.0}
+
+      _ ->
+        {x, 60.0 + depth * 160.0}
+    end
   end
 
   defp bfs_depths(adj, depths, seed) do
@@ -164,24 +384,6 @@ defmodule Tripwire.Mapping do
           end)
 
         bfs_loop(adj, queue, depths)
-    end
-  end
-
-  defp orient_position(orientation, depth, n, i) do
-    mid = (n - 1) / 2
-
-    case orientation do
-      "up" ->
-        {460.0 + (i - mid) * 150.0, 590.0 - depth * 160.0}
-
-      "left" ->
-        {860.0 - depth * 170.0, 325.0 + (i - mid) * 120.0}
-
-      "right" ->
-        {60.0 + depth * 170.0, 325.0 + (i - mid) * 120.0}
-
-      _ ->
-        {460.0 + (i - mid) * 150.0, 60.0 + depth * 160.0}
     end
   end
 
@@ -638,9 +840,9 @@ defmodule Tripwire.Mapping do
     {2, 4, "B274", "critical", "stable"},
     {4, 5, "K162", "stable", "stable"},
     {5, 6, "C140", "stable", "stable"},
-    {4, 7, "K162", "stable", "stable"},
+    {3, 7, "K162", "stable", "stable"},
     {3, 8, "N968", "stable", "stable"},
-    {2, 9, "K162", "stable", "stable"}
+    {4, 9, "K162", "stable", "stable"}
   ]
 
   @demo_signatures %{

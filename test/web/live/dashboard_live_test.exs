@@ -536,7 +536,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert Mapping.get_system!(other.id).y == 220.0
   end
 
-  test "connections render as orthogonal paths", %{conn: conn, character: character} do
+  test "connections render as straight paths", %{conn: conn, character: character} do
     {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
 
     {:ok, other} =
@@ -544,11 +544,11 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
 
-    # first load applies the top tree layout: parent above child, vertical edge
+    # first load applies the top tree layout: parent above child, straight edge
     {:ok, _view, html} = live(login(conn, character), ~p"/dashboard")
 
     assert html =~ "<path"
-    assert html =~ "M 520.0 104.0 V 184.0 H 520.0 V 264.0"
+    assert html =~ "M 520.0 104.0 L 520.0 264.0"
   end
 
   test "row guides and counts outline systems per row", %{conn: conn, character: character} do

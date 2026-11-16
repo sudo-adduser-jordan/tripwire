@@ -233,6 +233,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   height="88"
                   rx="8"
                   stroke={node_stroke(system, @selected_system_id)}
+                  stroke-dasharray={if loop_node?(@connections, system.id), do: "6 4"}
+                  style={if loop_node?(@connections, system.id), do: "filter: drop-shadow(0 0 6px #{node_color(system)})"}
                   class={
                     if system.id == @selected_system_id,
                       do: "fill-primary/30 stroke-primary",
@@ -253,8 +255,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   x="60"
                   y="46"
                   text-anchor="middle"
-                  textLength="104"
-                  lengthAdjust="spacingAndGlyphs"
                   class="fill-base-content text-sm font-bold cursor-pointer hover:underline"
                   phx-click="open-system"
                   phx-value-id={system.id}
@@ -298,10 +298,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     x2 = to.x + 60
     y2 = to.y + 44
 
-    cond do
-      x1 == x2 and y1 == y2 -> "M #{x1} #{y1}"
-      abs(y2 - y1) >= abs(x2 - x1) -> "M #{x1} #{y1} V #{(y1 + y2) / 2} H #{x2} V #{y2}"
-      true -> "M #{x1} #{y1} H #{(x1 + x2) / 2} V #{y2} H #{x2}"
+    if x1 == x2 and y1 == y2 do
+      "M #{x1} #{y1} C #{x1 - 40} #{y1 - 50}, #{x1 + 40} #{y1 - 50}, #{x1} #{y1}"
+    else
+      "M #{x1} #{y1} L #{x2} #{y2}"
     end
   end
 
@@ -319,6 +319,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
   defp node_stroke(system, selected_id) when system.id == selected_id, do: nil
   defp node_stroke(system, _selected_id), do: node_color(system)
+
+  defp loop_node?(connections, system_id) do
+    system_id in Mapping.loop_system_ids(connections)
+  end
 
   defp selected_favorite?(systems, id) do
     case Enum.find(systems, &(&1.id == id)) do
