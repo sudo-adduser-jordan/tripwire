@@ -628,6 +628,14 @@ defmodule Tripwire.Mapping do
     %{solar_system_id: 31_000_005, name: "J150325", sys_class: "C6", x: 480.0, y: 470.0}
   ]
 
+  @demo_shortcuts """
+  # Shortcuts
+
+  - `Ctrl+V` anywhere — paste probe scans
+  - `Escape` — close settings
+  - `Enter` in Search — jump to a system
+  """
+
   @demo_note """
   **Bold**
   *italic* and _italic_
@@ -637,7 +645,6 @@ defmodule Tripwire.Mapping do
   # Header 1
   ## Header 2
   ### Header 3
-  [EVE University](https://wiki.eveuniversity.org)
   """
 
   @demo_links [
@@ -771,6 +778,7 @@ defmodule Tripwire.Mapping do
 
       system ->
         if list_comments(system.id) == [] do
+          {:ok, _} = create_comment(system, %{body: @demo_shortcuts, mask_id: mask_id})
           {:ok, _} = create_comment(system, %{body: @demo_note, mask_id: mask_id})
         end
 

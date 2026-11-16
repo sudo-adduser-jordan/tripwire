@@ -70,11 +70,10 @@ defmodule Tripwire.MappingTest do
 
     [home | _] = Mapping.list_systems(fresh.id)
 
-    assert [%{body: body}] = Mapping.list_comments(home.id)
-    assert body =~ "**Bold**"
-    assert body =~ "__underline__"
-    assert body =~ "# Header 1"
-    assert body =~ "[EVE University](https://wiki.eveuniversity.org)"
+    assert [%{body: first_body}, %{body: second_body}] = Mapping.list_comments(home.id)
+    assert first_body =~ "# Shortcuts"
+    assert first_body =~ "`Ctrl+V`"
+    assert second_body =~ "**Bold**"
   end
 
   test "delete_map_full/1 removes systems, connections, and signatures", %{mask: mask} do
