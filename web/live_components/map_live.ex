@@ -315,8 +315,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   {incoming_type(@connections, system.id)}
                 </text>
                 <g
-                  :for={{label, tip, index} <- node_badges(system)}
-                  transform={"translate(4, #{80 + index * 18})"}
+                  :for={{label, tip, x} <- node_badges(system)}
+                  transform={"translate(#{x}, 80)"}
                 >
                   <rect
                     width={badge_width(label)}
@@ -408,8 +408,9 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
   defp node_badges(system) do
     Tripwire.Systems.statics(Tripwire.Systems.display_class(system))
-    |> Enum.with_index()
-    |> Enum.map(fn {label, index} -> {label, "Static wormhole: " <> label, index} end)
+    |> Enum.map(&{&1, "Static wormhole: " <> &1, badge_width(&1)})
+    |> Enum.map_reduce(4, fn {label, tip, width}, x -> {{label, tip, x}, x + width + 4} end)
+    |> elem(0)
   end
 
   defp badge_width(label), do: String.length(label) * 6 + 14
