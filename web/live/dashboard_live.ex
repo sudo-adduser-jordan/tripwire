@@ -323,7 +323,7 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("settings-tab", %{"tab" => tab}, socket)
-      when tab in ~w(account map widgets themes admin) do
+      when tab in ~w(account map widgets statistics themes admin) do
     if tab == "admin" and not admin?(socket) do
       {:noreply, put_flash(socket, :error, "Admin access required")}
     else

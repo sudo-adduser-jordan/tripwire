@@ -793,6 +793,48 @@ defmodule Tripwire.Mapping do
     }
   end
 
+  def character_statistics(nil) do
+    %{signatures_created: 0, signatures_updated: 0, notes: 0, flares: 0, jumps: 0}
+  end
+
+  def character_statistics(%{id: id, name: name}) do
+    signatures_created =
+      Repo.aggregate(from(s in Signature, where: s.created_by_id == ^id), :count)
+
+    signatures_updated =
+      Repo.aggregate(from(s in Signature, where: s.updated_by_id == ^id), :count)
+
+    notes =
+      Repo.aggregate(
+        from(c in Tripwire.Mapping.Comment, where: c.character_id == ^id),
+        :count
+      )
+
+    flares =
+      Repo.aggregate(
+        from(f in Tripwire.Mapping.Flare, where: f.created_by_id == ^id),
+        :count
+      )
+
+    jumps =
+      if is_binary(name) and name != "" do
+        Repo.aggregate(
+          from(j in Tripwire.Mapping.ConnectionJump, where: j.character_name == ^name),
+          :count
+        )
+      else
+        0
+      end
+
+    %{
+      signatures_created: signatures_created,
+      signatures_updated: signatures_updated,
+      notes: notes,
+      flares: flares,
+      jumps: jumps
+    }
+  end
+
   @demo_systems [
     %{
       solar_system_id: 31_000_001,

@@ -4,6 +4,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   alias TripwireWeb.LiveComponents.Settings.AccountLive
   alias TripwireWeb.LiveComponents.Settings.AdminLive
   alias TripwireWeb.LiveComponents.Settings.MapLive
+  alias TripwireWeb.LiveComponents.Settings.StatisticsLive
   alias TripwireWeb.LiveComponents.Settings.ThemesLive
   alias TripwireWeb.LiveComponents.Settings.WidgetsLive
 
@@ -52,6 +53,10 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
             angled_lines={@angled_lines}
           />
           <WidgetsLive.settings_widgets_live settings_tab={@settings_tab} />
+          <StatisticsLive.settings_statistics_live
+            settings_tab={@settings_tab}
+            character={@character}
+          />
           <ThemesLive.settings_themes_live settings_tab={@settings_tab} />
           <AdminLive.settings_admin_live
             settings_tab={@settings_tab}
