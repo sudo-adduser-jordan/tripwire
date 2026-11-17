@@ -72,7 +72,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
                 placeholder="Add a note for the selected system"
                 autocomplete="off"
               >{@comment_body}</textarea>
-              <button type="submit" class="btn btn-primary btn-sm">
+              <button type="submit" class="btn btn-primary btn-sm" title="Add note">
                 <.icon name="hero-plus" class="size-4" />
               </button>
             </form>
@@ -114,6 +114,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
               <span>{comment.character && comment.character.name}</span>
               <button
                 class="btn btn-ghost btn-xs"
+                title="Delete note"
                 phx-click="comment-delete"
                 phx-value-id={comment.id}
                 phx-target={@myself}

@@ -148,6 +148,10 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
   defp range_label("48h"), do: "48H"
   defp range_label(_), do: "24H"
 
+  defp range_title("week"), do: "Show last week"
+  defp range_title("48h"), do: "Show last 48 hours"
+  defp range_title(_), do: "Show last 24 hours"
+
   attr :chart_range, :string, default: "24h"
   attr :systems, :list, default: []
   attr :connections, :list, default: []
@@ -163,6 +167,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
             "btn btn-xs " <>
               (if sys.id == @selected_system_id, do: "btn-primary", else: "btn-ghost")
           }
+          title={"Select system #{sys.name}"}
           phx-click="select-system"
           phx-value-id={sys.id}
         >
@@ -175,6 +180,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
           :for={range <- ["week", "48h", "24h"]}
           phx-click="chart-range"
           phx-value-range={range}
+          title={range_title(range)}
           class={
             "btn btn-xs " <>
               (if @chart_range == range, do: "btn-primary", else: "btn-ghost")

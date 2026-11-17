@@ -159,6 +159,27 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               {length(@systems)} systems
             </span>
             <button
+              id="chain-zoom-out"
+              type="button"
+              class="btn btn-ghost btn-xs"
+              title="Zoom out"
+              phx-click={JS.dispatch("tripwire:zoom-out", to: "#chain-map")}
+            >
+              <.icon name="hero-magnifying-glass-minus" class="size-4" />
+            </button>
+            <span id="chain-zoom-level" class="w-12 text-center text-xs tabular-nums opacity-60">
+              100%
+            </span>
+            <button
+              id="chain-zoom-in"
+              type="button"
+              class="btn btn-ghost btn-xs"
+              title="Zoom in"
+              phx-click={JS.dispatch("tripwire:zoom-in", to: "#chain-map")}
+            >
+              <.icon name="hero-magnifying-glass-plus" class="size-4" />
+            </button>
+            <button
               id="chain-zoom-reset"
               class="btn btn-ghost btn-xs"
               title="Reset Zoom"
