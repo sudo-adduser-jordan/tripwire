@@ -13,7 +13,7 @@ function syncLock(el) {
     if (!grid || typeof grid.setStatic !== 'function') return
     grid.setStatic(gridLocked(el))
     const lockSvg = document.getElementById('lock-svg')
-    if (lockSvg) lockSvg.style.fill = gridLocked(el) ? '#605dff' : '#ff6700'
+    if (lockSvg) lockSvg.style.fill = gridLocked(el) ? '#ff6700' : '#605dff'
 }
 
 // Reveal the grid on first layout so pre-init paint never shows a pile-up.
