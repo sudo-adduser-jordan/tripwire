@@ -44,6 +44,7 @@ defmodule TripwireWeb.Router do
 
   scope "/auth", TripwireWeb do
     pipe_through :browser
+    get "/switch/:eve_id", AuthController, :switch
     get "/:provider", AuthController, :request
     get "/:provider/callback", AuthController, :callback
     delete "/logout", AuthController, :delete

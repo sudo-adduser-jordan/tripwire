@@ -6,25 +6,30 @@ defmodule TripwireWeb.DashboardLive do
   alias Tripwire.Mapping
   alias Tripwire.Masks
   alias Tripwire.Signatures, as: SigParser
+  alias Tripwire.Tracking
 
   @demo_character_eve_id 9_000_002
   @demo_character_name "Demo User"
   @topbar_refresh_ms 60_000
   @chart_refresh_ms 60_000
   @chart_ranges ~w(24h 48h week)
+  @settings_tabs ~w(account map widgets statistics themes admin)
 
   @impl true
   def mount(_params, session, socket) do
-    case session["current_user"] do
-      %{"id" => eve_id} ->
-        case Accounts.get_character_by_eve_id(eve_id) do
-          nil -> {:ok, mount_demo(socket)}
-          character -> {:ok, provision(socket, character)}
-        end
+    {:ok, socket} =
+      case session["current_user"] do
+        %{"id" => eve_id} ->
+          case Accounts.get_character_by_eve_id(eve_id) do
+            nil -> {:ok, mount_demo(socket)}
+            character -> {:ok, provision(socket, character)}
+          end
 
-      _ ->
-        {:ok, mount_demo(socket)}
-    end
+        _ ->
+          {:ok, mount_demo(socket)}
+      end
+
+    {:ok, assign(socket, :characters, session_characters(session, socket.assigns.character))}
   end
 
   defp mount_demo(socket) do
@@ -323,7 +328,7 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("settings-tab", %{"tab" => tab}, socket)
-      when tab in ~w(account map widgets statistics themes admin) do
+      when tab in @settings_tabs do
     if tab == "admin" and not admin?(socket) do
       {:noreply, put_flash(socket, :error, "Admin access required")}
     else
@@ -332,6 +337,34 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("settings-tab", _params, socket), do: {:noreply, socket}
+
+  def handle_event("open-settings", %{"tab" => tab}, socket)
+      when tab in @settings_tabs do
+    {:noreply, socket |> assign(:settings_open, true) |> assign(:settings_tab, tab)}
+  end
+
+  def handle_event("open-settings", _params, socket), do: {:noreply, socket}
+
+  def handle_event("remove-character", %{"id" => id}, socket) do
+    with {char_id, ""} <- Integer.parse(to_string(id)),
+         %{} = character <- Accounts.get_character(char_id),
+         {:ok, _} <- Accounts.delete_character(character) do
+      Tracking.stop_poller(character)
+      remaining = Enum.reject(socket.assigns.characters, &(&1.id == character.id))
+      socket = assign(socket, :characters, remaining)
+
+      if socket.assigns.character && socket.assigns.character.id == character.id do
+        case remaining do
+          [next | _] -> {:noreply, push_navigate(socket, to: "/auth/switch/#{next.eve_id}")}
+          [] -> {:noreply, push_navigate(socket, to: "/dashboard")}
+        end
+      else
+        {:noreply, put_flash(socket, :info, "Removed #{character.name}")}
+      end
+    else
+      _ -> {:noreply, put_flash(socket, :error, "Character not found")}
+    end
+  end
 
   def handle_event("select-system", %{"id" => id}, socket) do
     {:noreply, select_system_and_patch(socket, String.to_integer(id))}
@@ -1092,6 +1125,17 @@ defmodule TripwireWeb.DashboardLive do
   defp admin?(%{assigns: %{character: %{is_admin: true}}}), do: true
   defp admin?(_), do: false
 
+  defp session_characters(session, current) do
+    ids = session["character_ids"] || []
+
+    known =
+      ids
+      |> Enum.map(&Accounts.get_character_by_eve_id/1)
+      |> Enum.reject(&is_nil/1)
+
+    [current | known] |> Enum.reject(&is_nil/1) |> Enum.uniq_by(& &1.id)
+  end
+
   defp demo?(%{assigns: %{demo?: true}}), do: true
   defp demo?(_), do: false
 
@@ -1233,6 +1277,7 @@ defmodule TripwireWeb.DashboardLive do
     })
     |> assign(:sig_errors, [])
     |> assign_topbar_defaults()
+    |> assign(:sso_configured?, Tripwire.SSO.configured?())
     |> subscribe_to_map(map.id)
     |> schedule_topbar_load()
     |> schedule_chart_refresh()

@@ -20,6 +20,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
   attr :system_search, :string, default: ""
   attr :current_user, :map, default: nil
   attr :settings_open, :boolean, default: false
+  attr :sso_configured?, :boolean, default: false
 
   def navigation_live(assigns) do
     ~H"""
@@ -70,19 +71,34 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
             class="menu dropdown-content bg-base-200/75 rounded-box z-1 mt-4 w-52 p-2 shadow-sm"
           >
             <li :for={character <- @characters}>
-              <a>
-                <div class={["avatar", online_class(@character_online)]}>
-                  <div class="w-12 rounded-xl">
-                    <img
-                      src={character_avatar(character)}
-                      alt=""
-                      loading="lazy"
-                      onerror="this.onerror=null;this.src='/images/alliance-default.png'"
-                    />
+              <div class="flex items-center gap-1">
+                <a
+                  href={"/auth/switch/#{character.eve_id}"}
+                  title={"Switch to #{character_name(character)}"}
+                  class="flex min-w-0 flex-1 items-center gap-2"
+                >
+                  <div class={["avatar", online_class(@character_online)]}>
+                    <div class="w-12 rounded-xl">
+                      <img
+                        src={character_avatar(character)}
+                        alt=""
+                        loading="lazy"
+                        onerror="this.onerror=null;this.src='/images/alliance-default.png'"
+                      />
+                    </div>
                   </div>
-                </div>
-                {character_name(character)}
-              </a>
+                  {character_name(character)}
+                </a>
+                <button
+                  phx-click="remove-character"
+                  phx-value-id={character.id}
+                  title={"Remove #{character_name(character)}"}
+                  data-confirm={"Remove #{character_name(character)}?"}
+                  class="btn btn-ghost btn-xs shrink-0 p-1"
+                >
+                  <.icon name="hero-trash" class="size-4" />
+                </button>
+              </div>
             </li>
             <li :if={@characters == []}>
               <a>
@@ -92,6 +108,11 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
                   </div>
                 </div>
                 {@character}
+              </a>
+            </li>
+            <li :if={@sso_configured?}>
+              <a href="/auth/evesso" title="Add character via EVE SSO">
+                <.icon name="hero-plus" class="size-4" /> Add character
               </a>
             </li>
           </ul>
@@ -129,6 +150,15 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
                 </div>
                 Demo
               </a>
+            </li>
+            <li>
+              <button
+                phx-click="open-settings"
+                phx-value-tab="account"
+                title="Manage masks"
+              >
+                <.icon name="hero-cog-6-tooth" class="size-4" /> Manage masks
+              </button>
             </li>
           </ul>
         </div>

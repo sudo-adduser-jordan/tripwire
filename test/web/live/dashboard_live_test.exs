@@ -785,4 +785,90 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "XYZ-010"
     assert [_restored] = Mapping.list_signatures(system.id)
   end
+
+  test "topbar character dropdown adds, switches, and removes characters", %{
+    conn: conn,
+    character: character
+  } do
+    System.put_env("EVESSO_CLIENT_ID", "test-id")
+    System.put_env("EVESSO_SECRET_KEY", "test-secret")
+
+    try do
+      {:ok, other} = Accounts.upsert_character(%{eve_id: 43_000, name: "Second Char"})
+
+      session =
+        Plug.Test.init_test_session(conn, %{
+          "current_user" => %{"id" => character.eve_id, "name" => character.name},
+          "character_ids" => [character.eve_id, other.eve_id]
+        })
+
+      {:ok, view, html} = live(session, ~p"/dashboard")
+
+      assert html =~ "Add character"
+      assert html =~ "/auth/switch/#{other.eve_id}"
+      assert html =~ "Manage masks"
+
+      view
+      |> element("button[title=\"Remove Second Char\"]")
+      |> render_click()
+
+      html = render(view)
+      assert html =~ "Removed Second Char"
+      refute html =~ "Remove Second Char"
+      refute html =~ "/auth/switch/43000"
+      assert html =~ character.name
+      assert Accounts.get_character(other.id) == nil
+    after
+      System.delete_env("EVESSO_CLIENT_ID")
+      System.delete_env("EVESSO_SECRET_KEY")
+    end
+  end
+
+  test "manage masks opens settings on the account tab", %{conn: conn, character: character} do
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    refute has_element?(view, "#settings-widget")
+
+    view
+    |> element("button[title=\"Manage masks\"]")
+    |> render_click()
+
+    assert has_element?(view, "#settings-widget")
+    assert render(view) =~ "Masks"
+  end
+
+  test "removing the current character navigates away", %{conn: conn, character: character} do
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    assert {_, {:live_redirect, %{to: "/dashboard"}}} =
+             view
+             |> element("button[title=\"Remove #{character.name}\"]")
+             |> render_click()
+  end
+
+  test "switching characters updates the session", %{conn: conn, character: character} do
+    {:ok, other} = Accounts.upsert_character(%{eve_id: 44_000, name: "Switch Target"})
+
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{
+        "current_user" => %{"id" => character.eve_id, "name" => character.name},
+        "character_ids" => [character.eve_id, other.eve_id]
+      })
+      |> get("/auth/switch/#{other.eve_id}")
+
+    assert redirected_to(conn) == "/dashboard"
+    assert get_session(conn, :current_user).id == other.eve_id
+
+    denied =
+      build_conn()
+      |> Plug.Test.init_test_session(%{
+        "current_user" => %{"id" => character.eve_id, "name" => character.name},
+        "character_ids" => [character.eve_id]
+      })
+      |> get("/auth/switch/999999")
+
+    assert redirected_to(denied) == "/dashboard"
+    assert get_session(denied, :current_user)["id"] == character.eve_id
+  end
 end

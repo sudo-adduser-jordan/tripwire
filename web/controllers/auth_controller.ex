@@ -3,7 +3,7 @@ defmodule TripwireWeb.AuthController do
 
   alias Tripwire.SSO
 
-  plug :require_sso
+  plug :require_sso when action in [:request, :callback, :delete]
   plug Ueberauth
 
   defp require_sso(conn, _opts) do
@@ -32,7 +32,11 @@ defmodule TripwireWeb.AuthController do
 
     character = maybe_grant_admin(character, auth)
 
+    character_ids =
+      (get_session(conn, :character_ids) || []) ++ [character.eve_id] |> Enum.uniq()
+
     conn
+    |> put_session(:character_ids, character_ids)
     |> put_session(:current_user, %{id: character.eve_id, name: character.name})
     |> redirect(to: "/Jita")
   end
@@ -41,6 +45,28 @@ defmodule TripwireWeb.AuthController do
     conn
     |> put_flash(:error, "EVE SSO login failed")
     |> redirect(to: "/")
+  end
+
+  def switch(conn, %{"eve_id" => eve_id}) do
+    character_ids = List.wrap(get_session(conn, :character_ids))
+    current = get_session(conn, :current_user)
+    current_id = if is_map(current), do: current[:id] || current["id"], else: nil
+
+    with {id, ""} <- Integer.parse(to_string(eve_id)),
+         %{} = character <- Tripwire.Accounts.get_character_by_eve_id(id),
+         true <-
+           to_string(id) == to_string(current_id) or
+             to_string(id) in Enum.map(character_ids, &to_string/1) or
+             Tripwire.SSO.demo?() do
+      conn
+      |> put_session(:current_user, %{id: character.eve_id, name: character.name})
+      |> redirect(to: "/dashboard")
+    else
+      _ ->
+        conn
+        |> put_flash(:error, "Character not found")
+        |> redirect(to: "/dashboard")
+    end
   end
 
   # Mirrors official Tripwire: registering as admin requires CEO, Director,
