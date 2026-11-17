@@ -138,7 +138,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
             <li :for={mask <- @masks}>
               <button phx-click="switch-mask" phx-value-id={mask.id}>
                 <div class={["avatar", current_dot(mask, @mask)]}>
-                  <div class="w-24 rounded-xl">
+                  <div class="w-12 rounded-xl">
                     <img
                       src={mask_avatar(mask)}
                       alt=""
@@ -153,7 +153,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
             <li :if={@masks == []}>
               <a>
                 <div class="avatar avatar-online">
-                  <div class="w-24 rounded-xl">
+                  <div class="w-12 rounded-xl">
                     <img src="/images/alliance-default.png" alt="" loading="lazy" />
                   </div>
                 </div>
