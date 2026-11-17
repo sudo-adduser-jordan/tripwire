@@ -40,6 +40,15 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
             >
               Add
             </a>
+            <button
+              :if={!@sso_configured?}
+              type="button"
+              class="btn btn-ghost btn-xs"
+              title="EVE SSO is not configured"
+              phx-click="add-character"
+            >
+              Add
+            </button>
           </div>
         </div>
         <div class="grid w-full max-w-full grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4">

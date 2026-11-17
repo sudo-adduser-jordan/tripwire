@@ -345,6 +345,10 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("open-settings", _params, socket), do: {:noreply, socket}
 
+  def handle_event("add-character", _params, socket) do
+    {:noreply, put_flash(socket, :error, "EVE SSO is not configured, demo mode is active")}
+  end
+
   def handle_event("remove-character", %{"id" => id}, socket) do
     with {char_id, ""} <- Integer.parse(to_string(id)),
          %{} = character <- Accounts.get_character(char_id),

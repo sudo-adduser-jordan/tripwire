@@ -115,6 +115,14 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
                 <.icon name="hero-plus" class="size-4" /> Add character
               </a>
             </li>
+            <li :if={!@sso_configured?}>
+              <button
+                phx-click="add-character"
+                title="EVE SSO is not configured"
+              >
+                <.icon name="hero-plus" class="size-4" /> Add character
+              </button>
+            </li>
           </ul>
         </div>
         <p class="text-xs">&gt;</p>

@@ -929,6 +929,24 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute render(view) =~ "stale-toast"
   end
 
+  test "demo add character buttons explain SSO is unavailable", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/dashboard")
+
+    assert html =~ "Add character"
+    refute html =~ "/auth/evesso"
+
+    html =
+      view
+      |> element("button[phx-click='add-character']")
+      |> render_click()
+
+    assert html =~ "EVE SSO is not configured"
+
+    view |> element("#settings-button") |> render_click()
+    settings_html = view |> element("#settings-widget") |> render()
+    assert settings_html =~ "add-character"
+  end
+
   test "account tab manages characters and masks", %{conn: conn} do
     System.put_env("EVESSO_CLIENT_ID", "test-id")
     System.put_env("EVESSO_SECRET_KEY", "test-secret")
