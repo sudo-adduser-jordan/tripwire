@@ -6,6 +6,7 @@ defmodule Tripwire.Tracking do
   import Ecto.Query, only: [from: 2]
 
   alias Tripwire.{ESI, Mapping}
+  alias Tripwire.Accounts
   alias Tripwire.Mapping.MapSystem
   alias Tripwire.Repo
   alias Tripwire.Tracking.Poller
@@ -61,6 +62,14 @@ defmodule Tripwire.Tracking do
         end
 
       _ = Mapping.record_visit(system)
+
+      if is_binary(character_name) and character_name != "" do
+        case Accounts.get_character_by_name(character_name) do
+          %{} = visitor -> Accounts.bump_stats(visitor.id, systems_visited: 1)
+          nil -> :ok
+        end
+      end
+
       broadcast_system_change(map.id, character_name, system)
       broadcast_map_update(map.id)
 

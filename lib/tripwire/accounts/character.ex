@@ -15,6 +15,17 @@ defmodule Tripwire.Accounts.Character do
     field :refresh_token, EncryptedBinary
     field :last_login_at, :utc_datetime
     field :is_admin, :boolean, default: false
+    field :signatures_added, :integer, default: 0
+    field :signatures_updated, :integer, default: 0
+    field :signatures_deleted, :integer, default: 0
+    field :wormholes_added, :integer, default: 0
+    field :wormholes_updated, :integer, default: 0
+    field :wormholes_deleted, :integer, default: 0
+    field :comments_added, :integer, default: 0
+    field :comments_updated, :integer, default: 0
+    field :comments_deleted, :integer, default: 0
+    field :systems_visited, :integer, default: 0
+    field :login_count, :integer, default: 0
 
     timestamps(type: :utc_datetime)
   end

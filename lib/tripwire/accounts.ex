@@ -15,6 +15,19 @@ defmodule Tripwire.Accounts do
     Repo.one(from(c in Character, where: c.eve_id == ^eve_id))
   end
 
+  def get_character_by_name(name) when is_binary(name) do
+    Repo.one(from(c in Character, where: c.name == ^name))
+  end
+
+  def bump_stats(%Character{id: id}, inc), do: bump_stats(id, inc)
+
+  def bump_stats(id, inc) when is_integer(id) and is_list(inc) do
+    case Enum.reject(inc, fn {_field, count} -> count == 0 end) do
+      [] -> {0, nil}
+      filtered -> Repo.update_all(from(c in Character, where: c.id == ^id), inc: filtered)
+    end
+  end
+
   def upsert_character(attrs) do
     eve_id = attrs[:eve_id] || attrs["eve_id"]
 

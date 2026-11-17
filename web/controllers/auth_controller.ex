@@ -31,6 +31,7 @@ defmodule TripwireWeb.AuthController do
     {:ok, _pid} = Tripwire.Tracking.ensure_poller(character)
 
     character = maybe_grant_admin(character, auth)
+    Tripwire.Accounts.bump_stats(character.id, login_count: 1)
 
     character_ids =
       (get_session(conn, :character_ids) || []) ++ [character.eve_id] |> Enum.uniq()

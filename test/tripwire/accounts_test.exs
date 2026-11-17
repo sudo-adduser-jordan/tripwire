@@ -53,6 +53,18 @@ defmodule Tripwire.AccountsTest do
     assert updated.is_admin
   end
 
+  test "bump_stats/2 increments counters" do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 4321, name: "Counter"})
+
+    assert {1, nil} = Accounts.bump_stats(character.id, login_count: 1, systems_visited: 2)
+    assert {1, nil} = Accounts.bump_stats(character, login_count: 1)
+    assert {0, nil} = Accounts.bump_stats(character.id, login_count: 0)
+
+    reloaded = Accounts.get_character(character.id)
+    assert reloaded.login_count == 2
+    assert reloaded.systems_visited == 2
+  end
+
   test "admin_grant?/2 mirrors official Tripwire corp roles" do
     assert Accounts.admin_grant?(["Director"], [])
     assert Accounts.admin_grant?(["CEO"], [])

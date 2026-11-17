@@ -589,7 +589,7 @@ defmodule TripwireWeb.DashboardLive do
         system_id
         |> Mapping.list_signatures()
         |> Enum.filter(&MapSet.member?(stale_set, &1.sig_id))
-        |> Enum.each(&Mapping.delete_signature/1)
+        |> Enum.each(&Mapping.delete_signature(&1, socket.assigns.character))
 
         {:noreply,
          socket
@@ -709,7 +709,7 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("delete-signature", %{"id" => id}, socket) do
     signature = Mapping.get_signature!(id)
-    {:ok, deleted} = Mapping.delete_signature(signature)
+    {:ok, deleted} = Mapping.delete_signature(signature, socket.assigns.character)
 
     {:noreply,
      socket
@@ -1087,7 +1087,7 @@ defmodule TripwireWeb.DashboardLive do
         {:noreply, put_flash(socket, :error, "Select a destination system first")}
 
       {comment, system} ->
-        case Mapping.move_comment(comment, system.id) do
+        case Mapping.move_comment(comment, system.id, socket.assigns.character) do
           {:ok, _} ->
             {:noreply,
              socket
@@ -1696,7 +1696,7 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp apply_redo({:delete, signature}, socket) do
-    _ = Mapping.delete_signature(signature)
+    _ = Mapping.delete_signature(signature, socket.assigns.character)
     socket |> reload_signatures() |> update(:undo, &[{:delete, signature} | &1])
   end
 

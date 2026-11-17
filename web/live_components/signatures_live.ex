@@ -33,7 +33,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
 
   def handle_event("delete-signature", %{"id" => id}, socket) do
     signature = Mapping.get_signature!(id)
-    {:ok, deleted} = Mapping.delete_signature(signature)
+    {:ok, deleted} = Mapping.delete_signature(signature, socket.assigns.character)
     undo = [{:delete, deleted} | socket.assigns.undo]
 
     send(self(), {:signatures_updated, deleted.map_system_id})
@@ -80,7 +80,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
         {:noreply, socket}
 
       [{:delete, signature} | rest] ->
-        _ = Mapping.delete_signature(signature)
+        _ = Mapping.delete_signature(signature, socket.assigns.character)
         undo = [{:delete, signature} | socket.assigns.undo]
         send(self(), {:signatures_updated, signature.map_system_id})
 

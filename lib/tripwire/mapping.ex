@@ -1,6 +1,7 @@
 defmodule Tripwire.Mapping do
   import Ecto.Query
 
+  alias Tripwire.Accounts
   alias Tripwire.Accounts.Character
   alias Tripwire.Mapping.{Map, MapConnection, MapSystem, Signature}
   alias Tripwire.Repo
@@ -546,64 +547,89 @@ defmodule Tripwire.Mapping do
   """
   def upsert_signatures(%MapSystem{} = system, entries, %Character{id: character_id})
       when is_list(entries) do
-    Enum.reduce(entries, {0, 0}, fn entry, {added, updated} ->
-      life_length = 259_200
+    {added, updated, counts} =
+      Enum.reduce(entries, {0, 0, %{}}, fn entry, {added, updated, counts} ->
+        life_length = 259_200
 
-      attrs = %{
-        map_system_id: system.id,
-        sig_id: entry.sig_id,
-        kind: to_string(entry.kind),
-        type_name: entry.name || entry.wormhole_type,
-        site_type: to_string(entry.category || :unknown),
-        life_length: life_length,
-        expires_at:
-          DateTime.add(DateTime.utc_now(), life_length, :second) |> DateTime.truncate(:second),
-        updated_by_id: character_id
-      }
+        attrs = %{
+          map_system_id: system.id,
+          sig_id: entry.sig_id,
+          kind: to_string(entry.kind),
+          type_name: entry.name || entry.wormhole_type,
+          site_type: to_string(entry.category || :unknown),
+          life_length: life_length,
+          expires_at:
+            DateTime.add(DateTime.utc_now(), life_length, :second) |> DateTime.truncate(:second),
+          updated_by_id: character_id
+        }
 
-      existing = Repo.get_by(Signature, map_system_id: system.id, sig_id: entry.sig_id)
+        existing = Repo.get_by(Signature, map_system_id: system.id, sig_id: entry.sig_id)
 
-      result =
-        case existing do
-          %Signature{} = signature ->
-            signature
-            |> Signature.changeset(merge_attrs(attrs, %{created_by_id: signature.created_by_id}))
-            |> Repo.update()
+        result =
+          case existing do
+            %Signature{} = signature ->
+              signature
+              |> Signature.changeset(merge_attrs(attrs, %{created_by_id: signature.created_by_id}))
+              |> Repo.update()
 
-          nil ->
-            %Signature{}
-            |> Signature.changeset(merge_attrs(attrs, %{created_by_id: character_id}))
-            |> Repo.insert()
+            nil ->
+              %Signature{}
+              |> Signature.changeset(merge_attrs(attrs, %{created_by_id: character_id}))
+              |> Repo.insert()
+          end
+
+        wormhole? = to_string(entry.category || :unknown) == "wormhole"
+
+        case {result, existing} do
+          {{:ok, _}, nil} ->
+            {added + 1, updated, bump_counts(counts, :signatures_added, :wormholes_added, wormhole?)}
+
+          {{:ok, _}, _signature} ->
+            {added, updated + 1, bump_counts(counts, :signatures_updated, :wormholes_updated, wormhole?)}
+
+          {{:error, _}, _} ->
+            {added, updated, counts}
         end
+      end)
 
-      case {result, existing} do
-        {{:ok, _}, nil} -> {added + 1, updated}
-        {{:ok, _}, _signature} -> {added, updated + 1}
-        {{:error, _}, _} -> {added, updated}
-      end
-    end)
+    Accounts.bump_stats(character_id, Elixir.Map.to_list(counts))
+    {added, updated}
   end
 
   def create_signature(%MapSystem{} = system, attrs, %Character{id: character_id}) do
     attrs = with_expires_at(attrs)
 
-    %Signature{}
-    |> Signature.changeset(
-      merge_attrs(attrs, %{
-        map_system_id: system.id,
-        created_by_id: character_id,
-        updated_by_id: character_id
-      })
-    )
-    |> Repo.insert()
+    case %Signature{}
+         |> Signature.changeset(
+           merge_attrs(attrs, %{
+             map_system_id: system.id,
+             created_by_id: character_id,
+             updated_by_id: character_id
+           })
+         )
+         |> Repo.insert() do
+      {:ok, signature} = ok ->
+        Accounts.bump_stats(character_id, signature_added_stats(signature.site_type))
+        ok
+
+      error ->
+        error
+    end
   end
 
   def update_signature(%Signature{} = signature, attrs, %Character{id: character_id}) do
     attrs = with_expires_at(attrs, signature)
 
-    signature
-    |> Signature.changeset(merge_attrs(attrs, %{updated_by_id: character_id}))
-    |> Repo.update()
+    case signature
+         |> Signature.changeset(merge_attrs(attrs, %{updated_by_id: character_id}))
+         |> Repo.update() do
+      {:ok, updated} = ok ->
+        Accounts.bump_stats(character_id, signature_updated_stats(updated.site_type))
+        ok
+
+      error ->
+        error
+    end
   end
 
   defp with_expires_at(attrs, existing \\ nil) do
@@ -626,7 +652,38 @@ defmodule Tripwire.Mapping do
     attrs |> Elixir.Map.put(:life_length, life_length) |> Elixir.Map.put(:expires_at, expires_at)
   end
 
-  def delete_signature(%Signature{} = signature), do: Repo.delete(signature)
+  def delete_signature(%Signature{} = signature, character \\ nil) do
+    case Repo.delete(signature) do
+      {:ok, _} = ok ->
+        if is_struct(character, Character) do
+          Accounts.bump_stats(character.id, signature_deleted_stats(signature.site_type))
+        end
+
+        ok
+
+      error ->
+        error
+    end
+  end
+
+  defp signature_added_stats("wormhole"), do: [signatures_added: 1, wormholes_added: 1]
+  defp signature_added_stats(_), do: [signatures_added: 1]
+
+  defp signature_updated_stats("wormhole"), do: [signatures_updated: 1, wormholes_updated: 1]
+  defp signature_updated_stats(_), do: [signatures_updated: 1]
+
+  defp signature_deleted_stats("wormhole"), do: [signatures_deleted: 1, wormholes_deleted: 1]
+  defp signature_deleted_stats(_), do: [signatures_deleted: 1]
+
+  defp bump_counts(counts, key, _wormhole_key, false) do
+    Elixir.Map.update(counts, key, 1, &(&1 + 1))
+  end
+
+  defp bump_counts(counts, key, wormhole_key, true) do
+    counts
+    |> Elixir.Map.update(key, 1, &(&1 + 1))
+    |> Elixir.Map.update(wormhole_key, 1, &(&1 + 1))
+  end
 
   def get_signature!(id), do: Repo.get!(Signature, id)
 
@@ -645,21 +702,53 @@ defmodule Tripwire.Mapping do
   def create_comment(%MapSystem{} = system, attrs, character \\ nil) do
     character_id = if is_struct(character, Character), do: character.id, else: nil
 
-    %Tripwire.Mapping.Comment{}
-    |> Tripwire.Mapping.Comment.changeset(
-      merge_attrs(attrs, %{map_system_id: system.id, character_id: character_id})
-    )
-    |> Repo.insert()
+    case %Tripwire.Mapping.Comment{}
+         |> Tripwire.Mapping.Comment.changeset(
+           merge_attrs(attrs, %{map_system_id: system.id, character_id: character_id})
+         )
+         |> Repo.insert() do
+      {:ok, _} = ok ->
+        if is_struct(character, Character) do
+          Accounts.bump_stats(character.id, comments_added: 1)
+        end
+
+        ok
+
+      error ->
+        error
+    end
   end
 
-  def delete_comment(%Tripwire.Mapping.Comment{} = comment), do: Repo.delete(comment)
+  def delete_comment(%Tripwire.Mapping.Comment{} = comment, character \\ nil) do
+    case Repo.delete(comment) do
+      {:ok, _} = ok ->
+        if is_struct(character, Character) do
+          Accounts.bump_stats(character.id, comments_deleted: 1)
+        end
+
+        ok
+
+      error ->
+        error
+    end
+  end
 
   def get_comment!(id), do: Repo.get!(Tripwire.Mapping.Comment, id)
 
-  def move_comment(%Tripwire.Mapping.Comment{} = comment, to_system_id) do
-    comment
-    |> Tripwire.Mapping.Comment.changeset(%{map_system_id: to_system_id})
-    |> Repo.update()
+  def move_comment(%Tripwire.Mapping.Comment{} = comment, to_system_id, character \\ nil) do
+    case comment
+         |> Tripwire.Mapping.Comment.changeset(%{map_system_id: to_system_id})
+         |> Repo.update() do
+      {:ok, _} = ok ->
+        if is_struct(character, Character) do
+          Accounts.bump_stats(character.id, comments_updated: 1)
+        end
+
+        ok
+
+      error ->
+        error
+    end
   end
 
   def list_flares(system_id) do
@@ -794,45 +883,43 @@ defmodule Tripwire.Mapping do
   end
 
   def character_statistics(nil) do
-    %{signatures_created: 0, signatures_updated: 0, notes: 0, flares: 0, jumps: 0}
+    %{
+      signatures_added: 0,
+      signatures_updated: 0,
+      signatures_deleted: 0,
+      wormholes_added: 0,
+      wormholes_updated: 0,
+      wormholes_deleted: 0,
+      comments_added: 0,
+      comments_updated: 0,
+      comments_deleted: 0,
+      systems_visited: 0,
+      logins: 0,
+      last_login: nil
+    }
   end
 
-  def character_statistics(%{id: id, name: name}) do
-    signatures_created =
-      Repo.aggregate(from(s in Signature, where: s.created_by_id == ^id), :count)
+  def character_statistics(%{id: id}) do
+    case Repo.get(Character, id) do
+      nil ->
+        character_statistics(nil)
 
-    signatures_updated =
-      Repo.aggregate(from(s in Signature, where: s.updated_by_id == ^id), :count)
-
-    notes =
-      Repo.aggregate(
-        from(c in Tripwire.Mapping.Comment, where: c.character_id == ^id),
-        :count
-      )
-
-    flares =
-      Repo.aggregate(
-        from(f in Tripwire.Mapping.Flare, where: f.created_by_id == ^id),
-        :count
-      )
-
-    jumps =
-      if is_binary(name) and name != "" do
-        Repo.aggregate(
-          from(j in Tripwire.Mapping.ConnectionJump, where: j.character_name == ^name),
-          :count
-        )
-      else
-        0
-      end
-
-    %{
-      signatures_created: signatures_created,
-      signatures_updated: signatures_updated,
-      notes: notes,
-      flares: flares,
-      jumps: jumps
-    }
+      character ->
+        %{
+          signatures_added: character.signatures_added || 0,
+          signatures_updated: character.signatures_updated || 0,
+          signatures_deleted: character.signatures_deleted || 0,
+          wormholes_added: character.wormholes_added || 0,
+          wormholes_updated: character.wormholes_updated || 0,
+          wormholes_deleted: character.wormholes_deleted || 0,
+          comments_added: character.comments_added || 0,
+          comments_updated: character.comments_updated || 0,
+          comments_deleted: character.comments_deleted || 0,
+          systems_visited: character.systems_visited || 0,
+          logins: character.login_count || 0,
+          last_login: character.last_login_at
+        }
+    end
   end
 
   @demo_systems [

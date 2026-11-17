@@ -40,7 +40,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
 
   def handle_event("comment-delete", %{"id" => id}, socket) do
     comment = Mapping.get_comment!(id)
-    {:ok, _} = Mapping.delete_comment(comment)
+    {:ok, _} = Mapping.delete_comment(comment, socket.assigns.character)
     send(self(), {:comments_updated, comment.map_system_id})
     {:noreply, assign(socket, :comments, Mapping.list_comments(comment.map_system_id))}
   end

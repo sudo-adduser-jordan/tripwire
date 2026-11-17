@@ -837,6 +837,21 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "Masks"
   end
 
+  test "statistics tab shows personal stat sections", %{conn: conn, character: character} do
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    html = render_click(view, "settings-tab", %{"tab" => "statistics"})
+
+    assert html =~ "Personal Statistics"
+    assert html =~ "Signatures"
+    assert html =~ "Wormholes"
+    assert html =~ "Comments"
+    assert html =~ "Systems visited"
+    assert html =~ "Logins"
+    assert html =~ "Last login"
+  end
+
   test "removing the current character navigates away", %{conn: conn, character: character} do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 

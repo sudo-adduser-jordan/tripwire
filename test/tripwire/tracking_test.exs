@@ -80,4 +80,19 @@ defmodule Tripwire.TrackingTest do
     map_id = map.id
     assert_receive {:map_updated, ^map_id}, 500
   end
+
+  test "apply_location_change/4 counts a system visit for the character", %{
+    map: map,
+    character: character
+  } do
+    assert Mapping.character_statistics(character).systems_visited == 0
+
+    {:ok, %{system: first}} =
+      Tracking.apply_location_change(map, character.name, nil, 34_000_001, name_fetcher: nf())
+
+    {:ok, _} =
+      Tracking.apply_location_change(map, character.name, first, 34_000_002, name_fetcher: nf())
+
+    assert Mapping.character_statistics(character).systems_visited == 2
+  end
 end
