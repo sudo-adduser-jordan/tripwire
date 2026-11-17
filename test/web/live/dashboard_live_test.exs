@@ -929,6 +929,31 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute render(view) =~ "stale-toast"
   end
 
+  test "demo dropdowns dot the current user and mask green", %{conn: conn} do
+    {:ok, _view, html} = live(conn, ~p"/dashboard")
+
+    assert html =~ "avatar avatar-online"
+    refute html =~ "avatar avatar-offline"
+  end
+
+  test "dropdowns dot only the current character and mask green", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, _other} = Accounts.upsert_character(%{eve_id: 43_001, name: "Other Char"})
+
+    session =
+      Plug.Test.init_test_session(conn, %{
+        "current_user" => %{"id" => character.eve_id, "name" => character.name},
+        "character_ids" => [character.eve_id, 43_001]
+      })
+
+    {:ok, _view, html} = live(session, ~p"/dashboard")
+
+    assert html =~ "avatar avatar-online"
+    assert html =~ "avatar avatar-offline"
+  end
+
   test "demo add character buttons explain SSO is unavailable", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/dashboard")
 

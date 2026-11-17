@@ -21,6 +21,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
   attr :current_user, :map, default: nil
   attr :settings_open, :boolean, default: false
   attr :sso_configured?, :boolean, default: false
+  attr :mask, :any, default: nil
 
   def navigation_live(assigns) do
     ~H"""
@@ -77,7 +78,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
                   title={"Switch to #{character_name(character)}"}
                   class="flex min-w-0 flex-1 items-center gap-2"
                 >
-                  <div class={["avatar", online_class(@character_online)]}>
+                  <div class={["avatar", current_dot(character, @character)]}>
                     <div class="w-12 rounded-xl">
                       <img
                         src={character_avatar(character)}
@@ -136,7 +137,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
           >
             <li :for={mask <- @masks}>
               <button phx-click="switch-mask" phx-value-id={mask.id}>
-                <div class="avatar avatar-offline">
+                <div class={["avatar", current_dot(mask, @mask)]}>
                   <div class="w-24 rounded-xl">
                     <img
                       src={mask_avatar(mask)}
@@ -275,7 +276,15 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
 
   defp format_time(_), do: "00:00"
 
-  defp online_class(true), do: "avatar-online"
-  defp online_class(false), do: "avatar-offline"
-  defp online_class(_), do: "avatar-offline"
+  defp current_dot(%{id: id}, %{id: other_id}) when id == other_id, do: "avatar-online"
+
+  defp current_dot(%{name: name}, current) when is_binary(name) and is_binary(current) do
+    if name == current, do: "avatar-online", else: "avatar-offline"
+  end
+
+  defp current_dot(name, current) when is_binary(name) and is_binary(current) do
+    if name == current, do: "avatar-online", else: "avatar-offline"
+  end
+
+  defp current_dot(_, _), do: "avatar-offline"
 end
