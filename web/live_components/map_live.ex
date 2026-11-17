@@ -144,6 +144,11 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 <p><span class="badge badge-outline badge-xs">—</span> Stable</p>
                 <p><span class="badge badge-error badge-xs">- -</span> End of Life</p>
                 <p><span class="badge badge-warning badge-xs">—</span> Mass Critical</p>
+                <p class="mt-1 font-semibold">Statics (K = known-space, W = wormhole)</p>
+                <p :for={cls <- ~w(C1 C2 C3 C4 C5 C6)} class="flex items-center gap-1">
+                  <span class="badge badge-outline badge-xs">{cls}</span>
+                  {Enum.join(Tripwire.Systems.statics(cls), " + ")}
+                </p>
                 <p class="mt-1 font-semibold">System class</p>
                 <p :for={cls <- Tripwire.Systems.classes()} class="flex items-center gap-1">
                   <span
@@ -292,6 +297,26 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 >
                   {incoming_type(@connections, system.id)}
                 </text>
+                <g
+                  :for={{label, tip, index} <- node_badges(system)}
+                  transform={"translate(4, #{80 + index * 18})"}
+                >
+                  <rect
+                    width={badge_width(label)}
+                    height="16"
+                    rx="4"
+                    class="fill-base-300/90 stroke-base-content/30"
+                    stroke-width="0.5"
+                  />
+                  <text
+                    x={badge_width(label) / 2}
+                    y="12"
+                    text-anchor="middle"
+                    class="fill-base-content text-[10px]"
+                  >
+                    {label}<title>{tip}</title>
+                  </text>
+                </g>
               </g>
             </g>
           </svg>
@@ -363,6 +388,29 @@ defmodule TripwireWeb.LiveComponents.MapLive do
       _ -> false
     end
   end
+
+  defp node_badges(system) do
+    static =
+      case Tripwire.Systems.statics(Tripwire.Systems.display_class(system)) do
+        [] -> []
+        parts -> [{Enum.join(parts, "+"), "Static wormhole(s): " <> Enum.join(parts, " + ")}]
+      end
+
+    effect =
+      case system do
+        %{effect: effect} when is_binary(effect) and effect != "" ->
+          [{effect, "System effect: " <> effect}]
+
+        _ ->
+          []
+      end
+
+    (static ++ effect)
+    |> Enum.with_index()
+    |> Enum.map(fn {{label, tip}, index} -> {label, tip, index} end)
+  end
+
+  defp badge_width(label), do: String.length(label) * 6 + 14
 
   defp incoming_type(connections, system_id) do
     case Enum.find(connections, fn {_conn, from, to} ->

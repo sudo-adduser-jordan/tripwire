@@ -19,6 +19,24 @@ defmodule Tripwire.Systems do
 
   @classes ~w(C1 C2 C3 C4 C5 C6 HS LS NS Trig)
 
+  @effects [
+    "Black Hole",
+    "Cataclysmic Variable",
+    "Magnetar",
+    "Pulsar",
+    "Red Giant",
+    "Wolf Rayet"
+  ]
+
+  @statics %{
+    "C1" => ["HS"],
+    "C2" => ["K", "W"],
+    "C3" => ["K"],
+    "C4" => ["W", "W"],
+    "C5" => ["W", "W"],
+    "C6" => ["C6"]
+  }
+
   @colors %{
     "C1" => "#4399F0",
     "C2" => "#4399F0",
@@ -38,6 +56,19 @@ defmodule Tripwire.Systems do
   Returns the class labels a system can be assigned by hand.
   """
   def classes, do: @classes
+
+  @doc """
+  Returns the wormhole system effects a system can be assigned by hand.
+  """
+  def effects, do: @effects
+
+  @doc """
+  Returns the static wormhole destination labels for a wormhole class
+  (`"K"` is known-space, `"W"` is wormhole space). Returns `[]` for
+  known-space or unknown classes.
+  """
+  def statics(class) when is_binary(class), do: Map.get(@statics, class, [])
+  def statics(_), do: []
 
   @doc """
   Returns the class label for a map system (`"C3"`, `"HS"`, `"LS"`,

@@ -401,6 +401,75 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert reloaded.sys_class == "C3"
   end
 
+  test "j-space nodes show static badges on the bottom edge", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, _} = Mapping.update_system(system, %{sys_class: "C2"})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title=\"Select system J150321\"]")
+    |> render_click()
+
+    html = render(view)
+    assert html =~ "K+W"
+    assert html =~ "Static wormhole(s)"
+    assert html =~ "Statics"
+  end
+
+  test "system editor saves the wormhole effect and badges it", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#chain-map text[phx-click='open-system']", "J150321")
+    |> render_click()
+
+    assert render(view) =~ "sys-modal"
+
+    view
+    |> element("#sys-modal form[phx-submit='update-system']")
+    |> render_submit(%{
+      "system" => %{"alias" => "", "sys_class" => "C2", "effect" => "Pulsar"}
+    })
+
+    refute render(view) =~ "sys-modal"
+
+    reloaded = Mapping.get_system!(system.id)
+    assert reloaded.effect == "Pulsar"
+    assert render(view) =~ "Pulsar"
+    assert render(view) =~ "System effect"
+  end
+
+  test "system editor rejects an unknown effect and keeps the modal open", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#chain-map text[phx-click='open-system']", "J150321")
+    |> render_click()
+
+    html =
+      view
+      |> element("#sys-modal form[phx-submit='update-system']")
+      |> render_submit(%{"system" => %{"alias" => "", "sys_class" => "C2", "effect" => "Bogus"}})
+
+    assert html =~ "sys-modal"
+    assert html =~ "effect"
+    assert Mapping.get_system!(system.id).effect == nil
+  end
+
   test "system editor rejects an unknown class and keeps the modal open", %{
     conn: conn,
     character: character

@@ -165,6 +165,21 @@
             </option>
           </select>
         </label>
+        <label class="form-control">
+          <span class="label label-text">Effect</span>
+          <select name="system[effect]" class="select select-bordered select-sm w-full">
+            <option value="" selected={@sys_form["effect"] in [nil, ""]}>
+              None
+            </option>
+            <option
+              :for={opt <- Tripwire.Systems.effects()}
+              value={opt}
+              selected={@sys_form["effect"] == opt}
+            >
+              {opt}
+            </option>
+          </select>
+        </label>
         <div class="modal-action justify-between">
           <button
             type="button"

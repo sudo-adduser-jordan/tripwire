@@ -770,7 +770,8 @@ defmodule TripwireWeb.DashboardLive do
       system ->
         attrs = %{
           alias: present(params["alias"]),
-          sys_class: present(params["sys_class"])
+          sys_class: present(params["sys_class"]),
+          effect: present(params["effect"])
         }
 
         case Mapping.update_system(system, attrs) do
@@ -1386,11 +1387,11 @@ defmodule TripwireWeb.DashboardLive do
 
   defp sys_form_for(systems, id) do
     case Enum.find(systems, &(&1.id == id)) do
-      %{alias: alias_, sys_class: sys_class} ->
-        %{"alias" => alias_ || "", "sys_class" => sys_class || ""}
+      %{alias: alias_, sys_class: sys_class, effect: effect} ->
+        %{"alias" => alias_ || "", "sys_class" => sys_class || "", "effect" => effect || ""}
 
       _ ->
-        %{"alias" => "", "sys_class" => ""}
+        %{"alias" => "", "sys_class" => "", "effect" => ""}
     end
   end
 
@@ -1491,7 +1492,7 @@ defmodule TripwireWeb.DashboardLive do
       "ship_size" => ""
     })
     |> assign(:conn_errors, [])
-    |> assign(:sys_form, %{"alias" => "", "sys_class" => ""})
+    |> assign(:sys_form, %{"alias" => "", "sys_class" => "", "effect" => ""})
     |> assign(:sys_modal_open, false)
     |> assign(:sys_edit_id, nil)
     |> assign(:sys_errors, [])

@@ -10,6 +10,7 @@ defmodule Tripwire.Mapping.MapSystem do
     field :alias, :string
     field :security, :float
     field :sys_class, :string
+    field :effect, :string
     field :favorite, :boolean, default: false
     field :x, :float, default: 0.0
     field :y, :float, default: 0.0
@@ -31,11 +32,13 @@ defmodule Tripwire.Mapping.MapSystem do
       :alias,
       :security,
       :sys_class,
+      :effect,
       :favorite,
       :x,
       :y
     ])
     |> validate_required([:map_id, :solar_system_id, :name])
     |> validate_inclusion(:sys_class, Tripwire.Systems.classes() ++ [nil])
+    |> validate_inclusion(:effect, Tripwire.Systems.effects() ++ [nil])
   end
 end

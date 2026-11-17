@@ -41,6 +41,28 @@ defmodule Tripwire.SystemsTest do
     assert Systems.classes() == ~w(C1 C2 C3 C4 C5 C6 HS LS NS Trig)
   end
 
+  test "effects/0 lists the wormhole system effects" do
+    assert Systems.effects() == [
+             "Black Hole",
+             "Cataclysmic Variable",
+             "Magnetar",
+             "Pulsar",
+             "Red Giant",
+             "Wolf Rayet"
+           ]
+  end
+
+  test "statics/1 maps wormhole classes to static destinations" do
+    assert Systems.statics("C1") == ["HS"]
+    assert Systems.statics("C2") == ["K", "W"]
+    assert Systems.statics("C3") == ["K"]
+    assert Systems.statics("C4") == ["W", "W"]
+    assert Systems.statics("C5") == ["W", "W"]
+    assert Systems.statics("C6") == ["C6"]
+    assert Systems.statics("HS") == []
+    assert Systems.statics(nil) == []
+  end
+
   test "attrs_from_esi/1 keeps name and security" do
     assert Systems.attrs_from_esi(%{"name" => "Jita", "security_status" => 0.9}) == %{
              name: "Jita",
