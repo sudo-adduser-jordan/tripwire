@@ -255,6 +255,23 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 phx-value-id={system.id}
                 phx-target={@myself}
               >
+                <svg
+                  :if={effect = node_effect(system)}
+                  x="4"
+                  y="4"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={node_color(system)}
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  data-effect={effect}
+                >
+                  <title>{"System effect: " <> effect}</title>
+                  {Phoenix.HTML.raw(effect_icon(effect))}
+                </svg>
                 <rect
                   width="120"
                   height="88"
@@ -390,27 +407,41 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   end
 
   defp node_badges(system) do
-    static =
-      case Tripwire.Systems.statics(Tripwire.Systems.display_class(system)) do
-        [] -> []
-        parts -> [{Enum.join(parts, "+"), "Static wormhole(s): " <> Enum.join(parts, " + ")}]
-      end
-
-    effect =
-      case system do
-        %{effect: effect} when is_binary(effect) and effect != "" ->
-          [{effect, "System effect: " <> effect}]
-
-        _ ->
-          []
-      end
-
-    (static ++ effect)
+    Tripwire.Systems.statics(Tripwire.Systems.display_class(system))
     |> Enum.with_index()
-    |> Enum.map(fn {{label, tip}, index} -> {label, tip, index} end)
+    |> Enum.map(fn {label, index} -> {label, "Static wormhole: " <> label, index} end)
   end
 
   defp badge_width(label), do: String.length(label) * 6 + 14
+
+  defp node_effect(%{effect: effect}) when is_binary(effect) and effect != "", do: effect
+  defp node_effect(_), do: nil
+
+  defp effect_icon("Black Hole"),
+    do:
+      ~s|<path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/>|
+
+  defp effect_icon("Cataclysmic Variable"),
+    do:
+      ~s|<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"/>|
+
+  defp effect_icon("Magnetar"),
+    do:
+      ~s|<path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/>|
+
+  defp effect_icon("Pulsar"),
+    do:
+      ~s|<path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"/>|
+
+  defp effect_icon("Red Giant"),
+    do:
+      ~s|<path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>|
+
+  defp effect_icon("Wolf Rayet"),
+    do:
+      ~s|<path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z"/>|
+
+  defp effect_icon(_), do: ""
 
   defp incoming_type(connections, system_id) do
     case Enum.find(connections, fn {_conn, from, to} ->

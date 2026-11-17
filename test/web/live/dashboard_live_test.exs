@@ -415,8 +415,8 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> render_click()
 
     html = render(view)
-    assert html =~ "K+W"
-    assert html =~ "Static wormhole(s)"
+    assert html =~ "Static wormhole: K"
+    assert html =~ "Static wormhole: W"
     assert html =~ "Statics"
   end
 
@@ -444,8 +444,8 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     reloaded = Mapping.get_system!(system.id)
     assert reloaded.effect == "Pulsar"
-    assert render(view) =~ "Pulsar"
-    assert render(view) =~ "System effect"
+    assert render(view) =~ "data-effect=\"Pulsar\""
+    assert render(view) =~ "System effect: Pulsar"
   end
 
   test "system editor rejects an unknown effect and keeps the modal open", %{
