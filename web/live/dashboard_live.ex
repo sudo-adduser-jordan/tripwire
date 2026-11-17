@@ -924,7 +924,6 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:comments, [])
          |> assign(:flares, [])
          |> assign(:system_stat, nil)
-         |> put_flash(:info, "Switched to #{mask.name}")
          |> patch_to_preferred(Mapping.list_systems(map.id))}
     end
   end
@@ -985,7 +984,6 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:comments, [])
          |> assign(:flares, [])
          |> assign(:system_stat, nil)
-         |> put_flash(:info, "Switched to #{map.name}")
          |> patch_to_preferred(Mapping.list_systems(map.id))}
 
       _ ->
