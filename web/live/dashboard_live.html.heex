@@ -52,7 +52,7 @@
     <div
       :if={@stale_ids != []}
       id="stale-toast"
-      class="toast toast-top toast-end z-50"
+      class="toast toast-top toast-end z-50 mt-16"
       aria-live="polite"
     >
       <div class="alert alert-warning w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap">
@@ -84,6 +84,7 @@
         masks={@masks}
         character={@character}
         mask={@mask}
+        sso_configured?={@sso_configured?}
       />
       <.live_component
         module={TripwireWeb.LiveComponents.SystemLive}

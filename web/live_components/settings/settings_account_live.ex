@@ -6,6 +6,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
   attr :masks, :list, default: []
   attr :character, :any, default: nil
   attr :mask, :any, default: nil
+  attr :sso_configured?, :boolean, default: false
 
   def settings_account_live(assigns) do
     ~H"""
@@ -29,7 +30,17 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
 
         <div class="flex items-center justify-between gap-2">
           <p class="text-xs font-medium opacity-70">Characters</p>
-          <span class="badge badge-ghost badge-xs tabular-nums">{length(@characters)}</span>
+          <div class="flex items-center gap-2">
+            <span class="badge badge-ghost badge-xs tabular-nums">{length(@characters)}</span>
+            <a
+              :if={@sso_configured?}
+              href="/auth/evesso"
+              title="Add character via EVE SSO"
+              class="btn btn-ghost btn-xs"
+            >
+              Add
+            </a>
+          </div>
         </div>
         <div class="grid w-full max-w-full grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4">
           <div
@@ -70,6 +81,16 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
                 </div>
               </div>
             </div>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs shrink-0 p-1"
+              title={"Remove #{entry.name}"}
+              data-confirm={"Remove #{entry.name}?"}
+              phx-click="remove-character"
+              phx-value-id={entry.id}
+            >
+              Remove
+            </button>
           </div>
           <div :if={@characters == []} class="col-span-full rounded-box bg-base-200/50 p-3 text-xs opacity-60">
             No characters yet. Log in with EVE SSO to add one.
@@ -78,7 +99,18 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
 
         <div class="flex items-center justify-between gap-2">
           <p class="text-xs font-medium opacity-70">Masks</p>
-          <span class="badge badge-ghost badge-xs tabular-nums">{length(@masks)}</span>
+          <div class="flex items-center gap-2">
+            <span class="badge badge-ghost badge-xs tabular-nums">{length(@masks)}</span>
+            <button
+              :if={admin?(@character)}
+              type="button"
+              class="btn btn-ghost btn-xs"
+              title="Create corporate mask"
+              phx-click="create-corp-mask"
+            >
+              Add
+            </button>
+          </div>
         </div>
         <div class="grid w-full max-w-full grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4">
           <div
@@ -108,6 +140,17 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
                 </div>
               </div>
             </div>
+            <button
+              :if={admin?(@character)}
+              type="button"
+              class="btn btn-ghost btn-xs shrink-0 p-1"
+              title={"Remove #{entry.name}"}
+              data-confirm={"Delete #{entry.name} and all of its maps?"}
+              phx-click="delete-mask"
+              phx-value-id={entry.id}
+            >
+              Remove
+            </button>
           </div>
           <div :if={@masks == []} class="col-span-full rounded-box bg-base-200/50 p-3 text-xs opacity-60">
             No masks yet. Masks are created automatically for each character.
@@ -120,6 +163,9 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
 
   defp current_character?(%{id: id}, %{id: other_id}), do: id == other_id
   defp current_character?(_, _), do: false
+
+  defp admin?(%{is_admin: true}), do: true
+  defp admin?(_), do: false
 
   defp current_mask?(%{id: id}, %{id: other_id}), do: id == other_id
   defp current_mask?(_, _), do: false

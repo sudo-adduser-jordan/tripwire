@@ -560,18 +560,30 @@ defmodule TripwireWeb.DashboardLive do
 
       missing = before_ids |> MapSet.difference(pasted_ids) |> Enum.sort()
 
+      socket =
+        if missing == [] do
+          socket |> assign(:stale_ids, []) |> assign(:stale_system_id, nil)
+        else
+          socket |> assign(:stale_ids, missing) |> assign(:stale_system_id, system.id)
+        end
+
       {:noreply,
        socket
-       |> assign(:stale_ids, missing)
-       |> assign(:stale_system_id, if(missing == [], do: nil, else: system.id))
        |> reload_signatures()
        |> put_flash(
          :info,
          "Parsed #{added + updated} signatures (#{added} new, #{updated} known)"
        )}
     else
-      nil -> {:noreply, put_flash(socket, :error, "Select a system first")}
-      [] -> {:noreply, socket}
+      nil ->
+        {:noreply,
+         socket
+         |> assign(:stale_ids, [])
+         |> assign(:stale_system_id, nil)
+         |> put_flash(:error, "Select a system first")}
+
+      [] ->
+        {:noreply, socket |> assign(:stale_ids, []) |> assign(:stale_system_id, nil)}
     end
   end
 

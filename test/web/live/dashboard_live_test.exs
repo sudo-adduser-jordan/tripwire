@@ -852,6 +852,114 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert html =~ "Last login"
   end
 
+  test "flash toasts render below the topbar and auto-dismiss", %{conn: conn, character: character} do
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    html =
+      view
+      |> element(~s|nav form[phx-submit="system-search-submit"]|)
+      |> render_submit(%{search: "nope"})
+
+    assert html =~ "mt-16"
+    assert html =~ "AutoDismiss"
+    assert html =~ "data-timeout=\"4000\""
+    refute html =~ "stale-toast"
+  end
+
+  test "stale toast has no auto-dismiss hook", %{conn: conn, character: character} do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, _} = Mapping.create_signature(system, %{sig_id: "OLD-001"}, character)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title=\"Select system J150321\"]")
+    |> render_click()
+
+    view
+    |> render_click("global-paste", %{
+      "text" => "NEW-002\tCosmic Signature\tSerpentis Frigate Den"
+    })
+
+    assert render(view) =~ "stale-toast"
+
+    stale_html = view |> element("#stale-toast") |> render()
+    assert stale_html =~ "mt-16"
+    refute stale_html =~ "AutoDismiss"
+  end
+
+  test "stale toast only appears for valid pastes with missing signatures", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, _} = Mapping.create_signature(system, %{sig_id: "OLD-001"}, character)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title=\"Select system J150321\"]")
+    |> render_click()
+
+    view
+    |> render_click("global-paste", %{
+      "text" => "NEW-002\tCosmic Signature\tSerpentis Frigate Den"
+    })
+
+    assert render(view) =~ "stale-toast"
+
+    view
+    |> render_click("global-paste", %{
+      "text" =>
+        "OLD-001\tCosmic Signature\tSerpentis Frigate Den\nNEW-002\tCosmic Signature\tSerpentis Frigate Den"
+    })
+
+    refute render(view) =~ "stale-toast"
+
+    view
+    |> render_click("global-paste", %{
+      "text" => "NEW-002\tCosmic Signature\tSerpentis Frigate Den"
+    })
+
+    assert render(view) =~ "stale-toast"
+
+    view
+    |> render_click("global-paste", %{"text" => "nothing to see here"})
+
+    refute render(view) =~ "stale-toast"
+  end
+
+  test "account tab manages characters and masks", %{conn: conn} do
+    System.put_env("EVESSO_CLIENT_ID", "test-id")
+    System.put_env("EVESSO_SECRET_KEY", "test-secret")
+
+    try do
+      {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+      view |> element("#settings-button") |> render_click()
+      html = render_click(view, "settings-tab", %{"tab" => "account"})
+
+      assert html =~ "Add character"
+      assert html =~ "remove-character"
+      assert html =~ "create-corp-mask"
+      assert html =~ "delete-mask"
+    after
+      System.delete_env("EVESSO_CLIENT_ID")
+      System.delete_env("EVESSO_SECRET_KEY")
+    end
+  end
+
+  test "account tab hides mask management from non-admins", %{conn: conn, character: character} do
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    html = render_click(view, "settings-tab", %{"tab" => "account"})
+
+    assert html =~ "remove-character"
+    refute html =~ "create-corp-mask"
+    refute html =~ "delete-mask"
+  end
+
   test "removing the current character navigates away", %{conn: conn, character: character} do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
