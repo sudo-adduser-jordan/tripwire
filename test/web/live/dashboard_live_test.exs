@@ -852,8 +852,8 @@ defmodule TripwireWeb.DashboardLiveTest do
       |> element(~s|#settings-widget form[phx-change="map-layout"]|)
       |> render_change(%{layout: "bottom"})
 
-    assert html =~ "translate(610.0, 590.0)"
-    refute html =~ "translate(610.0, 60.0)"
+    assert html =~ "translate(693.3333333333331, 590.0)"
+    refute html =~ "translate(693.3333333333331, 60.0)"
   end
 
   test "demo user is admin and sees the Admin settings tab", %{conn: conn} do

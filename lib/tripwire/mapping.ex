@@ -973,7 +973,11 @@ defmodule Tripwire.Mapping do
       x: 620.0,
       y: 660.0
     },
-    %{solar_system_id: 31_000_017, name: "J150333", sys_class: "C2", x: 60.0, y: 620.0}
+    %{solar_system_id: 31_000_017, name: "J150333", sys_class: "C2", x: 60.0, y: 620.0},
+    %{solar_system_id: 31_000_018, name: "J150334", sys_class: "C1", x: 620.0, y: 300.0},
+    %{solar_system_id: 30_002_537, name: "Rens", security: 0.9, x: 460.0, y: 120.0},
+    %{solar_system_id: 31_000_019, name: "J150335", sys_class: "C6", x: 830.0, y: 90.0},
+    %{solar_system_id: 31_000_020, name: "J150336", sys_class: "C5", x: 950.0, y: 280.0}
   ]
 
   @demo_shortcuts """
@@ -1013,7 +1017,11 @@ defmodule Tripwire.Mapping do
     {14, 15, "C140", "stable", "stable"},
     {6, 16, "N968", "stable", "stable"},
     {8, 17, "K162", "destab", "stable"},
-    {9, 18, "K162", "stable", "stable"}
+    {9, 18, "K162", "stable", "stable"},
+    {2, 19, "C247", "stable", "stable"},
+    {14, 20, "C140", "stable", "stable"},
+    {15, 21, "K162", "stable", "stable"},
+    {3, 22, "N968", "stable", "stable"}
   ]
 
   @demo_signatures %{
