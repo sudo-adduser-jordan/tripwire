@@ -69,6 +69,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:undo, [])
     |> assign(:redo, [])
     |> assign(:demo?, true)
+    |> assign(:branding, nil)
     |> assign(:sig_modal_open, false)
     |> assign(:sig_edit_id, nil)
     |> assign(:sig_form, %{
@@ -1280,6 +1281,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:undo, [])
     |> assign(:redo, [])
     |> assign(:demo?, false)
+    |> assign(:branding, Accounts.branding())
     |> assign(:sig_modal_open, false)
     |> assign(:sig_edit_id, nil)
     |> assign(:sig_form, %{
@@ -1442,9 +1444,7 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
-  defp autoselect_first_system(
-         %{assigns: %{selected_system_id: nil, systems: systems}} = socket
-       )
+  defp autoselect_first_system(%{assigns: %{selected_system_id: nil, systems: systems}} = socket)
        when is_list(systems) and systems != [] do
     case preferred_system(systems) do
       %{id: id, name: name} ->

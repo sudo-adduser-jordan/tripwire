@@ -20,6 +20,8 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
   attr :system_search, :string, default: ""
   attr :current_user, :map, default: nil
   attr :settings_open, :boolean, default: false
+  attr :branding, :map, default: nil
+  attr :demo?, :boolean, default: false
   attr :sso_configured?, :boolean, default: false
   attr :mask, :any, default: nil
 
@@ -27,7 +29,18 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
     ~H"""
     <nav class="sticky top-0 z-30 flex w-full max-w-full flex-wrap items-center gap-x-2 gap-y-1 bg-base-200/75 p-2">
       <a href="/" class="flex w-fit items-center gap-2">
-        <img class="hidden min-[400px]:block size-7" src="/images/logo.svg" />
+        <img
+          :if={is_nil(@branding)}
+          class="hidden min-[400px]:block size-7"
+          src="/images/logo.svg"
+        />
+        <img
+          :if={@branding}
+          class="hidden min-[400px]:block size-7 rounded"
+          src={@branding.image_url}
+          alt={@branding.name}
+        />
+        <span :if={@demo?} class="hidden sm:block text-xs font-semibold">zTripwire</span>
         <span class="hidden sm:block text-xs font-semibold">
           v{Application.spec(:tripwire, :vsn)}
         </span>
@@ -64,7 +77,11 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
       </form>
       <div class="ml-auto flex flex-wrap items-center gap-2">
         <div class="dropdown dropdown-start">
-          <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline text-xs">
+          <div
+            tabindex="0"
+            role="button"
+            class="rounded-field hover:cursor-pointer hover:underline text-xs"
+          >
             {@character}
           </div>
           <ul
@@ -128,7 +145,11 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
         </div>
         <p class="text-xs">&gt;</p>
         <div class="dropdown dropdown-end">
-          <div tabindex="0" role="button" class="rounded-field hover:cursor-pointer hover:underline text-xs">
+          <div
+            tabindex="0"
+            role="button"
+            class="rounded-field hover:cursor-pointer hover:underline text-xs"
+          >
             Corporation
           </div>
           <ul

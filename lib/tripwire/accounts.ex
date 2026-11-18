@@ -92,6 +92,28 @@ defmodule Tripwire.Accounts do
     auth |> attrs_from_ueberauth() |> upsert_character()
   end
 
+  def branding do
+    query =
+      from(c in Character,
+        where: c.is_admin == true and not is_nil(c.corporation_id),
+        order_by: [asc: c.id],
+        limit: 1
+      )
+
+    case Repo.one(query) do
+      %Character{corporation_id: id, corporation_name: corp_name, name: char_name}
+      when is_integer(id) ->
+        %{
+          corporation_id: id,
+          name: corp_name || char_name,
+          image_url: Tripwire.EveImages.corporation_logo(id, 64)
+        }
+
+      _ ->
+        nil
+    end
+  end
+
   def list_characters_for_mask(mask_id) do
     Repo.all(
       from(c in Character,
