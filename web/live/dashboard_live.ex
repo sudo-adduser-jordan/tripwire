@@ -32,6 +32,32 @@ defmodule TripwireWeb.DashboardLive do
     {:ok, assign(socket, :characters, session_characters(session, socket.assigns.character))}
   end
 
+  defp ensure_demo_presence(character, map, systems) do
+    case Enum.find(systems, &(&1.alias == "Home")) do
+      %{id: _} = home -> Tracking.DemoPresence.ensure_started(character, map, home)
+      nil -> :ok
+    end
+  end
+
+  defp refresh_occupants(socket) do
+    occupants =
+      if socket.assigns.map, do: Tracking.list_occupants(socket.assigns.map.id), else: []
+
+    assign(socket, :occupants, occupants)
+  end
+
+  defp assign_demo_presence(socket) do
+    {system_name, online, ship_name, ship_type_id} =
+      fetch_character_presence(socket.assigns.character)
+
+    socket
+    |> assign(:current_system_name, system_name)
+    |> assign(:character_online, online)
+    |> assign(:ship_name, topbar_ship_name(socket.assigns.character, ship_name))
+    |> assign(:ship_type_id, ship_type_id)
+    |> assign(:tracked_characters, Tracking.list_tracked_characters())
+  end
+
   defp mount_demo(socket) do
     {:ok, character} =
       Accounts.upsert_character(%{
@@ -44,6 +70,7 @@ defmodule TripwireWeb.DashboardLive do
     {:ok, _} = Masks.add_membership(mask, character)
     {:ok, map} = Mapping.ensure_demo_map(mask.id)
     systems = ensure_jita_system(map, Mapping.list_systems(map.id))
+    ensure_demo_presence(character, map, systems)
 
     socket
     |> assign(:current_user, nil)
@@ -55,6 +82,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
     |> assign(:systems, visible_systems(systems))
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
+    |> refresh_occupants()
     |> apply_tree_layout("top")
     |> assign(:selected_system_id, nil)
     |> assign(:selected_system_name, nil)
@@ -83,6 +111,7 @@ defmodule TripwireWeb.DashboardLive do
     })
     |> assign(:sig_errors, [])
     |> assign_topbar_defaults()
+    |> assign_demo_presence()
     |> assign(:sso_configured?, Tripwire.SSO.configured?())
     |> subscribe_to_map(map.id)
     |> schedule_topbar_load()
@@ -222,7 +251,10 @@ defmodule TripwireWeb.DashboardLive do
         socket
       end
 
-    {:noreply, put_flash(socket, :info, "#{name} jumped into #{system.name}")}
+    {:noreply,
+     socket
+     |> refresh_occupants()
+     |> put_flash(:info, "#{name} jumped into #{system.name}")}
   end
 
   def handle_info(:load_topbar, socket) do
@@ -233,7 +265,7 @@ defmodule TripwireWeb.DashboardLive do
     end
 
     schedule_topbar_refresh()
-    {:noreply, socket}
+    {:noreply, refresh_occupants(socket)}
   end
 
   def handle_info(:refresh_topbar, socket) do
@@ -244,7 +276,7 @@ defmodule TripwireWeb.DashboardLive do
     end
 
     schedule_topbar_refresh()
-    {:noreply, socket}
+    {:noreply, refresh_occupants(socket)}
   end
 
   def handle_info({:topbar_loaded, data}, socket) do
@@ -1213,10 +1245,7 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("refresh-occupants", _params, socket) do
-    occupants =
-      if socket.assigns.map, do: Tripwire.Tracking.list_occupants(socket.assigns.map.id), else: []
-
-    {:noreply, assign(socket, :occupants, occupants)}
+    {:noreply, refresh_occupants(socket)}
   end
 
   def handle_event("create-flare", %{"flare" => params}, socket) do
@@ -2132,6 +2161,7 @@ defmodule TripwireWeb.DashboardLive do
        socket
        |> assign(:character, character)
        |> assign(:characters, characters)
+       |> refresh_occupants()
        |> put_flash(:info, visibility_flash(updated))}
     else
       _ -> {:noreply, put_flash(socket, :error, "Character not found")}
@@ -2193,6 +2223,10 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp fetch_character_presence(nil), do: {nil, nil, nil, nil}
+
+  defp fetch_character_presence(%{eve_id: @demo_character_eve_id}),
+    do: {"J150321", true, "Cenotaph", 85_086}
+
   defp fetch_character_presence(%{refresh_token: nil}), do: {nil, nil, nil, nil}
 
   defp fetch_character_presence(character) do

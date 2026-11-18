@@ -81,6 +81,30 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute html =~ "Unstable Wormhole (N062)"
   end
 
+  test "demo user is tracked at home in a Cenotaph", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/dashboard")
+
+    assert html =~ "Cenotaph"
+    assert has_element?(view, "div[title='Characters tracked on chain']")
+
+    assert view |> element("#chain-map") |> render() =~ "Demo User"
+    assert has_element?(view, "#chain-map title", "Demo User")
+    assert view |> element("#chain-map") |> render() =~ "characters/9000002/portrait"
+  end
+
+  test "hiding the demo user on chain clears their occupancy badge", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+    assert view |> element("#chain-map") |> render() =~ "Demo User"
+
+    [character] = Enum.filter(Accounts.list_characters(), &(&1.name == "Demo User"))
+
+    view
+    |> element("button[phx-click='toggle-character-visibility'][phx-value-id='#{character.id}']")
+    |> render_click()
+
+    refute view |> element("#chain-map") |> render() =~ "Demo User"
+  end
+
   test "demo mode provisions its own editable mask", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/dashboard")
     assert html =~ "Demo mode"

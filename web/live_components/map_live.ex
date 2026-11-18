@@ -1,6 +1,7 @@
 defmodule TripwireWeb.LiveComponents.MapLive do
   use TripwireWeb, :live_component
 
+  alias Tripwire.EveImages
   alias Tripwire.Mapping
   alias Tripwire.Signatures, as: SigParser
   alias Tripwire.Wormholes
@@ -339,7 +340,28 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   transform="translate(104, 8)"
                 >
                   <title>{occupied_names(@occupants, system.id)}</title>
-                  <circle r="8" class="fill-primary" />
+                  <clipPath id={"occupant-clip-#{system.id}"}>
+                    <circle r="8" />
+                  </clipPath>
+                  <image
+                    href={
+                      EveImages.character_portrait(system_occupant(@occupants, system.id).eve_id, 32)
+                    }
+                    x="-8"
+                    y="-8"
+                    width="16"
+                    height="16"
+                    preserveAspectRatio="xMidYMid slice"
+                    clip-path={"url(#occupant-clip-#{system.id})"}
+                    onerror="this.onerror=null;this.setAttribute('href','/images/alliance-default.png')"
+                  />
+                  <circle r="8" class="fill-none stroke-primary" stroke-width="1.5" />
+                </g>
+                <g
+                  :if={occupied_count(@occupants, system.id) > 1}
+                  transform="translate(117, 21)"
+                >
+                  <circle r="7" class="fill-primary" />
                   <text y="3" text-anchor="middle" class="fill-primary-content text-[9px] font-bold">
                     {occupied_count(@occupants, system.id)}
                   </text>
@@ -588,6 +610,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
   defp occupied_count(occupants, system_id) do
     Enum.count(occupants, &(&1.system_id == system_id))
+  end
+
+  defp system_occupant(occupants, system_id) do
+    Enum.find(occupants, &(&1.system_id == system_id))
   end
 
   defp occupied_names(occupants, system_id) do

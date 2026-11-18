@@ -161,15 +161,21 @@ defmodule Tripwire.Tracking do
       case GenServer.call(pid, :state) do
         %{character: character, map: %{id: ^map_id}, last_system_row: system}
         when not is_nil(system) ->
-          [
-            %{
-              character_name: character.name,
-              eve_id: character.eve_id,
-              system_id: system.id,
-              system_name: system.name,
-              solar_system_id: system.solar_system_id
-            }
-          ]
+          case Accounts.get_character_by_eve_id(character.eve_id) do
+            %{character_on_chain: true} = character ->
+              [
+                %{
+                  character_name: character.name,
+                  eve_id: character.eve_id,
+                  system_id: system.id,
+                  system_name: system.name,
+                  solar_system_id: system.solar_system_id
+                }
+              ]
+
+            _ ->
+              []
+          end
 
         _ ->
           []

@@ -15,7 +15,7 @@ defmodule Tripwire.Tracking.Poller do
     character = Keyword.fetch!(opts, :character)
 
     GenServer.start_link(__MODULE__, opts,
-      name: {:via, Tripwire.TrackingRegistry, character.eve_id}
+      name: {:via, Registry, {Tripwire.TrackingRegistry, character.eve_id}}
     )
   end
 
