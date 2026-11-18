@@ -9,6 +9,12 @@ defmodule Tripwire.Accounts do
 
   def delete_character(%Character{} = character), do: Repo.delete(character)
 
+  def update_character(%Character{} = character, attrs) do
+    character
+    |> Character.changeset(attrs)
+    |> Repo.update()
+  end
+
   def list_characters, do: Repo.all(Character)
 
   def get_character_by_eve_id(eve_id) do

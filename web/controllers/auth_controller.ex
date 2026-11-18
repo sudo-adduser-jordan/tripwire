@@ -34,7 +34,7 @@ defmodule TripwireWeb.AuthController do
     Tripwire.Accounts.bump_stats(character.id, login_count: 1)
 
     character_ids =
-      (get_session(conn, :character_ids) || []) ++ [character.eve_id] |> Enum.uniq()
+      ((get_session(conn, :character_ids) || []) ++ [character.eve_id]) |> Enum.uniq()
 
     conn
     |> put_session(:character_ids, character_ids)
@@ -77,7 +77,8 @@ defmodule TripwireWeb.AuthController do
 
     with token when is_binary(token) and token != "" <- token,
          {:ok, true} <- Tripwire.Accounts.esi_admin?(auth.uid, token),
-         {:ok, updated} <- Tripwire.Accounts.upsert_character(%{eve_id: character.eve_id, is_admin: true}) do
+         {:ok, updated} <-
+           Tripwire.Accounts.upsert_character(%{eve_id: character.eve_id, is_admin: true}) do
       updated
     else
       _ -> character

@@ -4,15 +4,15 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
   alias Tripwire.EveImages
 
   @faction_theme_ids %{
-    "amarr" => 500003,
-    "caldari" => 500001,
-    "gallente" => 500004,
-    "minmatar" => 500002,
-    "angel" => 500011,
-    "blood" => 500012,
-    "guristas" => 500010,
-    "sansha" => 500019,
-    "serpentis" => 500020
+    "amarr" => 500_003,
+    "caldari" => 500_001,
+    "gallente" => 500_004,
+    "minmatar" => 500_002,
+    "angel" => 500_011,
+    "blood" => 500_012,
+    "guristas" => 500_010,
+    "sansha" => 500_019,
+    "serpentis" => 500_020
   }
 
   @theme_sections [

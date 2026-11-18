@@ -53,6 +53,25 @@ defmodule Tripwire.AccountsTest do
     assert updated.is_admin
   end
 
+  test "update_character/2 toggles visibility flags" do
+    {:ok, character} = Accounts.upsert_character(@valid_attrs)
+    assert character.ship_on_chain
+    assert character.character_on_chain
+
+    assert {:ok, hidden} = Accounts.update_character(character, %{ship_on_chain: false})
+    refute hidden.ship_on_chain
+    assert hidden.character_on_chain
+
+    assert %{ship_on_chain: false, character_on_chain: true} =
+             Accounts.get_character(character.id)
+
+    assert {:ok, visible} =
+             Accounts.update_character(hidden, %{ship_on_chain: true, character_on_chain: true})
+
+    assert visible.ship_on_chain
+    assert visible.character_on_chain
+  end
+
   test "bump_stats/2 increments counters" do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 4321, name: "Counter"})
 

@@ -1,12 +1,15 @@
 defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
   use Phoenix.Component
 
+  import TripwireWeb.CharacterVisibilityComponents
+
   attr :settings_tab, :string, default: "account"
   attr :characters, :list, default: []
   attr :masks, :list, default: []
   attr :character, :any, default: nil
   attr :mask, :any, default: nil
   attr :sso_configured?, :boolean, default: false
+  attr :ship_type_id, :any, default: nil
 
   def settings_account_live(assigns) do
     ~H"""
@@ -90,6 +93,11 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
                 </div>
               </div>
             </div>
+            <.character_visibility_buttons
+              character={entry}
+              current_character={@character}
+              current_ship_type_id={@ship_type_id}
+            />
             <button
               type="button"
               class="btn btn-ghost btn-xs shrink-0 p-1"
@@ -101,7 +109,10 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
               Remove
             </button>
           </div>
-          <div :if={@characters == []} class="col-span-full rounded-box bg-base-200/50 p-3 text-xs opacity-60">
+          <div
+            :if={@characters == []}
+            class="col-span-full rounded-box bg-base-200/50 p-3 text-xs opacity-60"
+          >
             No characters yet. Log in with EVE SSO to add one.
           </div>
         </div>
@@ -161,7 +172,10 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
               Remove
             </button>
           </div>
-          <div :if={@masks == []} class="col-span-full rounded-box bg-base-200/50 p-3 text-xs opacity-60">
+          <div
+            :if={@masks == []}
+            class="col-span-full rounded-box bg-base-200/50 p-3 text-xs opacity-60"
+          >
             No masks yet. Masks are created automatically for each character.
           </div>
         </div>

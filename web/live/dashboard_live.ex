@@ -257,7 +257,9 @@ defmodule TripwireWeb.DashboardLive do
        data.current_system_name || socket.assigns.current_system_name
      )
      |> assign(:character_online, data.character_online)
-     |> assign(:ship_name, data.ship_name)
+     |> assign(:ship_name, topbar_ship_name(socket.assigns.character, data.ship_name))
+     |> assign(:ship_type_id, data.ship_type_id)
+     |> assign(:tracked_characters, data.tracked_characters)
      |> assign(:topbar_now, data.now)}
   end
 
@@ -445,6 +447,19 @@ defmodule TripwireWeb.DashboardLive do
     else
       _ -> {:noreply, put_flash(socket, :error, "Character not found")}
     end
+  end
+
+  def handle_event("toggle-ship-visibility", %{"id" => id}, socket) do
+    toggle_visibility(socket, id, fn %{ship_on_chain: ship_on_chain} ->
+      %{ship_on_chain: not ship_on_chain}
+    end)
+  end
+
+  def handle_event("toggle-character-visibility", %{"id" => id}, socket) do
+    toggle_visibility(socket, id, fn
+      %{character_on_chain: false} -> %{character_on_chain: true}
+      _ -> %{character_on_chain: false, ship_on_chain: false}
+    end)
   end
 
   def handle_event("select-system", %{"id" => id}, socket) do
@@ -2056,6 +2071,8 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:current_system_name, nil)
     |> assign(:character_online, nil)
     |> assign(:ship_name, nil)
+    |> assign(:ship_type_id, nil)
+    |> assign(:tracked_characters, [])
     |> assign(:topbar_now, DateTime.utc_now())
     |> assign(:grid_locked, true)
     |> assign(:system_search, "")
@@ -2097,6 +2114,41 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:chain_errors, [])
   end
 
+  defp toggle_visibility(socket, id, attrs_fn) do
+    with {char_id, ""} <- Integer.parse(to_string(id)),
+         %{} = character <- Accounts.get_character(char_id),
+         {:ok, updated} <- Accounts.update_character(character, attrs_fn.(character)) do
+      characters =
+        Enum.map(socket.assigns.characters, fn c ->
+          if c.id == updated.id, do: updated, else: c
+        end)
+
+      character =
+        if socket.assigns.character && socket.assigns.character.id == updated.id,
+          do: updated,
+          else: socket.assigns.character
+
+      {:noreply,
+       socket
+       |> assign(:character, character)
+       |> assign(:characters, characters)
+       |> put_flash(:info, visibility_flash(updated))}
+    else
+      _ -> {:noreply, put_flash(socket, :error, "Character not found")}
+    end
+  end
+
+  defp visibility_flash(%{name: name, ship_on_chain: false, character_on_chain: false}),
+    do: "#{name}'s character and ship are hidden on chain"
+
+  defp visibility_flash(%{name: name, character_on_chain: false}),
+    do: "#{name} is hidden on chain"
+
+  defp visibility_flash(%{name: name, ship_on_chain: false}),
+    do: "#{name}'s ship is hidden on chain"
+
+  defp visibility_flash(%{name: name}), do: "#{name} is visible on chain"
+
   defp schedule_topbar_load(socket) do
     if connected?(socket), do: send(self(), :load_topbar)
     socket
@@ -2125,7 +2177,8 @@ defmodule TripwireWeb.DashboardLive do
         _ -> {false, nil}
       end
 
-    {current_system_name, character_online, ship_name} = fetch_character_presence(character)
+    {current_system_name, character_online, ship_name, ship_type_id} =
+      fetch_character_presence(character)
 
     %{
       tq_online: tq_online,
@@ -2133,12 +2186,14 @@ defmodule TripwireWeb.DashboardLive do
       current_system_name: current_system_name,
       character_online: character_online,
       ship_name: ship_name,
+      ship_type_id: ship_type_id,
+      tracked_characters: Tracking.list_tracked_characters(),
       now: DateTime.utc_now()
     }
   end
 
-  defp fetch_character_presence(nil), do: {nil, nil, nil}
-  defp fetch_character_presence(%{refresh_token: nil}), do: {nil, nil, nil}
+  defp fetch_character_presence(nil), do: {nil, nil, nil, nil}
+  defp fetch_character_presence(%{refresh_token: nil}), do: {nil, nil, nil, nil}
 
   defp fetch_character_presence(character) do
     with {:ok, token} <- ESI.valid_access_token(character),
@@ -2149,10 +2204,11 @@ defmodule TripwireWeb.DashboardLive do
           _ -> nil
         end
 
-      ship =
+      {ship_name, ship_type_id} =
         case ESI.get_character_ship(character.eve_id, token) do
-          {:ok, %{"ship_name" => name}} -> name
-          _ -> nil
+          {:ok, %{"ship_name" => name, "ship_type_id" => type_id}} -> {name, type_id}
+          {:ok, %{"ship_name" => name}} -> {name, nil}
+          _ -> {nil, nil}
         end
 
       system_name =
@@ -2167,13 +2223,16 @@ defmodule TripwireWeb.DashboardLive do
             nil
         end
 
-      {system_name, online, ship}
+      {system_name, online, ship_name, ship_type_id}
     else
-      _ -> {nil, nil, nil}
+      _ -> {nil, nil, nil, nil}
     end
   rescue
-    _ -> {nil, nil, nil}
+    _ -> {nil, nil, nil, nil}
   end
+
+  defp topbar_ship_name(%{ship_on_chain: false}, _ship), do: nil
+  defp topbar_ship_name(_character, ship), do: ship
 
   defp push_undo(socket, op), do: update(socket, :undo, &[op | &1])
 

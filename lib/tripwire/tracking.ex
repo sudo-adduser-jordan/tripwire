@@ -181,6 +181,24 @@ defmodule Tripwire.Tracking do
     _, _ -> []
   end
 
+  def list_tracked_characters do
+    Registry.select(Tripwire.TrackingRegistry, [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
+    |> Enum.flat_map(fn {_eve_id, pid} ->
+      case GenServer.call(pid, :state) do
+        %{character: %Tripwire.Accounts.Character{} = character, online: online} ->
+          [%{eve_id: character.eve_id, name: character.name, online: online}]
+
+        _ ->
+          []
+      end
+    end)
+    |> Enum.sort_by(& &1.name)
+  rescue
+    _ -> []
+  catch
+    _, _ -> []
+  end
+
   defp broadcast_system_change(map_id, character_name, system) do
     PubSub.broadcast(
       Tripwire.PubSub,

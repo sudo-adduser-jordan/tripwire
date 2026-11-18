@@ -123,6 +123,35 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert map.name == "Home"
   end
 
+  test "visibility toggles persist per character", %{conn: conn, character: character} do
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("button[phx-click='toggle-ship-visibility'][phx-value-id='#{character.id}']")
+    |> render_click()
+
+    assert %{ship_on_chain: false, character_on_chain: true} =
+             Accounts.get_character(character.id)
+
+    assert render(view) =~ "ship is hidden on chain"
+
+    view
+    |> element("button[phx-click='toggle-character-visibility'][phx-value-id='#{character.id}']")
+    |> render_click()
+
+    assert %{ship_on_chain: false, character_on_chain: false} =
+             Accounts.get_character(character.id)
+
+    assert render(view) =~ "character and ship are hidden on chain"
+
+    view
+    |> element("button[phx-click='toggle-character-visibility'][phx-value-id='#{character.id}']")
+    |> render_click()
+
+    assert %{ship_on_chain: false, character_on_chain: true} =
+             Accounts.get_character(character.id)
+  end
+
   defp setup_with_system(%{character: character}, system_name) do
     {:ok, mask} = Masks.ensure_personal_mask(character)
 

@@ -131,9 +131,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
             class="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 pb-1 text-xs"
           >
             <a
-              :for={
-                link <- Systems.external_links(selected_system(@systems, @selected_system_id))
-              }
+              :for={link <- Systems.external_links(selected_system(@systems, @selected_system_id))}
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"

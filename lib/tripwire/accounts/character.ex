@@ -15,6 +15,8 @@ defmodule Tripwire.Accounts.Character do
     field :refresh_token, EncryptedBinary
     field :last_login_at, :utc_datetime
     field :is_admin, :boolean, default: false
+    field :ship_on_chain, :boolean, default: true
+    field :character_on_chain, :boolean, default: true
     field :signatures_added, :integer, default: 0
     field :signatures_updated, :integer, default: 0
     field :signatures_deleted, :integer, default: 0
@@ -42,7 +44,9 @@ defmodule Tripwire.Accounts.Character do
       :scopes,
       :refresh_token,
       :last_login_at,
-      :is_admin
+      :is_admin,
+      :ship_on_chain,
+      :character_on_chain
     ])
     |> validate_required([:eve_id, :name])
     |> unique_constraint(:eve_id)

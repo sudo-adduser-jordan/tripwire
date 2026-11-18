@@ -2,6 +2,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
   use Phoenix.Component
 
   import TripwireWeb.IconComponent
+  import TripwireWeb.CharacterVisibilityComponents
 
   alias Phoenix.LiveView.JS
   alias Tripwire.EveImages
@@ -9,6 +10,8 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
 
   attr :character, :string, required: true
   attr :characters, :list, default: []
+  attr :ship_type_id, :any, default: nil
+  attr :tracked_characters, :list, default: []
   attr :masks, :list, default: []
   attr :tq_online, :boolean, default: false
   attr :tq_players, :any, default: nil
@@ -140,6 +143,11 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
                   </div>
                   {character_name(character)}
                 </a>
+                <.character_visibility_buttons
+                  character={character}
+                  current_character={current_character(@characters, @character)}
+                  current_ship_type_id={@ship_type_id}
+                />
                 <button
                   phx-click="remove-character"
                   phx-value-id={character.id}
@@ -260,6 +268,15 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
             {if @settings_open, do: "←", else: "→"}
           </span>
         </button>
+        <div
+          :if={@tracked_characters != []}
+          class={["badge", tracked_badge_class(@tracked_characters, @characters)]}
+          title="Characters tracked on chain"
+        >
+          {tracked_online(@tracked_characters, @characters)}/{length(
+            visible_tracked(@tracked_characters, @characters)
+          )}
+        </div>
       </div>
     </nav>
     """
@@ -341,4 +358,35 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
   end
 
   defp current_dot(_, _), do: "avatar-offline"
+
+  defp current_character(characters, name) when is_binary(name) do
+    Enum.find(characters, &(&1.name == name))
+  end
+
+  defp current_character(_, _), do: nil
+
+  defp visible_tracked(tracked, characters) do
+    hidden =
+      MapSet.new(
+        for(%{character_on_chain: false, eve_id: id} <- characters, is_integer(id), do: id)
+      )
+
+    Enum.filter(tracked, &(not MapSet.member?(hidden, &1.eve_id)))
+  end
+
+  defp tracked_online(tracked, characters) do
+    visible_tracked(tracked, characters)
+    |> Enum.count(& &1.online)
+  end
+
+  defp tracked_badge_class(tracked, characters) do
+    visible = visible_tracked(tracked, characters)
+    online = Enum.count(visible, & &1.online)
+
+    cond do
+      online == 0 -> "badge-ghost"
+      online == length(visible) -> "badge-success"
+      true -> "badge-warning"
+    end
+  end
 end

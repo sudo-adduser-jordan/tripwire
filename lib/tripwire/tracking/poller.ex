@@ -41,6 +41,7 @@ defmodule Tripwire.Tracking.Poller do
        character: character,
        map: map,
        interval: interval,
+       online: nil,
        last_solar_system_id: nil,
        last_system_row: nil
      }}
@@ -52,6 +53,7 @@ defmodule Tripwire.Tracking.Poller do
       state.character
       |> fetch_current_system()
       |> apply_change(state)
+      |> Map.put(:online, fetch_online(state.character))
 
     schedule_tick(state.interval)
 
@@ -73,6 +75,15 @@ defmodule Tripwire.Tracking.Poller do
       {:error, reason} ->
         Logger.debug("ESI location poll failed for #{character.name}: #{inspect(reason)}")
         :error
+    end
+  end
+
+  defp fetch_online(character) do
+    with {:ok, token} <- ESI.valid_access_token(character),
+         {:ok, %{"online" => online}} <- ESI.get_character_online(character.eve_id, token) do
+      online
+    else
+      _ -> nil
     end
   end
 

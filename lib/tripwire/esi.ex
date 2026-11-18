@@ -107,10 +107,15 @@ defmodule Tripwire.ESI do
       :error
     else
       case public_post("/universe/ids/", [trimmed]) do
-        {:ok, %{"systems" => [%{"id" => id} | _]}} -> {:ok, id}
+        {:ok, %{"systems" => [%{"id" => id} | _]}} ->
+          {:ok, id}
+
         {:ok, %{"systems" => systems}} when is_list(systems) ->
-          case Enum.find(systems, &(String.downcase(&1["name"] || "") ==
-                                     String.downcase(trimmed))) do
+          case Enum.find(
+                 systems,
+                 &(String.downcase(&1["name"] || "") ==
+                     String.downcase(trimmed))
+               ) do
             %{"id" => id} -> {:ok, id}
             _ -> :error
           end
