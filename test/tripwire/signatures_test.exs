@@ -83,4 +83,26 @@ defmodule Tripwire.SignaturesTest do
       assert Signatures.parse_paste(42) == []
     end
   end
+
+  describe "external_link/1" do
+    test "returns an eve-survival URL for a known site" do
+      assert Signatures.external_link("Core Garrison") ==
+               "https://eve-survival.org/wikka.php?wakka=CoreGarrison"
+    end
+
+    test "falls back to the EVE University wiki for unknown sites" do
+      assert Signatures.external_link("Forsaken Hub") ==
+               "https://wiki.eveuniversity.org/Forsaken_Hub"
+    end
+
+    test "percent-encodes unsafe characters in wiki titles" do
+      assert Signatures.external_link("Combat Site: Rogue's Den") ==
+               "https://wiki.eveuniversity.org/Combat_Site%3A_Rogue%27s_Den"
+    end
+
+    test "returns nil for blank names" do
+      assert Signatures.external_link(nil) == nil
+      assert Signatures.external_link("") == nil
+    end
+  end
 end

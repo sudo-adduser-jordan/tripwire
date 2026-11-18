@@ -200,16 +200,25 @@ defmodule Tripwire.Signatures do
 
   @doc """
   Returns the eve-survival guide URL for a known site name, matching
-  official Tripwire, or nil when the name has no external guide.
+  official Tripwire. Any other named site falls back to the EVE
+  University wiki. Blank names have no external guide.
   """
   @spec external_link(String.t() | nil) :: String.t() | nil
-  def external_link(name) when is_binary(name) do
+  def external_link(name) when is_binary(name) and name != "" do
     if MapSet.member?(@known_site_set, name) do
       "https://eve-survival.org/wikka.php?wakka=" <> String.replace(name, " ", "")
+    else
+      "https://wiki.eveuniversity.org/" <> wiki_title(name)
     end
   end
 
   def external_link(_), do: nil
+
+  defp wiki_title(name) do
+    name
+    |> String.replace(" ", "_")
+    |> URI.encode(&URI.char_unreserved?/1)
+  end
 
   defp columns_after_id(trimmed, raw_id) do
     rest =
