@@ -76,12 +76,27 @@ fix:
 
 ## Layout
 
-- `lib/tripwire/` contexts: `accounts`, `esi`, `mapping`, `masks`, `signatures`, `tracking`, plus `sync_server`, `vault`, `repo`, `mailer`.
+- `lib/tripwire/` contexts and support modules: `accounts`, `esi` (+ `esi/token_cache`), `mapping`, `masks`, `signatures` (scan-paste parser), `systems` (class/color/static tables), `tracking` (ESI location pollers and chain upkeep), `wormholes` (hole type database), `eve_images`, `zkill`, `sso`, `notifier`, `markdown`, `log`, plus `sync_server` (background jobs), `vault`, `repo`, `mailer`, `ecto_types`.
 - `lib/tripwire/log.ex`: `Tripwire.Log` wide-event logger.
-- `web/`: `endpoint.ex`, `router.ex`, `telemetry.ex`, `controllers/`, `live/` (DashboardLive orchestrator), `live_components/` (System/Map/Signatures/Notes LiveComponents wired to Mapping plus Navigation/Settings function components), `components/` (presentational Core/Flash/Table/List/Input/Icon/Button/Header), `plugs/wide_event.ex`.
+- `web/`: `endpoint.ex`, `router.ex`, `telemetry.ex`, `controllers/` (api, auth, home), `live/` (DashboardLive orchestrator), `live_components/` (Map, Signatures, System, Notes, Navigation, Settings plus `settings/` account/admin/map/statistics/themes/widgets), `components/` (presentational Core/Flash/Table/List/Input/Icon/Button/Header), `plugs/wide_event.ex`.
 - `config/`: `config.exs` base plus `dev.exs`, `test.exs`, `prod.exs`, `runtime.exs` (prod requires `DATABASE_PATH`; EVE SSO is optional).
-- `priv/repo/` migrations and seeds; `assets/` Node front end (`package.json` deploy runs `mix assets.deploy`); `test/` mirrors `lib` and `web`.
+- `priv/repo/` migrations and seeds; `priv/data/wormholes.json` hole type database; `assets/` Node front end (`package.json` deploy runs `mix assets.deploy`); `test/` mirrors `lib` and `web`.
 - Runtime log dirs (gitignored): `logs/test/`, `logs/errors/`.
+
+## Map and signature sync
+
+- Pasting a scan (`global-paste`) upserts signatures, flags missing ones in the stale toast, and runs `Mapping.sync_map_after_signature_change/2`.
+- `sync_map_after_signature_change/2` drops connections whose `hole_type` matches a deleted wormhole signature, auto-links newly scanned holes to other map systems (same `sig_id` + hole code first, then a hole code present on exactly one other system; a connection dropped in the same sync is never re-created), and hides systems left with no connection.
+- Orphaned nodes are hidden with `map_systems.hidden_at`, not deleted; `Mapping.upsert_connection/4` unhides endpoints, so any re-created connection brings nodes back. Map views render `Mapping.list_visible_systems/1`.
+- `Tracking.apply_location_change/5` labels a jump-created connection with the scanned hole code when exactly one wormhole signature in the origin system is eligible to lead into the destination class (`Tracking.wormholes_for_jump/3`, mirroring official Tripwire's automapper); existing hole types are never relabeled and ambiguous matches stay blank.
+- `Mapping.prune_expired_signatures/1` drops connections backed by expired wormhole signatures, hides orphans, and broadcasts `{:map_updated, map_id}` on the map's PubSub topic so open dashboards refresh.
+
+## Testing
+
+- `mix test` covers contexts (`test/tripwire/`), LiveViews (`test/web/live/`), and controllers (`test/web/controllers/`). Tests run inside the SQL sandbox against `priv/db/tripwire-test.db`.
+- Context tests build their own maps (`Masks.ensure_demo_mask/0` + `Mapping.ensure_demo_map/1` seeds the 23-system demo chain with signatures and notes; the demo paste lives in a comment on the Home system).
+- Dashboard LiveView tests drive the widgets (signature paste, stale toast, chain map rendering, settings tabs) through `TripwireWeb.LiveComponents` events; select systems via `#system-container button[title='Select system …']`.
+- The upstream reference (daimian/tripwire, PHP) ships no test suite. Its maintained fork's suites (mocha `app/js-test`, Playwright `e2e/`, `tests/php/note-html.test.php`) are the comparison baseline; behaviors already ported: signature paste parsing, wormhole eligibility and rendering, automapper jump labeling, mask kinds, note sanitization (as markdown escaping), and stat counters. Known upstream gaps not present in this port: faction-warfare conditional gates, mass dialog parsing, Drifter/C13–C18 generic system types, EVE-Scout Thera link supplier, and client-side pathfinding (routes come from ESI here).
 
 ## Logging
 
