@@ -137,7 +137,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
         _ = Tripwire.Tracking.stop_poller(character)
         {:noreply, assign(socket, :tracking?, false)}
 
-      %{character: %{} = character} ->
+      %{character: %{} = character, tracking_available?: true} ->
         _ = Tripwire.Tracking.ensure_poller(character)
         {:noreply, assign(socket, :tracking?, true)}
 
@@ -189,15 +189,18 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                 {system_label(@selected_system_id)}
               </span>
               <button
-                :if={@tracking_available?}
                 class={[
                   "btn btn-ghost btn-xs",
-                  if(@tracking?, do: "btn-primary text-base-content")
+                  if(@tracking?, do: "btn-primary text-base-content"),
+                  if(not @tracking_available?, do: "btn-disabled")
                 ]}
+                disabled={!@tracking_available?}
                 title={
-                  if @tracking?,
-                    do: "Stop auto-tracking this character",
-                    else: "Auto-track this character"
+                  cond do
+                    @tracking? -> "Stop auto-tracking this character"
+                    @tracking_available? -> "Auto-track this character"
+                    true -> "Sign in with EVE SSO to enable auto-tracking"
+                  end
                 }
                 phx-click="toggle-tracker"
                 phx-target={@myself}

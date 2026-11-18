@@ -958,6 +958,49 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert Accounts.get_character_by_eve_id(555_002) == nil
   end
 
+  test "auto-tracker toggle always renders and is disabled without SSO credentials", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    toggle_html =
+      view
+      |> element("#signatures button[phx-click='toggle-tracker']")
+      |> render()
+
+    assert toggle_html =~ "disabled"
+    assert toggle_html =~ "Sign in with EVE SSO to enable auto-tracking"
+
+    assert Tripwire.Tracking.tracking?(character) == false
+  end
+
+  test "auto-tracker toggle is enabled for a character with SSO credentials", %{
+    conn: conn,
+    character: character
+  } do
+    System.put_env("EVESSO_CLIENT_ID", "test-id")
+    System.put_env("EVESSO_SECRET_KEY", "test-secret")
+
+    {:ok, character} =
+      Accounts.upsert_character(%{eve_id: character.eve_id, refresh_token: "tok"})
+
+    try do
+      {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+      toggle_html =
+        view
+        |> element("#signatures button[phx-click='toggle-tracker']")
+        |> render()
+
+      refute toggle_html =~ "disabled"
+      assert toggle_html =~ "Auto-track this character"
+    after
+      System.delete_env("EVESSO_CLIENT_ID")
+      System.delete_env("EVESSO_SECRET_KEY")
+    end
+  end
+
   test "delete then undo restores the signature", %{conn: conn, character: character} do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J000000")
 
