@@ -929,14 +929,14 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert html =~ ~s|id="system-copy"|
     assert view |> element("#topbar-system") |> render() =~ "J150321"
-    assert view |> element("#system-container p") |> render() =~ "J150321"
+    assert view |> element("#system-copy") |> render() =~ "J150321"
 
     view
     |> element("#system-container button[title='Select system J150322']")
     |> render_click()
 
     assert view |> element("#topbar-system") |> render() =~ "J150322"
-    assert view |> element("#system-container p") |> render() =~ "J150322"
+    assert view |> element("#system-copy") |> render() =~ "J150322"
 
     copy_html = view |> element("#system-copy") |> render()
     assert copy_html =~ ~s|data-copy="J150322"|
@@ -1104,7 +1104,7 @@ defmodule TripwireWeb.DashboardLiveTest do
       assert html =~ "Manage masks"
 
       view
-      |> element("button[title=\"Remove Second Char']")
+      |> element(~s|button[title="Remove Second Char"]|)
       |> render_click()
 
       html = render(view)
@@ -1125,7 +1125,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute has_element?(view, "#settings-widget")
 
     view
-    |> element("button[title=\"Manage masks']")
+    |> element(~s|button[title="Manage masks"]|)
     |> render_click()
 
     assert has_element?(view, "#settings-widget")
@@ -1306,7 +1306,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert {_, {:live_redirect, %{to: "/dashboard"}}} =
              view
-             |> element("button[title=\"Remove #{character.name}']")
+             |> element(~s|button[title="Remove #{character.name}"]|)
              |> render_click()
   end
 
