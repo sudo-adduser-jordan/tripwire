@@ -337,11 +337,11 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 />
                 <g
                   :if={occupied_count(@occupants, system.id) > 0}
-                  transform="translate(104, 8)"
+                  transform="translate(104, 0)"
                 >
                   <title>{occupied_names(@occupants, system.id)}</title>
                   <clipPath id={"occupant-clip-#{system.id}"}>
-                    <circle r="8" />
+                    <rect x="-8" y="-8" width="16" height="16" rx="4" />
                   </clipPath>
                   <image
                     href={
@@ -355,11 +355,19 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                     clip-path={"url(#occupant-clip-#{system.id})"}
                     onerror="this.onerror=null;this.setAttribute('href','/images/alliance-default.png')"
                   />
-                  <circle r="8" class="fill-none stroke-primary" stroke-width="1.5" />
+                  <rect
+                    x="-8"
+                    y="-8"
+                    width="16"
+                    height="16"
+                    rx="4"
+                    class="fill-none stroke-primary"
+                    stroke-width="1.5"
+                  />
                 </g>
                 <g
                   :if={occupied_count(@occupants, system.id) > 1}
-                  transform="translate(117, 21)"
+                  transform="translate(117, 13)"
                 >
                   <circle r="7" class="fill-primary" />
                   <text y="3" text-anchor="middle" class="fill-primary-content text-[9px] font-bold">
