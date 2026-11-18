@@ -71,6 +71,34 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
                 />
                 <.icon name="hero-check" class="copied-icon hidden size-4 shrink-0 text-success" />
               </button>
+              <span class="ml-auto"></span>
+              <details id="favorites-list" class="dropdown dropdown-end">
+                <summary
+                  class="btn btn-ghost btn-xs"
+                  title="Favorited systems"
+                >
+                  ...
+                </summary>
+                <div class="dropdown-content z-10 max-h-64 w-48 overflow-y-auto rounded bg-base-200 p-1 text-xs shadow">
+                  <p :if={favorites(@systems) == []} class="px-2 py-1 opacity-60">
+                    No favorites yet
+                  </p>
+                  <button
+                    :for={fav <- favorites(@systems)}
+                    phx-click="select-system"
+                    phx-value-id={fav.id}
+                    title={"Select #{fav.name}"}
+                    class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-base-300"
+                  >
+                    <span
+                      class="inline-block size-2.5 shrink-0 rounded-full"
+                      style={"background-color: #{Systems.color(fav)}"}
+                    >
+                    </span>
+                    <span class="truncate font-mono">{fav.alias || fav.name}</span>
+                  </button>
+                </div>
+              </details>
               <button
                 id="system-favorite"
                 class="btn btn-ghost btn-xs p-1"
@@ -91,9 +119,6 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
                   }
                 />
               </button>
-              <span class="ml-auto text-xs opacity-60">
-                {length(@systems)} systems
-              </span>
             </li>
             <li :if={selected_system(@systems, @selected_system_id)} class="px-2 pb-1">
               <.system_info
@@ -319,6 +344,12 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
       _ -> false
     end
   end
+
+  defp favorites(systems) when is_list(systems) do
+    Enum.filter(systems, & &1.favorite)
+  end
+
+  defp favorites(_), do: []
 
   defp visible_systems(systems, _connections, nil), do: systems
 

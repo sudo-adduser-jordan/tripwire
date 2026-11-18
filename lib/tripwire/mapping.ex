@@ -18,6 +18,118 @@ defmodule Tripwire.Mapping do
     |> Repo.insert()
   end
 
+  def update_map(%Map{} = map, attrs) do
+    map
+    |> Map.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @thera_solar_system_id 31_000_005
+  @thera_name "Thera"
+
+  def thera_solar_system_id, do: @thera_solar_system_id
+  def thera_name, do: @thera_name
+
+  @doc """
+  Favorite systems on other maps of the same mask, excluding `exclude_map_id`.
+  """
+  def list_favorite_candidates(mask_id, exclude_map_id) do
+    map_ids =
+      from(m in Map, where: m.mask_id == ^mask_id and m.id != ^exclude_map_id, select: m.id)
+
+    Repo.all(
+      from(s in MapSystem,
+        where: s.map_id in subquery(map_ids) and s.favorite == true,
+        order_by: [asc: s.id]
+      )
+    )
+  end
+
+  @doc """
+  True when a recorded wormhole connection on any same-mask map links
+  `candidate_solar_id` to one of `chain_solar_ids`.
+  """
+  def recorded_wormhole_link?(mask_id, candidate_solar_id, chain_solar_ids) do
+    chain_set = Elixir.MapSet.new(chain_solar_ids)
+
+    if Elixir.MapSet.member?(chain_set, candidate_solar_id) do
+      false
+    else
+      map_ids = from(m in Map, where: m.mask_id == ^mask_id, select: m.id)
+
+      links =
+        Repo.all(
+          from(c in MapConnection,
+            where: c.map_id in subquery(map_ids),
+            preload: [:from_system, :to_system]
+          )
+        )
+
+      Enum.any?(links, fn conn ->
+        from_solar = conn.from_system && conn.from_system.solar_system_id
+        to_solar = conn.to_system && conn.to_system.solar_system_id
+
+        (from_solar == candidate_solar_id and Elixir.MapSet.member?(chain_set, to_solar)) or
+          (to_solar == candidate_solar_id and Elixir.MapSet.member?(chain_set, from_solar))
+      end)
+    end
+  end
+
+  @doc """
+  Finds the chain system (from `chain_systems`) that a recorded connection
+  links `candidate_solar_id` to, or nil.
+  """
+  def wormhole_link_target(mask_id, candidate_solar_id, chain_systems) do
+    by_solar = Elixir.Map.new(chain_systems, &{&1.solar_system_id, &1})
+    chain_set = Elixir.MapSet.new(Elixir.Map.keys(by_solar))
+    map_ids = from(m in Map, where: m.mask_id == ^mask_id, select: m.id)
+
+    links =
+      Repo.all(
+        from(c in MapConnection,
+          where: c.map_id in subquery(map_ids),
+          preload: [:from_system, :to_system]
+        )
+      )
+
+    Enum.find_value(links, fn conn ->
+      from_solar = conn.from_system && conn.from_system.solar_system_id
+      to_solar = conn.to_system && conn.to_system.solar_system_id
+
+      cond do
+        from_solar == candidate_solar_id and Elixir.MapSet.member?(chain_set, to_solar) ->
+          {by_solar[to_solar], conn.hole_type}
+
+        to_solar == candidate_solar_id and Elixir.MapSet.member?(chain_set, from_solar) ->
+          {by_solar[from_solar], conn.hole_type}
+
+        true ->
+          nil
+      end
+    end)
+  end
+
+  @doc """
+  Ensures a system with `solar_system_id` exists on `map`, creating it when
+  missing. Returns `{:ok, system, created?}`.
+  """
+  def ensure_chain_system(%Map{} = map, attrs) do
+    solar_id = attrs[:solar_system_id] || attrs["solar_system_id"]
+
+    case Repo.get_by(MapSystem, map_id: map.id, solar_system_id: solar_id) do
+      %MapSystem{} = system ->
+        {:ok, system, false}
+
+      nil ->
+        position = %{x: 460.0, y: 300.0}
+
+        case add_system_to_map(map, Elixir.Map.merge(%{x: position.x, y: position.y}, attrs)) do
+          {:ok, system} -> {:ok, system, true}
+          error -> error
+        end
+    end
+  end
+
   def list_systems(map_id) do
     Repo.all(from(s in MapSystem, where: s.map_id == ^map_id, order_by: [asc: s.id]))
   end
@@ -135,14 +247,14 @@ defmodule Tripwire.Mapping do
   breadth-first depth from the root, mirroring the Tripwire chain
   tree: each jump lands one level down and siblings share a row.
   """
-  def tree_layout(systems, connections, orientation \\ "down", spacing \\ 1.0) do
+  def tree_layout(systems, connections, orientation \\ "down", spacing \\ 1.0, opts \\ []) do
     ids = Enum.map(systems, & &1.id)
 
     if ids == [] do
       %{}
     else
       adj = undirected_adj(ids, connections)
-      roots = tree_roots(ids, connections)
+      roots = tree_roots(ids, connections, opts)
       {parent, children, depths} = spanning_tree(adj, roots, ids)
       _ = parent
       x_index = assign_x_index(roots, children)
@@ -256,14 +368,20 @@ defmodule Tripwire.Mapping do
     end)
   end
 
-  defp tree_roots(ids, connections) do
-    incoming =
-      Enum.reduce(connections, Elixir.MapSet.new(), fn {_conn, _from, to}, acc ->
-        Elixir.MapSet.put(acc, to.id)
-      end)
+  defp tree_roots(ids, connections, opts) do
+    case Keyword.get(opts, :root_id) do
+      nil ->
+        incoming =
+          Enum.reduce(connections, Elixir.MapSet.new(), fn {_conn, _from, to}, acc ->
+            Elixir.MapSet.put(acc, to.id)
+          end)
 
-    roots = Enum.filter(ids, &(!Elixir.MapSet.member?(incoming, &1)))
-    if roots == [], do: [ids |> Enum.sort() |> hd()], else: Enum.sort(roots)
+        roots = Enum.filter(ids, &(!Elixir.MapSet.member?(incoming, &1)))
+        if roots == [], do: [ids |> Enum.sort() |> hd()], else: Enum.sort(roots)
+
+      root_id ->
+        if root_id in ids, do: [root_id], else: [ids |> Enum.sort() |> hd()]
+    end
   end
 
   defp spanning_tree(adj, roots, ids) do

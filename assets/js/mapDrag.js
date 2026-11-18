@@ -32,6 +32,7 @@ const MapDrag = {
     this.updateZoomLabel()
 
     this.onPointerDown = (ev) => {
+      if (this.isLocked()) return
       if (ev.target.closest("g[data-system-id]")) return
       const ctm = this.svg.getScreenCTM()
       if (!ctm || !ctm.a || !ctm.d) return
@@ -85,6 +86,7 @@ const MapDrag = {
     }
 
     this.onWheel = (ev) => {
+      if (this.isLocked()) return
       ev.preventDefault()
       let dy = ev.deltaY
       if (ev.deltaMode === 1) dy *= 33
@@ -99,11 +101,21 @@ const MapDrag = {
       this.zoomAt(this.ox + fx * w, this.oy + fy * h, factor)
     }
 
-    this.onZoomIn = () => this.zoomBy(ZOOM_STEP)
-    this.onZoomOut = () => this.zoomBy(1 / ZOOM_STEP)
-    this.onZoomReset = () => this.setView(this.ox, this.oy, 1)
+    this.onZoomIn = () => {
+      if (this.isLocked()) return
+      this.zoomBy(ZOOM_STEP)
+    }
+    this.onZoomOut = () => {
+      if (this.isLocked()) return
+      this.zoomBy(1 / ZOOM_STEP)
+    }
+    this.onZoomReset = () => {
+      if (this.isLocked()) return
+      this.setView(this.ox, this.oy, 1)
+    }
 
     this.onKeyDown = (ev) => {
+      if (this.isLocked()) return
       if (ev.key === "+" || ev.key === "=") {
         ev.preventDefault()
         this.zoomBy(ZOOM_STEP)
@@ -117,6 +129,7 @@ const MapDrag = {
     }
 
     this.onDblClick = (ev) => {
+      if (this.isLocked()) return
       ev.preventDefault()
       const rect = this.svg.getBoundingClientRect()
       const w = VIEW_W / this.zoom
@@ -127,12 +140,14 @@ const MapDrag = {
     }
 
     this.handleEvent("reset-pan", ({ x, y }) => {
+      if (this.isLocked()) return
       this._top = this.topBound()
       const next = this.clampView(x, y)
       this.setView(next.x, next.y, 1)
     })
 
     this.handleEvent("map-zoom", ({ zoom }) => {
+      if (this.isLocked()) return
       this.setView(this.ox, this.oy, zoom)
     })
 
@@ -176,6 +191,10 @@ const MapDrag = {
   viewBox() {
     const parts = (this.svg.getAttribute("viewBox") || "0 0 1000 700").split(/\s+/).map(Number)
     return { x: parts[0] || 0, y: parts[1] || 0, w: parts[2] || VIEW_W, h: parts[3] || VIEW_H }
+  },
+
+  isLocked() {
+    return this.el && this.el.dataset && this.el.dataset.locked === "true"
   },
 
   setView(x, y, zoom) {

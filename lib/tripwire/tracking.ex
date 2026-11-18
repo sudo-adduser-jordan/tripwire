@@ -48,12 +48,15 @@ defmodule Tripwire.Tracking do
   """
   def apply_location_change(map, character_name, prev_system, solar_system_id, opts \\ []) do
     name_fetcher = Keyword.get(opts, :name_fetcher, &fetch_system_info/1)
+    route_fn = Keyword.get(opts, :route_fn, fn o, d -> ESI.get_route(o, d) end)
     position = next_position(map, prev_system)
 
     with {:ok, system} <- ensure_system(map, solar_system_id, name_fetcher, position) do
       connection_result =
         if is_struct(prev_system, MapSystem) and prev_system.id != system.id do
-          case Mapping.upsert_connection(map.id, prev_system.id, system.id) do
+          jumps = jump_count(prev_system, system, route_fn)
+
+          case Mapping.upsert_connection(map.id, prev_system.id, system.id, %{jumps: jumps}) do
             {:ok, conn, _new?} -> conn
             _other -> nil
           end
@@ -175,4 +178,23 @@ defmodule Tripwire.Tracking do
       _ -> {"System ##{solar_system_id}", nil}
     end
   end
+
+  defp jump_count(%MapSystem{solar_system_id: from}, %MapSystem{solar_system_id: to}, route_fn)
+       when is_integer(from) and is_integer(to) do
+    cond do
+      from == to ->
+        0
+
+      from < 31_000_000 and to < 31_000_000 ->
+        case route_fn.(from, to) do
+          {:ok, route} when is_list(route) and length(route) > 0 -> max(length(route) - 1, 1)
+          _ -> 1
+        end
+
+      true ->
+        1
+    end
+  end
+
+  defp jump_count(_, _, _), do: 1
 end

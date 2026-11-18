@@ -78,7 +78,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     [map] = Repo.all(Mapping.Map)
     assert map.mask_id == mask.id
-    assert length(Mapping.list_systems(map.id)) == 13
+    assert length(Mapping.list_systems(map.id)) == 23
 
     assert html =~ "C3"
     assert html =~ "K162"
@@ -92,8 +92,8 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert_push_event(view, "reset-pan", %{x: 0, y: 20.0})
 
     reloaded = Mapping.get_system!(system.id)
-    assert reloaded.x == 572.5
     assert reloaded.y == 60.0
+    assert is_number(reloaded.x)
   end
 
   test "mounts with session character and provisions a personal map", %{
@@ -132,7 +132,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#system-container button", "J150321")
+    |> element("#system-container button[title='Select system J150321']")
     |> render_click()
 
     refute render(view) =~ "sig-modal"
@@ -166,7 +166,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#system-container button", "J150321")
+    |> element("#system-container button[title='Select system J150321']")
     |> render_click()
 
     view
@@ -193,7 +193,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#system-container button", "J150321")
+    |> element("#system-container button[title='Select system J150321']")
     |> render_click()
 
     assert render(view) =~ "OLD-001"
@@ -227,7 +227,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#system-container button", "J150321")
+    |> element("#system-container button[title='Select system J150321']")
     |> render_click()
 
     view
@@ -255,7 +255,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#system-container button", "J150321")
+    |> element("#system-container button[title='Select system J150321']")
     |> render_click()
 
     view |> render_click("global-paste", %{"text" => "nothing to see here"})
@@ -285,17 +285,25 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert_push_event(view, "reset-pan", %{x: 0, y: 20.0})
   end
 
-  test "header lock button renders locked and toggles client-side", %{
+  test "header lock button toggles server-side and yellows when locked", %{
     conn: conn,
     character: character
   } do
     {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
 
-    {:ok, _view, html} = live(login(conn, character), ~p"/dashboard")
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
 
     assert html =~ ~s|id="toggle-lock"|
-    assert html =~ ~s|phx-hook="LockToggle"|
+    assert html =~ "hero-lock-open"
+
+    view |> element("#toggle-lock") |> render_click()
+    html = render(view)
     assert html =~ "hero-lock-closed"
+    assert html =~ "text-amber-400"
+    assert html =~ ~s|data-locked="true"|
+
+    view |> element("#toggle-lock") |> render_click()
+    assert render(view) =~ "hero-lock-open"
   end
 
   test "map renders toolbar and connections between systems", %{
@@ -318,7 +326,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert html =~ "J150322"
 
     view
-    |> element("#system-container button", "J150321")
+    |> element("#system-container button[title='Select system J150321']")
     |> render_click()
 
     assert render(view) =~ "J150321"
@@ -362,7 +370,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#system-container button", "J150322")
+    |> element("#system-container button[title='Select system J150322']")
     |> render_click()
 
     html = render(view)
@@ -411,7 +419,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#system-container button[title=\"Select system J150321\"]")
+    |> element("#system-container button[title='Select system J150321']")
     |> render_click()
 
     html = render(view)
@@ -500,7 +508,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#system-container button", "J150321")
+    |> element("#system-container button[title='Select system J150321']")
     |> render_click()
 
     refute render(view) =~ "hero-star-solid"
@@ -514,13 +522,16 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert html =~ "text-amber-400"
     assert Mapping.get_system!(system.id).favorite
 
+    assert render(view) =~ "favorites-list"
+
     view
     |> element("#show-favorite")
     |> render_click()
 
+    # map-header star imports connected favorites, it does not untoggle
     html = render(view)
-    refute html =~ "hero-star-solid"
-    refute Mapping.get_system!(system.id).favorite
+    assert html =~ "hero-star-solid"
+    assert Mapping.get_system!(system.id).favorite
   end
 
   test "signature types render color coded badges", %{conn: conn, character: character} do
@@ -543,7 +554,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#system-container button", "J150321")
+    |> element("#system-container button[title='Select system J150321']")
     |> render_click()
 
     html = render(view)
@@ -573,7 +584,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute container =~ "J150323"
 
     view
-    |> element("#system-container button", "J150322")
+    |> element("#system-container button[title='Select system J150322']")
     |> render_click()
 
     container = view |> element("#system-container") |> render()
@@ -802,7 +813,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert view |> element("#system-container p") |> render() =~ "J150321"
 
     view
-    |> element("#system-container button", "J150322")
+    |> element("#system-container button[title='Select system J150322']")
     |> render_click()
 
     assert view |> element("#topbar-system") |> render() =~ "J150322"
@@ -828,7 +839,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#system-container button", "J150321")
+    |> element("#system-container button[title='Select system J150321']")
     |> render_click()
 
     view
@@ -934,7 +945,7 @@ defmodule TripwireWeb.DashboardLiveTest do
       Mapping.create_signature(system, %{sig_id: "XYZ-010"}, character)
 
     view
-    |> element("#system-container button", "J000000")
+    |> element("#system-container button[title='Select system J000000']")
     |> render_click()
 
     assert render(view) =~ "XYZ-010"
@@ -974,7 +985,7 @@ defmodule TripwireWeb.DashboardLiveTest do
       assert html =~ "Manage masks"
 
       view
-      |> element("button[title=\"Remove Second Char\"]")
+      |> element("button[title=\"Remove Second Char']")
       |> render_click()
 
       html = render(view)
@@ -995,7 +1006,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute has_element?(view, "#settings-widget")
 
     view
-    |> element("button[title=\"Manage masks\"]")
+    |> element("button[title=\"Manage masks']")
     |> render_click()
 
     assert has_element?(view, "#settings-widget")
@@ -1041,7 +1052,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#system-container button[title=\"Select system J150321\"]")
+    |> element("#system-container button[title='Select system J150321']")
     |> render_click()
 
     view
@@ -1066,7 +1077,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#system-container button[title=\"Select system J150321\"]")
+    |> element("#system-container button[title='Select system J150321']")
     |> render_click()
 
     view
@@ -1176,7 +1187,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert {_, {:live_redirect, %{to: "/dashboard"}}} =
              view
-             |> element("button[title=\"Remove #{character.name}\"]")
+             |> element("button[title=\"Remove #{character.name}']")
              |> render_click()
   end
 

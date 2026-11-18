@@ -19,6 +19,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign(:connections, connections)
      |> assign_new(:pan_x, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 0) end)
      |> assign_new(:pan_y, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 1) end)
+     |> assign_new(:map_locked, fn -> false end)
      |> assign_new(:show_row_guides, fn -> false end)
      |> assign_new(:show_row_counts, fn -> false end)
      |> assign_new(:angled_lines, fn -> true end)
@@ -39,8 +40,18 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     {:noreply, socket}
   end
 
-  def handle_event("toggle-favorite", _params, socket) do
-    send(self(), :toggle_favorite)
+  def handle_event("show-favorites", _params, socket) do
+    send(self(), :show_favorites)
+    {:noreply, socket}
+  end
+
+  def handle_event("toggle-map-lock", _params, socket) do
+    send(self(), :toggle_map_lock)
+    {:noreply, socket}
+  end
+
+  def handle_event("open-chain-modal", _params, socket) do
+    send(self(), :open_chain_modal)
     {:noreply, socket}
   end
 
@@ -86,6 +97,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 phx-click="switch-map"
                 phx-value-id={tab.id}
                 phx-target={@myself}
+                disabled={@map_locked}
               >
                 {tab.name}
               </button>
@@ -96,6 +108,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               title="New tab"
               phx-click="new-map"
               phx-target={@myself}
+              disabled={@map_locked}
             >
               <.icon name="hero-plus" class="size-4" />
             </button>
@@ -106,37 +119,42 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               title="Add viewing system to chain"
               phx-click="add-viewing"
               phx-target={@myself}
+              disabled={@map_locked}
             >
               <.icon name="hero-eye" class="size-4" />
             </button>
             <button
               id="show-favorite"
               class="btn btn-ghost btn-xs"
-              title="Add/remove selected system from favorites"
-              phx-click="toggle-favorite"
+              title="Add connected favorites to chain"
+              phx-click="show-favorites"
               phx-target={@myself}
+              disabled={@map_locked}
             >
-              <.icon
-                name={
-                  if selected_favorite?(@systems, @selected_system_id),
-                    do: "hero-star-solid",
-                    else: "hero-star"
-                }
-                class={
-                  if selected_favorite?(@systems, @selected_system_id),
-                    do: "size-4 text-amber-400",
-                    else: "size-4"
-                }
-              />
+              <.icon name="hero-star" class="size-4" />
             </button>
             <button
               id="toggle-lock"
               class="btn btn-ghost btn-xs"
-              title="Unlock map"
-              phx-hook="LockToggle"
-              data-locked="true"
+              title={if @map_locked, do: "Unlock map", else: "Lock map"}
+              phx-click="toggle-map-lock"
+              phx-target={@myself}
+              data-locked={to_string(@map_locked)}
             >
-              <.icon name="hero-lock-closed" class="size-4" />
+              <.icon
+                name={if @map_locked, do: "hero-lock-closed", else: "hero-lock-open"}
+                class={if @map_locked, do: "size-4 text-amber-400", else: "size-4"}
+              />
+            </button>
+            <button
+              id="chain-edit"
+              class="btn btn-ghost btn-xs"
+              title="Edit chain settings"
+              phx-click="open-chain-modal"
+              phx-target={@myself}
+              disabled={@map_locked}
+            >
+              <.icon name="hero-pencil" class="size-4" />
             </button>
             <details id="show-chainLegend" class="dropdown">
               <summary
@@ -177,6 +195,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               class="btn btn-ghost btn-xs"
               title="Zoom out"
               phx-click={JS.dispatch("tripwire:zoom-out", to: "#chain-map")}
+              disabled={@map_locked}
             >
               <.icon name="hero-magnifying-glass-minus" class="size-4" />
             </button>
@@ -189,6 +208,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               class="btn btn-ghost btn-xs"
               title="Zoom in"
               phx-click={JS.dispatch("tripwire:zoom-in", to: "#chain-map")}
+              disabled={@map_locked}
             >
               <.icon name="hero-magnifying-glass-plus" class="size-4" />
             </button>
@@ -199,6 +219,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               phx-click="map-layout"
               phx-value-layout="default"
               phx-target={@myself}
+              disabled={@map_locked}
             >
               Reset Zoom
             </button>
@@ -221,6 +242,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
             class="block size-full touch-pan-y select-none"
             phx-hook="MapDrag"
             data-selected={@selected_system_id}
+            data-locked={to_string(@map_locked)}
           >
             <g id="map-guides">
               <line
@@ -419,13 +441,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     system_id in Mapping.loop_system_ids(connections)
   end
 
-  defp selected_favorite?(systems, id) do
-    case Enum.find(systems, &(&1.id == id)) do
-      %{favorite: true} -> true
-      _ -> false
-    end
-  end
-
   defp node_badges(system) do
     Tripwire.Systems.statics(Tripwire.Systems.display_class(system))
     |> Enum.map(
@@ -473,8 +488,22 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     case Enum.find(connections, fn {_conn, from, to} ->
            from.id == system_id or to.id == system_id
          end) do
-      {conn, _, _} -> conn.hole_type || ""
+      {conn, _, _} -> connection_label(conn)
       nil -> ""
     end
   end
+
+  defp connection_label(%{hole_type: hole, jumps: jumps}) do
+    hole_label = if hole in [nil, ""], do: nil, else: hole
+    jump_label = if is_integer(jumps), do: "#{jumps} #{if jumps == 1, do: "jump", else: "jumps"}", else: nil
+
+    case {hole_label, jump_label} do
+      {nil, nil} -> ""
+      {h, nil} -> h
+      {nil, j} -> j
+      {h, j} -> "#{h} · #{j}"
+    end
+  end
+
+  defp connection_label(_), do: ""
 end

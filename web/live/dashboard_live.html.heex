@@ -133,6 +133,7 @@
         systems={@systems}
         connections={@connections}
         selected_system_id={@selected_system_id}
+        map_locked={@map_locked}
         show_row_guides={@show_row_guides}
         show_row_counts={@show_row_counts}
         angled_lines={@angled_lines}
@@ -384,6 +385,47 @@
     </div>
     <div class="modal-backdrop">
       <button type="button" phx-click="close-sig-modal">Close</button>
+    </div>
+  </div>
+
+  <div :if={@chain_modal_open} id="chain-modal" class="modal modal-open">
+    <div class="modal-box">
+      <h3 class="text-lg font-bold">Edit Chain</h3>
+      <p class="font-mono text-sm opacity-60">{if @map, do: @map.name}</p>
+      <p :if={@chain_errors != []} class="alert alert-error mt-2 py-2 text-sm">
+        {Enum.join(@chain_errors, ", ")}
+      </p>
+      <form phx-submit="save-chain-settings" class="mt-3 flex flex-col gap-3">
+        <label class="form-control">
+          <span class="label label-text">Home system</span>
+          <input
+            name="chain[home]"
+            value={@chain_form["home"]}
+            placeholder="Jita or 30000142"
+            autocomplete="off"
+            class="input input-bordered input-sm w-full"
+          />
+        </label>
+        <label class="label cursor-pointer justify-start gap-2">
+          <input
+            type="checkbox"
+            name="chain[include_thera]"
+            value="true"
+            checked={@chain_form["include_thera"]}
+            class="checkbox checkbox-sm"
+          />
+          <span class="label-text">Include Thera chain</span>
+        </label>
+        <div class="modal-action">
+          <button type="button" class="btn btn-sm" phx-click="close-chain-modal">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
+        </div>
+      </form>
+    </div>
+    <div class="modal-backdrop">
+      <button type="button" phx-click="close-chain-modal">Close</button>
     </div>
   </div>
 </RootLayout.app>

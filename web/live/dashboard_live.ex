@@ -142,10 +142,14 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_info({:open_system, system_id}, socket) do
-    {:noreply,
-     socket
-     |> select_system_and_patch(system_id)
-     |> open_system_modal(system_id)}
+    if socket.assigns[:map_locked] do
+      {:noreply, socket |> select_system_and_patch(system_id) |> put_flash(:error, "Map is locked")}
+    else
+      {:noreply,
+       socket
+       |> select_system_and_patch(system_id)
+       |> open_system_modal(system_id)}
+    end
   end
 
   def handle_info(:toggle_favorite, socket) do
@@ -153,22 +157,26 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_info({:open_connection, conn_id}, socket) do
-    case Mapping.get_connection(conn_id) do
-      nil ->
-        {:noreply, socket}
+    if socket.assigns[:map_locked] do
+      {:noreply, put_flash(socket, :error, "Map is locked")}
+    else
+      case Mapping.get_connection(conn_id) do
+        nil ->
+          {:noreply, socket}
 
-      conn ->
-        {:noreply,
-         socket
-         |> assign(:conn_modal_open, true)
-         |> assign(:conn_edit_id, conn.id)
-         |> assign(:conn_errors, [])
-         |> assign(:conn_form, %{
-           "hole_type" => conn.hole_type || "",
-           "mass_status" => conn.mass_status || "stable",
-           "time_status" => conn.time_status || "stable",
-           "ship_size" => conn.ship_size || ""
-         })}
+        conn ->
+          {:noreply,
+           socket
+           |> assign(:conn_modal_open, true)
+           |> assign(:conn_edit_id, conn.id)
+           |> assign(:conn_errors, [])
+           |> assign(:conn_form, %{
+             "hole_type" => conn.hole_type || "",
+             "mass_status" => conn.mass_status || "stable",
+             "time_status" => conn.time_status || "stable",
+             "ship_size" => conn.ship_size || ""
+           })}
+      end
     end
   end
 
@@ -293,6 +301,15 @@ defmodule TripwireWeb.DashboardLive do
   def handle_info({:map_layout, layout}, socket),
     do: handle_event("map-layout", %{"layout" => layout}, socket)
 
+  def handle_info(:toggle_map_lock, socket),
+    do: handle_event("toggle-map-lock", %{}, socket)
+
+  def handle_info(:show_favorites, socket),
+    do: handle_event("show-favorites", %{}, socket)
+
+  def handle_info(:open_chain_modal, socket),
+    do: handle_event("open-chain-modal", %{}, socket)
+
   def handle_info(_message, socket), do: {:noreply, socket}
 
   @impl true
@@ -302,6 +319,54 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("toggle-grid-lock", _params, socket) do
     {:noreply, update(socket, :grid_locked, &(!&1))}
+  end
+
+  def handle_event("toggle-map-lock", _params, socket) do
+    {:noreply, update(socket, :map_locked, &(!&1))}
+  end
+
+  def handle_event("open-chain-modal", _params, socket) do
+    if socket.assigns[:map_locked] do
+      {:noreply, put_flash(socket, :error, "Map is locked")}
+    else
+      map = socket.assigns.map
+
+      home =
+        cond do
+          map && map.home_name not in [nil, ""] -> map.home_name
+          map && map.home_solar_system_id -> to_string(map.home_solar_system_id)
+          true -> socket.assigns[:selected_system_name] || ""
+        end
+
+      {:noreply,
+       socket
+       |> assign(:chain_modal_open, true)
+       |> assign(:chain_errors, [])
+       |> assign(:chain_form, %{
+         "home" => home || "",
+         "include_thera" => !!(map && map.include_thera)
+       })}
+    end
+  end
+
+  def handle_event("close-chain-modal", _params, socket) do
+    {:noreply, assign(socket, :chain_modal_open, false)}
+  end
+
+  def handle_event("save-chain-settings", %{"chain" => params}, socket) do
+    if socket.assigns[:map_locked] do
+      {:noreply, put_flash(socket, :error, "Map is locked")}
+    else
+      {:noreply, save_chain_settings(socket, params)}
+    end
+  end
+
+  def handle_event("show-favorites", _params, socket) do
+    if socket.assigns[:map_locked] do
+      {:noreply, put_flash(socket, :error, "Map is locked")}
+    else
+      {:noreply, import_connected_favorites(socket)}
+    end
   end
 
   def handle_event("system-search-submit", %{"search" => search}, socket) do
@@ -408,14 +473,22 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("map-layout", %{"layout" => "default"}, socket) do
-    socket = socket |> assign(:map_layout, "top") |> apply_tree_layout("top")
-    {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
-    {:noreply, push_event(socket, "reset-pan", %{x: x, y: y})}
+    if socket.assigns[:map_locked] do
+      {:noreply, put_flash(socket, :error, "Map is locked")}
+    else
+      socket = socket |> assign(:map_layout, "top") |> apply_tree_layout("top")
+      {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
+      {:noreply, push_event(socket, "reset-pan", %{x: x, y: y})}
+    end
   end
 
   def handle_event("map-layout", %{"layout" => layout}, socket)
       when layout in ~w(top bottom left right radial) do
-    {:noreply, socket |> assign(:map_layout, layout) |> apply_tree_layout(layout)}
+    if socket.assigns[:map_locked] do
+      {:noreply, put_flash(socket, :error, "Map is locked")}
+    else
+      {:noreply, socket |> assign(:map_layout, layout) |> apply_tree_layout(layout)}
+    end
   end
 
   def handle_event("map-layout", _params, socket), do: {:noreply, socket}
@@ -974,9 +1047,12 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("new-map", _params, socket) do
-    mask = socket.assigns.mask
-    count = length(Mapping.list_maps_for_mask(mask.id))
-    name = "Chain #{count + 1}"
+    if socket.assigns[:map_locked] do
+      {:noreply, put_flash(socket, :error, "Map is locked")}
+    else
+      mask = socket.assigns.mask
+      count = length(Mapping.list_maps_for_mask(mask.id))
+      name = "Chain #{count + 1}"
 
     case Mapping.create_map(%{name: name, mask_id: mask.id}) do
       {:ok, map} ->
@@ -1004,10 +1080,14 @@ defmodule TripwireWeb.DashboardLive do
       {:error, changeset} ->
         {:noreply, flash_changeset_errors(socket, changeset)}
     end
+    end
   end
 
   def handle_event("switch-map", %{"id" => id}, socket) do
-    map_id = String.to_integer(id)
+    if socket.assigns[:map_locked] do
+      {:noreply, put_flash(socket, :error, "Map is locked")}
+    else
+      map_id = String.to_integer(id)
 
     case Mapping.get_map!(map_id) do
       %{mask_id: mask_id} = map when mask_id == socket.assigns.mask.id ->
@@ -1034,12 +1114,16 @@ defmodule TripwireWeb.DashboardLive do
       _ ->
         {:noreply, put_flash(socket, :error, "Map not found")}
     end
+    end
   rescue
     _ -> {:noreply, put_flash(socket, :error, "Map not found")}
   end
 
   def handle_event("add-viewing", _params, socket) do
-    with %{refresh_token: token} when not is_nil(token) <- socket.assigns.character,
+    if socket.assigns[:map_locked] do
+      {:noreply, put_flash(socket, :error, "Map is locked")}
+    else
+      with %{refresh_token: token} when not is_nil(token) <- socket.assigns.character,
          {:ok, access} <- ESI.valid_access_token(socket.assigns.character),
          {:ok, %{"solar_system_id" => solar_system_id}} <-
            ESI.get_character_location(socket.assigns.character.eve_id, access),
@@ -1060,6 +1144,7 @@ defmodule TripwireWeb.DashboardLive do
        |> put_flash(:info, "Added viewing system #{system.name}")}
     else
       _ -> {:noreply, put_flash(socket, :error, "ESI location unavailable")}
+    end
     end
   end
 
@@ -1250,12 +1335,17 @@ defmodule TripwireWeb.DashboardLive do
   defp scoped_upsert_member(_), do: {:error, :forbidden}
 
   defp apply_tree_layout(%{assigns: %{map: map}} = socket, layout) when not is_nil(map) do
-    spacing = spacing_factor(socket.assigns[:node_spacing])
+    apply_tree_layout_with_home(socket, layout, map)
+  end
+
+  defp apply_tree_layout_with_home(%{assigns: assigns} = socket, layout, map) do
+    spacing = spacing_factor(assigns[:node_spacing])
+    home_id = home_root_id(assigns[:systems] || [], map)
 
     positions =
-      layout_positions(socket.assigns.systems, socket.assigns.connections, layout, spacing)
+      layout_positions(assigns.systems, assigns.connections, layout, spacing, home_id)
 
-    Enum.each(socket.assigns.systems, fn s ->
+    Enum.each(assigns.systems, fn s ->
       pos = positions[s.id]
       {:ok, _} = Mapping.update_system_position(Mapping.get_system!(s.id), pos.x, pos.y)
     end)
@@ -1265,17 +1355,29 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
   end
 
+  defp home_root_id(systems, %{home_solar_system_id: solar}) when is_integer(solar) do
+    case Enum.find(systems, &(&1.solar_system_id == solar)) do
+      %{id: id} -> id
+      _ -> nil
+    end
+  end
+
+  defp home_root_id(_, _), do: nil
+
   # "top"/"bottom"/"left"/"right" name the side the tree is anchored to.
   defp normalize_layout("top"), do: "down"
   defp normalize_layout("bottom"), do: "up"
   defp normalize_layout("left"), do: "right"
   defp normalize_layout("right"), do: "left"
 
-  defp layout_positions(systems, connections, "radial", spacing),
+  defp layout_positions(systems, connections, "radial", spacing, _home_id),
     do: Mapping.radial_layout(systems, connections, spacing)
 
-  defp layout_positions(systems, connections, layout, spacing),
+  defp layout_positions(systems, connections, layout, spacing, nil),
     do: Mapping.tree_layout(systems, connections, normalize_layout(layout), spacing)
+
+  defp layout_positions(systems, connections, layout, spacing, home_id),
+    do: Mapping.tree_layout(systems, connections, normalize_layout(layout), spacing, root_id: home_id)
 
   defp spacing_factor(nil), do: 1.0
   defp spacing_factor(spacing) when is_number(spacing), do: spacing / 100
@@ -1444,6 +1546,266 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
+  defp import_connected_favorites(socket) do
+    map = socket.assigns.map
+    mask = socket.assigns.mask
+
+    if is_nil(map) or is_nil(mask) do
+      put_flash(socket, :error, "No chain selected")
+    else
+      chain_systems = socket.assigns.systems || []
+      chain_solar = MapSet.new(chain_systems, & &1.solar_system_id)
+      candidates = Mapping.list_favorite_candidates(mask.id, map.id)
+      candidates = Enum.reject(candidates, &MapSet.member?(chain_solar, &1.solar_system_id))
+
+      route_fn =
+        Application.get_env(:tripwire, :route_fn, fn o, d -> ESI.get_route(o, d) end)
+
+      {added, skipped, socket_systems} =
+        Enum.reduce(candidates, {0, 0, chain_systems}, fn cand, {a, s, current} ->
+          chain_for_check = if current == chain_systems, do: chain_systems, else: Mapping.list_systems(map.id)
+          current_solar = MapSet.new(chain_for_check, & &1.solar_system_id)
+
+          case favorite_link_target(mask.id, cand, chain_for_check, current_solar, route_fn) do
+            nil ->
+              {a, s + 1, current}
+
+            {target, hole_type, jumps} ->
+              attrs = %{
+                solar_system_id: cand.solar_system_id,
+                name: cand.name,
+                security: cand.security,
+                sys_class: cand.sys_class,
+                effect: cand.effect,
+                favorite: true,
+                x: target.x + 170.0,
+                y: target.y + 40.0
+              }
+
+              case Mapping.ensure_chain_system(map, attrs) do
+                {:ok, fresh, _} ->
+                  {:ok, _, _} =
+                    Mapping.upsert_connection(map.id, fresh.id, target.id, %{
+                      hole_type: hole_type,
+                      jumps: jumps
+                    })
+
+                  {a + 1, s, current ++ [fresh]}
+
+                _ ->
+                  {a, s + 1, current}
+              end
+          end
+        end)
+
+      _ = socket_systems
+
+      socket =
+        socket
+        |> assign(:systems, Mapping.list_systems(map.id))
+        |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
+        |> apply_tree_layout(socket.assigns.map_layout || "top")
+
+      {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
+
+      socket =
+        socket
+        |> push_event("reset-pan", %{x: x, y: y})
+
+      cond do
+        added == 0 and skipped == 0 ->
+          put_flash(socket, :info, "No favorited systems to add")
+
+        added == 0 ->
+          put_flash(socket, :info, "No favorited systems connect to this chain (#{skipped} skipped)")
+
+        true ->
+          put_flash(socket, :info, "Added #{added} favorited system(s)#{if skipped > 0, do: " (#{skipped} skipped, no route)"}")
+      end
+    end
+  end
+
+  defp favorite_link_target(mask_id, cand, chain_systems, current_solar, route_fn) do
+    case Mapping.wormhole_link_target(mask_id, cand.solar_system_id, chain_systems) do
+      {target, hole_type} -> {target, hole_type, 1}
+      nil ->
+        case kspace_link_target(cand, chain_systems, current_solar, route_fn) do
+          nil -> nil
+          {target, jumps} -> {target, nil, jumps}
+        end
+    end
+  end
+
+  defp kspace_link_target(cand, _chain_systems, _current_solar, _route_fn)
+       when not is_integer(cand.solar_system_id) or cand.solar_system_id >= 31_000_000,
+       do: nil
+
+  defp kspace_link_target(cand, chain_systems, _current_solar, route_fn) do
+    kspace_chain = Enum.filter(chain_systems, &is_integer(&1.solar_system_id) and &1.solar_system_id < 31_000_000)
+
+    Enum.find_value(kspace_chain, fn target ->
+      case route_fn.(cand.solar_system_id, target.solar_system_id) do
+        {:ok, route} when is_list(route) and length(route) > 0 ->
+          jumps = max(length(route) - 1, 1)
+          {target, jumps}
+
+        _ ->
+          false
+      end
+    end)
+  end
+
+  defp save_chain_settings(socket, params) do
+    map = socket.assigns.map
+    home_input = params["home"] |> to_string() |> String.trim()
+    include_thera = params["include_thera"] in ["true", "on", "1"]
+
+    with {:ok, home_solar, home_name} <- resolve_home_input(socket, home_input),
+         {:ok, updated} <-
+           Mapping.update_map(map, %{
+             home_solar_system_id: home_solar,
+             home_name: home_name,
+             include_thera: include_thera
+           }) do
+      socket = assign(socket, :map, updated)
+
+      socket =
+        case home_solar do
+          nil -> socket
+          solar -> ensure_home_node(socket, updated, solar, home_name)
+        end
+
+      socket =
+        if include_thera do
+          ensure_thera_node(socket, updated)
+        else
+          socket
+        end
+
+      socket =
+        socket
+        |> assign(:systems, Mapping.list_systems(updated.id))
+        |> assign(:connections, Mapping.list_connections_with_endpoints(updated.id))
+        |> apply_tree_layout_with_home(socket.assigns.map_layout || "top", updated)
+        |> assign(:chain_modal_open, false)
+        |> assign(:chain_errors, [])
+        |> assign(:maps, Mapping.list_maps_for_mask(socket.assigns.mask.id))
+
+      {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
+
+      socket
+      |> push_event("reset-pan", %{x: x, y: y})
+      |> put_flash(:info, "Chain settings saved")
+    else
+      {:error, message} when is_binary(message) ->
+        assign(socket, :chain_errors, [message])
+
+      {:error, _} ->
+        assign(socket, :chain_errors, ["Could not save chain settings"])
+    end
+  end
+
+  defp resolve_home_input(_socket, ""), do: {:ok, nil, nil}
+
+  defp resolve_home_input(socket, input) do
+    case Integer.parse(input) do
+      {solar, ""} ->
+        case system_name_for_solar(socket, solar) do
+          nil ->
+            case ESI.get_system(solar) do
+              {:ok, %{"name" => name} = body} ->
+                {:ok, solar, Map.get(body, "name", name)}
+
+              _ ->
+                {:error, "Home system not found: #{input}"}
+            end
+
+          name ->
+            {:ok, solar, name}
+        end
+
+      _ ->
+        existing =
+          Enum.find(socket.assigns.systems || [], &(String.downcase(&1.name) == String.downcase(input)))
+
+        cond do
+          existing -> {:ok, existing.solar_system_id, existing.name}
+          true ->
+            case ESI.resolve_system_id(input) do
+              {:ok, solar} -> {:ok, solar, input}
+              :error -> {:error, "Home system not found: #{input}"}
+            end
+        end
+    end
+  end
+
+  defp system_name_for_solar(socket, solar) do
+    mask_maps = Mapping.list_maps_for_mask(socket.assigns.mask.id)
+    map_ids = Enum.map(mask_maps, & &1.id)
+
+    Enum.find_value(map_ids, fn _ -> nil end)
+
+    found =
+      Enum.find(socket.assigns.systems || [], &(&1.solar_system_id == solar))
+
+    if found, do: found.name, else: nil
+  end
+
+  defp ensure_home_node(socket, map, solar, name) do
+    resolved_name = name || "System #{solar}"
+
+    attrs =
+      case ESI.get_system(solar) do
+        {:ok, body} when is_map(body) ->
+          %{
+            solar_system_id: solar,
+            name: body["name"] || resolved_name,
+            security: body["security_status"]
+          }
+
+        _ ->
+          %{solar_system_id: solar, name: resolved_name}
+      end
+
+    case Mapping.ensure_chain_system(map, attrs) do
+      {:ok, _system, _} -> socket
+      _ -> socket
+    end
+  end
+
+  defp ensure_thera_node(socket, map) do
+    solar = Mapping.thera_solar_system_id()
+    existing? = Enum.any?(socket.assigns.systems || [], &(&1.solar_system_id == solar))
+
+    if existing? do
+      socket
+    else
+      attrs =
+        case ESI.get_system(solar) do
+          {:ok, body} when is_map(body) ->
+            %{solar_system_id: solar, name: body["name"] || Mapping.thera_name(), security: body["security_status"]}
+
+          _ ->
+            %{solar_system_id: solar, name: Mapping.thera_name()}
+        end
+
+      case Mapping.ensure_chain_system(map, attrs) do
+        {:ok, thera, true} ->
+          link_target =
+            (socket.assigns.systems || []) |> List.first()
+
+          if link_target do
+            {:ok, _, _} = Mapping.upsert_connection(map.id, thera.id, link_target.id, %{})
+          end
+
+          socket
+
+        _ ->
+          socket
+      end
+    end
+  end
+
   defp sys_form_for(systems, id) do
     case Enum.find(systems, &(&1.id == id)) do
       %{alias: alias_, sys_class: sys_class, effect: effect} ->
@@ -1567,6 +1929,10 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:chart_range, "24h")
     |> assign(:chart_hidden, MapSet.new())
     |> assign(:chart_data, %{labels: [], jumps: [], ship_kills: [], pod_kills: [], npc_kills: []})
+    |> assign(:map_locked, false)
+    |> assign(:chain_modal_open, false)
+    |> assign(:chain_form, %{"home" => "", "include_thera" => false})
+    |> assign(:chain_errors, [])
   end
 
   defp schedule_topbar_load(socket) do

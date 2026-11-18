@@ -83,6 +83,50 @@ defmodule Tripwire.ESI do
   def get_sovereignty_map, do: public_get("/universe/sovereignty/map/")
 
   @doc """
+  K-space route between two solar systems. Returns `{:ok, [solar_ids]}`.
+  Wormhole / Thera systems (>= 31_000_000) never route via gates.
+  """
+  def get_route(origin, destination, opts \\ []) do
+    flag = Keyword.get(opts, :flag, "shortest")
+
+    if kspace_id?(origin) and kspace_id?(destination) do
+      public_get("/route/#{origin}/#{destination}/?flag=#{flag}")
+    else
+      {:error, :no_kspace_route}
+    end
+  end
+
+  @doc """
+  Resolves a system name to a solar system id via POST /universe/ids/.
+  Returns `{:ok, solar_system_id}` or `:error`.
+  """
+  def resolve_system_id(name) when is_binary(name) do
+    trimmed = String.trim(name)
+
+    if trimmed == "" do
+      :error
+    else
+      case public_post("/universe/ids/", [trimmed]) do
+        {:ok, %{"systems" => [%{"id" => id} | _]}} -> {:ok, id}
+        {:ok, %{"systems" => systems}} when is_list(systems) ->
+          case Enum.find(systems, &(String.downcase(&1["name"] || "") ==
+                                     String.downcase(trimmed))) do
+            %{"id" => id} -> {:ok, id}
+            _ -> :error
+          end
+
+        _ ->
+          :error
+      end
+    end
+  end
+
+  def resolve_system_id(_), do: :error
+
+  defp kspace_id?(id) when is_integer(id), do: id < 31_000_000
+  defp kspace_id?(_), do: false
+
+  @doc """
   Returns live hourly activity for one solar system from the public
   universe endpoints. Missing rows mean zero activity this hour.
   ESI keys these rows by `system_id`.
@@ -177,6 +221,14 @@ defmodule Tripwire.ESI do
 
   defp public_get(path) do
     case req(:get, @esi_base <> path) do
+      {:ok, %{status: 200} = response} -> {:ok, response.body}
+      {:ok, %{status: status, body: body}} -> {:error, {status, body}}
+      error -> error
+    end
+  end
+
+  defp public_post(path, body) do
+    case req(:post, @esi_base <> path, json: body) do
       {:ok, %{status: 200} = response} -> {:ok, response.body}
       {:ok, %{status: status, body: body}} -> {:error, {status, body}}
       error -> error
