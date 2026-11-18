@@ -40,6 +40,18 @@ defmodule Tripwire.Tracking do
   end
 
   @doc """
+  Whether a poller is currently tracking the given character.
+  """
+  def tracking?(%{eve_id: eve_id}) when is_integer(eve_id) do
+    case Registry.lookup(Tripwire.TrackingRegistry, eve_id) do
+      [{_pid, _}] -> true
+      [] -> false
+    end
+  end
+
+  def tracking?(_), do: false
+
+  @doc """
   Records a location change onto the map: adds the system when missing,
   links it to the previous system and broadcasts the map update.
 

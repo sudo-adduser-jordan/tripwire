@@ -95,4 +95,10 @@ defmodule Tripwire.TrackingTest do
 
     assert Mapping.character_statistics(character).systems_visited == 2
   end
+
+  test "tracking?/1 reports whether a poller is registered" do
+    assert Tracking.tracking?(%{eve_id: 999_999}) == false
+    assert Tracking.tracking?(nil) == false
+    assert Tracking.tracking?(%{}) == false
+  end
 end

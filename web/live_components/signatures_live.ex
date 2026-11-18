@@ -17,6 +17,8 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
      |> assign(assigns)
      |> assign(:signatures, signatures)
      |> assign(:wh_links, wh_links(Map.get(assigns, :connections, [])))
+     |> assign(:tracking?, tracking?(assigns))
+     |> assign(:tracking_available?, tracking_available?(assigns))
      |> assign_new(:undo, fn -> [] end)
      |> assign_new(:redo, fn -> [] end)}
   end
@@ -117,6 +119,21 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
     end
   end
 
+  def handle_event("toggle-tracker", _params, socket) do
+    case socket.assigns do
+      %{character: %{} = character, tracking?: true} ->
+        _ = Tripwire.Tracking.stop_poller(character)
+        {:noreply, assign(socket, :tracking?, false)}
+
+      %{character: %{} = character} ->
+        _ = Tripwire.Tracking.ensure_poller(character)
+        {:noreply, assign(socket, :tracking?, true)}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   def render(assigns) do
     ~H"""
     <div id={@id} class="grid-stack-item" gs-w="12" gs-h="6" gs-x="0" gs-y="6" tabindex="0">
@@ -159,6 +176,22 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
               <span :if={!Map.get(assigns, :selected_system_name)} class="text-xs opacity-60">
                 {system_label(@selected_system_id)}
               </span>
+              <button
+                :if={@tracking_available?}
+                class={[
+                  "btn btn-ghost btn-xs",
+                  if(@tracking?, do: "btn-primary text-base-content")
+                ]}
+                title={
+                  if @tracking?,
+                    do: "Stop auto-tracking this character",
+                    else: "Auto-track this character"
+                }
+                phx-click="toggle-tracker"
+                phx-target={@myself}
+              >
+                <.icon name={if(@tracking?, do: "hero-eye", else: "hero-eye-slash")} class="size-4" />
+              </button>
             </li>
           </ul>
         </div>
@@ -254,6 +287,20 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
 
   defp system_label(nil), do: "no system selected"
   defp system_label(_), do: "system selected"
+
+  defp tracking?(assigns) do
+    case Map.get(assigns, :character) do
+      %{} = character -> Tripwire.Tracking.tracking?(character)
+      _ -> false
+    end
+  end
+
+  defp tracking_available?(assigns) do
+    case Map.get(assigns, :character) do
+      %{refresh_token: token} -> Tripwire.SSO.configured?() and not is_nil(token)
+      _ -> false
+    end
+  end
 
   defp sig_link(%{type_name: name}), do: SigParser.external_link(name)
   defp sig_link(_), do: nil
