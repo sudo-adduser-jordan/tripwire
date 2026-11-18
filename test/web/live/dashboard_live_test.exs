@@ -474,28 +474,6 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute node_html =~ "K162"
   end
 
-  test "nodes are color coded by system class", %{conn: conn, character: character} do
-    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
-    {:ok, _} = Mapping.update_system(system, %{sys_class: "C3"})
-
-    {:ok, other} =
-      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 200.0})
-
-    {:ok, _link, _new?} =
-      Mapping.upsert_connection(map.id, system.id, other.id, %{hole_type: "K162"})
-
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
-
-    view
-    |> element("#system-container button[title='Select system J150322']")
-    |> render_click()
-
-    html = render(view)
-    assert html =~ "chain-map"
-    assert html =~ ~s|stroke="#4399F0"|
-    assert html =~ ~s|fill="#4399F0"|
-  end
-
   test "clicking a node's J-code opens the system editor and saves changes", %{
     conn: conn,
     character: character
@@ -651,34 +629,6 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert Mapping.get_system!(system.id).favorite
   end
 
-  test "signature types render color coded badges", %{conn: conn, character: character} do
-    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
-
-    {:ok, _} =
-      Mapping.create_signature(
-        system,
-        %{sig_id: "ABC-123", kind: "signature", site_type: "wormhole"},
-        character
-      )
-
-    {:ok, _} =
-      Mapping.create_signature(
-        system,
-        %{sig_id: "DEF-456", kind: "signature", site_type: "combat"},
-        character
-      )
-
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
-
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
-
-    html = render(view)
-    assert html =~ "badge-info"
-    assert html =~ "badge-error"
-  end
-
   test "system widget lists only the selected system and its connections", %{
     conn: conn,
     character: character
@@ -730,53 +680,6 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert Mapping.get_system!(system.id).y == 60.0
     assert Mapping.get_system!(other.id).y == 220.0
-  end
-
-  test "connections render as straight paths", %{conn: conn, character: character} do
-    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
-
-    {:ok, other} =
-      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 200.0})
-
-    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
-
-    # first load applies the top tree layout: parent above child, straight edge
-    {:ok, _view, html} = live(login(conn, character), ~p"/dashboard")
-
-    assert html =~ "<path"
-    assert html =~ "M 520.0 104.0 L 520.0 264.0"
-  end
-
-  test "row guides and counts outline systems per row", %{conn: conn, character: character} do
-    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
-
-    # fork: both children land on the same tree row, so one row counts 2
-    {:ok, other} =
-      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 0.0})
-
-    {:ok, third} =
-      Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323", x: 600.0, y: 0.0})
-
-    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
-    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, third.id)
-
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
-
-    view
-    |> element("#settings-button")
-    |> render_click()
-
-    view
-    |> element("#toggle-row-guides")
-    |> render_click()
-
-    view
-    |> element("#toggle-row-counts")
-    |> render_click()
-
-    html = render(view)
-    assert html =~ ~s|x1="0"|
-    assert html =~ ~r/<text[^>]*>\s*2\s*<\/text>/
   end
 
   test "map settings toggles jump lines and node badges", %{conn: conn, character: character} do

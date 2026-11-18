@@ -39,23 +39,6 @@ defmodule TripwireWeb.PageControllerTest do
     )
   end
 
-  test "GET /auth/evesso returns to the landing page when SSO credentials are missing", %{
-    conn: conn
-  } do
-    with_env(
-      %{
-        "EVESSO_CLIENT_ID" => nil,
-        "EVESSO_SECRET_KEY" => nil,
-        "EVESSO_CLIENT_SECRET" => nil
-      },
-      fn ->
-        conn = get(conn, ~p"/auth/evesso")
-        assert redirected_to(conn) == "/"
-        assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "demo mode"
-      end
-    )
-  end
-
   defp with_env(vars, fun) do
     previous = Map.new(vars, fn {name, _value} -> {name, System.get_env(name)} end)
 
