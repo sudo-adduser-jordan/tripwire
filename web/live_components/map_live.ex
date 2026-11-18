@@ -2,6 +2,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   use TripwireWeb, :live_component
 
   alias Tripwire.Mapping
+  alias Tripwire.Signatures, as: SigParser
 
   def update(assigns, socket) do
     map_id = Map.get(assigns, :map_id)
@@ -508,20 +509,11 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
         case Enum.find(
                wh_sigs,
-               &(&1.map_system_id == system_id and sig_code(&1) == code)
+               &(&1.map_system_id == system_id and SigParser.wormhole_code(&1.type_name) == code)
              ) do
           nil -> ""
           sig -> sig.sig_id
         end
     end
   end
-
-  defp sig_code(%{type_name: name}) when is_binary(name) do
-    case Regex.run(~r/\b([A-Z][0-9]{3})\b/, String.upcase(name)) do
-      [_, code] -> code
-      _ -> nil
-    end
-  end
-
-  defp sig_code(_), do: nil
 end

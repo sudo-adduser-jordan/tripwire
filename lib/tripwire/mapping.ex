@@ -882,6 +882,26 @@ defmodule Tripwire.Mapping do
     |> Enum.filter(&(Tripwire.Signatures.wormhole_code(&1.type_name) == code))
   end
 
+  @doc """
+  Pushes a wormhole signature's connection code onto the chain map: any
+  connection touching `system` with a blank code (or the signature's previous
+  code) adopts `new_code`, mirroring a signature edit in the map.
+  """
+  def sync_signature_to_connections(%Map{} = map, %MapSystem{} = system, old_code, new_code)
+      when is_binary(new_code) do
+    map.id
+    |> list_connections_with_endpoints()
+    |> Enum.filter(fn {conn, from, to} ->
+      (from.id == system.id or to.id == system.id) and
+        (conn.hole_type in [nil, ""] or (not is_nil(old_code) and conn.hole_type == old_code))
+    end)
+    |> Enum.each(fn {conn, _, _} -> update_connection(conn, %{hole_type: new_code}) end)
+
+    :ok
+  end
+
+  def sync_signature_to_connections(_map, _system, _old_code, _new_code), do: :ok
+
   def list_comments(system_id) do
     Repo.all(
       from(c in Tripwire.Mapping.Comment,

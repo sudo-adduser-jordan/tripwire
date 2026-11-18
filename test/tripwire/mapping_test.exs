@@ -287,6 +287,37 @@ defmodule Tripwire.MappingTest do
     assert Mapping.get_signature!(sig.id).expires_at == original
   end
 
+  test "sync_signature_to_connections/4 adopts a blank or previous hole code" do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_020, name: "Hole Sync"})
+    {:ok, mask} = Masks.ensure_personal_mask(character)
+    {:ok, map} = Mapping.create_map(%{name: "Sync", mask_id: mask.id})
+
+    {:ok, a} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_201, name: "J100201"})
+
+    {:ok, b} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_202, name: "J100202"})
+
+    {:ok, conn, _new?} = Mapping.upsert_connection(map.id, a.id, b.id, %{})
+    assert conn.hole_type in [nil, ""]
+
+    :ok = Mapping.sync_signature_to_connections(map, a, nil, "B274")
+    assert Mapping.get_connection!(conn.id).hole_type == "B274"
+
+    :ok = Mapping.sync_signature_to_connections(map, a, "B274", "N110")
+    assert Mapping.get_connection!(conn.id).hole_type == "N110"
+
+    # A connection with a different code is left alone.
+    {:ok, c} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_203, name: "J100203"})
+
+    {:ok, other, _new?} =
+      Mapping.upsert_connection(map.id, a.id, c.id, %{hole_type: "K162"})
+
+    :ok = Mapping.sync_signature_to_connections(map, a, nil, "B274")
+    assert Mapping.get_connection!(other.id).hole_type == "K162"
+  end
+
   test "upsert_signatures counts pasted signatures and wormholes", %{mask: mask} do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 99_002, name: "Paste Tracker"})
     {:ok, map} = Mapping.create_map(%{name: "Paste", mask_id: mask.id})

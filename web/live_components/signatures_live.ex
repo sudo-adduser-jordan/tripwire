@@ -45,15 +45,6 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
 
   defp dest_name(system), do: system.alias || system.name
 
-  defp wormhole_code(%{site_type: "wormhole", type_name: name}) when is_binary(name) do
-    case Regex.run(~r/\b([A-Z][0-9]{3})\b/, String.upcase(name)) do
-      [_, code] -> code
-      _ -> nil
-    end
-  end
-
-  defp wormhole_code(_), do: nil
-
   def handle_event("add-signature", %{"sig" => params}, socket) do
     with system when not is_nil(system) <- selected_system(socket),
          {:ok, _} <- Mapping.create_signature(system, sig_attrs(params), socket.assigns.character) do
@@ -271,7 +262,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   # connection leads to (Tripwire behaviour); otherwise the full typed name is
   # kept so a scanned hole is never displayed like an unscanned one.
   defp wormhole_label(sig, wh_links) do
-    case Map.get(wh_links, {sig.map_system_id, wormhole_code(sig)}) do
+    case Map.get(wh_links, {sig.map_system_id, SigParser.wormhole_code(sig.type_name)}) do
       nil -> wormhole_display(sig)
       name -> name
     end
