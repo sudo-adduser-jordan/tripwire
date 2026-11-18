@@ -96,7 +96,7 @@ defmodule Tripwire.MappingTest do
            ]
 
     assert Enum.map(links, & &1.time_status) |> Enum.sort() == [
-             "eol",
+             "critical",
              "stable",
              "stable",
              "stable",
@@ -205,6 +205,86 @@ defmodule Tripwire.MappingTest do
     assert stats.comments_added == 1
     assert stats.comments_updated == 1
     assert stats.comments_deleted == 1
+  end
+
+  test "sync_connection_life/1 rewrites matching wormhole signature expiry" do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_010, name: "Life Sync"})
+    {:ok, mask} = Masks.ensure_personal_mask(character)
+    {:ok, map} = Mapping.create_map(%{name: "Life", mask_id: mask.id})
+
+    {:ok, from} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_101, name: "J100101"})
+
+    {:ok, to} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_102, name: "J100102"})
+
+    {:ok, sig} =
+      Mapping.create_signature(
+        from,
+        %{
+          sig_id: "XYZ-999",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (B274)"
+        },
+        character
+      )
+
+    {:ok, conn, _new?} =
+      Mapping.upsert_connection(map.id, from.id, to.id, %{hole_type: "B274"})
+
+    {:ok, conn} = Mapping.update_connection(conn, %{time_status: "critical"})
+    :ok = Mapping.sync_connection_life(conn)
+
+    assert DateTime.diff(Mapping.get_signature!(sig.id).expires_at, DateTime.utc_now(), :second) in 14_390..14_400
+
+    {:ok, conn} = Mapping.update_connection(conn, %{time_status: "<1h"})
+    :ok = Mapping.sync_connection_life(conn)
+
+    assert DateTime.diff(Mapping.get_signature!(sig.id).expires_at, DateTime.utc_now(), :second) in 3_590..3_600
+
+    {:ok, conn} = Mapping.update_connection(conn, %{time_status: "stable"})
+    :ok = Mapping.sync_connection_life(conn)
+
+    assert DateTime.diff(
+             Mapping.get_signature!(sig.id).expires_at,
+             Mapping.get_signature!(sig.id).inserted_at,
+             :second
+           ) == 259_200
+  end
+
+  test "sync_connection_life/1 ignores signatures whose code does not match" do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_011, name: "Life Noop"})
+    {:ok, mask} = Masks.ensure_personal_mask(character)
+    {:ok, map} = Mapping.create_map(%{name: "Life", mask_id: mask.id})
+
+    {:ok, from} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_111, name: "J100111"})
+
+    {:ok, to} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_112, name: "J100112"})
+
+    {:ok, sig} =
+      Mapping.create_signature(
+        from,
+        %{
+          sig_id: "XYZ-998",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (K162)"
+        },
+        character
+      )
+
+    {:ok, conn, _new?} =
+      Mapping.upsert_connection(map.id, from.id, to.id, %{hole_type: "B274"})
+
+    original = Mapping.get_signature!(sig.id).expires_at
+
+    {:ok, conn} = Mapping.update_connection(conn, %{time_status: "critical"})
+    :ok = Mapping.sync_connection_life(conn)
+
+    assert Mapping.get_signature!(sig.id).expires_at == original
   end
 
   test "upsert_signatures counts pasted signatures and wormholes", %{mask: mask} do

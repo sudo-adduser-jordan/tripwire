@@ -6,7 +6,7 @@ defmodule Tripwire.Mapping.MapConnection do
   alias Tripwire.Mapping.MapSystem
 
   @mass_statuses ~w(stable destab critical)
-  @time_statuses ~w(stable eol)
+  @time_statuses ~w(stable critical <1h)
   @ship_sizes ~w(mass medium small)
 
   schema "map_connections" do

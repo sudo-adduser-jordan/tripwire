@@ -826,6 +826,62 @@ defmodule Tripwire.Mapping do
     )
   end
 
+  @doc """
+  Applies official Tripwire's wormhole life side-effects to the signatures
+  that back a connection. Setting the connection's `time_status` rewrites
+  the paired wormhole signatures' expiry:
+
+    - `"<1h"`     → expires in 1 hour
+    - `"critical"` → expires in 4 hours
+    - `"stable"`   → recomputed from the signature's life length
+
+  Signatures are matched by hole type code: a wormhole signature on either
+  endpoint system whose type name carries the connection's `hole_type`.
+  """
+  def sync_connection_life(%MapConnection{} = connection) do
+    with code when is_binary(code) and code != "" <- connection.hole_type,
+         :update <- time_status_action(connection.time_status) do
+      connection
+      |> matching_wormhole_signatures(code)
+      |> Enum.each(fn signature -> apply_time_status(signature, connection.time_status) end)
+    else
+      _ -> :ok
+    end
+
+    :ok
+  end
+
+  defp time_status_action("<1h"), do: :update
+  defp time_status_action("critical"), do: :update
+  defp time_status_action("stable"), do: :update
+  defp time_status_action(_), do: :noop
+
+  defp apply_time_status(%Signature{} = signature, time_status) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    expires_at =
+      case time_status do
+        "critical" -> DateTime.add(now, 4 * 3600, :second)
+        "<1h" -> DateTime.add(now, 3600, :second)
+        _stable -> DateTime.add(signature.inserted_at, signature.life_length || 259_200, :second)
+      end
+
+    signature
+    |> Signature.changeset(%{expires_at: expires_at})
+    |> Repo.update()
+  end
+
+  defp matching_wormhole_signatures(%MapConnection{} = connection, code) do
+    ids = [connection.from_system_id, connection.to_system_id]
+
+    Repo.all(
+      from(s in Signature,
+        where: s.map_system_id in ^ids and s.site_type == "wormhole"
+      )
+    )
+    |> Enum.filter(&(Tripwire.Signatures.wormhole_code(&1.type_name) == code))
+  end
+
   def list_comments(system_id) do
     Repo.all(
       from(c in Tripwire.Mapping.Comment,
@@ -1149,7 +1205,7 @@ defmodule Tripwire.Mapping do
   @demo_links [
     {0, 1, "O477", "stable", "stable"},
     {1, 2, "N770", "destab", "stable"},
-    {2, 3, "E175", "stable", "eol"},
+    {2, 3, "E175", "stable", "critical"},
     {2, 4, "V753", "critical", "stable"},
     {4, 5, "Q317", "stable", "stable"},
     {5, 6, "N110", "stable", "stable"},

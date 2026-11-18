@@ -274,7 +274,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 id={"connection-#{conn.id}"}
                 d={edge_path(from, to, Map.get(assigns, :angled_lines, true))}
                 fill="none"
-                stroke-dasharray={if conn.time_status == "eol", do: "4"}
+                stroke-dasharray={edge_dash(conn)}
                 stroke-width={Map.get(assigns, :line_weight, 2)}
                 class={edge_class(conn)}
               />
@@ -398,9 +398,14 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     end
   end
 
-  defp edge_class(%{time_status: "eol"}), do: "stroke-error"
+  defp edge_class(%{time_status: "critical"}), do: "stroke-error"
+  defp edge_class(%{time_status: "<1h"}), do: "stroke-error"
   defp edge_class(%{mass_status: "critical"}), do: "stroke-warning"
   defp edge_class(_), do: "stroke-base-content/60"
+
+  defp edge_dash(%{time_status: "critical"}), do: "4"
+  defp edge_dash(%{time_status: "<1h"}), do: "2 2"
+  defp edge_dash(_), do: nil
 
   defp edge_path(from, to, angled?) do
     x1 = from.x + 60

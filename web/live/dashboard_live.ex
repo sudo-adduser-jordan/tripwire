@@ -995,7 +995,9 @@ defmodule TripwireWeb.DashboardLive do
         }
 
         case Mapping.update_connection(conn, attrs) do
-          {:ok, _} ->
+          {:ok, updated} ->
+            _ = Mapping.sync_connection_life(updated)
+
             {:noreply,
              socket
              |> assign(:conn_modal_open, false)

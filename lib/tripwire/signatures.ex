@@ -185,6 +185,20 @@ defmodule Tripwire.Signatures do
   def infer_site_type(_, _), do: "unknown"
 
   @doc """
+  Extracts a wormhole type code (`"B274"`) from a type name such as
+  `"Unstable Wormhole (B274)"`, or `nil` when none is present.
+  """
+  @spec wormhole_code(String.t() | nil) :: String.t() | nil
+  def wormhole_code(name) when is_binary(name) do
+    case Regex.run(@wormhole_code_regex, String.upcase(name)) do
+      [_, code] -> code
+      _ -> nil
+    end
+  end
+
+  def wormhole_code(_), do: nil
+
+  @doc """
   Returns the eve-survival guide URL for a known site name, matching
   official Tripwire, or nil when the name has no external guide.
   """
