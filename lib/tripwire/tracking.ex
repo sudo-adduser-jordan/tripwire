@@ -9,7 +9,9 @@ defmodule Tripwire.Tracking do
   alias Tripwire.Accounts
   alias Tripwire.Mapping.MapSystem
   alias Tripwire.Repo
+  alias Tripwire.Signatures, as: SigParser
   alias Tripwire.Tracking.Poller
+  alias Tripwire.Wormholes
   alias Phoenix.PubSub
 
   @topic_prefix "map"
@@ -67,8 +69,9 @@ defmodule Tripwire.Tracking do
       connection_result =
         if is_struct(prev_system, MapSystem) and prev_system.id != system.id do
           jumps = jump_count(prev_system, system, route_fn)
+          attrs = jump_connection_attrs(map.id, prev_system, system, jumps)
 
-          case Mapping.upsert_connection(map.id, prev_system.id, system.id, %{jumps: jumps}) do
+          case Mapping.upsert_connection(map.id, prev_system.id, system.id, attrs) do
             {:ok, conn, _new?} -> conn
             _other -> nil
           end
@@ -91,6 +94,62 @@ defmodule Tripwire.Tracking do
       {:ok, %{system: system, connection: connection_result}}
     end
   end
+
+  @doc """
+  Wormhole signatures in `from_system` that can be the hole the character
+  just jumped through into `to_system`, mirroring official Tripwire's
+  automapper: a scanned hole matches when its code leads to the jumped-to
+  class, when the code is eligible between the two system classes, or when
+  the hole carries neither a code nor any destination information.
+  """
+  def wormholes_for_jump(from_system, to_system, signatures) do
+    to_class = Tripwire.Systems.display_class(to_system)
+    eligible = eligible_jump_codes(from_system, to_system)
+
+    Enum.filter(signatures, fn signature ->
+      case SigParser.wormhole_code(signature.type_name) do
+        nil -> blank_wormhole?(signature)
+        code -> to_class in (Wormholes.leads_to(code) || []) or code in eligible
+      end
+    end)
+  end
+
+  defp jump_connection_attrs(map_id, from_system, to_system, jumps) do
+    attrs = %{jumps: jumps}
+
+    unlabeled? =
+      case Mapping.connection_between(map_id, from_system.id, to_system.id) do
+        nil -> true
+        conn -> conn.hole_type in [nil, ""]
+      end
+
+    coded =
+      if unlabeled? do
+        from_system.id
+        |> Mapping.list_signatures()
+        |> then(&wormholes_for_jump(from_system, to_system, &1))
+        |> Enum.map(&SigParser.wormhole_code(&1.type_name))
+        |> Enum.reject(&is_nil/1)
+      else
+        []
+      end
+
+    case coded do
+      [code] -> Map.put(attrs, :hole_type, code)
+      _ -> attrs
+    end
+  end
+
+  defp eligible_jump_codes(from_system, to_system) do
+    from = Tripwire.Systems.display_class(from_system)
+    to = Tripwire.Systems.display_class(to_system)
+    Wormholes.eligible_types(from, to).from
+  end
+
+  defp blank_wormhole?(%{site_type: "wormhole", type_name: name}),
+    do: name in [nil, ""] or SigParser.wormhole_code(name) == nil
+
+  defp blank_wormhole?(_), do: false
 
   def broadcast_map_update(map_id) do
     PubSub.broadcast(Tripwire.PubSub, map_topic(map_id), {:map_updated, map_id})

@@ -51,6 +51,104 @@ defmodule Tripwire.TrackingTest do
     assert length(Mapping.list_connections(map.id)) == 1
   end
 
+  defp hole_system(map, solar, class) do
+    {:ok, system} =
+      Mapping.add_system_to_map(map, %{
+        solar_system_id: solar,
+        name: "J#{solar}",
+        sys_class: class
+      })
+
+    system
+  end
+
+  defp hole_signature(system, character, sig_id, code) do
+    type_name = if code, do: "Unstable Wormhole (#{code})", else: "Unstable Wormhole"
+
+    {:ok, _} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: sig_id, kind: "signature", site_type: "wormhole", type_name: type_name},
+        character
+      )
+  end
+
+  test "a scanned hole leading to the jumped-to class labels the connection", %{
+    map: map,
+    character: character
+  } do
+    from = hole_system(map, 31_000_421, "C4")
+    to = hole_system(map, 31_000_422, "C2")
+    hole_signature(from, character, "ABC-101", "N766")
+
+    {:ok, %{connection: connection}} =
+      Tracking.apply_location_change(map, character.name, from, to.solar_system_id,
+        name_fetcher: nf()
+      )
+
+    assert connection.hole_type == "N766"
+  end
+
+  test "a scan leading to another class does not label the connection", %{
+    map: map,
+    character: character
+  } do
+    from = hole_system(map, 31_000_423, "C4")
+    to = hole_system(map, 31_000_424, "C2")
+    hole_signature(from, character, "ABC-102", "P060")
+
+    {:ok, %{connection: connection}} =
+      Tracking.apply_location_change(map, character.name, from, to.solar_system_id,
+        name_fetcher: nf()
+      )
+
+    assert connection.hole_type in [nil, ""]
+  end
+
+  test "several eligible scans leave the connection unlabeled", %{map: map, character: character} do
+    from = hole_system(map, 31_000_425, "C4")
+    to = hole_system(map, 31_000_426, "C2")
+    hole_signature(from, character, "ABC-103", "N766")
+    hole_signature(from, character, "ABC-104", "L005")
+
+    {:ok, %{connection: connection}} =
+      Tracking.apply_location_change(map, character.name, from, to.solar_system_id,
+        name_fetcher: nf()
+      )
+
+    assert connection.hole_type in [nil, ""]
+  end
+
+  test "an existing hole type is not relabeled by a jump", %{map: map, character: character} do
+    from = hole_system(map, 31_000_427, "C4")
+    to = hole_system(map, 31_000_428, "C2")
+    {:ok, _conn, true} = Mapping.upsert_connection(map.id, from.id, to.id, %{hole_type: "B274"})
+    hole_signature(from, character, "ABC-105", "N766")
+
+    {:ok, %{connection: connection}} =
+      Tracking.apply_location_change(map, character.name, from, to.solar_system_id,
+        name_fetcher: nf()
+      )
+
+    assert connection.hole_type == "B274"
+  end
+
+  test "an untyped hole signature does not label the connection", %{
+    map: map,
+    character: character
+  } do
+    from = hole_system(map, 31_000_429, "C4")
+    to = hole_system(map, 31_000_430, "C2")
+    hole_signature(from, character, "ABC-106", nil)
+
+    {:ok, %{connection: connection}} =
+      Tracking.apply_location_change(map, character.name, from, to.solar_system_id,
+        name_fetcher: nf()
+      )
+
+    assert connection.hole_type in [nil, ""]
+  end
+
   test "new systems are placed on the map instead of the origin", %{
     map: map,
     character: character
