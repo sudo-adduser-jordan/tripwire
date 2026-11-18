@@ -112,17 +112,17 @@ defmodule TripwireWeb.LiveComponents.MapLive do
             >
               <.icon name="hero-plus" class="size-4" />
             </button>
-            <span class="opacity-30">|</span>
             <button
-              id="show-viewing"
+              id="chain-edit"
               class="btn btn-ghost btn-xs"
-              title="Add viewing system to chain"
-              phx-click="add-viewing"
+              title="Edit chain settings"
+              phx-click="open-chain-modal"
               phx-target={@myself}
               disabled={@map_locked}
             >
-              <.icon name="hero-eye" class="size-4" />
+              <.icon name="hero-pencil" class="size-4" />
             </button>
+            <span class="opacity-30">|</span>
             <button
               id="show-favorite"
               class="btn btn-ghost btn-xs"
@@ -132,6 +132,16 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               disabled={@map_locked}
             >
               <.icon name="hero-star" class="size-4" />
+            </button>
+            <button
+              id="show-viewing"
+              class="btn btn-ghost btn-xs"
+              title="Add viewing system to chain"
+              phx-click="add-viewing"
+              phx-target={@myself}
+              disabled={@map_locked}
+            >
+              <.icon name="hero-eye" class="size-4" />
             </button>
             <button
               id="toggle-lock"
