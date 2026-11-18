@@ -21,7 +21,12 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign_new(:pan_y, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 1) end)
      |> assign_new(:show_row_guides, fn -> false end)
      |> assign_new(:show_row_counts, fn -> false end)
-     |> assign_new(:angled_lines, fn -> true end)}
+     |> assign_new(:angled_lines, fn -> true end)
+     |> assign_new(:show_jump_lines, fn -> true end)
+     |> assign_new(:show_line_glow, fn -> true end)
+     |> assign_new(:show_node_badges, fn -> true end)
+     |> assign_new(:line_weight, fn -> 2 end)
+     |> assign_new(:map_background, fn -> nil end)}
   end
 
   def handle_event("select-system", %{"id" => id}, socket) do
@@ -144,10 +149,13 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 <p><span class="badge badge-outline badge-xs">—</span> Stable</p>
                 <p><span class="badge badge-error badge-xs">- -</span> End of Life</p>
                 <p><span class="badge badge-warning badge-xs">—</span> Mass Critical</p>
-                <p class="mt-1 font-semibold">Statics (K = known-space, W = wormhole)</p>
+                <p class="mt-1 font-semibold">Statics</p>
                 <p :for={cls <- ~w(C1 C2 C3 C4 C5 C6)} class="flex items-center gap-1">
                   <span class="badge badge-outline badge-xs">{cls}</span>
-                  {Enum.join(Tripwire.Systems.statics(cls), " + ")}
+                  {case Tripwire.Systems.statics(cls) do
+                    [] -> "—"
+                    s -> Enum.join(s, " + ")
+                  end}
                 </p>
                 <p class="mt-1 font-semibold">System class</p>
                 <p :for={cls <- Tripwire.Systems.classes()} class="flex items-center gap-1">
@@ -202,7 +210,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
             </span>
           </li>
         </ul>
-        <div class="min-h-0 w-full flex-1">
+        <div
+          class="min-h-0 w-full flex-1 bg-cover bg-center bg-no-repeat"
+          style={if @map_background, do: "background-image: url('#{@map_background}')"}
+        >
           <svg
             id="chain-map"
             viewBox={"#{@pan_x} #{@pan_y} 1000 700"}
@@ -234,13 +245,14 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 {count}
               </text>
             </g>
-            <g id="map-edges">
+            <g :if={Map.get(assigns, :show_jump_lines, true)} id="map-edges">
               <path
                 :for={{conn, from, to} <- @connections}
                 id={"connection-#{conn.id}"}
                 d={edge_path(from, to, Map.get(assigns, :angled_lines, true))}
                 fill="none"
                 stroke-dasharray={if conn.time_status == "eol", do: "4"}
+                stroke-width={Map.get(assigns, :line_weight, 2)}
                 class={edge_class(conn)}
               />
             </g>
@@ -279,8 +291,9 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   stroke={node_stroke(system, @selected_system_id)}
                   stroke-dasharray={if loop_node?(@connections, system.id), do: "6 4"}
                   style={
-                    if loop_node?(@connections, system.id),
-                      do: "filter: drop-shadow(0 0 6px #{node_color(system)})"
+                    if Map.get(assigns, :show_line_glow, true) and
+                         loop_node?(@connections, system.id),
+                       do: "filter: drop-shadow(0 0 6px #{node_color(system)})"
                   }
                   class={
                     if system.id == @selected_system_id,
@@ -319,6 +332,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 </text>
                 <g
                   :for={{label, tip, x, color, text_color} <- node_badges(system)}
+                  :if={Map.get(assigns, :show_node_badges, true)}
                   transform={"translate(#{x}, 80)"}
                 >
                   <rect
@@ -357,9 +371,9 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     end
   end
 
-  defp edge_class(%{time_status: "eol"}), do: "stroke-error stroke-1"
-  defp edge_class(%{mass_status: "critical"}), do: "stroke-warning stroke-1"
-  defp edge_class(_), do: "stroke-base-content/60 stroke-1"
+  defp edge_class(%{time_status: "eol"}), do: "stroke-error"
+  defp edge_class(%{mass_status: "critical"}), do: "stroke-warning"
+  defp edge_class(_), do: "stroke-base-content/60"
 
   defp edge_path(from, to, angled?) do
     x1 = from.x + 60

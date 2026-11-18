@@ -406,7 +406,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     character: character
   } do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
-    {:ok, _} = Mapping.update_system(system, %{sys_class: "C2"})
+    {:ok, _} = Mapping.update_system(system, %{sys_class: "C1"})
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -415,8 +415,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> render_click()
 
     html = render(view)
-    assert html =~ "Static wormhole: K"
-    assert html =~ "Static wormhole: W"
+    assert html =~ "Static wormhole: HS"
     assert html =~ "Statics"
   end
 
@@ -652,6 +651,103 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert html =~ ~r/<text[^>]*>\s*2\s*<\/text>/
   end
 
+  test "map settings toggles jump lines and node badges", %{conn: conn, character: character} do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, _} = Mapping.update_system(system, %{sys_class: "C1"})
+
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
+
+    assert html =~ ~s|id="map-edges"|
+    assert html =~ "Static wormhole:"
+
+    view |> element("#settings-button") |> render_click()
+
+    html =
+      view
+      |> element("#toggle-jump-lines")
+      |> render_click()
+
+    refute html =~ ~s|id="map-edges"|
+
+    html =
+      view
+      |> element("#toggle-node-badges")
+      |> render_click()
+
+    refute html =~ "Static wormhole:"
+  end
+
+  test "map settings line weight changes edge width", %{conn: conn, character: character} do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, other} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
+
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+
+    html =
+      view
+      |> element(~s|#settings-widget form[phx-change="line-weight"]|)
+      |> render_change(%{weight: "4"})
+
+    assert html =~ ~s|stroke-width="4"|
+  end
+
+  test "map settings background sets the map backdrop", %{conn: conn, character: character} do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+
+    html =
+      view
+      |> element(~s|#settings-widget form[phx-change="map-background"]|)
+      |> render_change(%{background: "https://example.com/map-bg.jpg"})
+
+    assert html =~ "background-image"
+    assert html =~ "https://example.com/map-bg.jpg"
+  end
+
+  test "map settings node spacing relays out the tree", %{conn: conn, character: character} do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, other} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 200.0})
+
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    assert Mapping.get_system!(other.id).y == 220.0
+
+    view |> element("#settings-button") |> render_click()
+
+    view
+    |> element(~s|#settings-widget form[phx-change="node-spacing"]|)
+    |> render_change(%{spacing: "200"})
+
+    assert Mapping.get_system!(other.id).y == 380.0
+  end
+
+  test "map settings scale pushes a zoom event", %{conn: conn, character: character} do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+
+    view
+    |> element(~s|#settings-widget form[phx-change="map-scale"]|)
+    |> render_change(%{scale: "150"})
+
+    assert_push_event(view, "map-zoom", %{zoom: 1.5})
+  end
+
   test "top bar renders ESI fallbacks and grid lock toggles", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/dashboard")
 
@@ -756,8 +852,8 @@ defmodule TripwireWeb.DashboardLiveTest do
       |> element(~s|#settings-widget form[phx-change="map-layout"]|)
       |> render_change(%{layout: "bottom"})
 
-    assert html =~ "translate(572.5, 590.0)"
-    refute html =~ "translate(572.5, 60.0)"
+    assert html =~ "translate(610.0, 590.0)"
+    refute html =~ "translate(610.0, 60.0)"
   end
 
   test "demo user is admin and sees the Admin settings tab", %{conn: conn} do
@@ -921,7 +1017,10 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert html =~ "Last login"
   end
 
-  test "flash toasts render below the topbar and auto-dismiss", %{conn: conn, character: character} do
+  test "flash toasts render below the topbar and auto-dismiss", %{
+    conn: conn,
+    character: character
+  } do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     html =

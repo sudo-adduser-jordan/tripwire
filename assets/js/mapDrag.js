@@ -132,6 +132,10 @@ const MapDrag = {
       this.setView(next.x, next.y, 1)
     })
 
+    this.handleEvent("map-zoom", ({ zoom }) => {
+      this.setView(this.ox, this.oy, zoom)
+    })
+
     this.svg.addEventListener("pointerdown", this.onPointerDown)
     this.svg.addEventListener("click", this.onClick, true)
     this.svg.addEventListener("wheel", this.onWheel, { passive: false })

@@ -104,12 +104,12 @@ defmodule Tripwire.Mapping do
   `connections` are `{conn, from, to}` endpoint tuples. Returns
   `%{system_id => %{x: float, y: float}}`.
   """
-  def radial_layout(systems, connections) do
+  def radial_layout(systems, connections, spacing \\ 1.0) do
     systems
     |> depth_layers(connections)
     |> Enum.flat_map(fn {depth, members} ->
       n = length(members)
-      radius = if depth == 0 and n == 1, do: 0.0, else: 150.0 * max(depth, 1)
+      radius = if depth == 0 and n == 1, do: 0.0, else: 150.0 * spacing * max(depth, 1)
 
       Enum.with_index(members, fn id, i ->
         angle = 2 * :math.pi() * i / max(n, 1) + depth * 0.5
@@ -135,32 +135,32 @@ defmodule Tripwire.Mapping do
   breadth-first depth from the root, mirroring the Tripwire chain
   tree: each jump lands one level down and siblings share a row.
   """
-  def tree_layout(systems, connections, orientation \\ "down") do
+  def tree_layout(systems, connections, orientation \\ "down", spacing \\ 1.0) do
     ids = Enum.map(systems, & &1.id)
 
     if ids == [] do
       %{}
     else
       adj = undirected_adj(ids, connections)
-    roots = tree_roots(ids, connections)
-    {parent, children, depths} = spanning_tree(adj, roots, ids)
-    _ = parent
-    x_index = assign_x_index(roots, children)
+      roots = tree_roots(ids, connections)
+      {parent, children, depths} = spanning_tree(adj, roots, ids)
+      _ = parent
+      x_index = assign_x_index(roots, children)
 
-    leaf_count =
-      case Elixir.Map.values(x_index) do
-        [] -> 1
-        values -> values |> Enum.max() |> Kernel.+(1)
-      end
+      leaf_count =
+        case Elixir.Map.values(x_index) do
+          [] -> 1
+          values -> values |> Enum.max() |> Kernel.+(1)
+        end
 
-    mid = (leaf_count - 1) / 2
+      mid = (leaf_count - 1) / 2
 
-    Elixir.Map.new(ids, fn id ->
-      xi = Elixir.Map.get(x_index, id, mid)
-      depth = Elixir.Map.get(depths, id, 0)
-      {x, y} = orient_tidy_position(orientation, depth, xi, mid)
-      {id, %{x: x, y: y}}
-    end)
+      Elixir.Map.new(ids, fn id ->
+        xi = Elixir.Map.get(x_index, id, mid)
+        depth = Elixir.Map.get(depths, id, 0)
+        {x, y} = orient_tidy_position(orientation, depth, xi, mid, spacing)
+        {id, %{x: x, y: y}}
+      end)
     end
   end
 
@@ -217,8 +217,7 @@ defmodule Tripwire.Mapping do
           pruned = Elixir.MapSet.put(pruned, id)
 
           {queue, degree} =
-            Enum.reduce(Elixir.Map.get(neighbors, id, []), {rest, degree}, fn nbr,
-                                                                             {q, deg} ->
+            Enum.reduce(Elixir.Map.get(neighbors, id, []), {rest, degree}, fn nbr, {q, deg} ->
               if Elixir.MapSet.member?(pruned, nbr) do
                 {q, deg}
               else
@@ -346,21 +345,21 @@ defmodule Tripwire.Mapping do
     end
   end
 
-  defp orient_tidy_position(orientation, depth, xi, mid) do
-    x = 460.0 + (xi - mid) * 150.0
+  defp orient_tidy_position(orientation, depth, xi, mid, spacing) do
+    x = 460.0 + (xi - mid) * 150.0 * spacing
 
     case orientation do
       "up" ->
-        {x, 590.0 - depth * 160.0}
+        {x, 590.0 - depth * 160.0 * spacing}
 
       "left" ->
-        {860.0 - depth * 170.0, 325.0 + (xi - mid) * 120.0}
+        {860.0 - depth * 170.0 * spacing, 325.0 + (xi - mid) * 120.0 * spacing}
 
       "right" ->
-        {60.0 + depth * 170.0, 325.0 + (xi - mid) * 120.0}
+        {60.0 + depth * 170.0 * spacing, 325.0 + (xi - mid) * 120.0 * spacing}
 
       _ ->
-        {x, 60.0 + depth * 160.0}
+        {x, 60.0 + depth * 160.0 * spacing}
     end
   end
 
@@ -569,7 +568,9 @@ defmodule Tripwire.Mapping do
           case existing do
             %Signature{} = signature ->
               signature
-              |> Signature.changeset(merge_attrs(attrs, %{created_by_id: signature.created_by_id}))
+              |> Signature.changeset(
+                merge_attrs(attrs, %{created_by_id: signature.created_by_id})
+              )
               |> Repo.update()
 
             nil ->
@@ -582,10 +583,12 @@ defmodule Tripwire.Mapping do
 
         case {result, existing} do
           {{:ok, _}, nil} ->
-            {added + 1, updated, bump_counts(counts, :signatures_added, :wormholes_added, wormhole?)}
+            {added + 1, updated,
+             bump_counts(counts, :signatures_added, :wormholes_added, wormhole?)}
 
           {{:ok, _}, _signature} ->
-            {added, updated + 1, bump_counts(counts, :signatures_updated, :wormholes_updated, wormhole?)}
+            {added, updated + 1,
+             bump_counts(counts, :signatures_updated, :wormholes_updated, wormhole?)}
 
           {{:error, _}, _} ->
             {added, updated, counts}
@@ -934,16 +937,43 @@ defmodule Tripwire.Mapping do
     },
     %{solar_system_id: 31_000_002, name: "J150322", sys_class: "C3", x: 360.0, y: 260.0},
     %{solar_system_id: 31_000_003, name: "J150323", sys_class: "C5", x: 600.0, y: 140.0},
-    %{solar_system_id: 31_000_004, name: "J150324", sys_class: "C4", x: 780.0, y: 330.0, effect: "Magnetar"},
+    %{
+      solar_system_id: 31_000_004,
+      name: "J150324",
+      sys_class: "C4",
+      x: 780.0,
+      y: 330.0,
+      effect: "Magnetar"
+    },
     %{solar_system_id: 31_000_005, name: "J150325", sys_class: "C6", x: 480.0, y: 470.0},
     %{solar_system_id: 31_000_006, name: "J150326", sys_class: "C1", x: 880.0, y: 200.0},
     %{solar_system_id: 30_000_142, name: "Jita", security: 0.9, x: 880.0, y: 380.0},
     %{solar_system_id: 30_000_201, name: "Tama", security: 0.2, x: 700.0, y: 540.0},
     %{solar_system_id: 30_000_301, name: "1DQ1-A", security: -1.0, x: 450.0, y: 560.0},
-    %{solar_system_id: 31_000_010, name: "Raravoss", alias: "Pochven", sys_class: "Trig", x: 200.0, y: 540.0},
+    %{
+      solar_system_id: 31_000_010,
+      name: "Raravoss",
+      alias: "Pochven",
+      sys_class: "Trig",
+      x: 200.0,
+      y: 540.0
+    },
     %{solar_system_id: 31_000_011, name: "J150327", sys_class: "C4", x: 240.0, y: 300.0},
     %{solar_system_id: 31_000_012, name: "J150328", sys_class: "C2", x: 120.0, y: 460.0},
-    %{solar_system_id: 30_000_216, name: "Dodixie", security: 0.9, x: 240.0, y: 620.0}
+    %{solar_system_id: 30_000_216, name: "Dodixie", security: 0.9, x: 240.0, y: 620.0},
+    %{solar_system_id: 31_000_013, name: "J150329", sys_class: "C3", x: 300.0, y: 30.0},
+    %{solar_system_id: 31_000_014, name: "J150330", sys_class: "C2", x: 500.0, y: 20.0},
+    %{solar_system_id: 30_002_187, name: "Amarr", security: 1.0, x: 700.0, y: 40.0},
+    %{solar_system_id: 31_000_015, name: "J150331", sys_class: "C5", x: 980.0, y: 480.0},
+    %{
+      solar_system_id: 31_000_016,
+      name: "J150332",
+      sys_class: "C4",
+      effect: "Red Giant",
+      x: 620.0,
+      y: 660.0
+    },
+    %{solar_system_id: 31_000_017, name: "J150333", sys_class: "C2", x: 60.0, y: 620.0}
   ]
 
   @demo_shortcuts """
@@ -977,7 +1007,13 @@ defmodule Tripwire.Mapping do
     {4, 9, "K162", "stable", "stable"},
     {0, 10, "K162", "stable", "stable"},
     {10, 11, "K162", "stable", "stable"},
-    {11, 12, "C140", "stable", "stable"}
+    {11, 12, "C140", "stable", "stable"},
+    {0, 13, "C247", "stable", "stable"},
+    {13, 14, "K162", "stable", "stable"},
+    {14, 15, "C140", "stable", "stable"},
+    {6, 16, "N968", "stable", "stable"},
+    {8, 17, "K162", "destab", "stable"},
+    {9, 18, "K162", "stable", "stable"}
   ]
 
   @demo_signatures %{

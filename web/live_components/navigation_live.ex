@@ -41,7 +41,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
           alt={@branding.name}
         />
         <span :if={@demo?} class="hidden sm:block text-xs font-semibold">zTripwire</span>
-        <span class="hidden sm:block text-xs font-semibold">
+        <span class="hidden sm:block text-xs tabular-nums opacity-60">
           v{Application.spec(:tripwire, :vsn)}
         </span>
       </a>

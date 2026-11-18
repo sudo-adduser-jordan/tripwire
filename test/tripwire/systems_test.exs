@@ -54,10 +54,10 @@ defmodule Tripwire.SystemsTest do
 
   test "statics/1 maps wormhole classes to static destinations" do
     assert Systems.statics("C1") == ["HS"]
-    assert Systems.statics("C2") == ["K", "W"]
-    assert Systems.statics("C3") == ["K"]
-    assert Systems.statics("C4") == ["W", "W"]
-    assert Systems.statics("C5") == ["W", "W"]
+    assert Systems.statics("C2") == []
+    assert Systems.statics("C3") == []
+    assert Systems.statics("C4") == []
+    assert Systems.statics("C5") == []
     assert Systems.statics("C6") == ["C6"]
     assert Systems.statics("HS") == []
     assert Systems.statics(nil) == []

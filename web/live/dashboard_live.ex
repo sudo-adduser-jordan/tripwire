@@ -432,6 +432,49 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply, update(socket, :angled_lines, &(!&1))}
   end
 
+  def handle_event("toggle-jump-lines", _params, socket) do
+    {:noreply, update(socket, :show_jump_lines, &(!&1))}
+  end
+
+  def handle_event("toggle-line-glow", _params, socket) do
+    {:noreply, update(socket, :show_line_glow, &(!&1))}
+  end
+
+  def handle_event("toggle-node-badges", _params, socket) do
+    {:noreply, update(socket, :show_node_badges, &(!&1))}
+  end
+
+  def handle_event("map-scale", %{"scale" => scale}, socket) do
+    scale = parse_int(scale, 100, 50, 200)
+
+    {:noreply,
+     socket |> assign(:map_scale, scale) |> push_event("map-zoom", %{zoom: scale / 100})}
+  end
+
+  def handle_event("map-scale", _params, socket), do: {:noreply, socket}
+
+  def handle_event("line-weight", %{"weight" => weight}, socket) do
+    {:noreply, assign(socket, :line_weight, parse_int(weight, 2, 1, 5))}
+  end
+
+  def handle_event("line-weight", _params, socket), do: {:noreply, socket}
+
+  def handle_event("node-spacing", %{"spacing" => spacing}, socket) do
+    socket = assign(socket, :node_spacing, parse_int(spacing, 100, 50, 200))
+    socket = socket |> apply_tree_layout(socket.assigns.map_layout || "top")
+    {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
+    {:noreply, push_event(socket, "reset-pan", %{x: x, y: y})}
+  end
+
+  def handle_event("node-spacing", _params, socket), do: {:noreply, socket}
+
+  def handle_event("map-background", %{"background" => background}, socket) do
+    background = background |> to_string() |> String.trim()
+    {:noreply, assign(socket, :map_background, if(background == "", do: nil, else: background))}
+  end
+
+  def handle_event("map-background", _params, socket), do: {:noreply, socket}
+
   def handle_event("create-corp-mask", _params, socket) do
     with true <- admin?(socket),
          {:ok, mask} <- scoped_create_corp_mask(socket) do
@@ -1207,7 +1250,10 @@ defmodule TripwireWeb.DashboardLive do
   defp scoped_upsert_member(_), do: {:error, :forbidden}
 
   defp apply_tree_layout(%{assigns: %{map: map}} = socket, layout) when not is_nil(map) do
-    positions = layout_positions(socket.assigns.systems, socket.assigns.connections, layout)
+    spacing = spacing_factor(socket.assigns[:node_spacing])
+
+    positions =
+      layout_positions(socket.assigns.systems, socket.assigns.connections, layout, spacing)
 
     Enum.each(socket.assigns.systems, fn s ->
       pos = positions[s.id]
@@ -1225,11 +1271,22 @@ defmodule TripwireWeb.DashboardLive do
   defp normalize_layout("left"), do: "right"
   defp normalize_layout("right"), do: "left"
 
-  defp layout_positions(systems, connections, "radial"),
-    do: Mapping.radial_layout(systems, connections)
+  defp layout_positions(systems, connections, "radial", spacing),
+    do: Mapping.radial_layout(systems, connections, spacing)
 
-  defp layout_positions(systems, connections, layout),
-    do: Mapping.tree_layout(systems, connections, normalize_layout(layout))
+  defp layout_positions(systems, connections, layout, spacing),
+    do: Mapping.tree_layout(systems, connections, normalize_layout(layout), spacing)
+
+  defp spacing_factor(nil), do: 1.0
+  defp spacing_factor(spacing) when is_number(spacing), do: spacing / 100
+  defp spacing_factor(_), do: 1.0
+
+  defp parse_int(value, default, min, max) do
+    case Integer.parse(to_string(value || "")) do
+      {n, ""} -> n |> max(min) |> min(max)
+      _ -> default
+    end
+  end
 
   defp provision(socket, character) do
     {:ok, mask} = Masks.ensure_personal_mask(character)
@@ -1482,6 +1539,13 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:show_row_guides, false)
     |> assign(:show_row_counts, false)
     |> assign(:angled_lines, true)
+    |> assign(:show_jump_lines, true)
+    |> assign(:show_line_glow, true)
+    |> assign(:show_node_badges, true)
+    |> assign(:line_weight, 2)
+    |> assign(:node_spacing, 100)
+    |> assign(:map_scale, 100)
+    |> assign(:map_background, nil)
     |> assign(:sso_configured?, false)
     |> assign(:conn_modal_open, false)
     |> assign(:conn_edit_id, nil)

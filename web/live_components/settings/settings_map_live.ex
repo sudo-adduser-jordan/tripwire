@@ -6,6 +6,13 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
   attr :show_row_guides, :boolean, default: false
   attr :show_row_counts, :boolean, default: false
   attr :angled_lines, :boolean, default: true
+  attr :show_jump_lines, :boolean, default: true
+  attr :show_line_glow, :boolean, default: true
+  attr :show_node_badges, :boolean, default: true
+  attr :line_weight, :integer, default: 2
+  attr :node_spacing, :integer, default: 100
+  attr :map_scale, :integer, default: 100
+  attr :map_background, :string, default: nil
 
   def settings_map_live(assigns) do
     ~H"""
@@ -36,15 +43,33 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
 
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
           <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Show Jump Lines</p>
-          <input type="checkbox" checked="checked" class="toggle toggle-primary toggle-sm" />
+          <input
+            id="toggle-jump-lines"
+            type="checkbox"
+            checked={@show_jump_lines}
+            phx-click="toggle-jump-lines"
+            class="toggle toggle-primary toggle-sm"
+          />
         </div>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
           <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Show Line Glow</p>
-          <input type="checkbox" checked="checked" class="toggle toggle-secondary toggle-sm" />
+          <input
+            id="toggle-line-glow"
+            type="checkbox"
+            checked={@show_line_glow}
+            phx-click="toggle-line-glow"
+            class="toggle toggle-secondary toggle-sm"
+          />
         </div>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
           <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Show Node Signatures</p>
-          <input type="checkbox" checked="checked" class="toggle toggle-neutral toggle-sm" />
+          <input
+            id="toggle-node-badges"
+            type="checkbox"
+            checked={@show_node_badges}
+            phx-click="toggle-node-badges"
+            class="toggle toggle-neutral toggle-sm"
+          />
         </div>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
           <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Show Row Guides</p>
@@ -79,41 +104,77 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
 
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
           <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Map Scale</p>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value="40"
-            class="range range-primary range-xs min-w-0 max-w-full flex-1 sm:max-w-64"
-          />
+          <form phx-change="map-scale" class="min-w-0 max-w-full flex-1 sm:max-w-64">
+            <div class="flex items-center gap-2">
+              <input
+                type="range"
+                name="scale"
+                min="50"
+                max="200"
+                step="10"
+                value={@map_scale}
+                class="range range-primary range-xs min-w-0 flex-1"
+              />
+              <span class="w-12 shrink-0 text-right text-xs tabular-nums opacity-60">
+                {@map_scale}%
+              </span>
+            </div>
+          </form>
         </div>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
           <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Line Weight</p>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value="40"
-            class="range range-primary range-xs min-w-0 max-w-full flex-1 sm:max-w-64"
-          />
+          <form phx-change="line-weight" class="min-w-0 max-w-full flex-1 sm:max-w-64">
+            <div class="flex items-center gap-2">
+              <input
+                type="range"
+                name="weight"
+                min="1"
+                max="5"
+                step="1"
+                value={@line_weight}
+                class="range range-primary range-xs min-w-0 flex-1"
+              />
+              <span class="w-12 shrink-0 text-right text-xs tabular-nums opacity-60">
+                {@line_weight}
+              </span>
+            </div>
+          </form>
         </div>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
           <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Node Spacing</p>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value="40"
-            class="range range-primary range-xs min-w-0 max-w-full flex-1 sm:max-w-64"
-          />
+          <form phx-change="node-spacing" class="min-w-0 max-w-full flex-1 sm:max-w-64">
+            <div class="flex items-center gap-2">
+              <input
+                type="range"
+                name="spacing"
+                min="50"
+                max="200"
+                step="10"
+                value={@node_spacing}
+                class="range range-primary range-xs min-w-0 flex-1"
+              />
+              <span class="w-12 shrink-0 text-right text-xs tabular-nums opacity-60">
+                {@node_spacing}%
+              </span>
+            </div>
+          </form>
         </div>
 
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
           <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Background Image</p>
-          <label class="input input-sm min-w-0 max-w-full flex-1 sm:max-w-64">
-            <input type="text" placeholder="domain name" class="min-w-0" />
-            <span class="label">.com</span>
-          </label>
+          <form
+            phx-change="map-background"
+            class="input input-sm min-w-0 max-w-full flex-1 sm:max-w-64"
+          >
+            <input
+              type="text"
+              name="background"
+              value={@map_background || ""}
+              placeholder="https://example.com/map-bg.jpg"
+              autocomplete="off"
+              class="min-w-0 flex-1 bg-transparent outline-none"
+            />
+          </form>
         </div>
       </div>
     </div>

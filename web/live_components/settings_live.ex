@@ -12,6 +12,13 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   attr :show_row_guides, :boolean, default: false
   attr :show_row_counts, :boolean, default: false
   attr :angled_lines, :boolean, default: true
+  attr :show_jump_lines, :boolean, default: true
+  attr :show_line_glow, :boolean, default: true
+  attr :show_node_badges, :boolean, default: true
+  attr :line_weight, :integer, default: 2
+  attr :node_spacing, :integer, default: 100
+  attr :map_scale, :integer, default: 100
+  attr :map_background, :string, default: nil
   attr :settings_tab, :string, default: "account"
   attr :characters, :list, default: []
   attr :masks, :list, default: []
@@ -53,6 +60,13 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
             show_row_guides={@show_row_guides}
             show_row_counts={@show_row_counts}
             angled_lines={@angled_lines}
+            show_jump_lines={@show_jump_lines}
+            show_line_glow={@show_line_glow}
+            show_node_badges={@show_node_badges}
+            line_weight={@line_weight}
+            node_spacing={@node_spacing}
+            map_scale={@map_scale}
+            map_background={@map_background}
           />
           <WidgetsLive.settings_widgets_live settings_tab={@settings_tab} />
           <StatisticsLive.settings_statistics_live
