@@ -683,6 +683,7 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("global-paste", params, socket) do
     text = Map.get(params, "text", "") |> to_string()
+    socket = clear_flash(socket)
 
     with system when not is_nil(system) <- selected_system(socket),
          entries when entries != [] <- SigParser.parse_paste(text) do
@@ -705,10 +706,7 @@ defmodule TripwireWeb.DashboardLive do
       {:noreply,
        socket
        |> reload_signatures()
-       |> put_flash(
-         :info,
-         "Parsed #{added + updated} signatures (#{added} new, #{updated} known)"
-       )}
+       |> maybe_match_flash(added, updated)}
     else
       nil ->
         {:noreply,
@@ -718,7 +716,11 @@ defmodule TripwireWeb.DashboardLive do
          |> put_flash(:error, "Select a system first")}
 
       [] ->
-        {:noreply, socket |> assign(:stale_ids, []) |> assign(:stale_system_id, nil)}
+        {:noreply,
+         socket
+         |> assign(:stale_ids, [])
+         |> assign(:stale_system_id, nil)
+         |> put_flash(:error, "No signatures recognized — bad input")}
     end
   end
 
@@ -1863,6 +1865,13 @@ defmodule TripwireWeb.DashboardLive do
       end
     end
   end
+
+  # Blue toast only when every pasted signature matched a known record;
+  # new signatures land silently and missing ones surface via the stale toast.
+  defp maybe_match_flash(socket, 0, updated),
+    do: put_flash(socket, :info, "All #{updated} signatures match")
+
+  defp maybe_match_flash(socket, _added, _updated), do: socket
 
   defp suggest_systems(systems, query) when is_list(systems) do
     q = query |> to_string() |> String.trim() |> String.downcase()

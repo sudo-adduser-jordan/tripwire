@@ -152,7 +152,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
             <tbody class="text-center">
               <tr :for={sig <- @signatures} id={"signature-#{sig.id}"}>
                 <td class="text-center">
-                  <.icon name={site_icon(sig)} class={["size-4", site_icon_class(sig)]} />
+                  <.icon name={scan_icon(sig)} class={["size-4", scan_icon_class(sig)]} />
                 </td>
                 <td class="text-center">
                   <button
@@ -242,18 +242,15 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   defp site_badge(%{site_type: "gas"}), do: "badge-success"
   defp site_badge(_), do: "badge-ghost"
 
-  defp site_icon(%{kind: "anomaly"}), do: "hero-sparkles"
-  defp site_icon(%{site_type: "wormhole"}), do: "hero-globe-alt"
-  defp site_icon(%{site_type: "combat"}), do: "hero-bolt"
-  defp site_icon(%{site_type: "data"}), do: "hero-circle-stack"
-  defp site_icon(%{site_type: "relic"}), do: "hero-archive-box"
-  defp site_icon(%{site_type: "gas"}), do: "hero-cloud"
-  defp site_icon(%{site_type: "ore"}), do: "hero-cube"
-  defp site_icon(_), do: "hero-x-mark"
+  defp scan_icon(%{site_type: type}) when type in ~w(combat data relic ore gas wormhole),
+    do: "hero-check"
 
-  defp site_icon_class(%{kind: "anomaly"}), do: nil
-  defp site_icon_class(%{site_type: type}) when type in ~w(wormhole combat data relic ore gas), do: nil
-  defp site_icon_class(_), do: "text-red-500"
+  defp scan_icon(_), do: "hero-x-mark"
+
+  defp scan_icon_class(%{site_type: type}) when type in ~w(combat data relic ore gas wormhole),
+    do: "text-success"
+
+  defp scan_icon_class(_), do: "text-error"
 
   defp format_life_left(%{inserted_at: inserted_at, life_length: life_length}) do
     seconds =
