@@ -152,10 +152,16 @@ defmodule Tripwire.MappingTest do
 
     [home | _] = Mapping.list_systems(fresh.id)
 
-    assert [%{body: first_body}, %{body: second_body}] = Mapping.list_comments(home.id)
+    jita = Enum.find(Mapping.list_systems(fresh.id), &(&1.name == "Jita"))
+
+    assert [%{body: first_body}, %{body: second_body}, %{body: third_body}] =
+             Mapping.list_comments(jita.id)
+
     assert first_body =~ "# Shortcuts"
     assert first_body =~ "<kbd>Ctrl</kbd>"
     assert second_body =~ "**Bold**"
+    assert third_body =~ "ABC-123"
+    assert home.id != jita.id
   end
 
   test "character stat counters track signature and comment lifecycles", %{mask: mask} do

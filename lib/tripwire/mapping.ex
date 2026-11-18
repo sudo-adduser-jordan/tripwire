@@ -1117,6 +1117,22 @@ defmodule Tripwire.Mapping do
   ### Header 3
   """
 
+  @demo_paste Enum.join(
+                [
+                  "ABC-123\tCosmic Signature\tUnstable Wormhole (K162)\t100.00%\t1.21 AU",
+                  "DEF-456\tCosmic Signature\tSerpentis Frigate Den\t100.00%\t0.85 AU",
+                  "GHI-789\tCosmic Signature\tRuined Data Site\t87.50%\t2.40 AU",
+                  "JKL-012\tCosmic Signature\tRuined Relic Site\t92.30%\t3.10 AU",
+                  "MNO-345\tCosmic Signature\tSizeable Perimeter Withdrawal\t100.00%\t4.75 AU",
+                  "PQR-678\tCosmic Signature\tRarified Core Deposit\t76.80%\t5.20 AU",
+                  "STU-901\tCosmic Anomaly\tForsaken Hub\t100.00%\t1.05 AU",
+                  "VWX-234\tCosmic Signature\tUnstable Wormhole (C247)\t100.00%\t0.42 AU",
+                  "QWE-111\tCosmic Signature\t12.50%\t4.20 AU",
+                  "RTY-222"
+                ],
+                "\n"
+              )
+
   @demo_links [
     {0, 1, "C247", "stable", "stable"},
     {1, 2, "K162", "destab", "stable"},
@@ -1327,14 +1343,28 @@ defmodule Tripwire.Mapping do
   end
 
   defp ensure_demo_notes(systems, mask_id) do
-    case systems |> Enum.sort_by(& &1.id) |> List.first() do
+    jita =
+      Enum.find(systems, &(&1.name == "Jita")) ||
+        (systems |> Enum.sort_by(& &1.id) |> List.first())
+
+    case jita do
       nil ->
         :ok
 
       system ->
+        system_ids = Enum.map(systems, & &1.id)
+
+        Tripwire.Repo.update_all(
+          from(c in Tripwire.Mapping.Comment,
+            where: c.map_system_id in ^system_ids and c.map_system_id != ^system.id
+          ),
+          set: [map_system_id: system.id]
+        )
+
         if list_comments(system.id) == [] do
           {:ok, _} = create_comment(system, %{body: @demo_shortcuts, mask_id: mask_id})
           {:ok, _} = create_comment(system, %{body: @demo_note, mask_id: mask_id})
+          {:ok, _} = create_comment(system, %{body: @demo_paste, mask_id: mask_id})
         end
 
         :ok

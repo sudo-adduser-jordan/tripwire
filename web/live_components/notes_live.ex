@@ -112,16 +112,28 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
             </div>
             <div class="mt-1 flex items-center justify-between text-xs opacity-60">
               <span>{comment.character && comment.character.name}</span>
-              <button
-                class="btn btn-ghost btn-xs"
-                title="Delete note"
-                phx-click="comment-delete"
-                phx-value-id={comment.id}
-                phx-target={@myself}
-                data-confirm="Delete this note?"
-              >
-                <.icon name="hero-trash" class="size-3" />
-              </button>
+              <div class="flex items-center gap-1">
+                <button
+                  id={"note-copy-#{comment.id}"}
+                  class="group btn btn-ghost btn-xs p-1"
+                  title="Copy note"
+                  phx-hook="CopyText"
+                  data-copy={comment.body}
+                >
+                  <.icon name="hero-clipboard" class="copy-icon size-3" />
+                  <.icon name="hero-check" class="copied-icon hidden size-3 text-success" />
+                </button>
+                <button
+                  class="btn btn-ghost btn-xs"
+                  title="Delete note"
+                  phx-click="comment-delete"
+                  phx-value-id={comment.id}
+                  phx-target={@myself}
+                  data-confirm="Delete this note?"
+                >
+                  <.icon name="hero-trash" class="size-3" />
+                </button>
+              </div>
             </div>
           </div>
           <p :if={@selected_system_id != nil and @comments == []} class="opacity-50">
