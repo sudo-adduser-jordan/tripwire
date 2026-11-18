@@ -318,6 +318,21 @@ defmodule Tripwire.MappingTest do
     assert Mapping.get_connection!(other.id).hole_type == "K162"
   end
 
+  test "list_system_stats/1 returns activity keyed by system id" do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_030, name: "Stat Map"})
+    {:ok, mask} = Masks.ensure_personal_mask(character)
+    {:ok, map} = Mapping.create_map(%{name: "Stats", mask_id: mask.id})
+
+    {:ok, system} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_301, name: "J100301"})
+
+    {:ok, _} = Mapping.upsert_system_stat(system, %{jumps: 12, kills: 3, visits: 0})
+
+    stats = Mapping.list_system_stats(map.id)
+    assert stats[system.id].jumps == 12
+    assert stats[system.id].kills == 3
+  end
+
   test "upsert_signatures counts pasted signatures and wormholes", %{mask: mask} do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 99_002, name: "Paste Tracker"})
     {:ok, map} = Mapping.create_map(%{name: "Paste", mask_id: mask.id})

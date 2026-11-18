@@ -1025,6 +1025,19 @@ defmodule Tripwire.Mapping do
   def get_system_stat(system_id),
     do: Repo.get_by(Tripwire.Mapping.SystemStat, map_system_id: system_id)
 
+  @doc """
+  Returns a `system_id => %SystemStat{}` map for every system on a map that
+  has recorded activity, used to render node activity dots.
+  """
+  def list_system_stats(map_id) do
+    system_ids = from(s in MapSystem, where: s.map_id == ^map_id, select: s.id)
+
+    Repo.all(
+      from(st in Tripwire.Mapping.SystemStat, where: st.map_system_id in subquery(system_ids))
+    )
+    |> Elixir.Map.new(&{&1.map_system_id, &1})
+  end
+
   def record_visit(%MapSystem{} = system) do
     case get_system_stat(system.id) do
       nil ->

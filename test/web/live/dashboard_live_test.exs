@@ -721,7 +721,9 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, other} =
       Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
 
-    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
+    # B274's 375kt max jump applies a 1.3x mass factor to the line weight.
+    {:ok, _link, _new?} =
+      Mapping.upsert_connection(map.id, system.id, other.id, %{hole_type: "B274"})
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -732,7 +734,7 @@ defmodule TripwireWeb.DashboardLiveTest do
       |> element(~s|#settings-widget form[phx-change="line-weight"]|)
       |> render_change(%{weight: "4"})
 
-    assert html =~ ~s|stroke-width="4"|
+    assert html =~ ~s|stroke-width="5"|
   end
 
   test "map settings background sets the map backdrop", %{conn: conn, character: character} do

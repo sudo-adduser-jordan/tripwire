@@ -3,6 +3,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
   alias Tripwire.Mapping
   alias Tripwire.Signatures, as: SigParser
+  alias Tripwire.Wormholes
 
   def update(assigns, socket) do
     map_id = Map.get(assigns, :map_id)
@@ -13,11 +14,16 @@ defmodule TripwireWeb.LiveComponents.MapLive do
         Mapping.list_connections_with_endpoints(map_id)
       end)
 
+    stats = Map.get_lazy(assigns, :stats, fn -> Mapping.list_system_stats(map_id) end)
+    occupants = Map.get(assigns, :occupants, [])
+
     {:ok,
      socket
      |> assign(assigns)
      |> assign(:systems, systems)
      |> assign(:connections, connections)
+     |> assign(:stats, stats)
+     |> assign(:occupants, occupants)
      |> assign(:wh_sigs, wormhole_sigs(map_id))
      |> assign_new(:pan_x, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 0) end)
      |> assign_new(:pan_y, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 1) end)
@@ -276,9 +282,11 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 d={edge_path(from, to, Map.get(assigns, :angled_lines, true))}
                 fill="none"
                 stroke-dasharray={edge_dash(conn)}
-                stroke-width={Map.get(assigns, :line_weight, 2)}
+                stroke-width={edge_stroke(conn, from, to, Map.get(assigns, :line_weight, 2))}
                 class={edge_class(conn)}
-              />
+              >
+                <title>{edge_title(conn, from, to)}</title>
+              </path>
             </g>
             <g id="map-nodes">
               <g
@@ -326,6 +334,16 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   }
                   stroke-width="2"
                 />
+                <g
+                  :if={occupied_count(@occupants, system.id) > 0}
+                  transform="translate(104, 8)"
+                >
+                  <title>{occupied_names(@occupants, system.id)}</title>
+                  <circle r="8" class="fill-primary" />
+                  <text y="3" text-anchor="middle" class="fill-primary-content text-[9px] font-bold">
+                    {occupied_count(@occupants, system.id)}
+                  </text>
+                </g>
                 <text
                   x="60"
                   y="20"
@@ -354,6 +372,14 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 >
                   {node_footer(@connections, @wh_sigs, system.id)}
                 </text>
+                <g :if={activity = node_activity(@stats, system.id)}>
+                  <circle :if={activity.jumps > 0} cx="98" cy="88" r="4" class="fill-info">
+                    <title>{"#{activity.jumps} jumps"}</title>
+                  </circle>
+                  <circle :if={activity.kills > 0} cx="112" cy="88" r="4" class="fill-error">
+                    <title>{"#{activity.kills} kills"}</title>
+                  </circle>
+                </g>
                 <g
                   :for={{label, tip, x, color, text_color} <- node_badges(system)}
                   :if={Map.get(assigns, :show_node_badges, true)}
@@ -513,6 +539,76 @@ defmodule TripwireWeb.LiveComponents.MapLive do
              ) do
           nil -> ""
           sig -> sig.sig_id
+        end
+    end
+  end
+
+  # Connection line weight scales with the hole's maximum jump mass, matching
+  # official Tripwire's jm-* line classes; unknown types fall back to a size
+  # inferred from the two system classes.
+  defp edge_stroke(conn, from, to, line_weight) do
+    factor = conn |> jump_for(from, to) |> mass_factor()
+    max(1, round(line_weight * factor))
+  end
+
+  defp jump_for(%{hole_type: code}, from, to) when is_binary(code) and code != "" do
+    Wormholes.jump(code) || likely_jump(from, to)
+  end
+
+  defp jump_for(_conn, from, to), do: likely_jump(from, to)
+
+  defp likely_jump(from, to) do
+    class1 = Tripwire.Systems.display_class(from)
+    class2 = Tripwire.Systems.display_class(to)
+
+    Wormholes.dummy(Wormholes.likely_wormhole(class1, class2)) |> Map.get("jump")
+  end
+
+  defp mass_factor(nil), do: 1.0
+  defp mass_factor(jump) when jump <= 5_000_000, do: 0.6
+  defp mass_factor(jump) when jump <= 62_000_000, do: 1.0
+  defp mass_factor(jump) when jump <= 375_000_000, do: 1.3
+  defp mass_factor(_jump), do: 1.7
+
+  # Hover label describing a connection, using the wormhole type database.
+  defp edge_title(conn, from, to) do
+    case conn.hole_type do
+      code when is_binary(code) and code != "" -> Wormholes.render(code)
+      _ -> likely_title(from, to)
+    end
+  end
+
+  defp likely_title(from, to) do
+    class1 = Tripwire.Systems.display_class(from)
+    class2 = Tripwire.Systems.display_class(to)
+    size = Wormholes.likely_wormhole(class1, class2)
+
+    "Likely #{size} wormhole (#{class1 || "?"} ➔ #{class2 || "?"})"
+  end
+
+  defp occupied_count(occupants, system_id) do
+    Enum.count(occupants, &(&1.system_id == system_id))
+  end
+
+  defp occupied_names(occupants, system_id) do
+    occupants
+    |> Enum.filter(&(&1.system_id == system_id))
+    |> Enum.map_join(", ", & &1.character_name)
+  end
+
+  defp node_activity(stats, system_id) do
+    case Map.get(stats, system_id) do
+      nil ->
+        nil
+
+      stat ->
+        jumps = stat.jumps || 0
+        kills = stat.kills || 0
+
+        if jumps > 0 or kills > 0 do
+          %{jumps: jumps, kills: kills}
+        else
+          nil
         end
     end
   end
