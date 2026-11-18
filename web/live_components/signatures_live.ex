@@ -16,9 +16,43 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
      socket
      |> assign(assigns)
      |> assign(:signatures, signatures)
+     |> assign(:wh_links, wh_links(Map.get(assigns, :connections, [])))
      |> assign_new(:undo, fn -> [] end)
      |> assign_new(:redo, fn -> [] end)}
   end
+
+  # Maps {system_id, hole code} to the system the connection leads to, so a
+  # scanned wormhole signature can be labelled with its destination like in
+  # official Tripwire.
+  defp wh_links(connections) do
+    Enum.flat_map(connections, fn {conn, from, to} ->
+      case hole_code(conn.hole_type) do
+        nil -> []
+        code -> [{{from.id, code}, dest_name(to)}, {{to.id, code}, dest_name(from)}]
+      end
+    end)
+    |> Map.new()
+  end
+
+  defp hole_code(nil), do: nil
+
+  defp hole_code(code) do
+    case Regex.run(~r/^([A-Z][0-9]{3})$/, String.upcase(to_string(code))) do
+      [_, code] -> code
+      _ -> nil
+    end
+  end
+
+  defp dest_name(system), do: system.alias || system.name
+
+  defp wormhole_code(%{site_type: "wormhole", type_name: name}) when is_binary(name) do
+    case Regex.run(~r/\b([A-Z][0-9]{3})\b/, String.upcase(name)) do
+      [_, code] -> code
+      _ -> nil
+    end
+  end
+
+  defp wormhole_code(_), do: nil
 
   def handle_event("add-signature", %{"sig" => params}, socket) do
     with system when not is_nil(system) <- selected_system(socket),
@@ -168,17 +202,27 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                   <span class={["badge badge-xs", site_badge(sig)]}>{site_label(sig)}</span>
                 </td>
                 <td class="cell-truncate text-center">
-              <a
-                :if={sig_link(sig)}
-                href={sig_link(sig)}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="link link-hover text-yellow-400"
-              >
-                {sig.type_name}
-              </a>
-              <span :if={is_nil(sig_link(sig))}>{sig.type_name || "-"}</span>
-            </td>
+                  <span
+                    :if={wormhole_display(sig)}
+                    class="inline-flex items-center justify-center gap-1.5"
+                    title={sig.type_name}
+                  >
+                    <span class="inline-block size-2 shrink-0 rounded-full bg-info"></span>
+                    {wormhole_label(sig, @wh_links)}
+                  </span>
+                  <a
+                    :if={is_nil(wormhole_display(sig)) and sig_link(sig)}
+                    href={sig_link(sig)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="link link-hover text-yellow-400"
+                  >
+                    {sig.type_name}
+                  </a>
+                  <span :if={is_nil(wormhole_display(sig)) and is_nil(sig_link(sig))}>
+                    {sig.type_name || "-"}
+                  </span>
+                </td>
                 <td class="text-center tabular-nums">{format_life_left(sig)}</td>
                 <td class="text-center">
                   <button
@@ -223,6 +267,26 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   defp sig_link(%{type_name: name}), do: SigParser.external_link(name)
   defp sig_link(_), do: nil
 
+  # A scanned wormhole that backs a connection is labelled with the system the
+  # connection leads to (Tripwire behaviour); otherwise the full typed name is
+  # kept so a scanned hole is never displayed like an unscanned one.
+  defp wormhole_label(sig, wh_links) do
+    case Map.get(wh_links, {sig.map_system_id, wormhole_code(sig)}) do
+      nil -> wormhole_display(sig)
+      name -> name
+    end
+  end
+
+  defp wormhole_display(%{site_type: "wormhole", type_name: name})
+       when is_binary(name) do
+    case String.trim(name) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp wormhole_display(_), do: nil
+
   defp kind_label(%{kind: "anomaly"}), do: "Anomaly"
   defp kind_label(_), do: "Signature"
 
@@ -265,11 +329,13 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   end
 
   defp sig_attrs(params) do
+    type_name = present(params["type_name"])
+
     %{
       sig_id: params["sig_id"],
       kind: params["kind"] || "signature",
-      site_type: params["site_type"] || "unknown",
-      type_name: present(params["type_name"]),
+      site_type: SigParser.infer_site_type(params["site_type"] || "unknown", type_name),
+      type_name: type_name,
       bookmark: present(params["bookmark"]),
       life_length: parse_life_length(params["life_length"])
     }

@@ -17,6 +17,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign(assigns)
      |> assign(:systems, systems)
      |> assign(:connections, connections)
+     |> assign(:wh_sigs, wormhole_sigs(map_id))
      |> assign_new(:pan_x, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 0) end)
      |> assign_new(:pan_y, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 1) end)
      |> assign_new(:map_locked, fn -> false end)
@@ -350,7 +351,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   text-anchor="middle"
                   class="fill-base-content/60 text-xs"
                 >
-                  {incoming_type(@connections, system.id)}
+                  {node_footer(@connections, @wh_sigs, system.id)}
                 </text>
                 <g
                   :for={{label, tip, x, color, text_color} <- node_badges(system)}
@@ -383,6 +384,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     </div>
     """
   end
+
+  defp wormhole_sigs(nil), do: []
+
+  defp wormhole_sigs(map_id), do: Mapping.list_wormhole_signatures(map_id)
 
   defp selected_name(_systems, nil), do: nil
 
@@ -484,26 +489,34 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
   defp effect_icon(_), do: ""
 
-  defp incoming_type(connections, system_id) do
+  # Bottom node field: the scanned signature code recorded on this system
+  # for its displayed connection — blank when nothing matches.
+  defp node_footer(connections, wh_sigs, system_id) do
     case Enum.find(connections, fn {_conn, from, to} ->
            from.id == system_id or to.id == system_id
          end) do
-      {conn, _, _} -> connection_label(conn)
-      nil -> ""
+      nil ->
+        ""
+
+      {conn, _, _} ->
+        code = conn.hole_type |> to_string() |> String.upcase()
+
+        case Enum.find(
+               wh_sigs,
+               &(&1.map_system_id == system_id and sig_code(&1) == code)
+             ) do
+          nil -> ""
+          sig -> sig.sig_id
+        end
     end
   end
 
-  defp connection_label(%{hole_type: hole, jumps: jumps}) do
-    hole_label = if hole in [nil, ""], do: nil, else: hole
-    jump_label = if is_integer(jumps), do: "#{jumps} #{if jumps == 1, do: "jump", else: "jumps"}", else: nil
-
-    case {hole_label, jump_label} do
-      {nil, nil} -> ""
-      {h, nil} -> h
-      {nil, j} -> j
-      {h, j} -> "#{h} · #{j}"
+  defp sig_code(%{type_name: name}) when is_binary(name) do
+    case Regex.run(~r/\b([A-Z][0-9]{3})\b/, String.upcase(name)) do
+      [_, code] -> code
+      _ -> nil
     end
   end
 
-  defp connection_label(_), do: ""
+  defp sig_code(_), do: nil
 end

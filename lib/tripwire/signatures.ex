@@ -173,6 +173,18 @@ defmodule Tripwire.Signatures do
   @known_site_set MapSet.new(@known_sites)
 
   @doc """
+  Infers a concrete site type when the user names a wormhole but leaves
+  the type on "unknown", so a scanned signature is never shown as unscanned.
+  """
+  @spec infer_site_type(String.t() | nil, String.t() | nil) :: String.t()
+  def infer_site_type("unknown", name) when is_binary(name) do
+    if Regex.match?(@wormhole_code_regex, String.upcase(name)), do: "wormhole", else: "unknown"
+  end
+
+  def infer_site_type(type, _name) when is_binary(type) and type != "", do: type
+  def infer_site_type(_, _), do: "unknown"
+
+  @doc """
   Returns the eve-survival guide URL for a known site name, matching
   official Tripwire, or nil when the name has no external guide.
   """

@@ -46,28 +46,28 @@ defmodule Tripwire.MappingTest do
     assert length(links) == 22
 
     assert Enum.map(links, & &1.hole_type) |> Enum.sort() == [
+             "A641",
+             "B041",
              "B274",
-             "C140",
-             "C140",
-             "C140",
-             "C140",
-             "C247",
-             "C247",
-             "C247",
-             "K162",
-             "K162",
-             "K162",
-             "K162",
-             "K162",
-             "K162",
-             "K162",
-             "K162",
-             "K162",
-             "K162",
-             "N968",
-             "N968",
-             "N968",
-             "N968"
+             "B274",
+             "D364",
+             "E175",
+             "F216",
+             "H900",
+             "K329",
+             "M555",
+             "N062",
+             "N110",
+             "N290",
+             "N766",
+             "N770",
+             "O128",
+             "O477",
+             "Q317",
+             "R081",
+             "V753",
+             "Y683",
+             "Y790"
            ]
 
     assert Enum.map(links, & &1.mass_status) |> Enum.sort() == [
@@ -128,12 +128,12 @@ defmodule Tripwire.MappingTest do
              "C2",
              "C2",
              "C2",
-             "C2",
-             "C3",
              "C3",
              "C4",
              "C4",
              "C4",
+             "C4",
+             "C5",
              "C5",
              "C5",
              "C5",
@@ -160,7 +160,7 @@ defmodule Tripwire.MappingTest do
     assert first_body =~ "# Shortcuts"
     assert first_body =~ "<kbd>Ctrl</kbd>"
     assert second_body =~ "**Bold**"
-    assert third_body =~ "ABC-123"
+    assert third_body =~ "TUV-679"
     assert home.id != jita.id
   end
 

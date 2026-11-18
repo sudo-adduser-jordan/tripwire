@@ -68,6 +68,19 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "→"
   end
 
+  test "demo wormhole signatures are labelled with their connection destination", %{conn: conn} do
+    {:ok, _view, html} = live(conn, ~p"/dashboard")
+
+    # Home backs three connections; its scanned wormhole signatures show the
+    # systems they lead to instead of the generic wormhole name.
+    assert html =~ "J150322"
+    assert html =~ "J150327"
+    assert html =~ "J150329"
+    refute html =~ "Unstable Wormhole (O477)"
+    refute html =~ "Unstable Wormhole (Y683)"
+    refute html =~ "Unstable Wormhole (N062)"
+  end
+
   test "demo mode provisions its own editable mask", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/dashboard")
     assert html =~ "Demo mode"
@@ -81,7 +94,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert length(Mapping.list_systems(map.id)) == 23
 
     assert html =~ "C3"
-    assert html =~ "K162"
+    assert html =~ "ABC-123"
 
     system = hd(Mapping.list_systems(map.id))
 
@@ -176,7 +189,8 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     html = render(view)
     assert html =~ "ABC-123"
-    assert html =~ "Z647"
+    # A scanned wormhole keeps its full typed name (no matching connection here)
+    assert html =~ "Unstable Wormhole (Z647)"
 
     assert [%Mapping.Signature{} = sig] = Mapping.list_signatures(system.id)
     assert sig.sig_id == "ABC-123"
@@ -332,7 +346,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "J150321"
   end
 
-  test "map nodes show class above name with hole type below", %{
+  test "map nodes show class above name with signature code below", %{
     conn: conn,
     character: character
   } do
@@ -345,6 +359,18 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, _link, _new?} =
       Mapping.upsert_connection(map.id, system.id, other.id, %{hole_type: "K162"})
 
+    {:ok, _} =
+      Mapping.create_signature(
+        system,
+        %{
+          sig_id: "AAA-111",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (K162)"
+        },
+        character
+      )
+
     {:ok, _view, html} = live(login(conn, character), ~p"/dashboard")
 
     [_, node_html] = String.split(html, ~s|<g id="node-#{system.id}"|, parts: 2)
@@ -352,9 +378,10 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {class_pos, _} = :binary.match(node_html, "C3")
     {name_pos, _} = :binary.match(node_html, "J150321")
-    {hole_pos, _} = :binary.match(node_html, "K162")
+    {sig_pos, _} = :binary.match(node_html, "AAA-111")
     assert class_pos < name_pos
-    assert name_pos < hole_pos
+    assert name_pos < sig_pos
+    refute node_html =~ "K162"
   end
 
   test "nodes are color coded by system class", %{conn: conn, character: character} do

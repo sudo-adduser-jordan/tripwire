@@ -810,6 +810,22 @@ defmodule Tripwire.Mapping do
 
   def get_signature(id), do: Repo.get(Signature, id)
 
+  @doc """
+  Wormhole signatures for every system on a map, ordered by signature id.
+  The chain map labels each node with the scanned signature code recorded
+  on that system instead of the raw connection type.
+  """
+  def list_wormhole_signatures(map_id) do
+    system_ids = from(s in MapSystem, where: s.map_id == ^map_id, select: s.id)
+
+    Repo.all(
+      from(sig in Signature,
+        where: sig.map_system_id in subquery(system_ids) and sig.site_type == "wormhole",
+        order_by: [asc: sig.sig_id]
+      )
+    )
+  end
+
   def list_comments(system_id) do
     Repo.all(
       from(c in Tripwire.Mapping.Comment,
@@ -1079,7 +1095,7 @@ defmodule Tripwire.Mapping do
     %{solar_system_id: 31_000_011, name: "J150327", sys_class: "C4", x: 240.0, y: 300.0},
     %{solar_system_id: 31_000_012, name: "J150328", sys_class: "C2", x: 120.0, y: 460.0},
     %{solar_system_id: 30_000_216, name: "Dodixie", security: 0.9, x: 240.0, y: 620.0},
-    %{solar_system_id: 31_000_013, name: "J150329", sys_class: "C3", x: 300.0, y: 30.0},
+    %{solar_system_id: 31_000_013, name: "J150329", sys_class: "C5", x: 300.0, y: 30.0},
     %{solar_system_id: 31_000_014, name: "J150330", sys_class: "C2", x: 500.0, y: 20.0},
     %{solar_system_id: 30_002_187, name: "Amarr", security: 1.0, x: 700.0, y: 40.0},
     %{solar_system_id: 31_000_015, name: "J150331", sys_class: "C5", x: 980.0, y: 480.0},
@@ -1091,7 +1107,7 @@ defmodule Tripwire.Mapping do
       x: 620.0,
       y: 660.0
     },
-    %{solar_system_id: 31_000_017, name: "J150333", sys_class: "C2", x: 60.0, y: 620.0},
+    %{solar_system_id: 31_000_017, name: "J150333", sys_class: "C4", x: 60.0, y: 620.0},
     %{solar_system_id: 31_000_018, name: "J150334", sys_class: "C1", x: 620.0, y: 300.0},
     %{solar_system_id: 30_002_537, name: "Rens", security: 0.9, x: 460.0, y: 120.0},
     %{solar_system_id: 31_000_019, name: "J150335", sys_class: "C6", x: 830.0, y: 90.0},
@@ -1119,14 +1135,11 @@ defmodule Tripwire.Mapping do
 
   @demo_paste Enum.join(
                 [
-                  "ABC-123\tCosmic Signature\tUnstable Wormhole (K162)\t100.00%\t1.21 AU",
-                  "DEF-456\tCosmic Signature\tSerpentis Frigate Den\t100.00%\t0.85 AU",
-                  "GHI-789\tCosmic Signature\tRuined Data Site\t87.50%\t2.40 AU",
-                  "JKL-012\tCosmic Signature\tRuined Relic Site\t92.30%\t3.10 AU",
-                  "MNO-345\tCosmic Signature\tSizeable Perimeter Withdrawal\t100.00%\t4.75 AU",
-                  "PQR-678\tCosmic Signature\tRarified Core Deposit\t76.80%\t5.20 AU",
-                  "STU-901\tCosmic Anomaly\tForsaken Hub\t100.00%\t1.05 AU",
-                  "VWX-234\tCosmic Signature\tUnstable Wormhole (C247)\t100.00%\t0.42 AU",
+                  "TUV-679\tCosmic Signature\tUnstable Wormhole (M555)\t100.00%\t1.21 AU",
+                  "KLM-791\tCosmic Signature\tUnstable Wormhole (N110)\t100.00%\t0.42 AU",
+                  "TUV-678\tCosmic Anomaly\tForsaken Hub\t100.00%\t1.05 AU",
+                  "WXY-901\tCosmic Signature\tCentral Data Site\t87.50%\t2.40 AU",
+                  "AAA-111\tCosmic Signature\t100.00%\t3.10 AU",
                   "QWE-111\tCosmic Signature\t12.50%\t4.20 AU",
                   "RTY-222"
                 ],
@@ -1134,28 +1147,28 @@ defmodule Tripwire.Mapping do
               )
 
   @demo_links [
-    {0, 1, "C247", "stable", "stable"},
-    {1, 2, "K162", "destab", "stable"},
-    {2, 3, "N968", "stable", "eol"},
-    {2, 4, "B274", "critical", "stable"},
-    {4, 5, "K162", "stable", "stable"},
-    {5, 6, "C140", "stable", "stable"},
-    {3, 7, "K162", "stable", "stable"},
-    {3, 8, "N968", "stable", "stable"},
-    {4, 9, "K162", "stable", "stable"},
-    {0, 10, "K162", "stable", "stable"},
-    {10, 11, "K162", "stable", "stable"},
-    {11, 12, "C140", "stable", "stable"},
-    {0, 13, "C247", "stable", "stable"},
-    {13, 14, "K162", "stable", "stable"},
-    {14, 15, "C140", "stable", "stable"},
-    {6, 16, "N968", "stable", "stable"},
-    {8, 17, "K162", "destab", "stable"},
-    {9, 18, "K162", "stable", "stable"},
-    {2, 19, "C247", "stable", "stable"},
-    {14, 20, "C140", "stable", "stable"},
-    {15, 21, "K162", "stable", "stable"},
-    {3, 22, "N968", "stable", "stable"}
+    {0, 1, "O477", "stable", "stable"},
+    {1, 2, "N770", "destab", "stable"},
+    {2, 3, "E175", "stable", "eol"},
+    {2, 4, "V753", "critical", "stable"},
+    {4, 5, "Q317", "stable", "stable"},
+    {5, 6, "N110", "stable", "stable"},
+    {3, 7, "N290", "stable", "stable"},
+    {3, 8, "K329", "stable", "stable"},
+    {4, 9, "F216", "stable", "stable"},
+    {0, 10, "Y683", "stable", "stable"},
+    {10, 11, "N766", "stable", "stable"},
+    {11, 12, "B274", "stable", "stable"},
+    {0, 13, "N062", "stable", "stable"},
+    {13, 14, "D364", "stable", "stable"},
+    {14, 15, "B274", "stable", "stable"},
+    {6, 16, "M555", "stable", "stable"},
+    {8, 17, "O128", "destab", "stable"},
+    {9, 18, "R081", "stable", "stable"},
+    {2, 19, "Y790", "stable", "stable"},
+    {15, 20, "A641", "stable", "stable"},
+    {15, 21, "B041", "stable", "stable"},
+    {3, 22, "H900", "stable", "stable"}
   ]
 
   @demo_signatures %{
@@ -1164,7 +1177,19 @@ defmodule Tripwire.Mapping do
         sig_id: "ABC-123",
         kind: "signature",
         site_type: "wormhole",
-        type_name: "Unstable Wormhole (C247)"
+        type_name: "Unstable Wormhole (O477)"
+      },
+      %{
+        sig_id: "ABC-124",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (Y683)"
+      },
+      %{
+        sig_id: "ABC-125",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (N062)"
       },
       %{
         sig_id: "DEF-456",
@@ -1179,23 +1204,47 @@ defmodule Tripwire.Mapping do
         sig_id: "JKL-012",
         kind: "signature",
         site_type: "wormhole",
-        type_name: "Unstable Wormhole (K162)"
+        type_name: "Unstable Wormhole (O477)"
+      },
+      %{
+        sig_id: "BCD-124",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (N770)"
       },
       %{sig_id: "MNO-345", kind: "signature", site_type: "relic", type_name: "Ruined Relic Site"},
       %{sig_id: "PQR-678", kind: "anomaly", site_type: "combat", type_name: "Forsaken Hub"}
     ],
     2 => [
       %{
-        sig_id: "STU-901",
+        sig_id: "STU-902",
         kind: "signature",
-        site_type: "gas",
-        type_name: "Sizeable Perimeter Withdrawal"
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (N770)"
       },
       %{
         sig_id: "VWX-234",
         kind: "signature",
         site_type: "wormhole",
-        type_name: "Unstable Wormhole (N968)"
+        type_name: "Unstable Wormhole (E175)"
+      },
+      %{
+        sig_id: "TUV-681",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (V753)"
+      },
+      %{
+        sig_id: "TUV-682",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (Y790)"
+      },
+      %{
+        sig_id: "STU-901",
+        kind: "signature",
+        site_type: "gas",
+        type_name: "Sizeable Perimeter Withdrawal"
       },
       %{
         sig_id: "YZA-567",
@@ -1205,15 +1254,51 @@ defmodule Tripwire.Mapping do
       }
     ],
     3 => [
-      %{sig_id: "BCD-890", kind: "anomaly", site_type: "combat", type_name: "Sanctum"},
       %{
         sig_id: "EFG-123",
         kind: "signature",
         site_type: "wormhole",
-        type_name: "Unstable Wormhole (B274)"
-      }
+        type_name: "Unstable Wormhole (E175)"
+      },
+      %{
+        sig_id: "FGH-892",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (N290)"
+      },
+      %{
+        sig_id: "FGH-893",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (K329)"
+      },
+      %{
+        sig_id: "FGH-894",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (H900)"
+      },
+      %{sig_id: "BCD-890", kind: "anomaly", site_type: "combat", type_name: "Sanctum"}
     ],
     4 => [
+      %{
+        sig_id: "HIJ-457",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (V753)"
+      },
+      %{
+        sig_id: "HIJ-458",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (Q317)"
+      },
+      %{
+        sig_id: "IJK-124",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (F216)"
+      },
       %{sig_id: "HIJ-456", kind: "signature", site_type: "data", type_name: "Central Data Site"},
       %{
         sig_id: "KLM-789",
@@ -1227,17 +1312,41 @@ defmodule Tripwire.Mapping do
         sig_id: "NOP-012",
         kind: "signature",
         site_type: "wormhole",
-        type_name: "Unstable Wormhole (K162)"
+        type_name: "Unstable Wormhole (Q317)"
+      },
+      %{
+        sig_id: "IJK-125",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (N110)"
       },
       %{sig_id: "QRS-345", kind: "signature", site_type: "relic", type_name: "Ruined Relic Site"}
     ],
     6 => [
+      %{
+        sig_id: "KLM-791",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (N110)"
+      },
+      %{
+        sig_id: "TUV-679",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (M555)"
+      },
       %{sig_id: "TUV-678", kind: "anomaly", site_type: "combat", type_name: "Forsaken Hub"},
       %{sig_id: "WXY-901", kind: "signature", site_type: "data", type_name: "Central Data Site"},
       %{sig_id: "AAA-111", kind: "signature", site_type: "unknown"},
       %{sig_id: "BBB-222", kind: "signature", site_type: "unknown"}
     ],
     7 => [
+      %{
+        sig_id: "ZAB-235",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (N290)"
+      },
       %{
         sig_id: "ZAB-234",
         kind: "signature",
@@ -1253,20 +1362,32 @@ defmodule Tripwire.Mapping do
       %{sig_id: "CCC-333", kind: "signature", site_type: "unknown"}
     ],
     8 => [
-      %{sig_id: "FGH-890", kind: "anomaly", site_type: "combat", type_name: "Sanctum"},
       %{
         sig_id: "IJK-123",
         kind: "signature",
         site_type: "wormhole",
-        type_name: "Unstable Wormhole (K162)"
-      }
+        type_name: "Unstable Wormhole (K329)"
+      },
+      %{
+        sig_id: "FGH-891",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (O128)"
+      },
+      %{sig_id: "FGH-890", kind: "anomaly", site_type: "combat", type_name: "Sanctum"}
     ],
     9 => [
       %{
         sig_id: "LMN-456",
         kind: "signature",
         site_type: "wormhole",
-        type_name: "Unstable Wormhole (K162)"
+        type_name: "Unstable Wormhole (F216)"
+      },
+      %{
+        sig_id: "LMN-458",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (R081)"
       }
     ],
     10 => [
@@ -1274,7 +1395,13 @@ defmodule Tripwire.Mapping do
         sig_id: "OPQ-789",
         kind: "signature",
         site_type: "wormhole",
-        type_name: "Unstable Wormhole (K162)"
+        type_name: "Unstable Wormhole (Y683)"
+      },
+      %{
+        sig_id: "OPQ-790",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (N766)"
       },
       %{sig_id: "RST-012", kind: "signature", site_type: "combat", type_name: "Guristas Hub"}
     ],
@@ -1283,11 +1410,127 @@ defmodule Tripwire.Mapping do
         sig_id: "UVW-345",
         kind: "signature",
         site_type: "wormhole",
-        type_name: "Unstable Wormhole (K162)"
+        type_name: "Unstable Wormhole (N766)"
+      },
+      %{
+        sig_id: "UVW-347",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (B274)"
       }
     ],
     12 => [
+      %{
+        sig_id: "XYZ-679",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (B274)"
+      },
       %{sig_id: "XYZ-678", kind: "anomaly", site_type: "combat", type_name: "Forsaken Hub"}
+    ],
+    13 => [
+      %{
+        sig_id: "KLM-790",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (N062)"
+      },
+      %{
+        sig_id: "KLM-792",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (D364)"
+      }
+    ],
+    14 => [
+      %{
+        sig_id: "NOP-013",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (D364)"
+      },
+      %{
+        sig_id: "NOP-014",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (B274)"
+      }
+    ],
+    15 => [
+      %{
+        sig_id: "QRS-346",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (B274)"
+      },
+      %{
+        sig_id: "QRS-347",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (A641)"
+      },
+      %{
+        sig_id: "RST-015",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (B041)"
+      }
+    ],
+    16 => [
+      %{
+        sig_id: "RST-013",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (M555)"
+      }
+    ],
+    17 => [
+      %{
+        sig_id: "TUV-680",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (O128)"
+      }
+    ],
+    18 => [
+      %{
+        sig_id: "UVW-346",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (R081)"
+      }
+    ],
+    19 => [
+      %{
+        sig_id: "VWX-235",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (Y790)"
+      }
+    ],
+    20 => [
+      %{
+        sig_id: "WXY-902",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (A641)"
+      }
+    ],
+    21 => [
+      %{
+        sig_id: "XYZ-680",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (B041)"
+      }
+    ],
+    22 => [
+      %{
+        sig_id: "YZA-568",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (H900)"
+      }
     ]
   }
 
@@ -1345,7 +1588,7 @@ defmodule Tripwire.Mapping do
   defp ensure_demo_notes(systems, mask_id) do
     jita =
       Enum.find(systems, &(&1.name == "Jita")) ||
-        (systems |> Enum.sort_by(& &1.id) |> List.first())
+        systems |> Enum.sort_by(& &1.id) |> List.first()
 
     case jita do
       nil ->

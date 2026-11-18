@@ -659,8 +659,6 @@ defmodule TripwireWeb.DashboardLive do
           |> assign(:selected_system_id, nil)
           |> assign(:selected_system_name, nil)
           |> assign(:system_suggestions, [])
-          |> assign(:system_suggestions, [])
-          |> assign(:system_suggestions, [])
           |> assign(:signatures, [])
           |> assign(:comments, [])
           |> patch_to_preferred(next_systems)
@@ -818,9 +816,11 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("save-signature", %{"sig" => params}, socket) do
     with system when not is_nil(system) <- selected_system(socket) do
+      attrs = sig_attrs(params)
+
       case socket.assigns.sig_edit_id do
         nil ->
-          case Mapping.create_signature(system, sig_attrs(params), socket.assigns.character) do
+          case Mapping.create_signature(system, attrs, socket.assigns.character) do
             {:ok, _} ->
               {:noreply,
                socket
@@ -828,6 +828,7 @@ defmodule TripwireWeb.DashboardLive do
                |> assign(:sig_edit_id, nil)
                |> assign(:sig_errors, [])
                |> reload_signatures()
+               |> sync_map_hole_type(system, nil, sig_hole_code(attrs))
                |> put_flash(:info, "Signature added")}
 
             {:error, changeset} ->
@@ -837,7 +838,7 @@ defmodule TripwireWeb.DashboardLive do
         id ->
           sig = Mapping.get_signature!(id)
 
-          case Mapping.update_signature(sig, sig_attrs(params), socket.assigns.character) do
+          case Mapping.update_signature(sig, attrs, socket.assigns.character) do
             {:ok, _} ->
               {:noreply,
                socket
@@ -845,6 +846,7 @@ defmodule TripwireWeb.DashboardLive do
                |> assign(:sig_edit_id, nil)
                |> assign(:sig_errors, [])
                |> reload_signatures()
+               |> sync_map_hole_type(system, sig_hole_code(sig), sig_hole_code(attrs))
                |> put_flash(:info, "Signature updated")}
 
             {:error, changeset} ->
@@ -939,8 +941,6 @@ defmodule TripwireWeb.DashboardLive do
           |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))
           |> assign(:selected_system_id, nil)
           |> assign(:selected_system_name, nil)
-          |> assign(:system_suggestions, [])
-          |> assign(:system_suggestions, [])
           |> assign(:system_suggestions, [])
           |> assign(:signatures, [])
           |> assign(:comments, [])
@@ -1058,7 +1058,6 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:selected_system_id, nil)
          |> assign(:selected_system_name, nil)
          |> assign(:system_suggestions, [])
-         |> assign(:system_suggestions, [])
          |> assign(:signatures, [])
          |> assign(:comments, [])
          |> assign(:flares, [])
@@ -1092,7 +1091,6 @@ defmodule TripwireWeb.DashboardLive do
            |> assign(:connections, [])
            |> assign(:selected_system_id, nil)
            |> assign(:selected_system_name, nil)
-           |> assign(:system_suggestions, [])
            |> assign(:system_suggestions, [])
            |> assign(:signatures, [])
            |> assign(:comments, [])
@@ -1128,7 +1126,6 @@ defmodule TripwireWeb.DashboardLive do
            |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
            |> assign(:selected_system_id, nil)
            |> assign(:selected_system_name, nil)
-           |> assign(:system_suggestions, [])
            |> assign(:system_suggestions, [])
            |> assign(:signatures, [])
            |> assign(:comments, [])
@@ -1873,6 +1870,41 @@ defmodule TripwireWeb.DashboardLive do
 
   defp maybe_match_flash(socket, _added, _updated), do: socket
 
+  # Pushes a wormhole signature's connection code onto the chain map:
+  # connections touching the system with a blank code (or the signature's
+  # previous code) adopt the new code so the map reflects the widget edit.
+  defp sync_map_hole_type(socket, _system, _old_code, nil), do: socket
+
+  defp sync_map_hole_type(socket, system, old_code, new_code) do
+    targets =
+      Enum.filter(socket.assigns.connections, fn {conn, from, to} ->
+        (from.id == system.id or to.id == system.id) and
+          (conn.hole_type in [nil, ""] or
+             (not is_nil(old_code) and conn.hole_type == old_code))
+      end)
+
+    if targets == [] do
+      socket
+    else
+      Enum.each(targets, fn {conn, _, _} ->
+        Mapping.update_connection(conn, %{hole_type: new_code})
+      end)
+
+      Tripwire.Tracking.broadcast_map_update(socket.assigns.map.id)
+
+      assign(socket, :connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))
+    end
+  end
+
+  defp sig_hole_code(%{site_type: "wormhole", type_name: name}) when is_binary(name) do
+    case Regex.run(~r/\b([A-Z][0-9]{3})\b/, String.upcase(name)) do
+      [_, code] -> code
+      _ -> nil
+    end
+  end
+
+  defp sig_hole_code(_), do: nil
+
   defp suggest_systems(systems, query) when is_list(systems) do
     q = query |> to_string() |> String.trim() |> String.downcase()
 
@@ -2253,11 +2285,13 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp sig_attrs(params) do
+    type_name = present(params["type_name"])
+
     %{
       sig_id: params["sig_id"],
       kind: params["kind"] || "signature",
-      site_type: params["site_type"] || "unknown",
-      type_name: present(params["type_name"]),
+      site_type: SigParser.infer_site_type(params["site_type"] || "unknown", type_name),
+      type_name: type_name,
       bookmark: present(params["bookmark"]),
       life_length: parse_life_length(params["life_length"])
     }
