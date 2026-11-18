@@ -112,6 +112,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
             >
               <.icon name="hero-plus" class="size-4" />
             </button>
+            <span class="opacity-30">|</span>
             <button
               id="chain-edit"
               class="btn btn-ghost btn-xs"
@@ -122,7 +123,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
             >
               <.icon name="hero-pencil" class="size-4" />
             </button>
-            <span class="opacity-30">|</span>
             <button
               id="show-favorite"
               class="btn btn-ghost btn-xs"
@@ -155,16 +155,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 name={if @map_locked, do: "hero-lock-closed", else: "hero-lock-open"}
                 class={if @map_locked, do: "size-4 text-amber-400", else: "size-4"}
               />
-            </button>
-            <button
-              id="chain-edit"
-              class="btn btn-ghost btn-xs"
-              title="Edit chain settings"
-              phx-click="open-chain-modal"
-              phx-target={@myself}
-              disabled={@map_locked}
-            >
-              <.icon name="hero-pencil" class="size-4" />
             </button>
             <details id="show-chainLegend" class="dropdown">
               <summary
