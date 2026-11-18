@@ -58,6 +58,7 @@ defmodule TripwireWeb.DashboardLive do
     |> apply_tree_layout("top")
     |> assign(:selected_system_id, nil)
     |> assign(:selected_system_name, nil)
+    |> assign(:system_suggestions, [])
     |> assign(:signatures, [])
     |> assign(:comments, [])
     |> autoselect_first_system()
@@ -143,7 +144,8 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_info({:open_system, system_id}, socket) do
     if socket.assigns[:map_locked] do
-      {:noreply, socket |> select_system_and_patch(system_id) |> put_flash(:error, "Map is locked")}
+      {:noreply,
+       socket |> select_system_and_patch(system_id) |> put_flash(:error, "Map is locked")}
     else
       {:noreply,
        socket
@@ -383,14 +385,23 @@ defmodule TripwireWeb.DashboardLive do
       {:noreply,
        socket
        |> assign(:system_search, search)
+       |> assign(:system_suggestions, [])
        |> select_system(system.id)
        |> push_patch(to: "/" <> system.name)}
     else
       {:noreply,
        socket
        |> assign(:system_search, search)
+       |> assign(:system_suggestions, suggest_systems(socket.assigns.systems, trimmed))
        |> put_flash(:error, "No system matching #{inspect(trimmed)} on this map")}
     end
+  end
+
+  def handle_event("system-search-change", %{"search" => search}, socket) do
+    {:noreply,
+     socket
+     |> assign(:system_search, search || "")
+     |> assign(:system_suggestions, suggest_systems(socket.assigns.systems, search || ""))}
   end
 
   def handle_event("settings-tab", %{"tab" => tab}, socket)
@@ -647,6 +658,9 @@ defmodule TripwireWeb.DashboardLive do
           |> assign(:connections, Mapping.list_connections_with_endpoints(next_map.id))
           |> assign(:selected_system_id, nil)
           |> assign(:selected_system_name, nil)
+          |> assign(:system_suggestions, [])
+          |> assign(:system_suggestions, [])
+          |> assign(:system_suggestions, [])
           |> assign(:signatures, [])
           |> assign(:comments, [])
           |> patch_to_preferred(next_systems)
@@ -923,6 +937,9 @@ defmodule TripwireWeb.DashboardLive do
           |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))
           |> assign(:selected_system_id, nil)
           |> assign(:selected_system_name, nil)
+          |> assign(:system_suggestions, [])
+          |> assign(:system_suggestions, [])
+          |> assign(:system_suggestions, [])
           |> assign(:signatures, [])
           |> assign(:comments, [])
           |> assign(:sys_modal_open, false)
@@ -1038,6 +1055,8 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
          |> assign(:selected_system_id, nil)
          |> assign(:selected_system_name, nil)
+         |> assign(:system_suggestions, [])
+         |> assign(:system_suggestions, [])
          |> assign(:signatures, [])
          |> assign(:comments, [])
          |> assign(:flares, [])
@@ -1054,32 +1073,34 @@ defmodule TripwireWeb.DashboardLive do
       count = length(Mapping.list_maps_for_mask(mask.id))
       name = "Chain #{count + 1}"
 
-    case Mapping.create_map(%{name: name, mask_id: mask.id}) do
-      {:ok, map} ->
-        Phoenix.PubSub.unsubscribe(
-          Tripwire.PubSub,
-          Tripwire.Tracking.map_topic(socket.assigns.map.id)
-        )
+      case Mapping.create_map(%{name: name, mask_id: mask.id}) do
+        {:ok, map} ->
+          Phoenix.PubSub.unsubscribe(
+            Tripwire.PubSub,
+            Tripwire.Tracking.map_topic(socket.assigns.map.id)
+          )
 
-        Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map.id))
+          Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map.id))
 
-        {:noreply,
-         socket
-         |> assign(:map, map)
-         |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
-         |> assign(:systems, [])
-         |> assign(:connections, [])
-         |> assign(:selected_system_id, nil)
-         |> assign(:selected_system_name, nil)
-         |> assign(:signatures, [])
-         |> assign(:comments, [])
-         |> assign(:flares, [])
-         |> assign(:system_stat, nil)
-         |> put_flash(:info, "Created #{name}")}
+          {:noreply,
+           socket
+           |> assign(:map, map)
+           |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
+           |> assign(:systems, [])
+           |> assign(:connections, [])
+           |> assign(:selected_system_id, nil)
+           |> assign(:selected_system_name, nil)
+           |> assign(:system_suggestions, [])
+           |> assign(:system_suggestions, [])
+           |> assign(:signatures, [])
+           |> assign(:comments, [])
+           |> assign(:flares, [])
+           |> assign(:system_stat, nil)
+           |> put_flash(:info, "Created #{name}")}
 
-      {:error, changeset} ->
-        {:noreply, flash_changeset_errors(socket, changeset)}
-    end
+        {:error, changeset} ->
+          {:noreply, flash_changeset_errors(socket, changeset)}
+      end
     end
   end
 
@@ -1089,31 +1110,33 @@ defmodule TripwireWeb.DashboardLive do
     else
       map_id = String.to_integer(id)
 
-    case Mapping.get_map!(map_id) do
-      %{mask_id: mask_id} = map when mask_id == socket.assigns.mask.id ->
-        Phoenix.PubSub.unsubscribe(
-          Tripwire.PubSub,
-          Tripwire.Tracking.map_topic(socket.assigns.map.id)
-        )
+      case Mapping.get_map!(map_id) do
+        %{mask_id: mask_id} = map when mask_id == socket.assigns.mask.id ->
+          Phoenix.PubSub.unsubscribe(
+            Tripwire.PubSub,
+            Tripwire.Tracking.map_topic(socket.assigns.map.id)
+          )
 
-        Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map.id))
+          Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map.id))
 
-        {:noreply,
-         socket
-         |> assign(:map, map)
-         |> assign(:systems, Mapping.list_systems(map.id))
-         |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
-         |> assign(:selected_system_id, nil)
-         |> assign(:selected_system_name, nil)
-         |> assign(:signatures, [])
-         |> assign(:comments, [])
-         |> assign(:flares, [])
-         |> assign(:system_stat, nil)
-         |> patch_to_preferred(Mapping.list_systems(map.id))}
+          {:noreply,
+           socket
+           |> assign(:map, map)
+           |> assign(:systems, Mapping.list_systems(map.id))
+           |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
+           |> assign(:selected_system_id, nil)
+           |> assign(:selected_system_name, nil)
+           |> assign(:system_suggestions, [])
+           |> assign(:system_suggestions, [])
+           |> assign(:signatures, [])
+           |> assign(:comments, [])
+           |> assign(:flares, [])
+           |> assign(:system_stat, nil)
+           |> patch_to_preferred(Mapping.list_systems(map.id))}
 
-      _ ->
-        {:noreply, put_flash(socket, :error, "Map not found")}
-    end
+        _ ->
+          {:noreply, put_flash(socket, :error, "Map not found")}
+      end
     end
   rescue
     _ -> {:noreply, put_flash(socket, :error, "Map not found")}
@@ -1124,27 +1147,27 @@ defmodule TripwireWeb.DashboardLive do
       {:noreply, put_flash(socket, :error, "Map is locked")}
     else
       with %{refresh_token: token} when not is_nil(token) <- socket.assigns.character,
-         {:ok, access} <- ESI.valid_access_token(socket.assigns.character),
-         {:ok, %{"solar_system_id" => solar_system_id}} <-
-           ESI.get_character_location(socket.assigns.character.eve_id, access),
-         prev = selected_system(socket),
-         {:ok, %{system: system}} <-
-           Tripwire.Tracking.apply_location_change(
-             socket.assigns.map,
-             socket.assigns.character.name,
-             prev,
-             solar_system_id
-           ) do
-      {:noreply,
-       socket
-       |> assign(:systems, Mapping.list_systems(socket.assigns.map.id))
-       |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))
-       |> select_system(system.id)
-       |> push_patch(to: "/" <> system.name)
-       |> put_flash(:info, "Added viewing system #{system.name}")}
-    else
-      _ -> {:noreply, put_flash(socket, :error, "ESI location unavailable")}
-    end
+           {:ok, access} <- ESI.valid_access_token(socket.assigns.character),
+           {:ok, %{"solar_system_id" => solar_system_id}} <-
+             ESI.get_character_location(socket.assigns.character.eve_id, access),
+           prev = selected_system(socket),
+           {:ok, %{system: system}} <-
+             Tripwire.Tracking.apply_location_change(
+               socket.assigns.map,
+               socket.assigns.character.name,
+               prev,
+               solar_system_id
+             ) do
+        {:noreply,
+         socket
+         |> assign(:systems, Mapping.list_systems(socket.assigns.map.id))
+         |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))
+         |> select_system(system.id)
+         |> push_patch(to: "/" <> system.name)
+         |> put_flash(:info, "Added viewing system #{system.name}")}
+      else
+        _ -> {:noreply, put_flash(socket, :error, "ESI location unavailable")}
+      end
     end
   end
 
@@ -1377,7 +1400,10 @@ defmodule TripwireWeb.DashboardLive do
     do: Mapping.tree_layout(systems, connections, normalize_layout(layout), spacing)
 
   defp layout_positions(systems, connections, layout, spacing, home_id),
-    do: Mapping.tree_layout(systems, connections, normalize_layout(layout), spacing, root_id: home_id)
+    do:
+      Mapping.tree_layout(systems, connections, normalize_layout(layout), spacing,
+        root_id: home_id
+      )
 
   defp spacing_factor(nil), do: 1.0
   defp spacing_factor(spacing) when is_number(spacing), do: spacing / 100
@@ -1429,6 +1455,7 @@ defmodule TripwireWeb.DashboardLive do
     |> apply_tree_layout("top")
     |> assign(:selected_system_id, nil)
     |> assign(:selected_system_name, nil)
+    |> assign(:system_suggestions, [])
     |> assign(:signatures, [])
     |> assign(:comments, [])
     |> autoselect_first_system()
@@ -1507,6 +1534,12 @@ defmodule TripwireWeb.DashboardLive do
       socket
       |> assign(:selected_system_id, system_id)
       |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
+      |> assign(
+        :system_search,
+        selected_system_name(socket.assigns.systems, system_id) ||
+          socket.assigns[:system_search] || ""
+      )
+      |> assign(:system_suggestions, [])
       |> assign(:signatures, Mapping.list_signatures(system_id))
       |> assign(:comments, Mapping.list_comments(system_id))
       |> assign(:flares, Mapping.list_flares(system_id))
@@ -1563,7 +1596,9 @@ defmodule TripwireWeb.DashboardLive do
 
       {added, skipped, socket_systems} =
         Enum.reduce(candidates, {0, 0, chain_systems}, fn cand, {a, s, current} ->
-          chain_for_check = if current == chain_systems, do: chain_systems, else: Mapping.list_systems(map.id)
+          chain_for_check =
+            if current == chain_systems, do: chain_systems, else: Mapping.list_systems(map.id)
+
           current_solar = MapSet.new(chain_for_check, & &1.solar_system_id)
 
           case favorite_link_target(mask.id, cand, chain_for_check, current_solar, route_fn) do
@@ -1617,17 +1652,27 @@ defmodule TripwireWeb.DashboardLive do
           put_flash(socket, :info, "No favorited systems to add")
 
         added == 0 ->
-          put_flash(socket, :info, "No favorited systems connect to this chain (#{skipped} skipped)")
+          put_flash(
+            socket,
+            :info,
+            "No favorited systems connect to this chain (#{skipped} skipped)"
+          )
 
         true ->
-          put_flash(socket, :info, "Added #{added} favorited system(s)#{if skipped > 0, do: " (#{skipped} skipped, no route)"}")
+          put_flash(
+            socket,
+            :info,
+            "Added #{added} favorited system(s)#{if skipped > 0, do: " (#{skipped} skipped, no route)"}"
+          )
       end
     end
   end
 
   defp favorite_link_target(mask_id, cand, chain_systems, current_solar, route_fn) do
     case Mapping.wormhole_link_target(mask_id, cand.solar_system_id, chain_systems) do
-      {target, hole_type} -> {target, hole_type, 1}
+      {target, hole_type} ->
+        {target, hole_type, 1}
+
       nil ->
         case kspace_link_target(cand, chain_systems, current_solar, route_fn) do
           nil -> nil
@@ -1641,7 +1686,11 @@ defmodule TripwireWeb.DashboardLive do
        do: nil
 
   defp kspace_link_target(cand, chain_systems, _current_solar, route_fn) do
-    kspace_chain = Enum.filter(chain_systems, &is_integer(&1.solar_system_id) and &1.solar_system_id < 31_000_000)
+    kspace_chain =
+      Enum.filter(
+        chain_systems,
+        &(is_integer(&1.solar_system_id) and &1.solar_system_id < 31_000_000)
+      )
 
     Enum.find_value(kspace_chain, fn target ->
       case route_fn.(cand.solar_system_id, target.solar_system_id) do
@@ -1726,10 +1775,15 @@ defmodule TripwireWeb.DashboardLive do
 
       _ ->
         existing =
-          Enum.find(socket.assigns.systems || [], &(String.downcase(&1.name) == String.downcase(input)))
+          Enum.find(
+            socket.assigns.systems || [],
+            &(String.downcase(&1.name) == String.downcase(input))
+          )
 
         cond do
-          existing -> {:ok, existing.solar_system_id, existing.name}
+          existing ->
+            {:ok, existing.solar_system_id, existing.name}
+
           true ->
             case ESI.resolve_system_id(input) do
               {:ok, solar} -> {:ok, solar, input}
@@ -1783,7 +1837,11 @@ defmodule TripwireWeb.DashboardLive do
       attrs =
         case ESI.get_system(solar) do
           {:ok, body} when is_map(body) ->
-            %{solar_system_id: solar, name: body["name"] || Mapping.thera_name(), security: body["security_status"]}
+            %{
+              solar_system_id: solar,
+              name: body["name"] || Mapping.thera_name(),
+              security: body["security_status"]
+            }
 
           _ ->
             %{solar_system_id: solar, name: Mapping.thera_name()}
@@ -1805,6 +1863,23 @@ defmodule TripwireWeb.DashboardLive do
       end
     end
   end
+
+  defp suggest_systems(systems, query) when is_list(systems) do
+    q = query |> to_string() |> String.trim() |> String.downcase()
+
+    if q == "" do
+      []
+    else
+      systems
+      |> Enum.filter(fn s ->
+        String.contains?(String.downcase(s.name || ""), q) ||
+          String.contains?(String.downcase(s.alias || ""), q)
+      end)
+      |> Enum.take(8)
+    end
+  end
+
+  defp suggest_systems(_, _), do: []
 
   defp sys_form_for(systems, id) do
     case Enum.find(systems, &(&1.id == id)) do
@@ -1898,6 +1973,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:topbar_now, DateTime.utc_now())
     |> assign(:grid_locked, true)
     |> assign(:system_search, "")
+    |> assign(:system_suggestions, [])
     |> assign(:show_row_guides, false)
     |> assign(:show_row_counts, false)
     |> assign(:angled_lines, true)

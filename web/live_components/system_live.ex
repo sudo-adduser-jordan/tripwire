@@ -83,10 +83,9 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
                   <p :if={favorites(@systems) == []} class="px-2 py-1 opacity-60">
                     No favorites yet
                   </p>
-                  <button
+                  <a
                     :for={fav <- favorites(@systems)}
-                    phx-click="select-system"
-                    phx-value-id={fav.id}
+                    href={"/" <> fav.name}
                     title={"Select #{fav.name}"}
                     class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-base-300"
                   >
@@ -96,7 +95,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
                     >
                     </span>
                     <span class="truncate font-mono">{fav.alias || fav.name}</span>
-                  </button>
+                  </a>
                 </div>
               </details>
               <button

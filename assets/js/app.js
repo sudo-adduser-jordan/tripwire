@@ -10,6 +10,7 @@ import GridWidget from "./gridWidget"
 import ScrollIntoView from "./scrollIntoView"
 import CopyText from "./copyText"
 import GlobalPaste from "./globalPaste"
+import SearchSuggest from "./searchSuggest"
 
 const GridStack = {
     mounted() {
@@ -59,6 +60,7 @@ const hooks = {
     ScrollIntoView: ScrollIntoView,
     CopyText: CopyText,
     GlobalPaste: GlobalPaste,
+    SearchSuggest: SearchSuggest,
 }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")

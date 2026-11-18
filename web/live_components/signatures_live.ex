@@ -104,7 +104,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                 title="Add signature"
                 phx-click="open-add"
               >
-                <.icon name="hero-plus" class="size-5" /> Add
+                <.icon name="hero-plus" class="size-4" />
               </button>
               <button
                 class="btn btn-ghost btn-xs"
@@ -112,7 +112,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                 phx-click="undo"
                 phx-target={@myself}
               >
-                <.icon name="hero-arrow-uturn-left" class="size-5" />
+                <.icon name="hero-arrow-uturn-left" class="size-4" />
               </button>
               <button
                 class="btn btn-ghost btn-xs"
@@ -120,7 +120,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                 phx-click="redo"
                 phx-target={@myself}
               >
-                <.icon name="hero-arrow-uturn-right" class="size-5" />
+                <.icon name="hero-arrow-uturn-right" class="size-4" />
               </button>
               <span class="ml-auto text-xs tabular-nums opacity-60">
                 {length(@signatures)} signatures

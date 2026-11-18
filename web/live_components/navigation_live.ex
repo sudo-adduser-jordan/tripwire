@@ -5,6 +5,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
 
   alias Phoenix.LiveView.JS
   alias Tripwire.EveImages
+  alias Tripwire.Systems
 
   attr :character, :string, required: true
   attr :characters, :list, default: []
@@ -18,6 +19,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
   attr :topbar_now, :any, default: nil
   attr :grid_locked, :boolean, default: true
   attr :system_search, :string, default: ""
+  attr :system_suggestions, :list, default: []
   attr :current_user, :map, default: nil
   attr :settings_open, :boolean, default: false
   attr :branding, :map, default: nil
@@ -65,16 +67,47 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
         {@ship_name}
       </div>
       <div class="hidden min-[400px]:flex items-center text-xs">&gt;</div>
-      <form phx-submit="system-search-submit" class="hidden min-[400px]:block">
-        <input
-          id="system-search"
-          name="search"
-          value={@system_search}
-          class="mx-1 h-8 w-36 rounded bg-base-100 px-2 py-1 sm:w-44"
-          placeholder="Search systems"
-          autocomplete="off"
-        />
-      </form>
+      <div
+        class="relative hidden min-[400px]:block"
+        id="system-search-wrap"
+        phx-hook="SearchSuggest"
+      >
+        <form
+          id="system-search-form"
+          phx-submit="system-search-submit"
+          phx-change="system-search-change"
+        >
+          <input
+            id="system-search"
+            name="search"
+            value={@system_search}
+            class="mx-1 h-8 w-36 rounded bg-base-100 px-2 py-1 text-xs placeholder:text-xs sm:w-44"
+            placeholder="Search systems"
+            autocomplete="off"
+            phx-debounce="200"
+          />
+        </form>
+        <div
+          :if={@system_suggestions != []}
+          class="absolute left-1 top-full z-40 mt-1 max-h-64 w-44 overflow-y-auto rounded bg-base-200 p-1 text-xs shadow"
+        >
+          <button
+            :for={sug <- @system_suggestions}
+            phx-click="select-system"
+            phx-value-id={sug.id}
+            title={"Select #{sug.name}"}
+            data-suggest-item
+            class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-base-300"
+          >
+            <span
+              class="inline-block size-2.5 shrink-0 rounded-full"
+              style={"background-color: #{Systems.color(sug)}"}
+            >
+            </span>
+            <span class="truncate font-mono">{sug.alias || sug.name}</span>
+          </button>
+        </div>
+      </div>
       <div class="ml-auto flex flex-wrap items-center gap-2">
         <div class="dropdown dropdown-start">
           <div
