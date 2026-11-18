@@ -278,7 +278,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   rx="8"
                   stroke={node_stroke(system, @selected_system_id)}
                   stroke-dasharray={if loop_node?(@connections, system.id), do: "6 4"}
-                  style={if loop_node?(@connections, system.id), do: "filter: drop-shadow(0 0 6px #{node_color(system)})"}
+                  style={
+                    if loop_node?(@connections, system.id),
+                      do: "filter: drop-shadow(0 0 6px #{node_color(system)})"
+                  }
                   class={
                     if system.id == @selected_system_id,
                       do: "fill-primary/30 stroke-primary",
@@ -315,21 +318,23 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   {incoming_type(@connections, system.id)}
                 </text>
                 <g
-                  :for={{label, tip, x} <- node_badges(system)}
+                  :for={{label, tip, x, color, text_color} <- node_badges(system)}
                   transform={"translate(#{x}, 80)"}
                 >
                   <rect
                     width={badge_width(label)}
                     height="16"
                     rx="4"
-                    class="fill-base-300/90 stroke-base-content/30"
+                    style={"fill: #{color}"}
                     stroke-width="0.5"
+                    class="stroke-base-content/30"
                   />
                   <text
                     x={badge_width(label) / 2}
                     y="12"
                     text-anchor="middle"
-                    class="fill-base-content text-[10px]"
+                    style={"fill: #{text_color}"}
+                    class="text-[10px] font-semibold"
                   >
                     {label}<title>{tip}</title>
                   </text>
@@ -364,19 +369,20 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
     if x1 == x2 and y1 == y2 do
       "M #{x1} #{y1} C #{x1 - 40} #{y1 - 50}, #{x1 + 40} #{y1 - 50}, #{x1} #{y1}"
-    else if angled? do
-      "M #{x1} #{y1} L #{x2} #{y2}"
     else
-      # Orthogonal with 2 90° bends, originating from the center of the
-      # top-level (parent) node.
-      {tx, ty, bx, by} = if y1 <= y2, do: {x1, y1, x2, y2}, else: {x2, y2, x1, y1}
-
-      if abs(by - ty) >= abs(bx - tx) do
-        "M #{tx} #{ty} V #{(ty + by) / 2} H #{bx} V #{by}"
+      if angled? do
+        "M #{x1} #{y1} L #{x2} #{y2}"
       else
-        "M #{tx} #{ty} H #{(tx + bx) / 2} V #{by} H #{bx}"
+        # Orthogonal with 2 90° bends, originating from the center of the
+        # top-level (parent) node.
+        {tx, ty, bx, by} = if y1 <= y2, do: {x1, y1, x2, y2}, else: {x2, y2, x1, y1}
+
+        if abs(by - ty) >= abs(bx - tx) do
+          "M #{tx} #{ty} V #{(ty + by) / 2} H #{bx} V #{by}"
+        else
+          "M #{tx} #{ty} H #{(tx + bx) / 2} V #{by} H #{bx}"
+        end
       end
-    end
     end
   end
 
@@ -408,8 +414,13 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
   defp node_badges(system) do
     Tripwire.Systems.statics(Tripwire.Systems.display_class(system))
-    |> Enum.map(&{&1, "Static wormhole: " <> &1, badge_width(&1)})
-    |> Enum.map_reduce(4, fn {label, tip, width}, x -> {{label, tip, x}, x + width + 4} end)
+    |> Enum.map(
+      &{&1, "Static wormhole: " <> &1, badge_width(&1), Tripwire.Systems.badge_color(&1),
+       Tripwire.Systems.badge_text_color(&1)}
+    )
+    |> Enum.map_reduce(4, fn {label, tip, width, color, text_color}, x ->
+      {{label, tip, x, color, text_color}, x + width + 4}
+    end)
     |> elem(0)
   end
 

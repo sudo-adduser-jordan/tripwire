@@ -52,6 +52,23 @@ defmodule Tripwire.Systems do
 
   @unknown_color "#6b7280"
 
+  @badge_colors %{
+    "C1" => "#4399F0",
+    "C2" => "#4399F0",
+    "C3" => "#4399F0",
+    "C4" => "#A855F7",
+    "C5" => "#A855F7",
+    "C6" => "#EC4899",
+    "HS" => "#50D25A",
+    "LS" => "#F5B544",
+    "NS" => "#FF4747",
+    "Trig" => "#FF4747",
+    "T" => "#FF4747",
+    "Thera" => "#FF4747",
+    "K" => "#6b7280",
+    "W" => "#6b7280"
+  }
+
   @doc """
   Returns the class labels a system can be assigned by hand.
   """
@@ -85,6 +102,12 @@ defmodule Tripwire.Systems do
   display class. Unknown classes fall back to a neutral gray.
   """
   def color(system), do: Map.get(@colors, display_class(system), @unknown_color)
+
+  def badge_color(label) when is_binary(label), do: Map.get(@badge_colors, label, @unknown_color)
+  def badge_color(_), do: @unknown_color
+
+  def badge_text_color(label) when label in ["HS", "LS"], do: "#111111"
+  def badge_text_color(_), do: "#ffffff"
 
   @doc """
   Human security label: `High-Sec`, `Low-Sec`, `Null-Sec`, or `W-Space`.
