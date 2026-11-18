@@ -7,7 +7,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
   def update(assigns, socket) do
     map_id = Map.get(assigns, :map_id)
-    systems = Map.get_lazy(assigns, :systems, fn -> Mapping.list_systems(map_id) end)
+    systems = Map.get_lazy(assigns, :systems, fn -> Mapping.list_visible_systems(map_id) end)
 
     connections =
       Map.get_lazy(assigns, :connections, fn ->

@@ -231,6 +231,96 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert [%Mapping.Signature{sig_id: "NEW-002"}] = Mapping.list_signatures(system.id)
   end
 
+  test "confirming the stale toast drops wormhole connections and hides orphan nodes", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, neighbour} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
+    {:ok, lone} = Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323"})
+
+    {:ok, _, _} = Mapping.upsert_connection(map.id, system.id, neighbour.id, %{hole_type: "O477"})
+
+    {:ok, _} =
+      Mapping.create_signature(
+        system,
+        %{
+          sig_id: "ABC-123",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (O477)"
+        },
+        character
+      )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    view
+    |> render_click("global-paste", %{
+      "text" => "NEW-002\tCosmic Signature\tSerpentis Frigate Den"
+    })
+
+    assert render(view) =~ "stale-toast"
+
+    view |> element("#stale-toast button[phx-click='delete-stale']") |> render_click()
+
+    html = render(view)
+    refute html =~ "stale-toast"
+    refute html =~ "ABC-123"
+
+    assert Mapping.connection_between(map.id, system.id, neighbour.id) == nil
+
+    assert %Mapping.MapSystem{hidden_at: hidden} = Mapping.get_system!(neighbour.id)
+    refute is_nil(hidden)
+    assert is_nil(Mapping.get_system!(lone.id).hidden_at)
+
+    assert html =~ "J150323"
+    refute html =~ "J150322"
+  end
+
+  test "pasting wormhole signatures auto-links systems sharing the scan", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, jita} = Mapping.add_system_to_map(map, %{solar_system_id: 30_000_142, name: "J150099"})
+
+    {:ok, _} =
+      Mapping.create_signature(
+        jita,
+        %{
+          sig_id: "TUV-679",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (M555)"
+        },
+        character
+      )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    view
+    |> render_click("global-paste", %{
+      "text" => "TUV-679\tCosmic Signature\tUnstable Wormhole (M555)\t100.00%\t1.21 AU"
+    })
+
+    assert %Mapping.MapConnection{hole_type: "M555"} =
+             connection =
+             Mapping.connection_between(map.id, system.id, jita.id)
+
+    assert render(view) =~ "connection-#{connection.id}"
+  end
+
   test "dismissing the stale toast keeps missing signatures", %{
     conn: conn,
     character: character

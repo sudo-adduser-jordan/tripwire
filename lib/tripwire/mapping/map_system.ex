@@ -12,6 +12,7 @@ defmodule Tripwire.Mapping.MapSystem do
     field :sys_class, :string
     field :effect, :string
     field :favorite, :boolean, default: false
+    field :hidden_at, :utc_datetime
     field :x, :float, default: 0.0
     field :y, :float, default: 0.0
 
@@ -34,6 +35,7 @@ defmodule Tripwire.Mapping.MapSystem do
       :sys_class,
       :effect,
       :favorite,
+      :hidden_at,
       :x,
       :y
     ])

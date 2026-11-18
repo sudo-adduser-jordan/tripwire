@@ -5,6 +5,7 @@ defmodule Tripwire.Mapping do
   alias Tripwire.Accounts.Character
   alias Tripwire.Mapping.{Map, MapConnection, MapSystem, Signature}
   alias Tripwire.Repo
+  alias Tripwire.Signatures, as: SigParser
 
   def get_map!(id), do: Repo.get!(Map, id)
 
@@ -132,6 +133,15 @@ defmodule Tripwire.Mapping do
 
   def list_systems(map_id) do
     Repo.all(from(s in MapSystem, where: s.map_id == ^map_id, order_by: [asc: s.id]))
+  end
+
+  def list_visible_systems(map_id) do
+    Repo.all(
+      from(s in MapSystem,
+        where: s.map_id == ^map_id and is_nil(s.hidden_at),
+        order_by: [asc: s.id]
+      )
+    )
   end
 
   def get_system!(id), do: Repo.get!(MapSystem, id)
@@ -510,6 +520,17 @@ defmodule Tripwire.Mapping do
   or creates it if none exists. Returns {:ok, connection} and whether it is new.
   """
   def upsert_connection(map_id, system_a_id, system_b_id, attrs \\ %{}) do
+    case do_upsert_connection(map_id, system_a_id, system_b_id, attrs) do
+      {:ok, _, _} = ok ->
+        unhide_systems([system_a_id, system_b_id])
+        ok
+
+      error ->
+        error
+    end
+  end
+
+  defp do_upsert_connection(map_id, system_a_id, system_b_id, attrs) do
     connection =
       Repo.one(
         from(c in MapConnection,
@@ -545,6 +566,25 @@ defmodule Tripwire.Mapping do
           error -> error
         end
     end
+  end
+
+  @doc """
+  Finds the connection between two systems on a map, in either direction.
+  """
+  def connection_between(map_id, system_a_id, system_b_id) do
+    Repo.one(
+      from(c in MapConnection,
+        where:
+          c.map_id == ^map_id and
+            ((c.from_system_id == ^system_a_id and c.to_system_id == ^system_b_id) or
+               (c.from_system_id == ^system_b_id and c.to_system_id == ^system_a_id))
+      )
+    )
+  end
+
+  def unhide_systems(system_ids) do
+    Repo.update_all(from(s in MapSystem, where: s.id in ^system_ids), set: [hidden_at: nil])
+    :ok
   end
 
   def add_system_to_map(%Map{} = map, attrs) do
@@ -639,13 +679,197 @@ defmodule Tripwire.Mapping do
 
   def delete_connection(%MapConnection{} = connection), do: Repo.delete(connection)
 
+  @doc """
+  Aligns the chain map with a system's signature table: connections whose
+  wormhole code is no longer among the system's scanned signatures are
+  dropped, newly scanned holes are linked to other map systems sharing the
+  signature (`sig_id` match first, then a hole code present on exactly one
+  other system), and systems left with no connection are hidden from the
+  map. Hidden systems stay in the database and reappear when a connection
+  is re-created. Returns `{dropped_connections, linked_connections,
+  hidden_systems}` counts.
+  """
+  def sync_map_after_signature_change(%MapSystem{} = system, deleted_signatures)
+      when is_list(deleted_signatures) do
+    dropped = drop_connections_for_signatures(system, deleted_signatures)
+
+    linked = auto_link_wormholes(system, dropped_pair_keys(dropped))
+
+    candidates =
+      (dropped |> Enum.flat_map(fn {conn, _, _} -> [conn.from_system_id, conn.to_system_id] end)) ++
+        (linked |> Enum.flat_map(fn conn -> [conn.from_system_id, conn.to_system_id] end))
+
+    hidden = hide_orphan_systems(system.map_id, Enum.uniq(candidates))
+
+    {length(dropped), length(linked), hidden}
+  end
+
+  def drop_connections_for_signatures(%MapSystem{} = system, deleted_signatures) do
+    codes = deleted_codes(deleted_signatures)
+
+    if Elixir.MapSet.size(codes) == 0 do
+      []
+    else
+      system.map_id
+      |> list_connections_with_endpoints()
+      |> Enum.filter(fn {conn, from, to} ->
+        (from.id == system.id or to.id == system.id) and
+          Elixir.MapSet.member?(codes, String.upcase(to_string(conn.hole_type || "")))
+      end)
+      |> tap(fn dropping -> Enum.each(dropping, fn {conn, _, _} -> Repo.delete(conn) end) end)
+    end
+  end
+
+  def auto_link_wormholes(%MapSystem{} = system, excluded_pairs \\ Elixir.MapSet.new()) do
+    others =
+      system.map_id
+      |> list_wormhole_signatures()
+      |> Enum.reject(&(&1.map_system_id == system.id))
+
+    system.id
+    |> list_signatures()
+    |> Enum.filter(&(&1.site_type == "wormhole"))
+    |> Enum.flat_map(&link_targets(&1, others))
+    |> Enum.uniq_by(& &1.map_system_id)
+    |> Enum.reject(fn target ->
+      Elixir.MapSet.member?(
+        excluded_pairs,
+        pair_key(system.id, target.map_system_id, SigParser.wormhole_code(target.type_name))
+      )
+    end)
+    |> Enum.filter(fn target ->
+      case connection_between(system.map_id, system.id, target.map_system_id) do
+        nil -> true
+        conn -> conn.hole_type in [nil, ""]
+      end
+    end)
+    |> Enum.map(fn target ->
+      code = SigParser.wormhole_code(target.type_name)
+
+      {:ok, conn, _created?} =
+        upsert_connection(system.map_id, system.id, target.map_system_id, %{hole_type: code})
+
+      conn
+    end)
+  end
+
+  defp dropped_pair_keys(dropped) do
+    Elixir.MapSet.new(dropped, fn {conn, _, _} ->
+      pair_key(conn.from_system_id, conn.to_system_id, conn.hole_type)
+    end)
+  end
+
+  defp pair_key(system_a_id, system_b_id, code) do
+    {code, Enum.min([system_a_id, system_b_id]), Enum.max([system_a_id, system_b_id])}
+  end
+
+  @doc """
+  Hides systems from the chain map that are no longer connected: only the
+  `candidate_ids` are considered, and any of them left with no connection
+  gets `hidden_at` set. Hidden systems stay in the database and reappear
+  when a connection is re-created. Returns the number of newly hidden
+  systems.
+  """
+  def hide_orphan_systems(map_id, candidate_ids) do
+    {count, _} =
+      Repo.update_all(
+        from(s in MapSystem,
+          where:
+            s.map_id == ^map_id and is_nil(s.hidden_at) and
+              s.id in ^candidate_ids and
+              s.id not in ^connected_system_ids(map_id)
+        ),
+        set: [hidden_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+      )
+
+    count
+  end
+
+  defp connected_system_ids(map_id) do
+    from_ids =
+      Repo.all(from(c in MapConnection, where: c.map_id == ^map_id, select: c.from_system_id))
+
+    to_ids =
+      Repo.all(from(c in MapConnection, where: c.map_id == ^map_id, select: c.to_system_id))
+
+    Elixir.MapSet.new(from_ids ++ to_ids) |> Elixir.MapSet.to_list()
+  end
+
+  defp deleted_codes(signatures) do
+    signatures
+    |> Enum.filter(&(&1.site_type == "wormhole"))
+    |> Enum.map(&SigParser.wormhole_code(&1.type_name))
+    |> Elixir.MapSet.new(fn
+      nil -> ""
+      code -> code
+    end)
+    |> Elixir.MapSet.delete("")
+  end
+
+  defp link_targets(signature, others) do
+    case SigParser.wormhole_code(signature.type_name) do
+      nil ->
+        []
+
+      code ->
+        matched =
+          case Enum.filter(
+                 others,
+                 &(&1.sig_id == signature.sig_id and SigParser.wormhole_code(&1.type_name) == code)
+               ) do
+            [] ->
+              by_code = Enum.filter(others, &(SigParser.wormhole_code(&1.type_name) == code))
+              if unique_systems?(by_code), do: by_code, else: []
+
+            same_id ->
+              same_id
+          end
+
+        matched
+    end
+  end
+
+  defp unique_systems?(signatures) do
+    signatures
+    |> Enum.map(& &1.map_system_id)
+    |> Enum.uniq()
+    |> length() == 1
+  end
+
   def prune_expired_signatures(now \\ DateTime.utc_now()) do
+    expired =
+      Repo.all(from(s in Signature, where: not is_nil(s.expires_at) and s.expires_at < ^now))
+
     {count, _} =
       Repo.delete_all(
         from(s in Signature, where: not is_nil(s.expires_at) and s.expires_at < ^now)
       )
 
+    expired
+    |> Enum.filter(&(&1.site_type == "wormhole"))
+    |> Enum.group_by(& &1.map_system_id)
+    |> Enum.each(fn {system_id, signatures} ->
+      system = get_system!(system_id)
+      dropped = drop_connections_for_signatures(system, signatures)
+
+      candidates =
+        dropped
+        |> Enum.flat_map(fn {conn, _, _} -> [conn.from_system_id, conn.to_system_id] end)
+        |> Enum.uniq()
+
+      hide_orphan_systems(system.map_id, candidates)
+      broadcast_map_update(system.map_id)
+    end)
+
     {:ok, count}
+  end
+
+  defp broadcast_map_update(map_id) do
+    Phoenix.PubSub.broadcast(
+      Tripwire.PubSub,
+      Tripwire.Tracking.map_topic(map_id),
+      {:map_updated, map_id}
+    )
   end
 
   def list_signatures(system_id) do

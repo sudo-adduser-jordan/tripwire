@@ -374,4 +374,178 @@ defmodule Tripwire.MappingTest do
     assert Mapping.list_connections(deleted.id) == []
     assert Mapping.list_signatures(system.id) == []
   end
+
+  test "sync_map_after_signature_change/2 drops connections whose wormhole signature is gone", %{
+    mask: mask
+  } do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_101, name: "Map Sync"})
+    {:ok, map} = Mapping.create_map(%{name: "Sync", mask_id: mask.id})
+
+    {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_501, name: "J500001"})
+    {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_502, name: "J500002"})
+    {:ok, _c} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_503, name: "J500003"})
+
+    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "N770"})
+
+    {:ok, _} =
+      Mapping.create_signature(
+        a,
+        %{
+          sig_id: "AAA-001",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    deleted = Enum.filter(Mapping.list_signatures(a.id), &(&1.sig_id == "AAA-001"))
+    Enum.each(deleted, &Mapping.delete_signature/1)
+
+    assert {1, 0, 2} = Mapping.sync_map_after_signature_change(a, deleted)
+
+    assert Mapping.connection_between(map.id, a.id, b.id) == nil
+    assert length(Mapping.list_systems(map.id)) == 3
+    assert Enum.map(Mapping.list_visible_systems(map.id), & &1.name) == ["J500003"]
+  end
+
+  test "upsert_connection/4 unhides systems that regain a connection", %{mask: mask} do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_104, name: "Reveal"})
+    {:ok, map} = Mapping.create_map(%{name: "Reveal", mask_id: mask.id})
+
+    {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_511, name: "J500011"})
+    {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_512, name: "J500012"})
+    {:ok, c} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_513, name: "J500013"})
+
+    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "N770"})
+
+    {:ok, sig} =
+      Mapping.create_signature(
+        a,
+        %{
+          sig_id: "AAA-002",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    {1, 0, 2} = Mapping.sync_map_after_signature_change(a, [sig])
+
+    {:ok, _, true} = Mapping.upsert_connection(map.id, a.id, c.id, %{})
+
+    names = Mapping.list_visible_systems(map.id) |> Enum.map(& &1.name) |> Enum.sort()
+    assert names == ["J500011", "J500013"]
+  end
+
+  test "auto_link_wormholes/2 links by signature id, unique code, and skips ambiguous codes", %{
+    mask: mask
+  } do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_102, name: "Auto Link"})
+    {:ok, map} = Mapping.create_map(%{name: "Link", mask_id: mask.id})
+
+    {:ok, p} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_601, name: "J600001"})
+    {:ok, q} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_602, name: "J600002"})
+    {:ok, r} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_603, name: "J600003"})
+    {:ok, _s} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_604, name: "J600004"})
+
+    {:ok, _} =
+      Mapping.create_signature(
+        p,
+        %{
+          sig_id: "UNI-001",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (Z123)"
+        },
+        character
+      )
+
+    {:ok, _} =
+      Mapping.create_signature(
+        q,
+        %{
+          sig_id: "OTH-009",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (Z123)"
+        },
+        character
+      )
+
+    {:ok, _} =
+      Mapping.create_signature(
+        p,
+        %{
+          sig_id: "AMB-001",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (Y987)"
+        },
+        character
+      )
+
+    {:ok, _} =
+      Mapping.create_signature(
+        q,
+        %{
+          sig_id: "AMB-002",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (Y987)"
+        },
+        character
+      )
+
+    {:ok, _} =
+      Mapping.create_signature(
+        r,
+        %{
+          sig_id: "AMB-003",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (Y987)"
+        },
+        character
+      )
+
+    assert {0, 1, 0} = Mapping.sync_map_after_signature_change(p, [])
+
+    assert %Mapping.MapConnection{hole_type: "Z123"} =
+             Mapping.connection_between(map.id, p.id, q.id)
+
+    assert Mapping.connection_between(map.id, p.id, r.id) == nil
+  end
+
+  test "prune_expired_signatures/1 drops connections backed by expired wormholes", %{mask: mask} do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_103, name: "Expiry"})
+    {:ok, map} = Mapping.create_map(%{name: "Expiry", mask_id: mask.id})
+
+    {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_701, name: "J700001"})
+    {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_702, name: "J700002"})
+
+    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "E175"})
+
+    {:ok, sig} =
+      Mapping.create_signature(
+        a,
+        %{
+          sig_id: "EXP-001",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (E175)"
+        },
+        character
+      )
+
+    past = DateTime.add(DateTime.utc_now(), -3600, :second)
+    {:ok, _} = Mapping.update_signature(sig, %{expires_at: past}, character)
+
+    assert {:ok, 1} = Mapping.prune_expired_signatures()
+
+    assert Mapping.connection_between(map.id, a.id, b.id) == nil
+    assert Mapping.list_visible_systems(map.id) == []
+    assert length(Mapping.list_systems(map.id)) == 2
+  end
 end

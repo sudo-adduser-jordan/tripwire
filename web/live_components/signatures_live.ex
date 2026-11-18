@@ -63,7 +63,11 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
     {:ok, deleted} = Mapping.delete_signature(signature, socket.assigns.character)
     undo = [{:delete, deleted} | socket.assigns.undo]
 
+    system = Mapping.get_system!(deleted.map_system_id)
+    {dropped, linked, hidden} = Mapping.sync_map_after_signature_change(system, [deleted])
+
     send(self(), {:signatures_updated, deleted.map_system_id})
+    send_map_update(system, dropped, linked, hidden)
 
     {:noreply,
      socket
@@ -90,7 +94,10 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
               )
 
             redo = [{:delete, restored} | socket.assigns.redo]
+            {dropped, linked, hidden} = Mapping.sync_map_after_signature_change(system, [])
+
             send(self(), {:signatures_updated, system.id})
+            send_map_update(system, dropped, linked, hidden)
 
             {:noreply,
              socket
@@ -107,15 +114,20 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
         {:noreply, socket}
 
       [{:delete, signature} | rest] ->
-        _ = Mapping.delete_signature(signature, socket.assigns.character)
+        {:ok, deleted} = Mapping.delete_signature(signature, socket.assigns.character)
         undo = [{:delete, signature} | socket.assigns.undo]
-        send(self(), {:signatures_updated, signature.map_system_id})
+
+        system = Mapping.get_system!(deleted.map_system_id)
+        {dropped, linked, hidden} = Mapping.sync_map_after_signature_change(system, [deleted])
+
+        send(self(), {:signatures_updated, deleted.map_system_id})
+        send_map_update(system, dropped, linked, hidden)
 
         {:noreply,
          socket
          |> assign(:redo, rest)
          |> assign(:undo, undo)
-         |> assign(:signatures, Mapping.list_signatures(signature.map_system_id))}
+         |> assign(:signatures, Mapping.list_signatures(deleted.map_system_id))}
     end
   end
 
@@ -364,6 +376,12 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
     hours = div(seconds, 3600)
     minutes = rem(seconds, 3600) |> div(60)
     "#{hours}h #{String.pad_leading(Integer.to_string(minutes), 2, "0")}m"
+  end
+
+  defp send_map_update(system, dropped, linked, hidden) do
+    if dropped + linked + hidden > 0 do
+      send(self(), {:systems_updated, system.map_id})
+    end
   end
 
   defp sig_attrs(params) do
