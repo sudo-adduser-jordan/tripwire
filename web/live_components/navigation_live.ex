@@ -178,11 +178,13 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
         <p class="text-xs">&gt;</p>
         <div class="dropdown dropdown-end">
           <div
+            id="topbar-mask"
             tabindex="0"
             role="button"
+            title="Switch mask"
             class="rounded-field hover:cursor-pointer hover:underline text-xs"
           >
-            Corporation
+            {mask_name(@mask)}
           </div>
           <ul
             tabindex="-1"
@@ -306,6 +308,9 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
     do: EveImages.alliance_logo(id, 64)
 
   defp mask_avatar(_), do: "/images/alliance-default.png"
+
+  defp mask_name(%{name: name}) when is_binary(name) and name != "", do: name
+  defp mask_name(_), do: "Mask"
 
   defp tq_title(true, players) when is_integer(players),
     do: "Tranquility online — #{players} players"

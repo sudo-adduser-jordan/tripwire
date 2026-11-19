@@ -1885,6 +1885,29 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "Masks"
   end
 
+  test "topbar mask dropdown shows the selected mask name", %{conn: conn, character: character} do
+    {:ok, character} =
+      Accounts.update_character(character, %{
+        corporation_id: 98_000_001,
+        corporation_name: "Test Corp"
+      })
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    personal = Enum.find(Masks.list_masks_for_character(character.id), &(&1.kind == "personal"))
+
+    corporation =
+      Enum.find(Masks.list_masks_for_character(character.id), &(&1.kind == "corporation"))
+
+    assert view |> element("#topbar-mask") |> render() =~ personal.name
+
+    view
+    |> element(~s|button[phx-click="switch-mask"][phx-value-id="#{corporation.id}"]|)
+    |> render_click()
+
+    assert view |> element("#topbar-mask") |> render() =~ "Test Corp"
+  end
+
   test "statistics tab shows personal stat sections", %{conn: conn, character: character} do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
