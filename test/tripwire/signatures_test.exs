@@ -105,4 +105,20 @@ defmodule Tripwire.SignaturesTest do
       assert Signatures.external_link("") == nil
     end
   end
+
+  describe "life_status/1" do
+    test "labels remaining lifetime like official Tripwire" do
+      assert Signatures.life_status(4 * 3600) == :stable
+      assert Signatures.life_status(3600) == :eol
+      assert Signatures.life_status(3599) == :critical
+      assert Signatures.life_status(0) == :expired
+    end
+  end
+
+  describe "age_seconds/2" do
+    test "returns zero for signatures scanned in the future" do
+      now = ~U[2026-01-01 00:00:00Z]
+      assert Signatures.age_seconds(DateTime.add(now, 60, :second), now) == 0
+    end
+  end
 end

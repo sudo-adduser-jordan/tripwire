@@ -261,6 +261,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                 <th class="p-1 text-center text-xs">Type</th>
                 <th class="p-1 text-center text-xs">Name</th>
                 <th class="p-1 text-center text-xs">Mass</th>
+                <th class="p-1 text-center text-xs">Age</th>
                 <th class="p-1 text-center text-xs">Life</th>
                 <th class="p-1 text-center text-xs"><span class="sr-only">Actions</span></th>
               </tr>
@@ -310,7 +311,15 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                     {mass_label(mass_for(sig, @wh_mass))}
                   </span>
                 </td>
-                <td class="text-center tabular-nums">{format_life_left(sig)}</td>
+                <td class="text-center tabular-nums text-xs opacity-60">{format_age(sig)}</td>
+                <td class="text-center">
+                  <span
+                    class={["text-xs", life_text_class(life_status(sig))]}
+                    title={"Expires in " <> format_life_left(sig)}
+                  >
+                    {life_label(life_status(sig))}
+                  </span>
+                </td>
                 <td class="text-center">
                   <button
                     class="btn btn-ghost btn-xs"
@@ -333,7 +342,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                 </td>
               </tr>
               <tr :if={@signatures == []}>
-                <td colspan="6" class="py-4 text-center text-sm opacity-50">
+                <td colspan="8" class="py-4 text-center text-sm opacity-50">
                   No signatures yet. Click Add or paste scan results anywhere.
                 </td>
               </tr>
@@ -427,6 +436,43 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
     hours = div(seconds, 3600)
     minutes = rem(seconds, 3600) |> div(60)
     "#{hours}h #{String.pad_leading(Integer.to_string(minutes), 2, "0")}m"
+  end
+
+  defp life_status(%{inserted_at: inserted_at, life_length: life_length}) do
+    DateTime.from_naive!(inserted_at, "Etc/UTC")
+    |> SigParser.life_left(life_length || SigParser.default_life_length())
+    |> SigParser.life_status()
+  end
+
+  defp life_label(:stable), do: "Stable"
+  defp life_label(:eol), do: "EOL"
+  defp life_label(:critical), do: "Critical"
+  defp life_label(:expired), do: "Expired"
+
+  defp life_text_class(:stable), do: "opacity-60"
+  defp life_text_class(:eol), do: "text-warning"
+  defp life_text_class(:critical), do: "text-error"
+  defp life_text_class(:expired), do: "text-error line-through"
+
+  defp format_age(%{inserted_at: inserted_at}) do
+    DateTime.from_naive!(inserted_at, "Etc/UTC")
+    |> SigParser.age_seconds()
+    |> format_duration()
+  end
+
+  defp format_duration(seconds) when seconds < 60, do: "<1m"
+  defp format_duration(seconds) when seconds < 3600, do: "#{div(seconds, 60)}m"
+
+  defp format_duration(seconds) when seconds < 86_400 do
+    hours = div(seconds, 3600)
+    minutes = rem(seconds, 3600) |> div(60) |> Integer.to_string() |> String.pad_leading(2, "0")
+    "#{hours}h #{minutes}m"
+  end
+
+  defp format_duration(seconds) do
+    days = div(seconds, 86_400)
+    hours = rem(seconds, 86_400) |> div(3600)
+    "#{days}d #{hours}h"
   end
 
   defp send_map_update(system, dropped, linked, hidden) do

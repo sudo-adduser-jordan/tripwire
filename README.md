@@ -35,6 +35,8 @@ Tripwire needs no configuration to try it. When `EVESSO_CLIENT_ID` or `EVESSO_SE
 
 The chain map hides systems that drop out of the chain. **Edit Chain → Show all chains** persists a per-map flag that also renders detached chains and single-node chains, each rooted at level 0 beside the home chain; the setting survives reloads and lives in `maps.show_all`. Connections that close a loop are not drawn as lines — the newest link in the cycle is the one left out, and only its endpoints (the scanned system and its candidate peer) get the dashed outline and glow, leaving the existing chain untouched. A paste that only links systems keeps the tree exactly where it was; only removals (dropped connections or hidden systems) re-level the remaining nodes. A scanned wormhole with no connection yet gets an empty unknown placeholder node at the end of the chain — class, name, and signature lines stay blank like an unscanned Tripwire node — which becomes the real system once the hole is jumped or linked. The demo map is rooted at its `Home` system (J150321) and ships two of these empty leaf nodes, so pasting a scan and confirming **delete missing sigs** collapses the detached branches exactly as on a configured map, and a removed wormhole signature also clears its paired signature on the far side.
 
+The signature widget lists every signature with its wormhole Mass state, its Age (time since the scan), and its Life state derived from the remaining lifetime: **Stable** above four hours, **EOL** under four hours, **Critical** under one hour, and **Expired** at zero, with the exact countdown kept in the Life tooltip.
+
 ## Deploy
 
 Deploys run the server in `MIX_ENV=prod` and are driven by the `start` and `stop` tasks. `task dev` runs the development server instead.

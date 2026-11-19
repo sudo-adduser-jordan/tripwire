@@ -100,6 +100,36 @@ defmodule Tripwire.Signatures do
 
   def default_life_length, do: 72 * 3600
 
+  @doc """
+  Returns how long ago a signature was scanned, in seconds.
+
+      iex> scanned = ~U[2026-01-01 00:00:00Z]
+      iex> now = DateTime.add(scanned, 90, :second)
+      iex> Tripwire.Signatures.age_seconds(scanned, now)
+      90
+  """
+  def age_seconds(scanned_at, now \\ DateTime.utc_now()) do
+    now |> DateTime.diff(scanned_at, :second) |> max(0)
+  end
+
+  @doc """
+  Life state of a signature from its remaining lifetime, matching the labels
+  official Tripwire shows for a wormhole.
+
+      iex> Tripwire.Signatures.life_status(5 * 3600)
+      :stable
+      iex> Tripwire.Signatures.life_status(2 * 3600)
+      :eol
+      iex> Tripwire.Signatures.life_status(600)
+      :critical
+      iex> Tripwire.Signatures.life_status(0)
+      :expired
+  """
+  def life_status(seconds_left) when seconds_left <= 0, do: :expired
+  def life_status(seconds_left) when seconds_left < 3600, do: :critical
+  def life_status(seconds_left) when seconds_left < 4 * 3600, do: :eol
+  def life_status(_seconds_left), do: :stable
+
   @known_sites [
     "Average Frontier Deposit",
     "Barren Perimeter Reservoir",

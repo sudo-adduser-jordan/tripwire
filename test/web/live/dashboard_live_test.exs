@@ -1360,6 +1360,73 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert table =~ "Destab"
   end
 
+  test "signature table shows the age and life state of a signature", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, scanned} =
+      Mapping.create_signature(
+        system,
+        %{
+          sig_id: "ABC-123",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    {:ok, _eol} =
+      Mapping.create_signature(
+        system,
+        %{
+          sig_id: "ABC-124",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N771)",
+          life_length: 2 * 3600
+        },
+        character
+      )
+
+    {:ok, _critical} =
+      Mapping.create_signature(
+        system,
+        %{
+          sig_id: "ABC-125",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N772)",
+          life_length: 600
+        },
+        character
+      )
+
+    Repo.update!(
+      Ecto.Changeset.change(scanned,
+        inserted_at:
+          DateTime.utc_now() |> DateTime.add(-7500, :second) |> DateTime.truncate(:second)
+      )
+    )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    table = view |> element("#signatures table") |> render()
+
+    assert table =~ "Age"
+    assert table =~ "Life"
+    assert table =~ "Stable"
+    assert table =~ "EOL"
+    assert table =~ "Critical"
+    assert table =~ ~r/2h 0[0-5]m/
+  end
+
   test "delete then undo restores the signature", %{conn: conn, character: character} do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J000000")
 
