@@ -450,19 +450,15 @@ defmodule TripwireWeb.DashboardLive do
         String.downcase(s.name) == String.downcase(trimmed)
       end)
 
-    socket = assign(socket, :system_search, search)
-
     if system do
       {:noreply,
        socket
-       |> assign(:system_search, search)
-       |> assign(:system_suggestions, [])
        |> select_system(system.id)
        |> push_patch(to: "/" <> system.name)}
     else
       {:noreply,
        socket
-       |> assign(:system_search, search)
+       |> assign(:system_search, search || "")
        |> assign(:system_suggestions, suggest_systems(socket.assigns.systems, trimmed))
        |> put_flash(:error, "No system matching #{inspect(trimmed)} on this map")}
     end
@@ -1675,11 +1671,7 @@ defmodule TripwireWeb.DashboardLive do
       socket
       |> assign(:selected_system_id, system_id)
       |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
-      |> assign(
-        :system_search,
-        selected_system_name(socket.assigns.systems, system_id) ||
-          socket.assigns[:system_search] || ""
-      )
+      |> assign(:system_search, "")
       |> assign(:system_suggestions, [])
       |> assign(:signatures, Mapping.list_signatures(system_id))
       |> assign(:comments, Mapping.list_comments(system_id))

@@ -1239,6 +1239,26 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert html =~ "J150321"
     assert render(view) =~ "J150321"
+    assert view |> element("#system-search") |> render() =~ ~s|value=""|
+    assert view |> element("#system-search") |> render() =~ ~s|placeholder="Search systems"|
+  end
+
+  test "selecting a search suggestion resets the search box", %{conn: conn, character: character} do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element(~s|nav form[phx-submit="system-search-submit"]|)
+    |> render_change(%{search: "j15"})
+
+    view
+    |> element(~s|nav button[title="Select J150321"]|)
+    |> render_click()
+
+    assert view |> element("#topbar-system") |> render() =~ "J150321"
+    assert view |> element("#system-search") |> render() =~ ~s|value=""|
+    assert view |> element("#system-search") |> render() =~ ~s|placeholder="Search systems"|
   end
 
   test "typing in system search sends nothing until submit", %{conn: conn} do
