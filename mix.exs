@@ -18,9 +18,12 @@ defmodule Tripwire.MixProject do
   def application do
     [
       mod: {Tripwire.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools] ++ os_mon(Mix.env())
     ]
   end
+
+  defp os_mon(:dev), do: [:os_mon]
+  defp os_mon(_), do: []
 
   def cli do
     [

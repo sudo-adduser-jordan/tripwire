@@ -124,6 +124,8 @@ fix:
 
 Server lifecycle blocks run under `sh -c` because Task's built-in shell does not implement `$!` or `kill`.
 
+Dev starts the Erlang `:os_mon` application (`mix.exs` `extra_applications` for `MIX_ENV=dev` only), so the LiveDashboard mounted at `/dev/dashboard` serves the OS Data page at `/dev/dashboard/os_mon`.
+
 ## Conventions
 
 - No `#` comments in Elixir, Taskfile, or other source files; `#{...}` interpolation inside strings is not a comment. Document in `README.md` or this file instead.

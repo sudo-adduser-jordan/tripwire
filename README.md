@@ -27,6 +27,8 @@ Automation uses `Taskfile.yml` (Task v3); server lifecycle tasks run inline shel
 | `task stop` | Stop the background production server |
 | `task dev` | Stop the production server, run dev migrations, rebuild the demo seed with `mix tripwire.reset_demo`, then boot `MIX_ENV=dev mix phx.server` attached on port `4000` with live reload; Ctrl-C stops it |
 
+In dev, `MIX_ENV=dev` also starts the Erlang `:os_mon` application, so the LiveDashboard at `/dev/dashboard` serves CPU, memory, and disk data on its `/dev/dashboard/os_mon` page. `:os_mon` stays off in test and prod.
+
 ## Demo Mode
 
 Tripwire needs no configuration to try it. When `EVESSO_CLIENT_ID` or `EVESSO_SECRET_KEY` is missing, the landing page still opens at `/` with the EVE SSO button disabled; a **Demo** button enters the demo dashboard (`/dashboard`) backed by its own editable `demo` mask and map. Set both variables to enable EVE SSO login and personal maps.
