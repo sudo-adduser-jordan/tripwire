@@ -560,9 +560,7 @@ defmodule Tripwire.MappingTest do
     assert Enum.map(Mapping.list_visible_systems(map.id), & &1.name) == ["J500031"]
     assert is_nil(Mapping.get_system!(home.id).hidden_at)
 
-    {:ok, map} = Mapping.update_map(map, %{show_all: true})
-
-    assert Enum.map(Mapping.list_chain_systems(map), & &1.name) |> Enum.sort() ==
+    assert Enum.map(Mapping.list_chain_systems(map, true), & &1.name) |> Enum.sort() ==
              ["J500031", "J500032", "J500033"]
   end
 
@@ -750,7 +748,7 @@ defmodule Tripwire.MappingTest do
     assert positions[3].x > positions[1].x
   end
 
-  test "list_chain_systems/1 includes hidden systems only when the map shows all", %{mask: mask} do
+  test "list_chain_systems/2 includes hidden systems only when told to show all", %{mask: mask} do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 99_105, name: "Show All"})
     {:ok, map} = Mapping.create_map(%{name: "Show All", mask_id: mask.id})
 
@@ -775,14 +773,12 @@ defmodule Tripwire.MappingTest do
     {:ok, _deleted} = Mapping.delete_signature(sig, character)
     assert {1, 0, 2} = Mapping.sync_map_after_signature_change(a, [sig])
     assert Enum.map(Mapping.list_visible_systems(map.id), & &1.name) == ["J500023"]
-    assert Enum.map(Mapping.list_chain_systems(map), & &1.name) == ["J500023"]
+    assert Enum.map(Mapping.list_chain_systems(map, false), & &1.name) == ["J500023"]
 
-    {:ok, map} = Mapping.update_map(map, %{show_all: true})
-
-    assert Enum.map(Mapping.list_chain_systems(map), & &1.name) |> Enum.sort() ==
+    assert Enum.map(Mapping.list_chain_systems(map, true), & &1.name) |> Enum.sort() ==
              ["J500021", "J500022", "J500023"]
 
-    assert c.id in Enum.map(Mapping.list_chain_systems(map), & &1.id)
+    assert c.id in Enum.map(Mapping.list_chain_systems(map, true), & &1.id)
   end
 
   test "cycle_connection_ids/2 returns the edge that closes a loop" do

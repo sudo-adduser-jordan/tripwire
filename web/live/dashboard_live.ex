@@ -5,6 +5,7 @@ defmodule TripwireWeb.DashboardLive do
   alias Tripwire.ESI
   alias Tripwire.Mapping
   alias Tripwire.Masks
+  alias Tripwire.Settings
   alias Tripwire.Signatures, as: SigParser
   alias Tripwire.Systems
   alias Tripwire.Tracking
@@ -99,6 +100,7 @@ defmodule TripwireWeb.DashboardLive do
     {:ok, map} = Mapping.ensure_demo_map(mask.id)
     systems = ensure_jita_system(map, Mapping.list_systems(map.id))
     ensure_demo_presence(character, map, systems)
+    settings = Settings.assigns()
 
     socket
     |> assign(:current_user, nil)
@@ -108,10 +110,12 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:masks, [mask])
     |> assign(:map, map)
     |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
-    |> assign(:systems, Mapping.list_chain_systems(map))
+    |> assign_topbar_defaults()
+    |> assign(settings)
+    |> assign(:systems, Mapping.list_chain_systems(map, settings.show_all))
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
     |> refresh_occupants()
-    |> apply_tree_layout("top")
+    |> apply_tree_layout(settings.map_layout)
     |> assign(:selected_system_id, nil)
     |> assign(:selected_system_name, nil)
     |> assign(:system_suggestions, [])
@@ -122,7 +126,6 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:stale_system_id, nil)
     |> assign(:settings_open, false)
     |> assign(:settings_tab, "account")
-    |> assign(:map_layout, "top")
     |> assign(:undo, [])
     |> assign(:redo, [])
     |> assign(:demo?, true)
@@ -140,12 +143,12 @@ defmodule TripwireWeb.DashboardLive do
       "bookmark" => ""
     })
     |> assign(:sig_errors, [])
-    |> assign_topbar_defaults()
     |> assign_demo_presence()
     |> assign(:sso_configured?, Tripwire.SSO.configured?())
     |> subscribe_to_map(map.id)
     |> schedule_topbar_load()
     |> schedule_chart_refresh()
+    |> push_map_scale()
   end
 
   @impl true
@@ -255,7 +258,7 @@ defmodule TripwireWeb.DashboardLive do
       when not is_nil(map) and map_id == map.id do
     {:noreply,
      socket
-     |> assign(:systems, Mapping.list_chain_systems(map))
+     |> assign(:systems, chain_systems(socket, map))
      |> assign(:connections, Mapping.list_connections_with_endpoints(map_id))}
   end
 
@@ -384,12 +387,12 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("toggle-grid-lock", _params, socket) do
-    {:noreply, update(socket, :grid_locked, &(!&1))}
+    {:noreply, put_setting(socket, :grid_locked, !socket.assigns.grid_locked)}
   end
 
   def handle_event("toggle-widget", %{"widget" => widget}, socket) do
     case @widgets do
-      %{^widget => key} -> {:noreply, update(socket, key, &(!&1))}
+      %{^widget => key} -> {:noreply, put_setting(socket, key, !socket.assigns[key])}
       _ -> {:noreply, socket}
     end
   end
@@ -417,8 +420,8 @@ defmodule TripwireWeb.DashboardLive do
        |> assign(:chain_errors, [])
        |> assign(:chain_form, %{
          "home" => home || "",
-         "include_thera" => !!(map && map.include_thera),
-         "show_all" => !!(map && map.show_all)
+         "include_thera" => socket.assigns.include_thera,
+         "show_all" => socket.assigns.show_all
        })}
     end
   end
@@ -576,7 +579,7 @@ defmodule TripwireWeb.DashboardLive do
   def handle_event("chart-range", %{"range" => range}, socket) when range in @chart_ranges do
     socket =
       socket
-      |> assign(:chart_range, range)
+      |> put_setting(:chart_range, range)
       |> schedule_chart_reload()
 
     {:noreply, socket}
@@ -595,7 +598,7 @@ defmodule TripwireWeb.DashboardLive do
 
     {:noreply,
      socket
-     |> assign(:chart_hidden, hidden)
+     |> put_setting(:chart_hidden, hidden)
      |> push_event("system-chart-data", chart_payload(socket.assigns.chart_data, hidden))}
   end
 
@@ -609,7 +612,7 @@ defmodule TripwireWeb.DashboardLive do
     if socket.assigns[:map_locked] do
       {:noreply, put_flash(socket, :error, "Map is locked")}
     else
-      socket = socket |> assign(:map_layout, "top") |> apply_tree_layout("top")
+      socket = socket |> put_setting(:map_layout, "top") |> apply_tree_layout("top")
       {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map)
       {:noreply, push_event(socket, "reset-pan", %{x: x, y: y})}
     end
@@ -620,53 +623,55 @@ defmodule TripwireWeb.DashboardLive do
     if socket.assigns[:map_locked] do
       {:noreply, put_flash(socket, :error, "Map is locked")}
     else
-      {:noreply, socket |> assign(:map_layout, layout) |> apply_tree_layout(layout)}
+      {:noreply, socket |> put_setting(:map_layout, layout) |> apply_tree_layout(layout)}
     end
   end
 
   def handle_event("map-layout", _params, socket), do: {:noreply, socket}
 
   def handle_event("toggle-row-guides", _params, socket) do
-    {:noreply, update(socket, :show_row_guides, &(!&1))}
+    {:noreply, put_setting(socket, :show_row_guides, !socket.assigns.show_row_guides)}
   end
 
   def handle_event("toggle-row-counts", _params, socket) do
-    {:noreply, update(socket, :show_row_counts, &(!&1))}
+    {:noreply, put_setting(socket, :show_row_counts, !socket.assigns.show_row_counts)}
   end
 
   def handle_event("toggle-angled-lines", _params, socket) do
-    {:noreply, update(socket, :angled_lines, &(!&1))}
+    {:noreply, put_setting(socket, :angled_lines, !socket.assigns.angled_lines)}
   end
 
   def handle_event("toggle-jump-lines", _params, socket) do
-    {:noreply, update(socket, :show_jump_lines, &(!&1))}
+    {:noreply, put_setting(socket, :show_jump_lines, !socket.assigns.show_jump_lines)}
   end
 
   def handle_event("toggle-line-glow", _params, socket) do
-    {:noreply, update(socket, :show_line_glow, &(!&1))}
+    {:noreply, put_setting(socket, :show_line_glow, !socket.assigns.show_line_glow)}
   end
 
   def handle_event("toggle-node-badges", _params, socket) do
-    {:noreply, update(socket, :show_node_badges, &(!&1))}
+    {:noreply, put_setting(socket, :show_node_badges, !socket.assigns.show_node_badges)}
   end
 
   def handle_event("map-scale", %{"scale" => scale}, socket) do
     scale = parse_int(scale, 100, 50, 200)
 
     {:noreply,
-     socket |> assign(:map_scale, scale) |> push_event("map-zoom", %{zoom: scale / 100})}
+     socket
+     |> put_setting(:map_scale, scale)
+     |> push_event("map-zoom", %{zoom: scale / 100})}
   end
 
   def handle_event("map-scale", _params, socket), do: {:noreply, socket}
 
   def handle_event("line-weight", %{"weight" => weight}, socket) do
-    {:noreply, assign(socket, :line_weight, parse_int(weight, 2, 1, 5))}
+    {:noreply, put_setting(socket, :line_weight, parse_int(weight, 2, 1, 5))}
   end
 
   def handle_event("line-weight", _params, socket), do: {:noreply, socket}
 
   def handle_event("node-spacing", %{"spacing" => spacing}, socket) do
-    socket = assign(socket, :node_spacing, parse_int(spacing, 100, 50, 200))
+    socket = put_setting(socket, :node_spacing, parse_int(spacing, 100, 50, 200))
     socket = socket |> apply_tree_layout(socket.assigns.map_layout || "top")
     {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map)
     {:noreply, push_event(socket, "reset-pan", %{x: x, y: y})}
@@ -676,7 +681,9 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("map-background", %{"background" => background}, socket) do
     background = background |> to_string() |> String.trim()
-    {:noreply, assign(socket, :map_background, if(background == "", do: nil, else: background))}
+
+    {:noreply,
+     put_setting(socket, :map_background, if(background == "", do: nil, else: background))}
   end
 
   def handle_event("map-background", _params, socket), do: {:noreply, socket}
@@ -769,7 +776,7 @@ defmodule TripwireWeb.DashboardLive do
               [m | _] -> m
             end
 
-          next_systems = Mapping.list_chain_systems(next_map)
+          next_systems = chain_systems(socket, next_map)
 
           socket
           |> assign(:mask, next)
@@ -1044,7 +1051,7 @@ defmodule TripwireWeb.DashboardLive do
           {:ok, _} ->
             {:noreply,
              socket
-             |> assign(:systems, Mapping.list_chain_systems(socket.assigns.map))
+             |> assign(:systems, chain_systems(socket))
              |> assign(:sys_modal_open, false)
              |> assign(:sys_edit_id, nil)
              |> assign(:sys_errors, [])
@@ -1064,7 +1071,7 @@ defmodule TripwireWeb.DashboardLive do
       system ->
         {:ok, _} = Mapping.delete_system(system)
 
-        remaining = Mapping.list_chain_systems(socket.assigns.map)
+        remaining = chain_systems(socket)
 
         socket =
           socket
@@ -1186,7 +1193,7 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:mask, mask)
          |> assign(:map, map)
          |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
-         |> assign(:systems, Mapping.list_chain_systems(map))
+         |> assign(:systems, chain_systems(socket, map))
          |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
          |> assign(:selected_system_id, nil)
          |> assign(:selected_system_name, nil)
@@ -1195,7 +1202,7 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:comments, [])
          |> assign(:flares, [])
          |> assign(:system_stat, nil)
-         |> patch_to_preferred(Mapping.list_chain_systems(map))}
+         |> patch_to_preferred(chain_systems(socket, map))}
     end
   end
 
@@ -1255,7 +1262,7 @@ defmodule TripwireWeb.DashboardLive do
           {:noreply,
            socket
            |> assign(:map, map)
-           |> assign(:systems, Mapping.list_chain_systems(map))
+           |> assign(:systems, chain_systems(socket, map))
            |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
            |> assign(:selected_system_id, nil)
            |> assign(:selected_system_name, nil)
@@ -1264,7 +1271,7 @@ defmodule TripwireWeb.DashboardLive do
            |> assign(:comments, [])
            |> assign(:flares, [])
            |> assign(:system_stat, nil)
-           |> patch_to_preferred(Mapping.list_chain_systems(map))}
+           |> patch_to_preferred(chain_systems(socket, map))}
 
         _ ->
           {:noreply, put_flash(socket, :error, "Map not found")}
@@ -1292,7 +1299,7 @@ defmodule TripwireWeb.DashboardLive do
              ) do
         {:noreply,
          socket
-         |> assign(:systems, Mapping.list_chain_systems(socket.assigns.map))
+         |> assign(:systems, chain_systems(socket))
          |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))
          |> select_system(system.id)
          |> push_patch(to: "/" <> system.name)
@@ -1511,7 +1518,7 @@ defmodule TripwireWeb.DashboardLive do
 
   defp apply_tree_layout_with_home(%{assigns: assigns} = socket, layout, map) do
     spacing = spacing_factor(assigns[:node_spacing])
-    systems = Mapping.list_chain_systems(map)
+    systems = chain_systems(socket, map)
     connections = Mapping.list_connections_with_endpoints(map.id)
     home_id = home_root_id(systems, map)
 
@@ -1523,7 +1530,7 @@ defmodule TripwireWeb.DashboardLive do
     end)
 
     socket
-    |> assign(:systems, Mapping.list_chain_systems(map))
+    |> assign(:systems, chain_systems(socket, map))
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
   end
 
@@ -1557,6 +1564,35 @@ defmodule TripwireWeb.DashboardLive do
   defp spacing_factor(spacing) when is_number(spacing), do: spacing / 100
   defp spacing_factor(_), do: 1.0
 
+  defp chain_systems(socket, map \\ nil) do
+    Mapping.list_chain_systems(map || socket.assigns.map, socket.assigns.show_all)
+  end
+
+  defp put_setting(socket, key, value) do
+    case Settings.update(%{key => value}) do
+      {:ok, _} ->
+        :ok
+
+      {:error, changeset} ->
+        Tripwire.Log.emit(:warning, %{
+          event: "user_settings_update_failed",
+          key: key,
+          value: inspect(value),
+          errors: changeset_errors(changeset)
+        })
+    end
+
+    assign(socket, key, value)
+  end
+
+  defp push_map_scale(socket) do
+    if connected?(socket) and socket.assigns.map_scale != 100 do
+      push_event(socket, "map-zoom", %{zoom: socket.assigns.map_scale / 100})
+    else
+      socket
+    end
+  end
+
   defp parse_int(value, default, min, max) do
     case Integer.parse(to_string(value || "")) do
       {n, ""} -> n |> max(min) |> min(max)
@@ -1589,6 +1625,7 @@ defmodule TripwireWeb.DashboardLive do
     masks = Masks.list_masks_for_character(character.id)
     masks = if Enum.any?(masks, &(&1.id == mask.id)), do: masks, else: [mask | masks]
     _ = ensure_jita_system(map, Mapping.list_systems(map.id))
+    settings = Settings.assigns()
 
     socket
     |> assign(:current_user, %{id: character.eve_id, name: character.name})
@@ -1598,9 +1635,11 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:masks, masks)
     |> assign(:map, map)
     |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
-    |> assign(:systems, Mapping.list_chain_systems(map))
+    |> assign_topbar_defaults()
+    |> assign(settings)
+    |> assign(:systems, Mapping.list_chain_systems(map, settings.show_all))
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
-    |> apply_tree_layout("top")
+    |> apply_tree_layout(settings.map_layout)
     |> assign(:selected_system_id, nil)
     |> assign(:selected_system_name, nil)
     |> assign(:system_suggestions, [])
@@ -1611,7 +1650,6 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:stale_system_id, nil)
     |> assign(:settings_open, false)
     |> assign(:settings_tab, "account")
-    |> assign(:map_layout, "top")
     |> assign(:undo, [])
     |> assign(:redo, [])
     |> assign(:demo?, false)
@@ -1628,11 +1666,11 @@ defmodule TripwireWeb.DashboardLive do
       "bookmark" => ""
     })
     |> assign(:sig_errors, [])
-    |> assign_topbar_defaults()
     |> assign(:sso_configured?, Tripwire.SSO.configured?())
     |> subscribe_to_map(map.id)
     |> schedule_topbar_load()
     |> schedule_chart_refresh()
+    |> push_map_scale()
   end
 
   defp apply_inverse(:delete, signature, socket) do
@@ -1716,7 +1754,7 @@ defmodule TripwireWeb.DashboardLive do
       system ->
         case Mapping.update_system(system, %{favorite: !system.favorite}) do
           {:ok, _} ->
-            assign(socket, :systems, Mapping.list_chain_systems(socket.assigns.map))
+            assign(socket, :systems, chain_systems(socket))
 
           {:error, changeset} ->
             flash_changeset_errors(socket, changeset)
@@ -1782,7 +1820,7 @@ defmodule TripwireWeb.DashboardLive do
 
       socket =
         socket
-        |> assign(:systems, Mapping.list_chain_systems(map))
+        |> assign(:systems, chain_systems(socket, map))
         |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
         |> apply_tree_layout(socket.assigns.map_layout || "top")
 
@@ -1859,11 +1897,15 @@ defmodule TripwireWeb.DashboardLive do
          {:ok, updated} <-
            Mapping.update_map(map, %{
              home_solar_system_id: home_solar,
-             home_name: home_name,
-             include_thera: include_thera,
-             show_all: show_all
-           }) do
-      socket = assign(socket, :map, updated)
+             home_name: home_name
+           }),
+         {:ok, _settings} <-
+           Settings.update(%{include_thera: include_thera, show_all: show_all}) do
+      socket =
+        socket
+        |> assign(:map, updated)
+        |> assign(:include_thera, include_thera)
+        |> assign(:show_all, show_all)
 
       socket =
         case home_solar do
@@ -2106,7 +2148,7 @@ defmodule TripwireWeb.DashboardLive do
     map = socket.assigns.map
 
     socket
-    |> assign(:systems, Mapping.list_chain_systems(map))
+    |> assign(:systems, chain_systems(socket, map))
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
   end
 

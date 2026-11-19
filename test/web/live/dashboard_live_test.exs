@@ -5,6 +5,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   alias Tripwire.Mapping
   alias Tripwire.Masks
   alias Tripwire.Repo
+  alias Tripwire.Settings
   alias Tripwire.Systems
 
   setup do
@@ -206,6 +207,74 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     view |> element("#toggle-widget-signatures") |> render_click()
     refute has_element?(view, "#signatures")
+  end
+
+  test "settings are shared across characters", %{conn: conn, character: character} do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "widgets"})
+    view |> element("#toggle-widget-notes") |> render_click()
+
+    refute has_element?(view, "#notes")
+    refute Settings.get().widget_notes
+
+    {:ok, other} = Accounts.upsert_character(%{eve_id: 43_100, name: "Alt Character"})
+    {:ok, other_view, _html} = live(login(conn, other), ~p"/dashboard")
+
+    refute has_element?(other_view, "#notes")
+
+    other_view |> element("#settings-button") |> render_click()
+    render_click(other_view, "settings-tab", %{"tab" => "widgets"})
+    refute has_element?(other_view, "#toggle-widget-notes[checked]")
+  end
+
+  test "settings survive switching masks", %{conn: conn, character: character} do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, other_mask} =
+      Masks.create_mask(%{
+        name: "Second",
+        kind: "corporation",
+        owner_character_id: character.id,
+        eve_owner_id: 90_001
+      })
+
+    {:ok, _} = Masks.add_membership(other_mask, character)
+    {:ok, _} = Mapping.create_map(%{name: "Home", mask_id: other_mask.id})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "widgets"})
+    view |> element("#toggle-widget-map") |> render_click()
+    refute has_element?(view, "#chain-map")
+
+    view
+    |> element("#mask-card-#{other_mask.id} button[phx-click='switch-mask']")
+    |> render_click()
+
+    refute has_element?(view, "#chain-map")
+    refute Settings.get().widget_map
+  end
+
+  test "persisted layout and scale apply on the next mount", %{conn: conn} do
+    {:ok, _} = Settings.update(%{map_layout: "bottom", map_scale: 150, widget_notes: false})
+
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    map = Repo.one(Mapping.Map)
+
+    home =
+      Enum.find(Mapping.list_systems(map.id), &(&1.solar_system_id == map.home_solar_system_id))
+
+    node = view |> element("#node-#{home.id}") |> render()
+
+    assert node =~ ", 590.0)"
+    refute has_element?(view, "#notes")
+    assert_push_event(view, "map-zoom", %{zoom: 1.5})
   end
 
   test "demo wormhole signatures are labelled with their connection destination", %{conn: conn} do
@@ -1133,6 +1202,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert Mapping.get_system!(system.id).y == 60.0
     assert Mapping.get_system!(other.id).y == 220.0
+    assert Settings.get().map_layout == "top"
   end
 
   test "map settings toggles jump lines and node badges", %{conn: conn, character: character} do
@@ -1159,6 +1229,8 @@ defmodule TripwireWeb.DashboardLiveTest do
       |> render_click()
 
     refute html =~ "Static wormhole:"
+    refute Settings.get().show_jump_lines
+    refute Settings.get().show_node_badges
   end
 
   test "map settings line weight changes edge width", %{conn: conn, character: character} do
@@ -1180,6 +1252,7 @@ defmodule TripwireWeb.DashboardLiveTest do
       |> render_change(%{weight: "4"})
 
     assert html =~ ~s|stroke-width="5"|
+    assert Settings.get().line_weight == 4
   end
 
   test "map settings background sets the map backdrop", %{conn: conn, character: character} do
@@ -1196,6 +1269,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert html =~ "background-image"
     assert html =~ "https://example.com/map-bg.jpg"
+    assert Settings.get().map_background == "https://example.com/map-bg.jpg"
   end
 
   test "map settings node spacing relays out the tree", %{conn: conn, character: character} do
@@ -1217,6 +1291,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> render_change(%{spacing: "200"})
 
     assert Mapping.get_system!(other.id).y == 380.0
+    assert Settings.get().node_spacing == 200
   end
 
   test "map settings scale pushes a zoom event", %{conn: conn, character: character} do
@@ -1231,6 +1306,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> render_change(%{scale: "150"})
 
     assert_push_event(view, "map-zoom", %{zoom: 1.5})
+    assert Settings.get().map_scale == 150
   end
 
   test "top bar renders ESI fallbacks and grid lock toggles", %{conn: conn} do
@@ -1243,9 +1319,11 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     view |> element("#lock-button") |> render_click()
     assert render(view) =~ ~s|data-grid-locked="false"|
+    refute Settings.get().grid_locked
 
     view |> element("#lock-button") |> render_click()
     assert render(view) =~ ~s|data-grid-locked="true"|
+    assert Settings.get().grid_locked
   end
 
   test "system search selects a matching system", %{conn: conn, character: character} do
@@ -1459,7 +1537,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     html = render(view)
     assert html =~ "J150323"
     assert html =~ "J150324"
-    assert Mapping.get_map!(map.id).show_all
+    assert Settings.get().show_all
 
     assert Mapping.get_system!(home.id).y == 60.0
     assert Mapping.get_system!(child.id).y == 220.0
@@ -1514,6 +1592,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert node =~ ", 590.0)"
     refute node =~ ", 60.0)"
+    assert Settings.get().map_layout == "bottom"
   end
 
   test "demo user is admin and sees the Admin settings tab", %{conn: conn} do

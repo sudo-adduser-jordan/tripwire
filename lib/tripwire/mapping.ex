@@ -130,8 +130,9 @@ defmodule Tripwire.Mapping do
     )
   end
 
-  def list_chain_systems(%Map{show_all: true} = map), do: list_systems(map.id)
-  def list_chain_systems(%Map{} = map), do: list_visible_systems(map.id)
+  def list_chain_systems(%Map{} = map, show_all) do
+    if show_all, do: list_systems(map.id), else: list_visible_systems(map.id)
+  end
 
   def get_system!(id), do: Repo.get!(MapSystem, id)
 
