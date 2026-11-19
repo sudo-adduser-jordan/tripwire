@@ -79,6 +79,15 @@ defmodule TripwireWeb.LiveComponents.Settings.AdminLive do
             <button type="submit" class="btn btn-secondary btn-sm">Add member</button>
           </form>
         </div>
+        <%= if Application.get_env(:tripwire, :dev_routes) do %>
+          <div class="rounded border border-base-300 p-2">
+            <p class="text-sm font-semibold">Developer tools</p>
+            <p class="mt-1 text-xs opacity-60">Available in dev builds only.</p>
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+              <a href="/dev/dashboard" class="btn btn-secondary btn-sm">Metrics</a>
+            </div>
+          </div>
+        <% end %>
       </div>
     </div>
     """

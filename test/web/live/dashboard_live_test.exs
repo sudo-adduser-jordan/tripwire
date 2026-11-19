@@ -1338,6 +1338,39 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "Mask administration"
   end
 
+  test "admin tab shows the metrics link when dev routes are enabled", %{conn: conn} do
+    previous = Application.get_env(:tripwire, :dev_routes)
+    Application.put_env(:tripwire, :dev_routes, true)
+
+    try do
+      {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+      view |> element("#settings-button") |> render_click()
+
+      html = render(view)
+
+      assert html =~ "Developer tools"
+      assert html =~ ~s|href="/dev/dashboard"|
+      assert html =~ "Metrics"
+    after
+      if is_nil(previous) do
+        Application.delete_env(:tripwire, :dev_routes)
+      else
+        Application.put_env(:tripwire, :dev_routes, previous)
+      end
+    end
+  end
+
+  test "admin tab hides the metrics link without dev routes", %{conn: conn} do
+    refute Application.get_env(:tripwire, :dev_routes)
+
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+
+    refute render(view) =~ ~s|href="/dev/dashboard"|
+  end
+
   test "non-admin characters do not see the Admin tab and are rejected", %{
     conn: conn,
     character: character
