@@ -409,6 +409,48 @@ defmodule Tripwire.MappingTest do
     assert Enum.map(Mapping.list_visible_systems(map.id), & &1.name) == ["J500003"]
   end
 
+  test "sync_map_after_signature_change/2 hides chains detached from the home system", %{
+    mask: mask
+  } do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_106, name: "Detached"})
+    {:ok, map} = Mapping.create_map(%{name: "Detached", mask_id: mask.id})
+
+    {:ok, home} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_531, name: "J500031"})
+    {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_532, name: "J500032"})
+    {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_533, name: "J500033"})
+
+    {:ok, map} =
+      Mapping.update_map(map, %{
+        home_solar_system_id: home.solar_system_id,
+        home_name: home.name
+      })
+
+    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, a.id, %{hole_type: "N770"})
+    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "B274"})
+
+    {:ok, sig} =
+      Mapping.create_signature(
+        a,
+        %{
+          sig_id: "AAA-777",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    assert {1, 0, 2} = Mapping.sync_map_after_signature_change(a, [sig])
+
+    assert Enum.map(Mapping.list_visible_systems(map.id), & &1.name) == ["J500031"]
+    assert is_nil(Mapping.get_system!(home.id).hidden_at)
+
+    {:ok, map} = Mapping.update_map(map, %{show_all: true})
+
+    assert Enum.map(Mapping.list_chain_systems(map), & &1.name) |> Enum.sort() ==
+             ["J500031", "J500032", "J500033"]
+  end
+
   test "tree_layout/5 roots detached chains at level 0 beside the home tree" do
     systems = Enum.map(1..6, &%Mapping.MapSystem{id: &1})
 
@@ -463,6 +505,18 @@ defmodule Tripwire.MappingTest do
              ["J500021", "J500022", "J500023"]
 
     assert c.id in Enum.map(Mapping.list_chain_systems(map), & &1.id)
+  end
+
+  test "cycle_connection_ids/2 returns the edge that closes a loop" do
+    connections = [
+      {%Mapping.MapConnection{id: 1}, %Mapping.MapSystem{id: 10}, %Mapping.MapSystem{id: 11}},
+      {%Mapping.MapConnection{id: 2}, %Mapping.MapSystem{id: 11}, %Mapping.MapSystem{id: 12}},
+      {%Mapping.MapConnection{id: 3}, %Mapping.MapSystem{id: 10}, %Mapping.MapSystem{id: 12}}
+    ]
+
+    assert Mapping.cycle_connection_ids(connections, 10) == MapSet.new([2])
+    assert Mapping.cycle_connection_ids(connections) == MapSet.new([2])
+    assert Mapping.cycle_connection_ids(Enum.take(connections, 2), 10) == MapSet.new()
   end
 
   test "upsert_connection/4 unhides systems that regain a connection", %{mask: mask} do

@@ -338,6 +338,77 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute html =~ "J150322"
   end
 
+  test "removing missing signatures hides chains detached from home", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, home} = setup_with_system(%{character: character}, "J150321")
+    {:ok, map} = Mapping.update_map(map, %{home_solar_system_id: 1, home_name: "J150321"})
+    {:ok, branch} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
+
+    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, branch.id, %{hole_type: "N770"})
+
+    {:ok, _} =
+      Mapping.create_signature(
+        home,
+        %{
+          sig_id: "AAA-123",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    view
+    |> render_click("global-paste", %{
+      "text" => "NEW-002\tCosmic Signature\tSerpentis Frigate Den"
+    })
+
+    assert render(view) =~ "stale-toast"
+
+    view |> element("#stale-toast button[phx-click='delete-stale']") |> render_click()
+
+    assert Mapping.connection_between(map.id, home.id, branch.id) == nil
+    refute is_nil(Mapping.get_system!(branch.id).hidden_at)
+    assert is_nil(Mapping.get_system!(home.id).hidden_at)
+
+    html = render(view)
+    assert html =~ "J150321"
+    refute html =~ "J150322"
+  end
+
+  test "loop connections keep their glow without drawing the closing edge", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, home} = setup_with_system(%{character: character}, "J150321")
+    {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
+    {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323"})
+
+    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, a.id)
+    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id)
+    {:ok, _, _} = Mapping.upsert_connection(map.id, b.id, home.id)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    connections = Mapping.list_connections_with_endpoints(map.id)
+    [cycle_id] = Mapping.cycle_connection_ids(connections) |> MapSet.to_list()
+    connection_ids = Enum.map(connections, fn {conn, _from, _to} -> conn.id end)
+    drawn_ids = connection_ids -- [cycle_id]
+
+    refute has_element?(view, "#connection-#{cycle_id}")
+    Enum.each(drawn_ids, &assert(has_element?(view, "#connection-#{&1}")))
+
+    assert view |> element("#node-#{home.id}") |> render() =~ "6 4"
+  end
+
   test "pasting wormhole signatures auto-links systems sharing the scan", %{
     conn: conn,
     character: character

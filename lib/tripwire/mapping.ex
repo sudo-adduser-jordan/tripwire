@@ -699,9 +699,10 @@ defmodule Tripwire.Mapping do
   wormhole code is no longer among the system's scanned signatures are
   dropped, newly scanned holes are linked to other map systems sharing the
   signature (`sig_id` match first, then a hole code present on exactly one
-  other system), and systems left with no connection are hidden from the
-  map. Hidden systems stay in the database and reappear when a connection
-  is re-created. Returns `{dropped_connections, linked_connections,
+  other system), and systems that end up with no connection or that no longer
+  reach the home system are hidden from the map. Hidden systems stay in the
+  database and reappear when a connection is re-created or the map enables
+  `show_all`. Returns `{dropped_connections, linked_connections,
   hidden_systems}` counts.
   """
   def sync_map_after_signature_change(%MapSystem{} = system, deleted_signatures)
@@ -714,7 +715,8 @@ defmodule Tripwire.Mapping do
       (dropped |> Enum.flat_map(fn {conn, _, _} -> [conn.from_system_id, conn.to_system_id] end)) ++
         (linked |> Enum.flat_map(fn conn -> [conn.from_system_id, conn.to_system_id] end))
 
-    hidden = hide_orphan_systems(system.map_id, Enum.uniq(candidates))
+    orphans = hide_orphan_systems(system.map_id, Enum.uniq(candidates))
+    hidden = orphans + hide_detached_systems(system.map_id)
 
     {length(dropped), length(linked), hidden}
   end
@@ -781,21 +783,27 @@ defmodule Tripwire.Mapping do
   @doc """
   Hides systems from the chain map that are no longer connected: only the
   `candidate_ids` are considered, and any of them left with no connection
-  gets `hidden_at` set. Hidden systems stay in the database and reappear
-  when a connection is re-created. Returns the number of newly hidden
-  systems.
+  gets `hidden_at` set. The map's home system is never hidden. Hidden systems
+  stay in the database and reappear when a connection is re-created. Returns
+  the number of newly hidden systems.
   """
   def hide_orphan_systems(map_id, candidate_ids) do
-    {count, _} =
-      Repo.update_all(
-        from(s in MapSystem,
-          where:
-            s.map_id == ^map_id and is_nil(s.hidden_at) and
-              s.id in ^candidate_ids and
-              s.id not in ^connected_system_ids(map_id)
-        ),
-        set: [hidden_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+    query =
+      from(s in MapSystem,
+        where:
+          s.map_id == ^map_id and is_nil(s.hidden_at) and
+            s.id in ^candidate_ids and
+            s.id not in ^connected_system_ids(map_id)
       )
+
+    query =
+      case home_system_id(get_map!(map_id)) do
+        nil -> query
+        home_id -> from(s in query, where: s.id != ^home_id)
+      end
+
+    {count, _} =
+      Repo.update_all(query, set: [hidden_at: DateTime.utc_now() |> DateTime.truncate(:second)])
 
     count
   end
@@ -808,6 +816,148 @@ defmodule Tripwire.Mapping do
       Repo.all(from(c in MapConnection, where: c.map_id == ^map_id, select: c.to_system_id))
 
     Elixir.MapSet.new(from_ids ++ to_ids) |> Elixir.MapSet.to_list()
+  end
+
+  @doc """
+  Hides every system that cannot be reached from the map's home system by
+  following connections. Maps without a home system are left untouched.
+  Hidden systems come back through `upsert_connection/4` or the map's
+  `show_all` setting. Returns the number of newly hidden systems.
+  """
+  def hide_detached_systems(map_id) do
+    map = get_map!(map_id)
+
+    case home_system_id(map) do
+      nil ->
+        0
+
+      home_id ->
+        reachable = reachable_system_ids(map.id, home_id)
+
+        {count, _} =
+          Repo.update_all(
+            from(s in MapSystem,
+              where:
+                s.map_id == ^map.id and is_nil(s.hidden_at) and
+                  s.id not in ^Elixir.MapSet.to_list(reachable)
+            ),
+            set: [hidden_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+          )
+
+        count
+    end
+  end
+
+  defp home_system_id(%Map{home_solar_system_id: nil}), do: nil
+
+  defp home_system_id(%Map{home_solar_system_id: solar} = map) do
+    case Repo.one(
+           from(s in MapSystem, where: s.map_id == ^map.id and s.solar_system_id == ^solar)
+         ) do
+      %MapSystem{id: id} -> id
+      nil -> nil
+    end
+  end
+
+  defp reachable_system_ids(map_id, home_id) do
+    adj =
+      Repo.all(
+        from(c in MapConnection,
+          where: c.map_id == ^map_id,
+          select: {c.from_system_id, c.to_system_id}
+        )
+      )
+      |> Enum.reduce(%{}, fn {from_id, to_id}, acc ->
+        acc
+        |> Elixir.Map.update(from_id, [to_id], &[to_id | &1])
+        |> Elixir.Map.update(to_id, [from_id], &[from_id | &1])
+      end)
+
+    bfs_reachable(:queue.from_list([home_id]), adj, Elixir.MapSet.new([home_id]))
+  end
+
+  defp bfs_reachable(queue, adj, seen) do
+    case :queue.out(queue) do
+      {:empty, _} ->
+        seen
+
+      {{:value, id}, rest} ->
+        {queue, seen} =
+          Enum.reduce(Elixir.Map.get(adj, id, []), {rest, seen}, fn neighbor, {q, s} ->
+            if Elixir.MapSet.member?(s, neighbor) do
+              {q, s}
+            else
+              {:queue.in(neighbor, q), Elixir.MapSet.put(s, neighbor)}
+            end
+          end)
+
+        bfs_reachable(queue, adj, seen)
+    end
+  end
+
+  @doc """
+  Returns the ids of connections that close a loop. The graph is walked as a
+  spanning forest seeded at `root_id` (or at the lowest system id when the
+  root is absent), so the returned connections are the redundant links that
+  would otherwise draw a cycle. `connections` are `{conn, from, to}` endpoint
+  tuples.
+  """
+  def cycle_connection_ids(connections, root_id \\ nil) do
+    adj =
+      Enum.reduce(connections, %{}, fn {conn, from, to}, acc ->
+        acc
+        |> Elixir.Map.update(from.id, [{to.id, conn.id}], &[{to.id, conn.id} | &1])
+        |> Elixir.Map.update(to.id, [{from.id, conn.id}], &[{from.id, conn.id} | &1])
+      end)
+
+    ids = adj |> Elixir.Map.keys() |> Enum.sort()
+    seeds = if root_id in ids, do: [root_id | ids], else: ids
+
+    {_visited, cycle} =
+      Enum.reduce(seeds, {Elixir.MapSet.new(), Elixir.MapSet.new()}, fn seed, {visited, cycle} ->
+        if Elixir.MapSet.member?(visited, seed) do
+          {visited, cycle}
+        else
+          {visited, _tree, cycle} =
+            walk_spanning_tree(
+              :queue.from_list([seed]),
+              adj,
+              Elixir.MapSet.put(visited, seed),
+              Elixir.MapSet.new(),
+              cycle
+            )
+
+          {visited, cycle}
+        end
+      end)
+
+    cycle
+  end
+
+  defp walk_spanning_tree(queue, adj, visited, tree, cycle) do
+    case :queue.out(queue) do
+      {:empty, _} ->
+        {visited, tree, cycle}
+
+      {{:value, id}, rest} ->
+        {queue, visited, tree, cycle} =
+          Enum.reduce(Elixir.Map.get(adj, id, []), {rest, visited, tree, cycle}, fn
+            {neighbor, conn_id}, {q, vis, tree, cyc} ->
+              cond do
+                Elixir.MapSet.member?(tree, conn_id) ->
+                  {q, vis, tree, cyc}
+
+                Elixir.MapSet.member?(vis, neighbor) ->
+                  {q, vis, tree, Elixir.MapSet.put(cyc, conn_id)}
+
+                true ->
+                  {:queue.in(neighbor, q), Elixir.MapSet.put(vis, neighbor),
+                   Elixir.MapSet.put(tree, conn_id), cyc}
+              end
+          end)
+
+        walk_spanning_tree(queue, adj, visited, tree, cycle)
+    end
   end
 
   defp deleted_codes(signatures) do
@@ -873,6 +1023,7 @@ defmodule Tripwire.Mapping do
         |> Enum.uniq()
 
       hide_orphan_systems(system.map_id, candidates)
+      hide_detached_systems(system.map_id)
       broadcast_map_update(system.map_id)
     end)
 
