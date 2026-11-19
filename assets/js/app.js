@@ -78,6 +78,18 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 liveSocket.connect()
 
 window.liveSocket = liveSocket
+
+const focusPrimaryAction = () => {
+    const target = document.querySelector("[data-autofocus]")
+    if (target && !target.disabled) target.focus()
+}
+
+if (document.readyState === "loading") {
+    window.addEventListener("DOMContentLoaded", focusPrimaryAction)
+} else {
+    focusPrimaryAction()
+}
+
 if (process.env.NODE_ENV === "development") {
     window.addEventListener("phx:live_reload:attached", ({ detail: reloader }) => {
         reloader.enableServerLogs()

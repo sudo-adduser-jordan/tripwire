@@ -17,6 +17,8 @@ defmodule TripwireWeb.PageControllerTest do
         refute html =~ ~s|href="/auth/evesso"|
         assert html =~ ~s|href="/Jita"|
         assert html =~ "Demo"
+        assert html =~ ~r|href="/Jita"[^>]*data-autofocus|
+        assert length(Regex.scan(~r/data-autofocus/, html)) == 1
       end
     )
   end
@@ -35,6 +37,8 @@ defmodule TripwireWeb.PageControllerTest do
         assert html =~ ~s|href="/auth/evesso"|
         refute html =~ ~s|aria-disabled="true"|
         refute html =~ ~s|href="/Jita"|
+        assert html =~ ~r|href="/auth/evesso"[^>]*data-autofocus|
+        assert length(Regex.scan(~r/data-autofocus/, html)) == 1
       end
     )
   end
