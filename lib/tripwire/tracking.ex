@@ -159,7 +159,7 @@ defmodule Tripwire.Tracking do
     Registry.select(Tripwire.TrackingRegistry, [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
     |> Enum.flat_map(fn {_eve_id, pid} ->
       case GenServer.call(pid, :state) do
-        %{character: character, map: %{id: ^map_id}, last_system_row: system}
+        %{character: character, map: %{id: ^map_id}, last_system_row: system} = state
         when not is_nil(system) ->
           case Accounts.get_character_by_eve_id(character.eve_id) do
             %{character_on_chain: true} = character ->
@@ -169,7 +169,8 @@ defmodule Tripwire.Tracking do
                   eve_id: character.eve_id,
                   system_id: system.id,
                   system_name: system.name,
-                  solar_system_id: system.solar_system_id
+                  solar_system_id: system.solar_system_id,
+                  ship_name: occupant_ship_name(character, state)
                 }
               ]
 
@@ -186,6 +187,9 @@ defmodule Tripwire.Tracking do
   catch
     _, _ -> []
   end
+
+  defp occupant_ship_name(%{ship_on_chain: false}, _state), do: nil
+  defp occupant_ship_name(_character, state), do: Map.get(state, :ship_name)
 
   def list_tracked_characters do
     Registry.select(Tripwire.TrackingRegistry, [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])

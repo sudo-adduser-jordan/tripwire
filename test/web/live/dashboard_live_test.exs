@@ -84,12 +84,14 @@ defmodule TripwireWeb.DashboardLiveTest do
   test "demo user is tracked at home in a Cenotaph", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/dashboard")
 
-    assert html =~ "Cenotaph"
-    assert has_element?(view, "div[title='Characters tracked on chain']")
+    assert html =~ "Demo User"
+    refute view |> element("nav") |> render() =~ "Cenotaph"
+    refute has_element?(view, "div[title='Characters tracked on chain']")
 
-    assert view |> element("#chain-map") |> render() =~ "Demo User"
-    assert has_element?(view, "#chain-map title", "Demo User")
-    assert view |> element("#chain-map") |> render() =~ "characters/9000002/portrait"
+    map_html = view |> element("#chain-map") |> render()
+    assert map_html =~ "Demo User - Cenotaph"
+    assert map_html =~ "characters/9000002/portrait"
+    assert has_element?(view, "#chain-map title", "Demo User - Cenotaph")
   end
 
   test "hiding the demo user on chain clears their occupancy badge", %{conn: conn} do

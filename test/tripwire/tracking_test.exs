@@ -208,13 +208,18 @@ defmodule Tripwire.TrackingTest do
     {:ok, system} =
       Mapping.add_system_to_map(map, %{solar_system_id: 31_000_001, name: "J150321"})
 
-    {:ok, _} = Tracking.DemoPresence.ensure_started(character, map, system)
+    {:ok, _} = Tracking.DemoPresence.ensure_started(character, map, system, ship_name: "Cenotaph")
 
     assert Tracking.list_tracked_characters()
            |> Enum.any?(&(&1.name == "Presence" and &1.online == true))
 
-    assert [%{character_name: "Presence", system_name: "J150321"}] =
-             Tracking.list_occupants(map.id)
+    assert [
+             %{
+               character_name: "Presence",
+               system_name: "J150321",
+               ship_name: "Cenotaph"
+             }
+           ] = Tracking.list_occupants(map.id)
 
     assert [%{system_id: system_id}] = Tracking.list_occupants(map.id)
     assert system_id == system.id
@@ -232,5 +237,19 @@ defmodule Tripwire.TrackingTest do
     {:ok, _} = Accounts.update_character(character, %{character_on_chain: false})
 
     assert [] = Tracking.list_occupants(map.id)
+  end
+
+  test "list_occupants/1 hides ships hidden on chain", %{map: map} do
+    on_exit(fn -> Tracking.stop_poller(%{eve_id: 9_900_003}) end)
+
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 9_900_003, name: "Sneaky"})
+
+    {:ok, system} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_003, name: "J150323"})
+
+    {:ok, _} = Tracking.DemoPresence.ensure_started(character, map, system, ship_name: "Cenotaph")
+    {:ok, _} = Accounts.update_character(character, %{ship_on_chain: false})
+
+    assert [%{character_name: "Sneaky", ship_name: nil}] = Tracking.list_occupants(map.id)
   end
 end

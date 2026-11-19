@@ -10,6 +10,8 @@ defmodule TripwireWeb.DashboardLive do
 
   @demo_character_eve_id 9_000_002
   @demo_character_name "Demo User"
+  @demo_ship_name "Cenotaph"
+  @demo_ship_type_id 85_086
   @topbar_refresh_ms 60_000
   @chart_refresh_ms 60_000
   @chart_ranges ~w(24h 48h week)
@@ -34,8 +36,11 @@ defmodule TripwireWeb.DashboardLive do
 
   defp ensure_demo_presence(character, map, systems) do
     case Enum.find(systems, &(&1.alias == "Home")) do
-      %{id: _} = home -> Tracking.DemoPresence.ensure_started(character, map, home)
-      nil -> :ok
+      %{id: _} = home ->
+        Tracking.DemoPresence.ensure_started(character, map, home, ship_name: @demo_ship_name)
+
+      nil ->
+        :ok
     end
   end
 
@@ -47,15 +52,13 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp assign_demo_presence(socket) do
-    {system_name, online, ship_name, ship_type_id} =
+    {system_name, online, ship_type_id} =
       fetch_character_presence(socket.assigns.character)
 
     socket
     |> assign(:current_system_name, system_name)
     |> assign(:character_online, online)
-    |> assign(:ship_name, topbar_ship_name(socket.assigns.character, ship_name))
     |> assign(:ship_type_id, ship_type_id)
-    |> assign(:tracked_characters, Tracking.list_tracked_characters())
   end
 
   defp mount_demo(socket) do
@@ -289,9 +292,7 @@ defmodule TripwireWeb.DashboardLive do
        data.current_system_name || socket.assigns.current_system_name
      )
      |> assign(:character_online, data.character_online)
-     |> assign(:ship_name, topbar_ship_name(socket.assigns.character, data.ship_name))
      |> assign(:ship_type_id, data.ship_type_id)
-     |> assign(:tracked_characters, data.tracked_characters)
      |> assign(:topbar_now, data.now)}
   end
 
@@ -2099,9 +2100,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:tq_players, nil)
     |> assign(:current_system_name, nil)
     |> assign(:character_online, nil)
-    |> assign(:ship_name, nil)
     |> assign(:ship_type_id, nil)
-    |> assign(:tracked_characters, [])
     |> assign(:topbar_now, DateTime.utc_now())
     |> assign(:grid_locked, true)
     |> assign(:system_search, "")
@@ -2207,7 +2206,7 @@ defmodule TripwireWeb.DashboardLive do
         _ -> {false, nil}
       end
 
-    {current_system_name, character_online, ship_name, ship_type_id} =
+    {current_system_name, character_online, ship_type_id} =
       fetch_character_presence(character)
 
     %{
@@ -2215,19 +2214,17 @@ defmodule TripwireWeb.DashboardLive do
       tq_players: tq_players,
       current_system_name: current_system_name,
       character_online: character_online,
-      ship_name: ship_name,
       ship_type_id: ship_type_id,
-      tracked_characters: Tracking.list_tracked_characters(),
       now: DateTime.utc_now()
     }
   end
 
-  defp fetch_character_presence(nil), do: {nil, nil, nil, nil}
+  defp fetch_character_presence(nil), do: {nil, nil, nil}
 
   defp fetch_character_presence(%{eve_id: @demo_character_eve_id}),
-    do: {"J150321", true, "Cenotaph", 85_086}
+    do: {"J150321", true, @demo_ship_type_id}
 
-  defp fetch_character_presence(%{refresh_token: nil}), do: {nil, nil, nil, nil}
+  defp fetch_character_presence(%{refresh_token: nil}), do: {nil, nil, nil}
 
   defp fetch_character_presence(character) do
     with {:ok, token} <- ESI.valid_access_token(character),
@@ -2238,11 +2235,10 @@ defmodule TripwireWeb.DashboardLive do
           _ -> nil
         end
 
-      {ship_name, ship_type_id} =
+      ship_type_id =
         case ESI.get_character_ship(character.eve_id, token) do
-          {:ok, %{"ship_name" => name, "ship_type_id" => type_id}} -> {name, type_id}
-          {:ok, %{"ship_name" => name}} -> {name, nil}
-          _ -> {nil, nil}
+          {:ok, %{"ship_type_id" => type_id}} -> type_id
+          _ -> nil
         end
 
       system_name =
@@ -2257,16 +2253,13 @@ defmodule TripwireWeb.DashboardLive do
             nil
         end
 
-      {system_name, online, ship_name, ship_type_id}
+      {system_name, online, ship_type_id}
     else
-      _ -> {nil, nil, nil, nil}
+      _ -> {nil, nil, nil}
     end
   rescue
-    _ -> {nil, nil, nil, nil}
+    _ -> {nil, nil, nil}
   end
-
-  defp topbar_ship_name(%{ship_on_chain: false}, _ship), do: nil
-  defp topbar_ship_name(_character, ship), do: ship
 
   defp push_undo(socket, op), do: update(socket, :undo, &[op | &1])
 

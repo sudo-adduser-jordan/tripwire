@@ -627,8 +627,14 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   defp occupied_names(occupants, system_id) do
     occupants
     |> Enum.filter(&(&1.system_id == system_id))
-    |> Enum.map_join(", ", & &1.character_name)
+    |> Enum.map_join("\n", &occupant_label/1)
   end
+
+  defp occupant_label(%{character_name: name, ship_name: ship})
+       when is_binary(ship) and ship != "",
+       do: "#{name} - #{ship}"
+
+  defp occupant_label(%{character_name: name}), do: name
 
   defp node_activity(stats, system_id) do
     case Map.get(stats, system_id) do
