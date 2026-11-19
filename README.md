@@ -21,8 +21,8 @@ Automation uses `Taskfile.yml` (Task v3); server lifecycle tasks run inline shel
 | `task install` | Install Elixir, Node, and asset dependencies |
 | `task update` | Update Elixir and Node dependencies |
 | `task remove` | Remove build artifacts and installed dependencies |
-| `task setup` | First-time setup of database, assets, SDE, and log directories; downloads the official JSONL SDE to `priv/sde/`; safe to run while the server is up |
-| `task migrate` | Run database migrations for dev and test |
+| `task setup` | First-time setup of database, assets, SDE, and log directories; downloads the official JSONL SDE to `priv/sde/` and rebuilds `priv/data/wormhole_systems.json`; safe to run while the server is up |
+| `task migrate` | Run database migrations for dev and test, then backfill missing system class/effect/statics |
 | `task start` | Restart the production server in the background (`DATABASE_PATH` defaults to `./priv/db/tripwire-prod.db`) and wait until it answers before printing the URL |
 | `task stop` | Stop the background production server |
 | `task dev` | Stop the production server, run dev migrations, rebuild the demo seed with `mix tripwire.reset_demo`, then boot `MIX_ENV=dev mix phx.server` attached on port `4000` with live reload; Ctrl-C stops it |
@@ -36,6 +36,14 @@ Tripwire needs no configuration to try it. When `EVESSO_CLIENT_ID` or `EVESSO_SE
 The chain map hides systems that drop out of the chain. **Edit Chain → Show all chains** persists a per-map flag that also renders detached chains and single-node chains, each rooted at level 0 beside the home chain; the setting survives reloads and lives in `maps.show_all`. Connections that close a loop are not drawn as lines — the newest link in the cycle is the one left out, and only its endpoints (the scanned system and its candidate peer) get the dashed outline and glow, leaving the existing chain untouched. A paste that only links systems keeps the tree exactly where it was; only removals (dropped connections or hidden systems) re-level the remaining nodes. A scanned wormhole with no connection yet gets an empty unknown placeholder node at the end of the chain — class, name, and signature lines stay blank like an unscanned Tripwire node — which becomes the real system once the hole is jumped or linked. The demo map is rooted at its `Home` system (J150321) and ships two of these empty leaf nodes, so pasting a scan and confirming **delete missing sigs** collapses the detached branches exactly as on a configured map, and a removed wormhole signature also clears its paired signature on the far side. The map panel fills the window height by default and refits when the window resizes, so the chain is laid out at a readable size no matter how tall the screen is.
 
 The signature widget lists every signature with its wormhole Mass state, its Age (time since the scan), and its Life state derived from the remaining lifetime: **Stable** above four hours, **EOL** under four hours, **Critical** under one hour, and **Expired** at zero, with the exact countdown kept in the Life tooltip.
+
+## System data
+
+Wormhole space systems carry their class (`C1`–`C6`, `Thera`, `C13`, `Trig`, `Drifter`), system-wide effect (Magnetar, Pulsar, …) and static wormhole codes. The data is built once from the downloaded SDE plus the vendored statics list into `priv/data/wormhole_systems.json` (see `priv/data/README.md`) and stored on each map system.
+
+- `mix tripwire.build_wormhole_systems` rebuilds the dataset from `priv/sde/eve-online-static-data-latest-jsonl.zip` and `priv/data/wormhole_statics.json`; `task setup` runs it after refreshing the SDE.
+- New systems are filled from the dataset when they are added or converted from an unknown placeholder.
+- `mix tripwire.backfill_system_data` fills missing values on existing systems (run by `task migrate`/`task start`); add `--force` to overwrite edited classes, effects and statics.
 
 ## Deploy
 

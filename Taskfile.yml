@@ -44,6 +44,8 @@ tasks:
       - curl -L --etag-save priv/sde/sde.etag --etag-compare priv/sde/sde.etag -o priv/sde/eve-online-static-data-latest-jsonl.zip https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip
       - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix deps.get{{.RESET}}"
       - mix deps.get
+      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix tripwire.build_wormhole_systems{{.RESET}}"
+      - mix tripwire.build_wormhole_systems
       - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix ecto.setup{{.RESET}}"
       - mix ecto.setup
       - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix assets.setup{{.RESET}}"
@@ -56,10 +58,14 @@ tasks:
     cmds:
       - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}mix ecto.migrate{{.RESET}}"
       - mix ecto.migrate
+      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}mix tripwire.backfill_system_data{{.RESET}}"
+      - mix tripwire.backfill_system_data
       - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=test mix ecto.migrate{{.RESET}}"
       - MIX_ENV=test mix ecto.migrate
       - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix ecto.migrate{{.RESET}}"
       - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix ecto.migrate
+      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix tripwire.backfill_system_data{{.RESET}}"
+      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix tripwire.backfill_system_data
       - echo -e "{{.GREEN}}[migrate]{{.RESET}} migrations complete"
   start:
     desc: Restart the production server in the background
@@ -68,6 +74,8 @@ tasks:
       - mkdir -p logs tmp
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}database migrations{{.RESET}}"
       - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix ecto.migrate
+      - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}system data backfill{{.RESET}}"
+      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix tripwire.backfill_system_data
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}reset demo data{{.RESET}}"
       - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix tripwire.reset_demo
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix tailwind tripwire --minify{{.RESET}}"

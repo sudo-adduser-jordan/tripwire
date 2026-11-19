@@ -11,6 +11,7 @@ defmodule Tripwire.Mapping.MapSystem do
     field :security, :float
     field :sys_class, :string
     field :effect, :string
+    field :statics, {:array, :string}, default: []
     field :favorite, :boolean, default: false
     field :unknown, :boolean, default: false
     field :hidden_at, :utc_datetime
@@ -35,6 +36,7 @@ defmodule Tripwire.Mapping.MapSystem do
       :security,
       :sys_class,
       :effect,
+      :statics,
       :favorite,
       :unknown,
       :hidden_at,

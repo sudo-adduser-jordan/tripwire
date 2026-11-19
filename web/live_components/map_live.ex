@@ -205,12 +205,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 <p><span class="badge badge-error badge-xs">- -</span> End of Life</p>
                 <p><span class="badge badge-warning badge-xs">—</span> Mass Critical</p>
                 <p class="mt-1 font-semibold">Statics</p>
-                <p :for={cls <- ~w(C1 C2 C3 C4 C5 C6)} class="flex items-center gap-1">
-                  <span class="badge badge-outline badge-xs">{cls}</span>
-                  {case Tripwire.Systems.statics(cls) do
-                    [] -> "—"
-                    s -> Enum.join(s, " + ")
-                  end}
+                <p class="max-w-56 opacity-60">
+                  Badges show the system's static wormholes, e.g. H900 to C5.
                 </p>
                 <p class="mt-1 font-semibold">System class</p>
                 <p :for={cls <- Tripwire.Systems.classes()} class="flex items-center gap-1">
@@ -565,21 +561,35 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   end
 
   defp node_badges(system) do
-    Tripwire.Systems.statics(Tripwire.Systems.display_class(system))
-    |> Enum.map(
-      &{&1, "Static wormhole: " <> &1, badge_width(&1), Tripwire.Systems.badge_color(&1),
-       Tripwire.Systems.badge_text_color(&1)}
-    )
+    Tripwire.Systems.system_statics(system)
+    |> Enum.map(&static_badge/1)
     |> Enum.map_reduce(4, fn {label, tip, width, color, text_color}, x ->
       {{label, tip, x, color, text_color}, x + width + 4}
     end)
     |> elem(0)
   end
 
+  defp static_badge(code) do
+    code = code |> to_string() |> String.upcase()
+
+    case Wormholes.leads_to(code) do
+      [class] ->
+        {code, "Static #{code} to #{class}", badge_width(code),
+         Tripwire.Systems.badge_color(class), Tripwire.Systems.badge_text_color(class)}
+
+      [_ | _] = classes ->
+        {code, "Static #{code} to #{Enum.join(classes, "/")}", badge_width(code),
+         Tripwire.Systems.badge_color(nil), "#ffffff"}
+
+      [] ->
+        {code, "Static wormhole: #{code}", badge_width(code), Tripwire.Systems.badge_color(code),
+         Tripwire.Systems.badge_text_color(code)}
+    end
+  end
+
   defp badge_width(label), do: String.length(label) * 6 + 14
 
-  defp node_effect(%{effect: effect}) when is_binary(effect) and effect != "", do: effect
-  defp node_effect(_), do: nil
+  defp node_effect(system), do: Tripwire.Systems.display_effect(system)
 
   defp effect_icon("Black Hole"),
     do:

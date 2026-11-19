@@ -961,6 +961,21 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert html =~ "Statics"
   end
 
+  test "chain nodes show real wormhole class, effect and static codes", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, _system} = setup_with_system(%{character: character}, "Jita")
+    {:ok, _} = Mapping.add_system_to_map(map, %{solar_system_id: 31_001_663, name: "J231710"})
+
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
+
+    assert html =~ "System effect: Magnetar"
+    assert html =~ "Static C247 to C3"
+    assert html =~ "Static H900 to C5"
+    assert view |> element("#chain-map") |> render() =~ "C4"
+  end
+
   test "system editor saves the wormhole effect and badges it", %{
     conn: conn,
     character: character

@@ -2,6 +2,8 @@ defmodule Tripwire.MappingTest do
   use Tripwire.DataCase, async: false
 
   alias Tripwire.{Accounts, Mapping, Masks}
+  alias Tripwire.Mapping.SystemData
+  alias Tripwire.Repo
 
   setup do
     {:ok, mask} = Masks.ensure_demo_mask()
@@ -46,6 +48,110 @@ defmodule Tripwire.MappingTest do
              {0, 20.0}
 
     assert Mapping.home_center([], nil) == {0, 0}
+  end
+
+  test "add_system_to_map/2 fills wormhole class, effect and statics", %{mask: mask} do
+    [map | _] = Mapping.list_maps_for_mask(mask.id)
+
+    {:ok, system} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_001_663, name: "J231710"})
+
+    assert system.sys_class == "C4"
+    assert system.effect == "Magnetar"
+    assert system.statics == ["C247", "H900"]
+  end
+
+  test "add_system_to_map/2 keeps explicit system data", %{mask: mask} do
+    [map | _] = Mapping.list_maps_for_mask(mask.id)
+
+    {:ok, system} =
+      Mapping.add_system_to_map(map, %{
+        solar_system_id: 31_001_663,
+        name: "J231710",
+        sys_class: "C5",
+        effect: "Pulsar",
+        statics: ["ABC"]
+      })
+
+    assert system.sys_class == "C5"
+    assert system.effect == "Pulsar"
+    assert system.statics == ["ABC"]
+  end
+
+  test "add_system_to_map/2 leaves catalog systems untouched when asked", %{mask: mask} do
+    [map | _] = Mapping.list_maps_for_mask(mask.id)
+
+    {:ok, system} =
+      Mapping.add_system_to_map(
+        map,
+        %{solar_system_id: 31_001_663, name: "J231710"},
+        fill?: false
+      )
+
+    assert system.sys_class == nil
+    assert system.effect == nil
+    assert system.statics == []
+  end
+
+  test "add_system_to_map/2 ignores data for a mismatched name", %{mask: mask} do
+    [map | _] = Mapping.list_maps_for_mask(mask.id)
+
+    {:ok, system} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_001_663, name: "J150321"})
+
+    assert system.sys_class == nil
+    assert system.effect == nil
+    assert system.statics == []
+  end
+
+  test "convert_unknown_system/2 fills wormhole system data", %{mask: mask} do
+    [map | _] = Mapping.list_maps_for_mask(mask.id)
+    {:ok, unknown} = Mapping.add_unknown_system(map)
+
+    {:ok, system} =
+      Mapping.convert_unknown_system(unknown, %{solar_system_id: 31_001_663, name: "J231710"})
+
+    assert system.sys_class == "C4"
+    assert system.effect == "Magnetar"
+    assert system.statics == ["C247", "H900"]
+  end
+
+  test "SystemData.backfill/1 fills existing rows and keeps explicit values", %{mask: mask} do
+    [map | _] = Mapping.list_maps_for_mask(mask.id)
+
+    legacy =
+      Repo.insert!(%Mapping.MapSystem{
+        map_id: map.id,
+        solar_system_id: 31_001_663,
+        name: "J231710"
+      })
+
+    overridden =
+      Repo.insert!(%Mapping.MapSystem{
+        map_id: map.id,
+        solar_system_id: 31_002_580,
+        name: "J000895",
+        sys_class: "C5",
+        effect: "Pulsar"
+      })
+
+    assert SystemData.backfill() >= 1
+
+    filled = Repo.get!(Mapping.MapSystem, legacy.id)
+    assert filled.sys_class == "C4"
+    assert filled.effect == "Magnetar"
+    assert filled.statics == ["C247", "H900"]
+
+    kept = Repo.get!(Mapping.MapSystem, overridden.id)
+    assert kept.sys_class == "C5"
+    assert kept.effect == "Pulsar"
+    assert kept.statics == ["C008", "Q003"]
+
+    SystemData.backfill(true)
+
+    refreshed = Repo.get!(Mapping.MapSystem, overridden.id)
+    assert refreshed.sys_class == "C13"
+    assert refreshed.effect == "Wolf Rayet"
   end
 
   test "reset_demo_maps/1 clears custom content and restores the seed", %{mask: mask} do

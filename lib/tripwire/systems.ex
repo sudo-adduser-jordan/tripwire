@@ -1,8 +1,10 @@
 defmodule Tripwire.Systems do
-  @classes ~w(C1 C2 C3 C4 C5 C6 HS LS NS Trig)
+  alias Tripwire.WormholeSystems
+
+  @classes ~w(C1 C2 C3 C4 C5 C6 C13 Thera Drifter HS LS NS Trig)
 
   @w_space_min 31_000_000
-  @w_space_max 32_000_000
+  @w_space_max 35_000_000
 
   @effects [
     "Black Hole",
@@ -29,6 +31,9 @@ defmodule Tripwire.Systems do
     "C4" => "#A855F7",
     "C5" => "#A855F7",
     "C6" => "#EC4899",
+    "C13" => "#6b7280",
+    "Thera" => "#FF4747",
+    "Drifter" => "#8B5CF6",
     "HS" => "#50D25A",
     "LS" => "#F5B544",
     "NS" => "#FF4747",
@@ -45,6 +50,8 @@ defmodule Tripwire.Systems do
     "C4" => "#A855F7",
     "C5" => "#A855F7",
     "C6" => "#EC4899",
+    "C13" => "#6b7280",
+    "Drifter" => "#8B5CF6",
     "HS" => "#50D25A",
     "LS" => "#F5B544",
     "NS" => "#FF4747",
@@ -62,16 +69,36 @@ defmodule Tripwire.Systems do
   def statics(class) when is_binary(class), do: Map.get(@statics, class, [])
   def statics(_), do: []
 
+  def system_statics(%{statics: statics}) when is_list(statics) and statics != [], do: statics
+
+  def system_statics(system), do: statics(display_class(system))
+
   def display_class(%{sys_class: class}) when is_binary(class) and class != "", do: class
 
-  def display_class(%{solar_system_id: id})
-      when is_integer(id) and id >= @w_space_min and id < @w_space_max,
-      do: "W"
+  def display_class(%{solar_system_id: id} = system) when is_integer(id) do
+    case WormholeSystems.get(id) do
+      %{class: class} when is_binary(class) -> class
+      _ -> security_class(system)
+    end
+  end
 
-  def display_class(%{security: security}) when is_number(security) and security >= 0.45, do: "HS"
-  def display_class(%{security: security}) when is_number(security) and security > 0.0, do: "LS"
-  def display_class(%{security: security}) when is_number(security), do: "NS"
-  def display_class(_), do: nil
+  def display_class(system), do: security_class(system)
+
+  def display_effect(%{effect: effect}) when is_binary(effect) and effect != "", do: effect
+  def display_effect(_), do: nil
+
+  defp security_class(%{solar_system_id: id})
+       when is_integer(id) and id >= @w_space_min and id < @w_space_max,
+       do: "W"
+
+  defp security_class(%{security: security}) when is_number(security) and security >= 0.45,
+    do: "HS"
+
+  defp security_class(%{security: security}) when is_number(security) and security > 0.0,
+    do: "LS"
+
+  defp security_class(%{security: security}) when is_number(security), do: "NS"
+  defp security_class(_), do: nil
 
   def color(system), do: Map.get(@colors, display_class(system), @unknown_color)
 

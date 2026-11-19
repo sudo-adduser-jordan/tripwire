@@ -6,6 +6,7 @@ defmodule Tripwire.Mapping do
   alias Tripwire.Mapping.{Map, MapConnection, MapSystem, Signature}
   alias Tripwire.Repo
   alias Tripwire.Signatures, as: SigParser
+  alias Tripwire.WormholeSystems
 
   def get_map!(id), do: Repo.get!(Map, id)
 
@@ -486,7 +487,9 @@ defmodule Tripwire.Mapping do
     :ok
   end
 
-  def add_system_to_map(%Map{} = map, attrs) do
+  def add_system_to_map(%Map{} = map, attrs, opts \\ []) do
+    attrs = if Keyword.get(opts, :fill?, true), do: put_system_data(attrs), else: attrs
+
     %MapSystem{map_id: map.id}
     |> MapSystem.changeset(attrs)
     |> Repo.insert()
@@ -546,9 +549,26 @@ defmodule Tripwire.Mapping do
 
   def convert_unknown_system(%MapSystem{unknown: true} = system, attrs) do
     system
-    |> MapSystem.changeset(Elixir.Map.put(attrs, :unknown, false))
+    |> MapSystem.changeset(attrs |> put_system_data() |> Elixir.Map.put(:unknown, false))
     |> Repo.update()
   end
+
+  defp put_system_data(attrs) do
+    name = attrs[:name] || attrs["name"]
+
+    attrs
+    |> solar_system_id()
+    |> WormholeSystems.attrs(name)
+    |> Enum.reduce(attrs, fn {key, value}, acc ->
+      if Elixir.Map.has_key?(acc, key) or Elixir.Map.has_key?(acc, to_string(key)) do
+        acc
+      else
+        Elixir.Map.put(acc, key, value)
+      end
+    end)
+  end
+
+  defp solar_system_id(attrs), do: attrs[:solar_system_id] || attrs["solar_system_id"]
 
   def update_system_position(%MapSystem{} = system, x, y) do
     system
@@ -1497,7 +1517,8 @@ defmodule Tripwire.Mapping do
       sys_class: "C4",
       x: 780.0,
       y: 330.0,
-      effect: "Magnetar"
+      effect: "Magnetar",
+      statics: ["C247", "H900"]
     },
     %{solar_system_id: 31_000_005, name: "J150325", sys_class: "C6", x: 480.0, y: 470.0},
     %{solar_system_id: 31_000_006, name: "J150326", sys_class: "C1", x: 880.0, y: 200.0},
@@ -2001,7 +2022,7 @@ defmodule Tripwire.Mapping do
       if list_systems(map.id) == [] do
         created =
           Enum.map(@demo_systems, fn attrs ->
-            {:ok, system} = add_system_to_map(map, attrs)
+            {:ok, system} = add_system_to_map(map, attrs, fill?: false)
             system
           end)
 

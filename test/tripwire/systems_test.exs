@@ -23,12 +23,33 @@ defmodule Tripwire.SystemsTest do
     assert Systems.display_class(%{sys_class: nil, security: -1.0}) == "NS"
   end
 
-  test "display_class/1 renders unclassified wormhole systems as W-space" do
-    system = %{sys_class: nil, solar_system_id: 31_001_663, security: -1.0}
+  test "display_class/1 falls back to W-space for unknown wormhole ids" do
+    system = %{sys_class: nil, solar_system_id: 31_999_999, security: -1.0}
 
     assert Systems.display_class(system) == "W"
     assert Systems.color(system) == "#6b7280"
     assert Systems.security_label(system) == "W-Space"
+  end
+
+  test "display_class/1 reads the class data for known wormhole systems" do
+    assert Systems.display_class(%{sys_class: nil, solar_system_id: 31_001_663}) == "C4"
+    assert Systems.display_class(%{sys_class: nil, solar_system_id: 31_000_005}) == "Thera"
+    assert Systems.display_class(%{sys_class: nil, solar_system_id: 31_002_580}) == "C13"
+    assert Systems.display_class(%{sys_class: nil, solar_system_id: 30_000_021}) == "Trig"
+    assert Systems.display_class(%{sys_class: nil, solar_system_id: 32_000_001}) == "Drifter"
+  end
+
+  test "display_effect/1 uses the stored effect" do
+    assert Systems.display_effect(%{effect: "Pulsar", solar_system_id: 31_001_663}) == "Pulsar"
+    assert Systems.display_effect(%{effect: nil, solar_system_id: 31_001_663}) == nil
+    assert Systems.display_effect(%{effect: ""}) == nil
+    assert Systems.display_effect(%{sys_class: "C1"}) == nil
+  end
+
+  test "system_statics/1 uses stored statics with a class fallback" do
+    assert Systems.system_statics(%{statics: ["C247", "H900"]}) == ["C247", "H900"]
+    assert Systems.system_statics(%{sys_class: "C1", statics: []}) == ["HS"]
+    assert Systems.system_statics(%{sys_class: "C4", statics: []}) == []
   end
 
   test "display_class/1 keeps an explicit class on wormhole systems" do
@@ -57,11 +78,15 @@ defmodule Tripwire.SystemsTest do
     assert Systems.color(%{sys_class: nil, security: 0.0}) == "#FF4747"
     assert Systems.color(%{sys_class: nil, security: -1.0}) == "#FF4747"
     assert Systems.color(%{sys_class: "Trig", security: nil}) == "#FF4747"
+    assert Systems.color(%{sys_class: "Thera", security: nil}) == "#FF4747"
+    assert Systems.color(%{sys_class: "C13", security: nil}) == "#6b7280"
+    assert Systems.color(%{sys_class: "Drifter", security: nil}) == "#8B5CF6"
     assert Systems.color(%{sys_class: nil, security: nil}) == "#6b7280"
   end
 
   test "classes/0 lists every assignable class" do
-    assert Systems.classes() == ~w(C1 C2 C3 C4 C5 C6 HS LS NS Trig)
+    assert Systems.classes() ==
+             ~w(C1 C2 C3 C4 C5 C6 C13 Thera Drifter HS LS NS Trig)
   end
 
   test "effects/0 lists the wormhole system effects" do
