@@ -7,10 +7,10 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   @columns [
     %{key: "status", label: ""},
     %{key: "id", label: "ID"},
+    %{key: "age", label: "Age"},
     %{key: "type", label: "Type"},
     %{key: "name", label: "Name"},
     %{key: "mass", label: "Mass"},
-    %{key: "age", label: "Age"},
     %{key: "life", label: "Life"}
   ]
   @column_keys Enum.map(@columns, & &1.key)
