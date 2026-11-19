@@ -2106,6 +2106,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert other_card =~ "Torrent · J231710"
     assert other_card =~ "https://images.evetech.net/types/81047/render?size=64"
+    assert other_card =~ ~s(class="size-8 object-contain")
     assert other_card =~ "Offline"
     assert other_card =~ ~s(href="/auth/switch/#{other.eve_id}")
   end

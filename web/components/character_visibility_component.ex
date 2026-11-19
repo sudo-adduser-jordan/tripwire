@@ -102,10 +102,11 @@ defmodule TripwireWeb.CharacterVisibilityComponents do
       "pointer-events-auto flex size-12 shrink-0 items-center justify-center rounded-xl p-0 hover:cursor-pointer hover:bg-base-300"
 
   defp ship_button_class(_),
-    do: "pointer-events-auto btn btn-ghost btn-xs shrink-0 p-1"
+    do:
+      "pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-lg p-0 hover:cursor-pointer hover:bg-base-300"
 
-  defp ship_image_class("lg"), do: "size-10 object-contain"
-  defp ship_image_class(_), do: "size-4"
+  defp ship_image_class("lg"), do: "size-12 object-contain"
+  defp ship_image_class(_), do: "size-8 object-contain"
 
   defp dot(true, _character, _current), do: "avatar-online"
   defp dot(false, _character, _current), do: "avatar-offline"
