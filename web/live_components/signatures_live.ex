@@ -17,6 +17,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
      |> assign(assigns)
      |> assign(:signatures, signatures)
      |> assign(:wh_links, wh_links(Map.get(assigns, :connections, [])))
+     |> assign(:wh_mass, wh_mass(Map.get(assigns, :connections, [])))
      |> assign(:tracking?, tracking?(assigns))
      |> assign(:tracking_available?, tracking_available?(assigns))
      |> assign_new(:undo, fn -> [] end)
@@ -44,6 +45,39 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
       _ -> nil
     end
   end
+
+  defp wh_mass(connections) do
+    Enum.reduce(connections, %{}, fn {conn, from, to}, acc ->
+      case hole_code(conn.hole_type) do
+        nil ->
+          acc
+
+        code ->
+          mass = conn.mass_status || "stable"
+
+          acc
+          |> Map.put({from.id, code}, mass)
+          |> Map.put({to.id, code}, mass)
+      end
+    end)
+  end
+
+  defp mass_for(%{site_type: "wormhole"} = sig, wh_mass) do
+    Map.get(wh_mass, {sig.map_system_id, SigParser.wormhole_code(sig.type_name)})
+  end
+
+  defp mass_for(_sig, _wh_mass), do: nil
+
+  defp mass_label(nil), do: "-"
+  defp mass_label("stable"), do: "Stable"
+  defp mass_label("destab"), do: "Destab"
+  defp mass_label("critical"), do: "Critical"
+  defp mass_label(other), do: to_string(other)
+
+  defp mass_text_class("stable"), do: "opacity-60"
+  defp mass_text_class("destab"), do: "text-warning"
+  defp mass_text_class("critical"), do: "text-error"
+  defp mass_text_class(_), do: "opacity-40"
 
   defp dest_name(system), do: system.alias || system.name
 
@@ -226,6 +260,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                 <th class="p-1 text-center text-xs">ID</th>
                 <th class="p-1 text-center text-xs">Type</th>
                 <th class="p-1 text-center text-xs">Name</th>
+                <th class="p-1 text-center text-xs">Mass</th>
                 <th class="p-1 text-center text-xs">Life</th>
                 <th class="p-1 text-center text-xs"><span class="sr-only">Actions</span></th>
               </tr>
@@ -268,6 +303,11 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                   </a>
                   <span :if={is_nil(wormhole_display(sig)) and is_nil(sig_link(sig))}>
                     {sig.type_name || "-"}
+                  </span>
+                </td>
+                <td class="text-center">
+                  <span class={["text-xs", mass_text_class(mass_for(sig, @wh_mass))]}>
+                    {mass_label(mass_for(sig, @wh_mass))}
                   </span>
                 </td>
                 <td class="text-center tabular-nums">{format_life_left(sig)}</td>

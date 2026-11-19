@@ -1302,6 +1302,42 @@ defmodule TripwireWeb.DashboardLiveTest do
     end
   end
 
+  test "signature table shows the mass status of a linked wormhole", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, target} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
+
+    {:ok, _, _} =
+      Mapping.upsert_connection(map.id, system.id, target.id, %{
+        hole_type: "N770",
+        mass_status: "destab"
+      })
+
+    {:ok, _} =
+      Mapping.create_signature(
+        system,
+        %{
+          sig_id: "ABC-123",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    table = view |> element("#signatures table") |> render()
+    assert table =~ "Mass"
+    assert table =~ "Destab"
+  end
+
   test "delete then undo restores the signature", %{conn: conn, character: character} do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J000000")
 
