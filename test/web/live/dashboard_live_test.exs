@@ -217,6 +217,33 @@ defmodule TripwireWeb.DashboardLiveTest do
              Accounts.get_character(character.id)
   end
 
+  test "character dropdown toggles from its large icons and switches from the name", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    nav = view |> element("nav") |> render()
+
+    assert nav =~ ~r/toggle-ship-visibility.*toggle-character-visibility.*\/auth\/switch/s
+    refute nav =~ "size-4 rounded-full"
+
+    assert has_element?(
+             view,
+             "button[phx-click='toggle-ship-visibility'][phx-value-id='#{character.id}']"
+           )
+
+    assert has_element?(
+             view,
+             "button[phx-click='toggle-character-visibility'][phx-value-id='#{character.id}'] img"
+           )
+
+    assert has_element?(
+             view,
+             "nav a[href='/auth/switch/#{character.eve_id}']"
+           )
+  end
+
   defp setup_with_system(%{character: character}, system_name) do
     {:ok, mask} = Masks.ensure_personal_mask(character)
 

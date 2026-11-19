@@ -117,32 +117,28 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
           </div>
           <ul
             tabindex="-1"
-            class="menu dropdown-content bg-base-200/75 rounded-box z-1 mt-4 w-52 p-2 shadow-sm"
+            class="menu dropdown-content bg-base-200/75 rounded-box z-1 mt-4 w-64 p-2 shadow-sm"
           >
             <li :for={character <- @characters}>
               <div class="flex items-center gap-1">
-                <a
-                  href={"/auth/switch/#{character.eve_id}"}
-                  title={"Switch to #{character_name(character)}"}
-                  class="flex min-w-0 flex-1 items-center gap-2"
-                >
-                  <div class={["avatar", current_dot(character, @character)]}>
-                    <div class="w-12 rounded-xl">
-                      <img
-                        src={character_avatar(character)}
-                        alt=""
-                        loading="lazy"
-                        onerror="this.onerror=null;this.src='/images/alliance-default.png'"
-                      />
-                    </div>
-                  </div>
-                  {character_name(character)}
-                </a>
-                <.character_visibility_buttons
+                <.character_ship_toggle
                   character={character}
                   current_character={current_character(@characters, @character)}
                   current_ship_type_id={@ship_type_id}
+                  size="lg"
                 />
+                <.character_portrait_toggle
+                  character={character}
+                  current_character={current_character(@characters, @character)}
+                  size="lg"
+                />
+                <a
+                  href={"/auth/switch/#{character.eve_id}"}
+                  title={"Switch to #{character_name(character)}"}
+                  class="min-w-0 flex-1 truncate py-1 text-xs"
+                >
+                  {character_name(character)}
+                </a>
                 <button
                   phx-click="remove-character"
                   phx-value-id={character.id}
@@ -302,11 +298,6 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
 
   defp character_name(%{name: name}), do: name
   defp character_name(name) when is_binary(name), do: name
-
-  defp character_avatar(%{eve_id: eve_id}) when is_integer(eve_id),
-    do: EveImages.character_portrait(eve_id, 64)
-
-  defp character_avatar(_), do: "/images/alliance-default.png"
 
   defp mask_avatar(%{kind: "corporation", eve_owner_id: id}) when is_integer(id),
     do: EveImages.corporation_logo(id, 64)

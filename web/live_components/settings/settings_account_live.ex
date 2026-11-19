@@ -65,19 +65,12 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
             ]}
             tabindex="0"
           >
-            <div class={[
-              "avatar shrink-0",
-              (current_character?(@character, entry) && "avatar-online") || "avatar-offline"
-            ]}>
-              <div class="w-8 rounded-lg">
-                <img
-                  src={portrait(entry)}
-                  onerror="this.onerror=null;this.src='/images/alliance-default.png'"
-                  alt=""
-                  loading="lazy"
-                />
-              </div>
-            </div>
+            <.character_ship_toggle
+              character={entry}
+              current_character={@character}
+              current_ship_type_id={@ship_type_id}
+            />
+            <.character_portrait_toggle character={entry} current_character={@character} />
             <div class="min-w-0 flex-1">
               <div class="truncate text-xs font-semibold">{entry.name}</div>
               <div class="truncate text-[11px] opacity-70">{corporation(entry)}</div>
@@ -93,11 +86,6 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
                 </div>
               </div>
             </div>
-            <.character_visibility_buttons
-              character={entry}
-              current_character={@character}
-              current_ship_type_id={@ship_type_id}
-            />
             <button
               type="button"
               class="btn btn-ghost btn-xs shrink-0 p-1"
@@ -192,11 +180,6 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
 
   defp current_mask?(%{id: id}, %{id: other_id}), do: id == other_id
   defp current_mask?(_, _), do: false
-
-  defp portrait(%{eve_id: eve_id}) when is_integer(eve_id) and eve_id > 0,
-    do: "https://images.evetech.net/characters/#{eve_id}/portrait?size=64"
-
-  defp portrait(_), do: "/images/alliance-default.png"
 
   defp corporation(%{corporation_name: name}) when is_binary(name) and name != "",
     do: name

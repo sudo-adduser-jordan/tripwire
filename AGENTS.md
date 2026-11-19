@@ -82,6 +82,7 @@ fix:
 - `config/`: `config.exs` base plus `dev.exs`, `test.exs`, `prod.exs`, `runtime.exs` (prod requires `DATABASE_PATH`; EVE SSO is optional).
 - `priv/repo/` migrations and seeds; `priv/data/wormholes.json` hole type database; `assets/` Node front end (`package.json` deploy runs `mix assets.deploy`); `test/` mirrors `lib` and `web`.
 - Runtime log dirs (gitignored): `logs/test/`, `logs/errors/`.
+- The topbar character dropdown (`web/live_components/navigation_live.ex`) lays every character row out as ship toggle, large portrait toggle, name link, remove button: the ship and portrait icons hide/show that character's ship and character on chain through `web/components/character_visibility_component.ex` (`character_ship_toggle/1`, `character_portrait_toggle/1`), and the name switches characters via `/auth/switch/:eve_id`. Settings → Account cards reuse the same toggles.
 
 ## Map and signature sync
 
