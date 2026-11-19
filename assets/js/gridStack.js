@@ -31,12 +31,51 @@ function reveal(el) {
     }
 }
 
+// The chain map is the view you work in, so it defaults to a full window
+// height instead of the server-rendered gs-h fallback. Rows come from the
+// grid's own cell height (an item is h * cellHeight tall), so the fit
+// survives a change to cellHeight.
+function fitMap(el, grid) {
+    const mapEl = el && el.querySelector('#map')
+    if (!mapEl || !grid || !grid.engine || !mapEl.gridstackNode) return
+
+    const cellHeight = parseFloat((grid.opts && grid.opts.cellHeight) || '') || 80
+    const rows = Math.max(6, Math.round(window.innerHeight / cellHeight))
+
+    if (mapEl.gridstackNode.h === rows) return
+    grid.update(mapEl, { h: rows })
+}
+
+function watchViewport(el, grid) {
+    if (!el || el._mapResize) return
+
+    el._mapResize = () => {
+        if (el._mapResizeFrame) return
+        el._mapResizeFrame = window.requestAnimationFrame(() => {
+            el._mapResizeFrame = 0
+            fitMap(el, grid)
+        })
+    }
+
+    window.addEventListener('resize', el._mapResize)
+}
+
+function unwatchViewport(el) {
+    if (!el || !el._mapResize) return
+    window.removeEventListener('resize', el._mapResize)
+    if (el._mapResizeFrame) window.cancelAnimationFrame(el._mapResizeFrame)
+    el._mapResize = null
+    el._mapResizeFrame = 0
+}
+
 function initGrid(el) {
     if (!el) return null
     // Already initialized (e.g. hook remounted): still ensure visibility.
     if (el.gridstack) {
         syncLock(el)
         reveal(el)
+        watchViewport(el, el.gridstack)
+        fitMap(el, el.gridstack)
         return el.gridstack
     }
 
@@ -52,20 +91,31 @@ function initGrid(el) {
     window.TripwireGrid = grid
     syncLock(el)
     reveal(el)
+    watchViewport(el, grid)
+    fitMap(el, grid)
 
     return grid
 }
 
 function destroyGrid() {
     if (window.TripwireGrid) {
+        unwatchViewport(window.TripwireGrid.el)
         window.TripwireGrid.destroy(false)
         window.TripwireGrid = null
     }
 }
 
+// LiveView re-renders the map's fallback gs-h on every patch, so read the
+// live engine values where a node is registered to keep the signature (and
+// thus the light touch path) stable.
 function itemSignature(el) {
     return Array.from(el.querySelectorAll(':scope > .grid-stack-item'))
-        .map((n) => n.id + '|' + n.getAttribute('gs-x') + ',' + n.getAttribute('gs-y') + ',' + n.getAttribute('gs-w') + ',' + n.getAttribute('gs-h'))
+        .map((n) => {
+            const node = n.gridstackNode
+            const read = (attr, key) =>
+                node && node[key] !== undefined && node[key] !== null ? String(node[key]) : n.getAttribute(attr)
+            return n.id + '|' + read('gs-x', 'x') + ',' + read('gs-y', 'y') + ',' + read('gs-w', 'w') + ',' + read('gs-h', 'h')
+        })
         .join(';');
 }
 
@@ -162,6 +212,8 @@ function refreshGrid(el) {
     if (typeof grid._updateContainerHeight === 'function') grid._updateContainerHeight()
     syncLock(el)
     reveal(el)
+    watchViewport(el, grid)
+    fitMap(el, grid)
 }
 
 // The dashboard grid is owned by LiveView, so it is initialized from the

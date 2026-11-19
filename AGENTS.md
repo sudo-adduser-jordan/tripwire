@@ -96,6 +96,7 @@ fix:
 - The chain map hides the connection that closes a loop (`Mapping.cycle_connection_ids/2`, which unions connections in creation order so the newest link in a cycle is left out); only that link's endpoints — the scanned system and its candidate peer — keep the dashed outline and glow, so the existing chain stays exactly as drawn.
 - `Tracking.apply_location_change/5` labels a jump-created connection with the scanned hole code when exactly one wormhole signature in the origin system is eligible to lead into the destination class (`Tracking.wormholes_for_jump/3`, mirroring official Tripwire's automapper); existing hole types are never relabeled and ambiguous matches stay blank.
 - `Mapping.prune_expired_signatures/1` drops connections backed by expired wormhole signatures, hides orphans, and broadcasts `{:map_updated, map_id}` on the map's PubSub topic so open dashboards refresh.
+- The map widget fills the window: `assets/js/gridStack.js` sizes `#map` to `round(innerHeight / cellHeight)` rows on init and refits on window resize, so `gs-h="12"` in `MapLive` is only the pre-JS fallback. `itemSignature/1` reads live engine values where a node is registered so LiveView patches keep the light-touch refresh path instead of re-laying out the grid, and `#grid-stack.grid-stack-loading` reserves `100vh` before the grid initializes.
 
 ## Testing
 

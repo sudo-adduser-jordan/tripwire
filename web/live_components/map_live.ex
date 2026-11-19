@@ -107,7 +107,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
       id="map"
       class="grid-stack-item"
       gs-w="12"
-      gs-h="6"
+      gs-h="12"
       gs-x="0"
       gs-y="12"
       tabindex="0"

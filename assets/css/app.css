@@ -632,7 +632,7 @@
    readable) instead of staying hidden forever. */
 #grid-stack.grid-stack-loading {
   visibility: hidden;
-  min-height: 60vh;
+  min-height: 100vh;
   animation: gs-reveal 0s 3s forwards;
 }
 @keyframes gs-reveal {
