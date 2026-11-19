@@ -432,6 +432,8 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert has_element?(view, "#connection-#{second.id}")
 
     assert view |> element("#node-#{home.id}") |> render() =~ "6 4"
+    assert view |> element("#node-#{b.id}") |> render() =~ "6 4"
+    refute view |> element("#node-#{a.id}") |> render() =~ "6 4"
   end
 
   test "pasting wormhole signatures auto-links systems sharing the scan", %{

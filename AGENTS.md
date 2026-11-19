@@ -92,7 +92,7 @@ fix:
 - Paste sync and stale deletes re-run the tree layout through `DashboardLive.reload_map_from_sync/4`, so the remaining nodes are rebalanced after connections drop and systems hide.
 - `Mapping.delete_signature/2` removes a wormhole signature together with the paired signature on the connected system (same hole code, like official Tripwire's wormhole removal), so deleting missing signatures clears both ends of the hole.
 - `Mapping.ensure_demo_map/1` points the demo map's home at the system aliased `Home` (J150321), so the demo chain prunes detached branches and supports Show all chains like a configured map.
-- The chain map hides the connection that closes a loop (`Mapping.cycle_connection_ids/2`, which unions connections in creation order so the newest link in a cycle is left out); loop nodes keep their dashed outline and glow so cycles stay visible.
+- The chain map hides the connection that closes a loop (`Mapping.cycle_connection_ids/2`, which unions connections in creation order so the newest link in a cycle is left out); only that link's endpoints — the scanned system and its candidate peer — keep the dashed outline and glow, so the existing chain stays exactly as drawn.
 - `Tracking.apply_location_change/5` labels a jump-created connection with the scanned hole code when exactly one wormhole signature in the origin system is eligible to lead into the destination class (`Tracking.wormholes_for_jump/3`, mirroring official Tripwire's automapper); existing hole types are never relabeled and ambiguous matches stay blank.
 - `Mapping.prune_expired_signatures/1` drops connections backed by expired wormhole signatures, hides orphans, and broadcasts `{:map_updated, map_id}` on the map's PubSub topic so open dashboards refresh.
 

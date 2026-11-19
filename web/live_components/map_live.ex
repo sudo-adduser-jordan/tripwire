@@ -91,11 +91,16 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
   def render(assigns) do
     visible = visible_connections(assigns)
+    cycle = Mapping.cycle_connection_ids(visible)
 
     assigns =
       assigns
       |> assign(:visible_connections, visible)
-      |> assign(:drawn_connections, drawn_connections(visible))
+      |> assign(
+        :drawn_connections,
+        Enum.reject(visible, fn {conn, _from, _to} -> Elixir.MapSet.member?(cycle, conn.id) end)
+      )
+      |> assign(:loop_hint_ids, loop_hint_ids(visible, cycle))
 
     ~H"""
     <div id="map" class="grid-stack-item" gs-w="12" gs-h="6" gs-x="0" gs-y="12" tabindex="0">
@@ -329,10 +334,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   height="88"
                   rx="8"
                   stroke={node_stroke(system, @selected_system_id)}
-                  stroke-dasharray={if loop_node?(@visible_connections, system.id), do: "6 4"}
+                  stroke-dasharray={if MapSet.member?(@loop_hint_ids, system.id), do: "6 4"}
                   style={
                     if Map.get(assigns, :show_line_glow, true) and
-                         loop_node?(@visible_connections, system.id),
+                         MapSet.member?(@loop_hint_ids, system.id),
                        do: "filter: drop-shadow(0 0 6px #{node_color(system)})"
                   }
                   class={
@@ -511,10 +516,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   defp node_stroke(system, selected_id) when system.id == selected_id, do: nil
   defp node_stroke(system, _selected_id), do: node_color(system)
 
-  defp loop_node?(connections, system_id) do
-    system_id in Mapping.loop_system_ids(connections)
-  end
-
   defp visible_connections(assigns) do
     connections = Map.get(assigns, :connections, [])
     ids = Elixir.MapSet.new(Map.get(assigns, :systems, []), & &1.id)
@@ -524,10 +525,11 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     end)
   end
 
-  defp drawn_connections(connections) do
-    cycle = Mapping.cycle_connection_ids(connections)
-
-    Enum.reject(connections, fn {conn, _from, _to} -> Elixir.MapSet.member?(cycle, conn.id) end)
+  defp loop_hint_ids(connections, cycle) do
+    connections
+    |> Enum.filter(fn {conn, _from, _to} -> Elixir.MapSet.member?(cycle, conn.id) end)
+    |> Enum.flat_map(fn {_conn, from, to} -> [from.id, to.id] end)
+    |> Elixir.MapSet.new()
   end
 
   defp node_badges(system) do
