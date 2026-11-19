@@ -1582,7 +1582,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> render_click()
 
     assert column_keys(view |> element("#signature-columns") |> render()) ==
-             ~w(status id age type name mass life)
+             ~w(status id age type name life mass)
 
     view
     |> element("#signature-columns")
@@ -1601,7 +1601,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> render_hook("reorder-columns", %{"order" => ~w(name bogus name)})
 
     assert column_keys(view |> element("#signature-columns") |> render()) ==
-             ~w(name status id age type mass life)
+             ~w(name status id age type life mass)
   end
 
   test "delete then undo restores the signature", %{conn: conn, character: character} do
