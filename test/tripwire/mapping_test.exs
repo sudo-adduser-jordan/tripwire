@@ -409,6 +409,62 @@ defmodule Tripwire.MappingTest do
     assert Enum.map(Mapping.list_visible_systems(map.id), & &1.name) == ["J500003"]
   end
 
+  test "tree_layout/5 roots detached chains at level 0 beside the home tree" do
+    systems = Enum.map(1..6, &%Mapping.MapSystem{id: &1})
+
+    connections = [
+      {nil, %Mapping.MapSystem{id: 1}, %Mapping.MapSystem{id: 2}},
+      {nil, %Mapping.MapSystem{id: 3}, %Mapping.MapSystem{id: 4}}
+    ]
+
+    positions = Mapping.tree_layout(systems, connections, "down", 1.0, root_id: 1)
+
+    assert positions[1].y == 60.0
+    assert positions[2].y == 220.0
+    assert positions[3].y == 60.0
+    assert positions[4].y == 220.0
+    assert positions[5].y == 60.0
+    assert positions[6].y == 60.0
+
+    xs = Enum.map([1, 3, 5, 6], &positions[&1].x)
+    assert xs == Enum.uniq(xs)
+    assert positions[3].x > positions[1].x
+  end
+
+  test "list_chain_systems/1 includes hidden systems only when the map shows all", %{mask: mask} do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_105, name: "Show All"})
+    {:ok, map} = Mapping.create_map(%{name: "Show All", mask_id: mask.id})
+
+    {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_521, name: "J500021"})
+    {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_522, name: "J500022"})
+    {:ok, c} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_523, name: "J500023"})
+
+    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "N770"})
+
+    {:ok, sig} =
+      Mapping.create_signature(
+        a,
+        %{
+          sig_id: "AAA-003",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    assert {1, 0, 2} = Mapping.sync_map_after_signature_change(a, [sig])
+    assert Enum.map(Mapping.list_visible_systems(map.id), & &1.name) == ["J500023"]
+    assert Enum.map(Mapping.list_chain_systems(map), & &1.name) == ["J500023"]
+
+    {:ok, map} = Mapping.update_map(map, %{show_all: true})
+
+    assert Enum.map(Mapping.list_chain_systems(map), & &1.name) |> Enum.sort() ==
+             ["J500021", "J500022", "J500023"]
+
+    assert c.id in Enum.map(Mapping.list_chain_systems(map), & &1.id)
+  end
+
   test "upsert_connection/4 unhides systems that regain a connection", %{mask: mask} do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 99_104, name: "Reveal"})
     {:ok, map} = Mapping.create_map(%{name: "Reveal", mask_id: mask.id})

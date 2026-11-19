@@ -930,6 +930,50 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert html =~ "ABC-123"
   end
 
+  test "chain settings show all reveals detached chains at level 0", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, home} = setup_with_system(%{character: character}, "J150321")
+    {:ok, map} = Mapping.update_map(map, %{home_solar_system_id: 1, home_name: "J150321"})
+
+    {:ok, child} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
+    {:ok, detached} = Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323"})
+    {:ok, lone} = Mapping.add_system_to_map(map, %{solar_system_id: 4, name: "J150324"})
+
+    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, child.id, %{hole_type: "ABC"})
+
+    hidden_at = DateTime.utc_now() |> DateTime.truncate(:second)
+    {:ok, _} = Mapping.update_system(detached, %{hidden_at: hidden_at})
+    {:ok, _} = Mapping.update_system(lone, %{hidden_at: hidden_at})
+
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
+
+    refute html =~ "J150323"
+    refute html =~ "J150324"
+
+    view |> element("#chain-edit") |> render_click()
+
+    assert render(view) =~ "Show all chains"
+
+    view
+    |> element("#chain-modal form[phx-submit='save-chain-settings']")
+    |> render_submit(%{"chain" => %{"home" => "J150321", "show_all" => "true"}})
+
+    html = render(view)
+    assert html =~ "J150323"
+    assert html =~ "J150324"
+    assert Mapping.get_map!(map.id).show_all
+
+    assert Mapping.get_system!(home.id).y == 60.0
+    assert Mapping.get_system!(child.id).y == 220.0
+    assert Mapping.get_system!(detached.id).y == 60.0
+    assert Mapping.get_system!(lone.id).y == 60.0
+
+    xs = Enum.map([home, detached, lone], &Mapping.get_system!(&1.id).x)
+    assert xs == Enum.uniq(xs)
+  end
+
   test "map-layout rearranges the tree", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/dashboard")
 

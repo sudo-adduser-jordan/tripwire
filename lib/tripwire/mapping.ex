@@ -144,6 +144,13 @@ defmodule Tripwire.Mapping do
     )
   end
 
+  @doc """
+  Returns the systems the chain map should render for `map`: every system when
+  the map shows detached chains (`show_all`), otherwise only unhidden systems.
+  """
+  def list_chain_systems(%Map{show_all: true} = map), do: list_systems(map.id)
+  def list_chain_systems(%Map{} = map), do: list_visible_systems(map.id)
+
   def get_system!(id), do: Repo.get!(MapSystem, id)
 
   def get_system(id), do: Repo.get(MapSystem, id)
@@ -256,6 +263,8 @@ defmodule Tripwire.Mapping do
   Children are centered beneath their parent (tidy tree) at their
   breadth-first depth from the root, mirroring the Tripwire chain
   tree: each jump lands one level down and siblings share a row.
+  Components that do not reach the root are rooted at level 0 beside
+  the root's tree, including components made of a single system.
   """
   def tree_layout(systems, connections, orientation \\ "down", spacing \\ 1.0, opts \\ []) do
     ids = Enum.map(systems, & &1.id)
@@ -265,7 +274,7 @@ defmodule Tripwire.Mapping do
     else
       adj = undirected_adj(ids, connections)
       roots = tree_roots(ids, connections, opts)
-      {parent, children, depths} = spanning_tree(adj, roots, ids)
+      {parent, children, depths, roots} = spanning_tree(adj, roots, ids)
       _ = parent
       x_index = assign_x_index(roots, children)
 
@@ -400,21 +409,27 @@ defmodule Tripwire.Mapping do
     children = Elixir.Map.new(ids, &{&1, []})
     queue = :queue.from_list(roots)
     visited = Elixir.MapSet.new(roots)
-    {depths, parent, children, visited} = bfs_fill(queue, adj, visited, depths, parent, children)
 
-    Enum.reduce(Enum.sort(ids), {parent, children, depths, visited}, fn
-      id, {par, ch, dep, vis} ->
-        if Elixir.MapSet.member?(vis, id) do
-          {par, ch, dep, vis}
-        else
-          max_depth = dep |> Elixir.Map.values() |> Enum.max(fn -> -1 end)
-          dep = Elixir.Map.put(dep, id, max_depth + 1)
-          par = Elixir.Map.put(par, id, nil)
-          vis = Elixir.MapSet.put(vis, id)
-          bfs_fill(:queue.from_list([id]), adj, vis, dep, par, ch)
-        end
-    end)
-    |> then(fn {par, ch, dep, _vis} -> {par, ch, dep} end)
+    {depths, parent, children, visited} =
+      bfs_fill(queue, adj, visited, depths, parent, children)
+
+    {depths, parent, children, _visited, roots} =
+      Enum.reduce(Enum.sort(ids), {depths, parent, children, visited, roots}, fn
+        id, {dep, par, ch, vis, roots} ->
+          if Elixir.MapSet.member?(vis, id) do
+            {dep, par, ch, vis, roots}
+          else
+            dep = Elixir.Map.put(dep, id, 0)
+            par = Elixir.Map.put(par, id, nil)
+            vis = Elixir.MapSet.put(vis, id)
+
+            {dep, par, ch, vis} = bfs_fill(:queue.from_list([id]), adj, vis, dep, par, ch)
+
+            {dep, par, ch, vis, roots ++ [id]}
+          end
+      end)
+
+    {parent, children, depths, roots}
   end
 
   defp bfs_fill(queue, adj, visited, depths, parent, children) do

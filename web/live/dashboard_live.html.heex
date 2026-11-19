@@ -420,6 +420,16 @@
           />
           <span class="label-text">Include Thera chain</span>
         </label>
+        <label class="label cursor-pointer justify-start gap-2">
+          <input
+            type="checkbox"
+            name="chain[show_all]"
+            value="true"
+            checked={@chain_form["show_all"]}
+            class="checkbox checkbox-sm"
+          />
+          <span class="label-text">Show all chains</span>
+        </label>
         <div class="modal-action">
           <button type="button" class="btn btn-sm" phx-click="close-chain-modal">
             Cancel

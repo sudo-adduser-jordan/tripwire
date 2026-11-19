@@ -10,6 +10,7 @@ defmodule Tripwire.Mapping.Map do
     field :home_solar_system_id, :integer
     field :home_name, :string
     field :include_thera, :boolean, default: false
+    field :show_all, :boolean, default: false
 
     belongs_to :mask, Mask
     has_many :systems, MapSystem, on_delete: :delete_all
@@ -19,7 +20,14 @@ defmodule Tripwire.Mapping.Map do
 
   def changeset(map, attrs) do
     map
-    |> cast(attrs, [:name, :mask_id, :home_solar_system_id, :home_name, :include_thera])
+    |> cast(attrs, [
+      :name,
+      :mask_id,
+      :home_solar_system_id,
+      :home_name,
+      :include_thera,
+      :show_all
+    ])
     |> validate_required([:name, :mask_id])
   end
 end

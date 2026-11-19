@@ -87,7 +87,9 @@ fix:
 
 - Pasting a scan (`global-paste`) upserts signatures, flags missing ones in the stale toast, and runs `Mapping.sync_map_after_signature_change/2`.
 - `sync_map_after_signature_change/2` drops connections whose `hole_type` matches a deleted wormhole signature, auto-links newly scanned holes to other map systems (same `sig_id` + hole code first, then a hole code present on exactly one other system; a connection dropped in the same sync is never re-created), and hides systems left with no connection.
-- Orphaned nodes are hidden with `map_systems.hidden_at`, not deleted; `Mapping.upsert_connection/4` unhides endpoints, so any re-created connection brings nodes back. Map views render `Mapping.list_visible_systems/1`.
+- Orphaned nodes are hidden with `map_systems.hidden_at`, not deleted; `Mapping.upsert_connection/4` unhides endpoints, so any re-created connection brings nodes back. Map views render `Mapping.list_chain_systems/1`, which follows the map's `show_all` flag: `false` renders unhidden systems (Edit Chain → "Show all chains" off), `true` renders every system, including detached chains and single-node chains.
+- `Mapping.tree_layout/5` roots every component that does not reach the home system at level 0 beside the home tree (including isolated nodes), so re-laying out after a paste or a chain edit keeps detached chains on the home row instead of stacking them under the chain.
+- Paste sync and stale deletes re-run the tree layout through `DashboardLive.reload_map_from_sync/4`, so the remaining nodes are rebalanced after connections drop and systems hide.
 - `Tracking.apply_location_change/5` labels a jump-created connection with the scanned hole code when exactly one wormhole signature in the origin system is eligible to lead into the destination class (`Tracking.wormholes_for_jump/3`, mirroring official Tripwire's automapper); existing hole types are never relabeled and ambiguous matches stay blank.
 - `Mapping.prune_expired_signatures/1` drops connections backed by expired wormhole signatures, hides orphans, and broadcasts `{:map_updated, map_id}` on the map's PubSub topic so open dashboards refresh.
 

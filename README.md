@@ -33,6 +33,8 @@ In dev, `MIX_ENV=dev` also starts the Erlang `:os_mon` application, so the LiveD
 
 Tripwire needs no configuration to try it. When `EVESSO_CLIENT_ID` or `EVESSO_SECRET_KEY` is missing, the landing page still opens at `/` with the EVE SSO button disabled; a **Demo** button enters the demo dashboard (`/dashboard`) backed by its own editable `demo` mask and map. Set both variables to enable EVE SSO login and personal maps.
 
+The chain map hides systems that drop out of the chain. **Edit Chain → Show all chains** persists a per-map flag that also renders detached chains and single-node chains, each rooted at level 0 beside the home chain; the setting survives reloads and lives in `maps.show_all`.
+
 ## Deploy
 
 Deploys run the server in `MIX_ENV=prod` and are driven by the `start` and `stop` tasks. `task dev` runs the development server instead.

@@ -83,7 +83,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:masks, [mask])
     |> assign(:map, map)
     |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
-    |> assign(:systems, visible_systems(systems))
+    |> assign(:systems, Mapping.list_chain_systems(map))
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
     |> refresh_occupants()
     |> apply_tree_layout("top")
@@ -166,8 +166,7 @@ defmodule TripwireWeb.DashboardLive do
       when not is_nil(map) and map_id == map.id do
     {:noreply,
      socket
-     |> assign(:systems, Mapping.list_visible_systems(map_id))
-     |> assign(:connections, Mapping.list_connections_with_endpoints(map_id))}
+     |> apply_tree_layout(socket.assigns.map_layout || "top")}
   end
 
   def handle_info({:select_system, system_id}, socket) do
@@ -229,7 +228,7 @@ defmodule TripwireWeb.DashboardLive do
       when not is_nil(map) and map_id == map.id do
     {:noreply,
      socket
-     |> assign(:systems, Mapping.list_visible_systems(map_id))
+     |> assign(:systems, Mapping.list_chain_systems(map))
      |> assign(:connections, Mapping.list_connections_with_endpoints(map_id))}
   end
 
@@ -381,7 +380,8 @@ defmodule TripwireWeb.DashboardLive do
        |> assign(:chain_errors, [])
        |> assign(:chain_form, %{
          "home" => home || "",
-         "include_thera" => !!(map && map.include_thera)
+         "include_thera" => !!(map && map.include_thera),
+         "show_all" => !!(map && map.show_all)
        })}
     end
   end
@@ -695,7 +695,7 @@ defmodule TripwireWeb.DashboardLive do
               [m | _] -> m
             end
 
-          next_systems = Mapping.list_visible_systems(next_map.id)
+          next_systems = Mapping.list_chain_systems(next_map)
 
           socket
           |> assign(:mask, next)
@@ -970,7 +970,7 @@ defmodule TripwireWeb.DashboardLive do
           {:ok, _} ->
             {:noreply,
              socket
-             |> assign(:systems, Mapping.list_visible_systems(socket.assigns.map.id))
+             |> assign(:systems, Mapping.list_chain_systems(socket.assigns.map))
              |> assign(:sys_modal_open, false)
              |> assign(:sys_edit_id, nil)
              |> assign(:sys_errors, [])
@@ -990,7 +990,7 @@ defmodule TripwireWeb.DashboardLive do
       system ->
         {:ok, _} = Mapping.delete_system(system)
 
-        remaining = Mapping.list_visible_systems(socket.assigns.map.id)
+        remaining = Mapping.list_chain_systems(socket.assigns.map)
 
         socket =
           socket
@@ -1112,7 +1112,7 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:mask, mask)
          |> assign(:map, map)
          |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
-         |> assign(:systems, Mapping.list_visible_systems(map.id))
+         |> assign(:systems, Mapping.list_chain_systems(map))
          |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
          |> assign(:selected_system_id, nil)
          |> assign(:selected_system_name, nil)
@@ -1121,7 +1121,7 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:comments, [])
          |> assign(:flares, [])
          |> assign(:system_stat, nil)
-         |> patch_to_preferred(Mapping.list_visible_systems(map.id))}
+         |> patch_to_preferred(Mapping.list_chain_systems(map))}
     end
   end
 
@@ -1181,7 +1181,7 @@ defmodule TripwireWeb.DashboardLive do
           {:noreply,
            socket
            |> assign(:map, map)
-           |> assign(:systems, Mapping.list_visible_systems(map.id))
+           |> assign(:systems, Mapping.list_chain_systems(map))
            |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
            |> assign(:selected_system_id, nil)
            |> assign(:selected_system_name, nil)
@@ -1190,7 +1190,7 @@ defmodule TripwireWeb.DashboardLive do
            |> assign(:comments, [])
            |> assign(:flares, [])
            |> assign(:system_stat, nil)
-           |> patch_to_preferred(Mapping.list_visible_systems(map.id))}
+           |> patch_to_preferred(Mapping.list_chain_systems(map))}
 
         _ ->
           {:noreply, put_flash(socket, :error, "Map not found")}
@@ -1218,7 +1218,7 @@ defmodule TripwireWeb.DashboardLive do
              ) do
         {:noreply,
          socket
-         |> assign(:systems, Mapping.list_visible_systems(socket.assigns.map.id))
+         |> assign(:systems, Mapping.list_chain_systems(socket.assigns.map))
          |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))
          |> select_system(system.id)
          |> push_patch(to: "/" <> system.name)
@@ -1418,19 +1418,20 @@ defmodule TripwireWeb.DashboardLive do
 
   defp apply_tree_layout_with_home(%{assigns: assigns} = socket, layout, map) do
     spacing = spacing_factor(assigns[:node_spacing])
-    home_id = home_root_id(assigns[:systems] || [], map)
+    systems = Mapping.list_chain_systems(map)
+    connections = Mapping.list_connections_with_endpoints(map.id)
+    home_id = home_root_id(systems, map)
 
-    positions =
-      layout_positions(assigns.systems, assigns.connections, layout, spacing, home_id)
+    positions = layout_positions(systems, connections, layout, spacing, home_id)
 
-    Enum.each(assigns.systems, fn s ->
+    Enum.each(systems, fn s ->
       pos = positions[s.id]
       {:ok, _} = Mapping.update_system_position(Mapping.get_system!(s.id), pos.x, pos.y)
     end)
 
     socket
-    |> assign(:systems, Mapping.list_visible_systems(map.id))
-    |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
+    |> assign(:systems, Mapping.list_chain_systems(map))
+    |> assign(:connections, connections)
   end
 
   defp home_root_id(systems, %{home_solar_system_id: solar}) when is_integer(solar) do
@@ -1495,7 +1496,7 @@ defmodule TripwireWeb.DashboardLive do
 
     masks = Masks.list_masks_for_character(character.id)
     masks = if Enum.any?(masks, &(&1.id == mask.id)), do: masks, else: [mask | masks]
-    systems = ensure_jita_system(map, Mapping.list_systems(map.id))
+    _ = ensure_jita_system(map, Mapping.list_systems(map.id))
 
     socket
     |> assign(:current_user, %{id: character.eve_id, name: character.name})
@@ -1505,7 +1506,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:masks, masks)
     |> assign(:map, map)
     |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
-    |> assign(:systems, visible_systems(systems))
+    |> assign(:systems, Mapping.list_chain_systems(map))
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
     |> apply_tree_layout("top")
     |> assign(:selected_system_id, nil)
@@ -1626,7 +1627,7 @@ defmodule TripwireWeb.DashboardLive do
       system ->
         case Mapping.update_system(system, %{favorite: !system.favorite}) do
           {:ok, _} ->
-            assign(socket, :systems, Mapping.list_visible_systems(socket.assigns.map.id))
+            assign(socket, :systems, Mapping.list_chain_systems(socket.assigns.map))
 
           {:error, changeset} ->
             flash_changeset_errors(socket, changeset)
@@ -1692,7 +1693,7 @@ defmodule TripwireWeb.DashboardLive do
 
       socket =
         socket
-        |> assign(:systems, Mapping.list_visible_systems(map.id))
+        |> assign(:systems, Mapping.list_chain_systems(map))
         |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
         |> apply_tree_layout(socket.assigns.map_layout || "top")
 
@@ -1763,13 +1764,15 @@ defmodule TripwireWeb.DashboardLive do
     map = socket.assigns.map
     home_input = params["home"] |> to_string() |> String.trim()
     include_thera = params["include_thera"] in ["true", "on", "1"]
+    show_all = params["show_all"] in ["true", "on", "1"]
 
     with {:ok, home_solar, home_name} <- resolve_home_input(socket, home_input),
          {:ok, updated} <-
            Mapping.update_map(map, %{
              home_solar_system_id: home_solar,
              home_name: home_name,
-             include_thera: include_thera
+             include_thera: include_thera,
+             show_all: show_all
            }) do
       socket = assign(socket, :map, updated)
 
@@ -1788,8 +1791,6 @@ defmodule TripwireWeb.DashboardLive do
 
       socket =
         socket
-        |> assign(:systems, Mapping.list_visible_systems(updated.id))
-        |> assign(:connections, Mapping.list_connections_with_endpoints(updated.id))
         |> apply_tree_layout_with_home(socket.assigns.map_layout || "top", updated)
         |> assign(:chain_modal_open, false)
         |> assign(:chain_errors, [])
@@ -1994,11 +1995,11 @@ defmodule TripwireWeb.DashboardLive do
     if dropped + linked + hidden == 0 do
       socket
     else
-      map_id = socket.assigns.map.id
+      socket = apply_tree_layout(socket, socket.assigns.map_layout || "top")
+      {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
 
       socket
-      |> assign(:systems, Mapping.list_visible_systems(map_id))
-      |> assign(:connections, Mapping.list_connections_with_endpoints(map_id))
+      |> push_event("reset-pan", %{x: x, y: y})
       |> sync_flash(dropped, linked, hidden)
     end
   end
@@ -2030,8 +2031,6 @@ defmodule TripwireWeb.DashboardLive do
   defp preferred_system(systems) do
     Enum.find(systems, &(String.downcase(&1.name) == "jita")) || List.first(systems)
   end
-
-  defp visible_systems(systems), do: Enum.filter(systems, &is_nil(&1.hidden_at))
 
   defp ensure_jita_system(_map, systems) when systems != [] do
     systems
@@ -2138,7 +2137,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:chart_data, %{labels: [], jumps: [], ship_kills: [], pod_kills: [], npc_kills: []})
     |> assign(:map_locked, false)
     |> assign(:chain_modal_open, false)
-    |> assign(:chain_form, %{"home" => "", "include_thera" => false})
+    |> assign(:chain_form, %{"home" => "", "include_thera" => false, "show_all" => false})
     |> assign(:chain_errors, [])
   end
 
