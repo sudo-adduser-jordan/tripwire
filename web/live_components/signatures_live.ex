@@ -4,6 +4,17 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   alias Tripwire.Mapping
   alias Tripwire.Signatures, as: SigParser
 
+  @columns [
+    %{key: "status", label: ""},
+    %{key: "id", label: "ID"},
+    %{key: "type", label: "Type"},
+    %{key: "name", label: "Name"},
+    %{key: "mass", label: "Mass"},
+    %{key: "age", label: "Age"},
+    %{key: "life", label: "Life"}
+  ]
+  @column_keys Enum.map(@columns, & &1.key)
+
   def update(assigns, socket) do
     signatures =
       case {Map.get(assigns, :signatures), Map.get(assigns, :selected_system_id)} do
@@ -11,6 +22,8 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
         {_, nil} -> []
         {_, system_id} -> Mapping.list_signatures(system_id)
       end
+
+    previous_system_id = Map.get(socket.assigns, :selected_system_id)
 
     {:ok,
      socket
@@ -20,9 +33,17 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
      |> assign(:wh_mass, wh_mass(Map.get(assigns, :connections, [])))
      |> assign(:tracking?, tracking?(assigns))
      |> assign(:tracking_available?, tracking_available?(assigns))
+     |> assign_new(:sort, fn -> nil end)
+     |> assign_new(:column_order, fn -> @column_keys end)
+     |> reset_sort_on_system_change(previous_system_id, Map.get(assigns, :selected_system_id))
      |> assign_new(:undo, fn -> [] end)
      |> assign_new(:redo, fn -> [] end)}
   end
+
+  defp reset_sort_on_system_change(socket, system_id, system_id), do: socket
+
+  defp reset_sort_on_system_change(socket, _previous, _current),
+    do: assign(socket, :sort, nil)
 
   # Maps {system_id, hole code} to the system the connection leads to, so a
   # scanned wormhole signature can be labelled with its destination like in
@@ -180,6 +201,20 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
     end
   end
 
+  def handle_event("sort", %{"column" => column}, socket) when column in @column_keys do
+    sort =
+      case socket.assigns.sort do
+        %{column: ^column, dir: :asc} -> %{column: column, dir: :desc}
+        _ -> %{column: column, dir: :asc}
+      end
+
+    {:noreply, assign(socket, :sort, sort)}
+  end
+
+  def handle_event("reorder-columns", %{"order" => order}, socket) when is_list(order) do
+    {:noreply, assign(socket, :column_order, normalize_order(order))}
+  end
+
   def render(assigns) do
     ~H"""
     <div
@@ -263,71 +298,66 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
         </div>
         <div class="min-h-0 w-full max-w-full flex-1 overflow-auto">
           <table class="widget-table table table-xs w-full">
-            <thead class="sticky top-0 z-10 bg-base-100">
+            <thead
+              id="signature-columns"
+              phx-hook="ColumnReorder"
+              phx-target={@myself}
+              class="sticky top-0 z-10 bg-base-100"
+            >
               <tr>
-                <th class="p-1"></th>
-                <th class="p-1 text-center text-xs">ID</th>
-                <th class="p-1 text-center text-xs">Type</th>
-                <th class="p-1 text-center text-xs">Name</th>
-                <th class="p-1 text-center text-xs">Mass</th>
-                <th class="p-1 text-center text-xs">Age</th>
-                <th class="p-1 text-center text-xs">Life</th>
-                <th class="p-1 text-center text-xs"><span class="sr-only">Actions</span></th>
+                <th
+                  :for={col <- ordered_columns(@column_order)}
+                  :key={col.key}
+                  data-column={col.key}
+                  draggable="true"
+                  aria-sort={sort_aria(@sort, col.key)}
+                  class="cursor-grab p-1 text-center text-xs active:cursor-grabbing"
+                >
+                  <button
+                    type="button"
+                    class="group inline-flex w-full cursor-grab items-center justify-center gap-0.5 rounded px-1 py-0.5 hover:bg-base-200 active:cursor-grabbing"
+                    title={sort_title(col)}
+                    phx-click="sort"
+                    phx-value-column={col.key}
+                    phx-target={@myself}
+                  >
+                    <span :if={col.label != ""}>{col.label}</span>
+                    <span :if={col.label == ""} class="sr-only">Scan status</span>
+                    <.icon
+                      :if={sort_column?(@sort, col.key)}
+                      name={sort_icon(@sort)}
+                      class="size-3 opacity-80"
+                    />
+                    <.icon
+                      :if={!sort_column?(@sort, col.key)}
+                      name="hero-chevron-up-down"
+                      class="size-3 opacity-0 transition-opacity group-hover:opacity-40"
+                    />
+                  </button>
+                </th>
+                <th class="p-1 text-center text-xs">
+                  <span class="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody class="text-center">
-              <tr :for={sig <- @signatures} id={"signature-#{sig.id}"}>
-                <td class="text-center">
-                  <.icon name={scan_icon(sig)} class={["size-4", scan_icon_class(sig)]} />
-                </td>
-                <td class="text-center">
-                  <button
-                    class="font-mono link link-hover"
-                    title="Edit signature"
-                    phx-click="open-edit"
-                    phx-value-id={sig.id}
-                  >
-                    {sig.sig_id}
-                  </button>
-                </td>
-                <td class="text-center">
-                  <span class={["badge badge-xs", site_badge(sig)]}>{site_label(sig)}</span>
-                </td>
-                <td class="cell-truncate text-center">
-                  <span
-                    :if={wormhole_display(sig)}
-                    class="inline-flex items-center justify-center gap-1.5"
-                    title={sig.type_name}
-                  >
-                    <span class="inline-block size-2 shrink-0 rounded-full bg-info"></span>
-                    {wormhole_label(sig, @wh_links)}
-                  </span>
-                  <a
-                    :if={is_nil(wormhole_display(sig)) and sig_link(sig)}
-                    href={sig_link(sig)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="link link-hover text-yellow-400"
-                  >
-                    {sig.type_name}
-                  </a>
-                  <span :if={is_nil(wormhole_display(sig)) and is_nil(sig_link(sig))}>
-                    {sig.type_name || "-"}
-                  </span>
-                </td>
-                <td class="text-center">
-                  <span class={["text-xs", mass_text_class(mass_for(sig, @wh_mass))]}>
-                    {mass_label(mass_for(sig, @wh_mass))}
-                  </span>
-                </td>
-                <td class="text-center tabular-nums text-xs opacity-60">{format_age(sig)}</td>
-                <td class="text-center">
-                  <span
-                    class={["text-xs", life_text_class(life_status(sig))]}
-                    title={"Expires in " <> format_life_left(sig)}
-                  >
-                    {life_label(life_status(sig))}
-                  </span>
+              <tr
+                :for={sig <- sort_signatures(@signatures, @sort, @wh_links, @wh_mass)}
+                id={"signature-#{sig.id}"}
+                class="transition-colors hover:bg-base-200"
+              >
+                <td
+                  :for={col <- ordered_columns(@column_order)}
+                  :key={col.key}
+                  data-column={col.key}
+                  class={["text-center", column_class(col.key)]}
+                >
+                  <.signature_cell
+                    column={col.key}
+                    sig={sig}
+                    wh_links={@wh_links}
+                    wh_mass={@wh_mass}
+                  />
                 </td>
                 <td class="text-center">
                   <button
@@ -351,7 +381,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                 </td>
               </tr>
               <tr :if={@signatures == []}>
-                <td colspan="8" class="py-4 text-center text-sm opacity-50">
+                <td colspan={length(@column_order) + 1} class="py-4 text-center text-sm opacity-50">
                   No signatures yet. Click Add or paste scan results anywhere.
                 </td>
               </tr>
@@ -362,6 +392,148 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
     </div>
     """
   end
+
+  attr :column, :string, required: true
+  attr :sig, :any, required: true
+  attr :wh_links, :map, required: true
+  attr :wh_mass, :map, required: true
+
+  defp signature_cell(%{column: "status"} = assigns) do
+    ~H"""
+    <.icon name={scan_icon(@sig)} class={["size-4", scan_icon_class(@sig)]} />
+    """
+  end
+
+  defp signature_cell(%{column: "id"} = assigns) do
+    ~H"""
+    <button
+      class="font-mono link link-hover"
+      title="Edit signature"
+      phx-click="open-edit"
+      phx-value-id={@sig.id}
+    >
+      {@sig.sig_id}
+    </button>
+    """
+  end
+
+  defp signature_cell(%{column: "type"} = assigns) do
+    ~H"""
+    <span class={["badge badge-xs", site_badge(@sig)]}>{site_label(@sig)}</span>
+    """
+  end
+
+  defp signature_cell(%{column: "name"} = assigns) do
+    ~H"""
+    <span
+      :if={wormhole_display(@sig)}
+      class="inline-flex items-center justify-center gap-1.5"
+      title={@sig.type_name}
+    >
+      <span class="inline-block size-2 shrink-0 rounded-full bg-info"></span>
+      {wormhole_label(@sig, @wh_links)}
+    </span>
+    <a
+      :if={is_nil(wormhole_display(@sig)) and sig_link(@sig)}
+      href={sig_link(@sig)}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="link link-hover text-yellow-400"
+    >
+      {@sig.type_name}
+    </a>
+    <span :if={is_nil(wormhole_display(@sig)) and is_nil(sig_link(@sig))}>
+      {@sig.type_name || "-"}
+    </span>
+    """
+  end
+
+  defp signature_cell(%{column: "mass"} = assigns) do
+    ~H"""
+    <span class={["text-xs", mass_text_class(mass_for(@sig, @wh_mass))]}>
+      {mass_label(mass_for(@sig, @wh_mass))}
+    </span>
+    """
+  end
+
+  defp signature_cell(%{column: "age"} = assigns) do
+    ~H"""
+    <span class="tabular-nums text-xs opacity-60">{format_age(@sig)}</span>
+    """
+  end
+
+  defp signature_cell(%{column: "life"} = assigns) do
+    ~H"""
+    <span
+      class={["text-xs", life_text_class(life_status(@sig))]}
+      title={"Expires in " <> format_life_left(@sig)}
+    >
+      {life_label(life_status(@sig))}
+    </span>
+    """
+  end
+
+  defp ordered_columns(order) do
+    by_key = Map.new(@columns, &{&1.key, &1})
+    ordered = Enum.flat_map(order, fn key -> List.wrap(Map.get(by_key, key)) end)
+    ordered ++ Enum.reject(@columns, &(&1.key in order))
+  end
+
+  defp normalize_order(order) do
+    known =
+      order
+      |> Enum.map(&to_string/1)
+      |> Enum.filter(&(&1 in @column_keys))
+      |> Enum.uniq()
+
+    known ++ Enum.reject(@column_keys, &(&1 in known))
+  end
+
+  defp column_class("name"), do: "cell-truncate"
+  defp column_class(_), do: nil
+
+  defp sort_title(%{label: ""}), do: "Click to sort by scan status · drag to reorder"
+  defp sort_title(%{label: label}), do: "Click to sort by #{label} · drag to reorder"
+
+  defp sort_column?(%{column: column}, column), do: true
+  defp sort_column?(_sort, _column), do: false
+
+  defp sort_icon(%{dir: :desc}), do: "hero-arrow-down"
+  defp sort_icon(_sort), do: "hero-arrow-up"
+
+  defp sort_aria(%{column: column, dir: :asc}, column), do: "ascending"
+  defp sort_aria(%{column: column, dir: :desc}, column), do: "descending"
+  defp sort_aria(_sort, _column), do: "none"
+
+  defp sort_signatures(signatures, nil, _wh_links, _wh_mass), do: signatures
+
+  defp sort_signatures(signatures, %{column: column, dir: dir}, wh_links, wh_mass) do
+    Enum.sort_by(signatures, &sort_key(&1, column, wh_links, wh_mass), dir)
+  end
+
+  defp sort_key(sig, "status", _wh_links, _wh_mass), do: {scan_rank(sig), sig.sig_id}
+  defp sort_key(sig, "id", _wh_links, _wh_mass), do: String.downcase(sig.sig_id || "")
+  defp sort_key(sig, "type", _wh_links, _wh_mass), do: String.downcase(site_label(sig))
+
+  defp sort_key(sig, "name", wh_links, _wh_mass) do
+    case wormhole_label(sig, wh_links) || sig.type_name do
+      nil -> {1, ""}
+      name -> {0, String.downcase(name)}
+    end
+  end
+
+  defp sort_key(sig, "mass", _wh_links, wh_mass), do: mass_rank(mass_for(sig, wh_mass))
+  defp sort_key(sig, "age", _wh_links, _wh_mass), do: age_seconds(sig)
+  defp sort_key(sig, "life", _wh_links, _wh_mass), do: life_seconds(sig)
+
+  defp scan_rank(%{site_type: type}) when type in ~w(combat data relic ore gas wormhole), do: 0
+  defp scan_rank(_sig), do: 1
+
+  defp mass_rank(nil), do: 3
+  defp mass_rank("stable"), do: 0
+  defp mass_rank("destab"), do: 1
+  defp mass_rank("critical"), do: 2
+  defp mass_rank(_mass), do: 3
 
   defp selected_system(%{assigns: %{selected_system_id: nil}}), do: nil
   defp selected_system(%{assigns: %{selected_system_id: id}}), do: Mapping.get_system(id)
@@ -435,22 +607,28 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
 
   defp scan_icon_class(_), do: "text-error"
 
-  defp format_life_left(%{inserted_at: inserted_at, life_length: life_length}) do
-    seconds =
-      SigParser.life_left(
-        DateTime.from_naive!(inserted_at, "Etc/UTC"),
-        life_length || SigParser.default_life_length()
-      )
+  defp life_seconds(%{inserted_at: inserted_at, life_length: life_length}) do
+    inserted_at
+    |> DateTime.from_naive!("Etc/UTC")
+    |> SigParser.life_left(life_length || SigParser.default_life_length())
+  end
+
+  defp age_seconds(%{inserted_at: inserted_at}) do
+    inserted_at
+    |> DateTime.from_naive!("Etc/UTC")
+    |> SigParser.age_seconds()
+  end
+
+  defp format_life_left(sig) do
+    seconds = life_seconds(sig)
 
     hours = div(seconds, 3600)
     minutes = rem(seconds, 3600) |> div(60)
     "#{hours}h #{String.pad_leading(Integer.to_string(minutes), 2, "0")}m"
   end
 
-  defp life_status(%{inserted_at: inserted_at, life_length: life_length}) do
-    DateTime.from_naive!(inserted_at, "Etc/UTC")
-    |> SigParser.life_left(life_length || SigParser.default_life_length())
-    |> SigParser.life_status()
+  defp life_status(sig) do
+    sig |> life_seconds() |> SigParser.life_status()
   end
 
   defp life_label(:stable), do: "Stable"
@@ -463,10 +641,8 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   defp life_text_class(:critical), do: "text-error"
   defp life_text_class(:expired), do: "text-error line-through"
 
-  defp format_age(%{inserted_at: inserted_at}) do
-    DateTime.from_naive!(inserted_at, "Etc/UTC")
-    |> SigParser.age_seconds()
-    |> format_duration()
+  defp format_age(sig) do
+    sig |> age_seconds() |> format_duration()
   end
 
   defp format_duration(seconds) when seconds < 60, do: "<1m"

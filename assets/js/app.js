@@ -8,6 +8,7 @@ import AutoDismiss from "./autoDismiss"
 import LockToggle from "./lockToggle"
 import GridWidget from "./gridWidget"
 import ScrollIntoView from "./scrollIntoView"
+import ColumnReorder from "./columnReorder"
 import CopyText from "./copyText"
 import GlobalPaste from "./globalPaste"
 import SearchSuggest from "./searchSuggest"
@@ -58,6 +59,7 @@ const hooks = {
     GridStack: GridStack,
     GridWidget: GridWidget,
     ScrollIntoView: ScrollIntoView,
+    ColumnReorder: ColumnReorder,
     CopyText: CopyText,
     GlobalPaste: GlobalPaste,
     SearchSuggest: SearchSuggest,

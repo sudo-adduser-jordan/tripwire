@@ -757,6 +757,18 @@
     text-overflow: ellipsis;
     max-width: 12rem;
   }
+
+  .column-dragging {
+    opacity: 0.4;
+  }
+
+  .column-drop-before {
+    box-shadow: inset 2px 0 0 var(--color-primary);
+  }
+
+  .column-drop-after {
+    box-shadow: inset -2px 0 0 var(--color-primary);
+  }
 }
 
 /* ---- Mobile ---- */

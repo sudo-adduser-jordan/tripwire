@@ -223,6 +223,17 @@ defmodule TripwireWeb.DashboardLiveTest do
     {mask, map, system}
   end
 
+  defp column_keys(html) do
+    ~r/data-column="([a-z]+)"/
+    |> Regex.scan(html, capture: :all_but_first)
+    |> List.flatten()
+  end
+
+  defp at(html, text) do
+    {position, _length} = :binary.match(html, text)
+    position
+  end
+
   test "unknown placeholder nodes render empty fields and stay out of the system list", %{
     conn: conn,
     character: character
@@ -1456,6 +1467,104 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert table =~ "EOL"
     assert table =~ "Critical"
     assert table =~ ~r/2h 0[0-5]m/
+  end
+
+  test "clicking a signature column header sorts and toggles direction", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J000000")
+
+    {:ok, _} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "AAA-001", type_name: "Zeta Site"},
+        character
+      )
+
+    {:ok, _} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "BBB-002", type_name: "Alpha Site"},
+        character
+      )
+
+    {:ok, other} =
+      Mapping.add_system_to_map(Mapping.get_map!(system.map_id), %{
+        solar_system_id: 2,
+        name: "J000001"
+      })
+
+    {:ok, _, _} = Mapping.upsert_connection(system.map_id, system.id, other.id, %{})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J000000']")
+    |> render_click()
+
+    view
+    |> element("#signatures th button[phx-value-column='name']")
+    |> render_click()
+
+    table = view |> element("#signatures table") |> render()
+    assert at(table, "BBB-002") < at(table, "AAA-001")
+
+    assert view |> element("#signatures th[data-column='name']") |> render() =~
+             ~s(aria-sort="ascending")
+
+    view
+    |> element("#signatures th button[phx-value-column='name']")
+    |> render_click()
+
+    table = view |> element("#signatures table") |> render()
+    assert at(table, "AAA-001") < at(table, "BBB-002")
+
+    assert view |> element("#signatures th[data-column='name']") |> render() =~
+             ~s(aria-sort="descending")
+
+    view
+    |> element("#system-container button[title='Select system J000001']")
+    |> render_click()
+
+    refute view |> element("#signature-columns") |> render() =~ ~s(aria-sort="ascending")
+    refute view |> element("#signature-columns") |> render() =~ ~s(aria-sort="descending")
+  end
+
+  test "signature column headers and body cells can be reordered", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J000000")
+    {:ok, _} = Mapping.create_signature(system, %{sig_id: "AAA-001"}, character)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J000000']")
+    |> render_click()
+
+    assert column_keys(view |> element("#signature-columns") |> render()) ==
+             ~w(status id type name mass age life)
+
+    view
+    |> element("#signature-columns")
+    |> render_hook("reorder-columns", %{"order" => ~w(name id type mass age life status)})
+
+    header_html = view |> element("#signature-columns") |> render()
+    assert column_keys(header_html) == ~w(name id type mass age life status)
+
+    table = view |> element("#signatures table") |> render()
+
+    assert column_keys(table) ==
+             ~w(name id type mass age life status name id type mass age life status)
+
+    view
+    |> element("#signature-columns")
+    |> render_hook("reorder-columns", %{"order" => ~w(name bogus name)})
+
+    assert column_keys(view |> element("#signature-columns") |> render()) ==
+             ~w(name status id type mass age life)
   end
 
   test "delete then undo restores the signature", %{conn: conn, character: character} do
