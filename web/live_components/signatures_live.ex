@@ -179,15 +179,6 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
               <span class="ml-auto text-xs tabular-nums opacity-60">
                 {length(@signatures)} signatures
               </span>
-              <span
-                :if={Map.get(assigns, :selected_system_name)}
-                class="badge badge-primary badge-sm"
-              >
-                {Map.get(assigns, :selected_system_name)}
-              </span>
-              <span :if={!Map.get(assigns, :selected_system_name)} class="text-xs opacity-60">
-                {system_label(@selected_system_id)}
-              </span>
               <button
                 class={[
                   "btn btn-ghost btn-xs",
@@ -205,8 +196,25 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
                 phx-click="toggle-tracker"
                 phx-target={@myself}
               >
-                <.icon name={if(@tracking?, do: "hero-eye", else: "hero-eye-slash")} class="size-4" />
+                <span class={[
+                  "flex size-4 items-center justify-center rounded-sm border text-[10px] font-bold leading-none",
+                  if(@tracking?,
+                    do: "border-primary bg-primary text-primary-content",
+                    else: "border-current"
+                  )
+                ]}>
+                  A
+                </span>
               </button>
+              <span
+                :if={Map.get(assigns, :selected_system_name)}
+                class="badge badge-primary badge-sm"
+              >
+                {Map.get(assigns, :selected_system_name)}
+              </span>
+              <span :if={!Map.get(assigns, :selected_system_name)} class="text-xs opacity-60">
+                {system_label(@selected_system_id)}
+              </span>
             </li>
           </ul>
         </div>

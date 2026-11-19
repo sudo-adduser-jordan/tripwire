@@ -1251,6 +1251,31 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert Tripwire.Tracking.tracking?(character) == false
   end
 
+  test "auto-tracker button sits between the signature count and system badge", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    html = render(view)
+    assert html =~ ~r|signatures.*toggle-tracker.*J150321|s
+
+    toggle =
+      view
+      |> element("#signatures button[phx-click='toggle-tracker']")
+      |> render()
+
+    assert toggle =~ ~r|>\s*A\s*<|
+    assert toggle =~ "border-current"
+    refute toggle =~ "bg-primary"
+  end
+
   test "auto-tracker toggle is enabled for a character with SSO credentials", %{
     conn: conn,
     character: character
