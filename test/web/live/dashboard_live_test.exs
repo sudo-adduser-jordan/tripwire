@@ -345,8 +345,13 @@ defmodule TripwireWeb.DashboardLiveTest do
     {_mask, map, home} = setup_with_system(%{character: character}, "J150321")
     {:ok, map} = Mapping.update_map(map, %{home_solar_system_id: 1, home_name: "J150321"})
     {:ok, branch} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
+    {:ok, leaf} = Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323"})
 
-    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, branch.id, %{hole_type: "N770"})
+    {:ok, home_link, _} =
+      Mapping.upsert_connection(map.id, home.id, branch.id, %{hole_type: "N770"})
+
+    {:ok, branch_link, _} =
+      Mapping.upsert_connection(map.id, branch.id, leaf.id, %{hole_type: "B274"})
 
     {:ok, _} =
       Mapping.create_signature(
@@ -388,6 +393,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     view |> element("#stale-toast button[phx-click='delete-stale']") |> render_click()
 
     assert Mapping.connection_between(map.id, home.id, branch.id) == nil
+    assert Mapping.connection_between(map.id, branch.id, leaf.id) != nil
     refute is_nil(Mapping.get_system!(branch.id).hidden_at)
     assert is_nil(Mapping.get_system!(home.id).hidden_at)
     assert Mapping.list_signatures(home.id) |> Enum.map(& &1.sig_id) == ["NEW-002"]
@@ -396,6 +402,10 @@ defmodule TripwireWeb.DashboardLiveTest do
     html = render(view)
     assert html =~ "J150321"
     refute html =~ "J150322"
+    refute html =~ "J150323"
+
+    refute has_element?(view, "#connection-#{home_link.id}")
+    refute has_element?(view, "#connection-#{branch_link.id}")
   end
 
   test "loop connections keep their glow without drawing the closing edge", %{

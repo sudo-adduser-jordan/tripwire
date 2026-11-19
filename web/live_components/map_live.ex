@@ -90,7 +90,12 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   end
 
   def render(assigns) do
-    assigns = assign(assigns, :drawn_connections, drawn_connections(assigns))
+    visible = visible_connections(assigns)
+
+    assigns =
+      assigns
+      |> assign(:visible_connections, visible)
+      |> assign(:drawn_connections, drawn_connections(visible, assigns))
 
     ~H"""
     <div id="map" class="grid-stack-item" gs-w="12" gs-h="6" gs-x="0" gs-y="12" tabindex="0">
@@ -324,10 +329,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   height="88"
                   rx="8"
                   stroke={node_stroke(system, @selected_system_id)}
-                  stroke-dasharray={if loop_node?(@connections, system.id), do: "6 4"}
+                  stroke-dasharray={if loop_node?(@visible_connections, system.id), do: "6 4"}
                   style={
                     if Map.get(assigns, :show_line_glow, true) and
-                         loop_node?(@connections, system.id),
+                         loop_node?(@visible_connections, system.id),
                        do: "filter: drop-shadow(0 0 6px #{node_color(system)})"
                   }
                   class={
@@ -510,8 +515,16 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     system_id in Mapping.loop_system_ids(connections)
   end
 
-  defp drawn_connections(assigns) do
+  defp visible_connections(assigns) do
     connections = Map.get(assigns, :connections, [])
+    ids = Elixir.MapSet.new(Map.get(assigns, :systems, []), & &1.id)
+
+    Enum.filter(connections, fn {_conn, from, to} ->
+      Elixir.MapSet.member?(ids, from.id) and Elixir.MapSet.member?(ids, to.id)
+    end)
+  end
+
+  defp drawn_connections(connections, assigns) do
     systems = Map.get(assigns, :systems, [])
     root_id = home_root_id(systems, Map.get(assigns, :map))
     cycle = Mapping.cycle_connection_ids(connections, root_id)
