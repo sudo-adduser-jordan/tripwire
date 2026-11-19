@@ -3,9 +3,9 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
 
   import TripwireWeb.IconComponent
   import TripwireWeb.CharacterVisibilityComponents
+  import TripwireWeb.MaskAvatarComponents
 
   alias Phoenix.LiveView.JS
-  alias Tripwire.EveImages
   alias Tripwire.Systems
 
   attr :character, :string, required: true
@@ -193,16 +193,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
           >
             <li :for={mask <- @masks}>
               <button phx-click="switch-mask" phx-value-id={mask.id}>
-                <div class={["avatar", current_dot(mask, @mask)]}>
-                  <div class="w-12 rounded-xl">
-                    <img
-                      src={mask_avatar(mask)}
-                      alt=""
-                      loading="lazy"
-                      onerror="this.onerror=null;this.src='/images/alliance-default.png'"
-                    />
-                  </div>
-                </div>
+                <.mask_avatar mask={mask} dot={current_dot(mask, @mask)} size="lg" />
                 {mask.name} ({mask.kind})
               </button>
             </li>
@@ -301,14 +292,6 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
 
   defp character_name(%{name: name}), do: name
   defp character_name(name) when is_binary(name), do: name
-
-  defp mask_avatar(%{kind: "corporation", eve_owner_id: id}) when is_integer(id),
-    do: EveImages.corporation_logo(id, 64)
-
-  defp mask_avatar(%{kind: "alliance", eve_owner_id: id}) when is_integer(id),
-    do: EveImages.alliance_logo(id, 64)
-
-  defp mask_avatar(_), do: "/images/alliance-default.png"
 
   defp mask_name(%{name: name}) when is_binary(name) and name != "", do: name
   defp mask_name(_), do: "Mask"

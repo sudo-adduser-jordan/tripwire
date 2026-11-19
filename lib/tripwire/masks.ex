@@ -6,14 +6,14 @@ defmodule Tripwire.Masks do
   alias Tripwire.Masks.{Mask, MaskMembership}
   alias Tripwire.Repo
 
-  def ensure_personal_mask(%Character{id: id, name: name}) do
-    case Repo.one(from(m in Mask, where: m.owner_character_id == ^id and m.kind == "personal")) do
+  def ensure_personal_mask(%Character{}) do
+    case Repo.one(from(m in Mask, where: m.kind == "personal", order_by: [asc: m.id], limit: 1)) do
       %Mask{} = mask ->
         {:ok, mask}
 
       nil ->
         %Mask{}
-        |> Mask.changeset(%{name: name, kind: "personal", owner_character_id: id})
+        |> Mask.changeset(%{name: "Private", kind: "personal"})
         |> Repo.insert()
     end
   end
@@ -117,4 +117,16 @@ defmodule Tripwire.Masks do
       )
     )
   end
+
+  def list_masks do
+    from(m in Mask, where: m.kind != "demo")
+    |> Repo.all()
+    |> Enum.sort_by(&{kind_rank(&1.kind), &1.name})
+  end
+
+  defp kind_rank("personal"), do: 0
+  defp kind_rank("corporation"), do: 1
+  defp kind_rank("alliance"), do: 2
+  defp kind_rank("demo"), do: 3
+  defp kind_rank(_), do: 4
 end

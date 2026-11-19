@@ -30,6 +30,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   attr :layout_errors, :list, default: []
   attr :characters, :list, default: []
   attr :masks, :list, default: []
+  attr :admin_masks, :list, default: []
   attr :character, :any, default: nil
   attr :mask, :any, default: nil
   attr :sso_configured?, :boolean, default: false
@@ -99,7 +100,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
           <AdminLive.settings_admin_live
             settings_tab={@settings_tab}
             character={@character}
-            masks={@masks}
+            masks={@admin_masks}
           />
         </div>
       </div>

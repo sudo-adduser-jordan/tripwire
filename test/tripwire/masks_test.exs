@@ -3,14 +3,16 @@ defmodule Tripwire.MasksTest do
 
   alias Tripwire.{Accounts, Mapping, Masks}
 
-  test "ensure_personal_mask/1 creates and then reuses a personal mask" do
+  test "ensure_personal_mask/1 creates one global Private mask" do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 1, name: "Tester"})
+    {:ok, other} = Accounts.upsert_character(%{eve_id: 11, name: "Other Tester"})
 
     {:ok, mask} = Masks.ensure_personal_mask(character)
     assert mask.kind == "personal"
-    assert mask.owner_character_id == character.id
+    assert mask.name == "Private"
+    assert is_nil(mask.owner_character_id)
 
-    {:ok, reused} = Masks.ensure_personal_mask(character)
+    {:ok, reused} = Masks.ensure_personal_mask(other)
     assert reused.id == mask.id
   end
 
@@ -22,6 +24,20 @@ defmodule Tripwire.MasksTest do
     assert {:ok, _} = Masks.add_membership(mask, character)
 
     assert length(Masks.list_masks_for_character(character.id)) == 1
+  end
+
+  test "list_masks/0 returns every non-demo mask ordered by kind then name" do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 6, name: "Tester Six"})
+    {:ok, personal} = Masks.ensure_personal_mask(character)
+    {:ok, corp_z} = Masks.create_mask(%{name: "Zeta Corp", kind: "corporation"})
+    {:ok, corp_a} = Masks.create_mask(%{name: "Alpha Corp", kind: "corporation"})
+    {:ok, alliance} = Masks.create_mask(%{name: "Big Alliance", kind: "alliance"})
+    {:ok, _demo} = Masks.ensure_demo_mask()
+
+    masks = Masks.list_masks()
+
+    assert Enum.map(masks, & &1.id) == [personal.id, corp_a.id, corp_z.id, alliance.id]
+    refute Enum.any?(masks, &(&1.kind == "demo"))
   end
 
   test "a map can be created under a personal mask and systems added to it" do

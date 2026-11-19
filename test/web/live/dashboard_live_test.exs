@@ -2199,6 +2199,52 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert view |> element("#topbar-mask") |> render() =~ "Test Corp"
   end
 
+  test "topbar mask dropdown lists every mask but the demo mask", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, other_mask} = Masks.create_mask(%{name: "Other Corp", kind: "corporation"})
+    {:ok, demo_mask} = Masks.ensure_demo_mask()
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    refute Enum.any?(Masks.list_masks_for_character(character.id), &(&1.id == other_mask.id))
+
+    assert has_element?(
+             view,
+             ~s|button[phx-click="switch-mask"][phx-value-id="#{other_mask.id}"]|
+           )
+
+    refute has_element?(
+             view,
+             ~s|button[phx-click="switch-mask"][phx-value-id="#{demo_mask.id}"]|
+           )
+
+    view
+    |> element(~s|button[phx-click="switch-mask"][phx-value-id="#{other_mask.id}"]|)
+    |> render_click()
+
+    assert view |> element("#topbar-mask") |> render() =~ "Other Corp"
+
+    view |> element("#settings-button") |> render_click()
+    assert has_element?(view, "#mask-card-#{other_mask.id}")
+    refute has_element?(view, "#mask-card-#{demo_mask.id}")
+  end
+
+  test "the personal mask is shared by every character", %{conn: conn, character: character} do
+    {:ok, other} = Accounts.upsert_character(%{eve_id: 44_100, name: "Other Pilot"})
+
+    {:ok, personal} = Masks.ensure_personal_mask(character)
+    {:ok, same} = Masks.ensure_personal_mask(other)
+
+    assert personal.id == same.id
+    assert personal.name == "Private"
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    assert view |> element("#topbar-mask") |> render() =~ "Private"
+  end
+
   test "statistics tab shows personal stat sections", %{conn: conn, character: character} do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -2450,6 +2496,31 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert has_element?(view, "#mask-card-#{other_mask.id} .badge-success")
     refute has_element?(view, "#mask-card-#{personal.id} .badge-success")
+  end
+
+  test "mask cards show corporation logos and a placeholder for the personal mask", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, personal} = Masks.ensure_personal_mask(character)
+
+    {:ok, corp} =
+      Masks.create_mask(%{
+        name: "Corp Ops",
+        kind: "corporation",
+        eve_owner_id: 98_000_002
+      })
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "account"})
+
+    assert view |> element("#mask-card-#{corp.id}") |> render() =~
+             "https://images.evetech.net/corporations/98000002/logo?size=64"
+
+    assert view |> element("#mask-card-#{personal.id}") |> render() =~
+             "/images/alliance-default.png"
   end
 
   test "removing the current character navigates away", %{conn: conn, character: character} do

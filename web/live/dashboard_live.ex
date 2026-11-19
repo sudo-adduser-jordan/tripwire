@@ -109,6 +109,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:characters, [character])
     |> assign(:mask, mask)
     |> assign(:masks, [mask])
+    |> assign(:admin_masks, [mask])
     |> assign(:map, map)
     |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
     |> assign_topbar_defaults()
@@ -794,7 +795,7 @@ defmodule TripwireWeb.DashboardLive do
          {:ok, mask} <- scoped_create_corp_mask(socket) do
       {:noreply,
        socket
-       |> assign(:masks, masks_for_admin(socket))
+       |> assign_masks()
        |> put_flash(:info, "Created #{mask.name}")}
     else
       false ->
@@ -818,7 +819,7 @@ defmodule TripwireWeb.DashboardLive do
          {:ok, _} <- Masks.add_membership(mask, member) do
       {:noreply,
        socket
-       |> assign(:masks, masks_for_admin(socket))
+       |> assign_masks()
        |> put_flash(:info, "Added #{member.name} to #{mask.name}")}
     else
       false ->
@@ -844,7 +845,7 @@ defmodule TripwireWeb.DashboardLive do
          {:ok, _} <- Masks.remove_membership(mask, member) do
       {:noreply,
        socket
-       |> assign(:masks, masks_for_admin(socket))
+       |> assign_masks()
        |> put_flash(:info, "Removed #{member.name} from #{mask.name}")}
     else
       false ->
@@ -865,7 +866,7 @@ defmodule TripwireWeb.DashboardLive do
     with true <- admin?(socket),
          {:ok, mask} <- scoped_mask(socket, id),
          {:ok, _} <- Masks.delete_mask_full(mask) do
-      remaining = masks_for_admin(socket) |> Enum.reject(&(&1.id == mask.id))
+      remaining = mask_options(socket) |> Enum.reject(&(&1.id == mask.id))
 
       socket =
         if socket.assigns.mask.id == mask.id do
@@ -896,7 +897,7 @@ defmodule TripwireWeb.DashboardLive do
           assign(socket, masks: remaining)
         end
 
-      {:noreply, put_flash(socket, :info, "Deleted #{mask.name}")}
+      {:noreply, socket |> assign_admin_masks() |> put_flash(:info, "Deleted #{mask.name}")}
     else
       false ->
         {:noreply, put_flash(socket, :error, "Admin access required")}
@@ -1571,6 +1572,20 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
+  defp mask_options(socket) do
+    if demo?(socket), do: socket.assigns.masks, else: Masks.list_masks()
+  end
+
+  defp assign_masks(socket) do
+    socket
+    |> assign(:masks, mask_options(socket))
+    |> assign(:admin_masks, masks_for_admin(socket))
+  end
+
+  defp assign_admin_masks(socket) do
+    assign(socket, :admin_masks, masks_for_admin(socket))
+  end
+
   defp scoped_mask(socket, id) do
     with {mask_id, ""} <- Integer.parse(to_string(id || "")),
          %{} = mask <-
@@ -1757,8 +1772,8 @@ defmodule TripwireWeb.DashboardLive do
         [map | _] -> map
       end
 
-    masks = Masks.list_masks_for_character(character.id)
-    masks = if Enum.any?(masks, &(&1.id == mask.id)), do: masks, else: [mask | masks]
+    masks = Masks.list_masks()
+    admin_masks = Masks.list_masks_for_character(character.id)
     _ = ensure_jita_system(map, Mapping.list_systems(map.id))
     settings = Settings.assigns()
 
@@ -1768,6 +1783,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:characters, [character])
     |> assign(:mask, mask)
     |> assign(:masks, masks)
+    |> assign(:admin_masks, admin_masks)
     |> assign(:map, map)
     |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
     |> assign_topbar_defaults()

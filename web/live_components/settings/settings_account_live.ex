@@ -2,6 +2,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
   use Phoenix.Component
 
   import TripwireWeb.CharacterVisibilityComponents
+  import TripwireWeb.MaskAvatarComponents
 
   attr :settings_tab, :string, default: "account"
   attr :characters, :list, default: []
@@ -161,14 +162,10 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
             >
             </button>
             <div class="pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-2">
-              <div class={[
-                "avatar shrink-0",
-                (current_mask?(@mask, entry) && "avatar-online") || "avatar-offline"
-              ]}>
-                <div class="w-8 rounded-lg">
-                  <img src="/images/alliance-default.png" alt="" loading="lazy" />
-                </div>
-              </div>
+              <.mask_avatar
+                mask={entry}
+                dot={(current_mask?(@mask, entry) && "avatar-online") || "avatar-offline"}
+              />
               <div class="min-w-0 flex-1">
                 <div class="truncate text-xs font-semibold">{entry.name}</div>
                 <div class="truncate text-[11px] opacity-70 capitalize">{entry.kind || "custom"}</div>
@@ -198,7 +195,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
             :if={@masks == []}
             class="col-span-full rounded-box bg-base-200/50 p-3 text-xs opacity-60"
           >
-            No masks yet. Masks are created automatically for each character.
+            No masks yet. Masks are shared across characters.
           </div>
         </div>
       </div>
