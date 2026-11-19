@@ -451,6 +451,61 @@ defmodule Tripwire.MappingTest do
              ["J500031", "J500032", "J500033"]
   end
 
+  test "ensure_demo_map/1 configures the demo home chain root", %{mask: mask} do
+    {:ok, map} = Mapping.ensure_demo_map(mask.id)
+
+    assert map.home_name == "J150321"
+    assert map.home_solar_system_id == 31_000_001
+
+    home =
+      Enum.find(
+        Mapping.list_systems(map.id),
+        &(&1.solar_system_id == map.home_solar_system_id)
+      )
+
+    assert home.alias == "Home"
+  end
+
+  test "delete_signature/2 removes the paired wormhole signature on the other system", %{
+    mask: mask
+  } do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_107, name: "Paired"})
+    {:ok, map} = Mapping.create_map(%{name: "Paired", mask_id: mask.id})
+
+    {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_541, name: "J500041"})
+    {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_542, name: "J500042"})
+
+    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "N770"})
+
+    {:ok, sig_a} =
+      Mapping.create_signature(
+        a,
+        %{
+          sig_id: "AAA-401",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    {:ok, _sig_b} =
+      Mapping.create_signature(
+        b,
+        %{
+          sig_id: "BBB-402",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    assert {:ok, _} = Mapping.delete_signature(sig_a, character)
+    assert Mapping.list_signatures(a.id) == []
+    assert Mapping.list_signatures(b.id) == []
+  end
+
   test "tree_layout/5 roots detached chains at level 0 beside the home tree" do
     systems = Enum.map(1..6, &%Mapping.MapSystem{id: &1})
 

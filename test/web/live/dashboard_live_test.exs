@@ -360,6 +360,18 @@ defmodule TripwireWeb.DashboardLiveTest do
         character
       )
 
+    {:ok, _} =
+      Mapping.create_signature(
+        branch,
+        %{
+          sig_id: "BBB-456",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
@@ -378,6 +390,8 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert Mapping.connection_between(map.id, home.id, branch.id) == nil
     refute is_nil(Mapping.get_system!(branch.id).hidden_at)
     assert is_nil(Mapping.get_system!(home.id).hidden_at)
+    assert Mapping.list_signatures(home.id) |> Enum.map(& &1.sig_id) == ["NEW-002"]
+    assert Mapping.list_signatures(branch.id) == []
 
     html = render(view)
     assert html =~ "J150321"

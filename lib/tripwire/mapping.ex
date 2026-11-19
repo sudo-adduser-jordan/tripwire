@@ -1164,17 +1164,52 @@ defmodule Tripwire.Mapping do
   end
 
   def delete_signature(%Signature{} = signature, character \\ nil) do
-    case Repo.delete(signature) do
-      {:ok, _} = ok ->
-        if is_struct(character, Character) do
-          Accounts.bump_stats(character.id, signature_deleted_stats(signature.site_type))
-        end
+    signature
+    |> paired_signatures()
+    |> Enum.each(&delete_signature_row(&1, character))
 
-        ok
+    delete_signature_row(signature, character)
+  end
 
-      error ->
-        error
+  defp delete_signature_row(signature, character) do
+    result = Repo.delete(signature)
+
+    if match?({:ok, _}, result) and is_struct(character, Character) do
+      Accounts.bump_stats(character.id, signature_deleted_stats(signature.site_type))
     end
+
+    result
+  end
+
+  defp paired_signatures(%Signature{site_type: "wormhole"} = signature) do
+    with code when not is_nil(code) <- SigParser.wormhole_code(signature.type_name),
+         %MapSystem{} = system <- get_system(signature.map_system_id),
+         %MapConnection{} = connection <- connection_for_code(system, code) do
+      peer_id =
+        if connection.from_system_id == system.id,
+          do: connection.to_system_id,
+          else: connection.from_system_id
+
+      peer_id
+      |> list_signatures()
+      |> Enum.filter(
+        &(&1.site_type == "wormhole" and SigParser.wormhole_code(&1.type_name) == code)
+      )
+    else
+      _ -> []
+    end
+  end
+
+  defp paired_signatures(_signature), do: []
+
+  defp connection_for_code(system, code) do
+    Repo.one(
+      from(c in MapConnection,
+        where:
+          c.map_id == ^system.map_id and c.hole_type == ^code and
+            (c.from_system_id == ^system.id or c.to_system_id == ^system.id)
+      )
+    )
   end
 
   defp signature_added_stats("wormhole"), do: [signatures_added: 1, wormholes_added: 1]
@@ -2046,7 +2081,32 @@ defmodule Tripwire.Mapping do
     ensure_demo_signatures(systems)
     ensure_demo_notes(systems, mask_id)
 
-    {:ok, get_map!(map.id)}
+    map = ensure_demo_home(map, systems)
+
+    {:ok, map}
+  end
+
+  defp ensure_demo_home(%Map{home_solar_system_id: solar} = map, _systems) when is_integer(solar),
+    do: map
+
+  defp ensure_demo_home(map, systems) do
+    home =
+      Enum.find(systems, &(&1.alias == "Home")) ||
+        systems |> Enum.sort_by(& &1.id) |> List.first()
+
+    case home do
+      nil ->
+        map
+
+      system ->
+        {:ok, updated} =
+          update_map(map, %{
+            home_solar_system_id: system.solar_system_id,
+            home_name: system.name
+          })
+
+        updated
+    end
   end
 
   defp ensure_demo_signatures(systems) do
