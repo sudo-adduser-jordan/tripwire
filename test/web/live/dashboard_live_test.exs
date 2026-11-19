@@ -436,6 +436,60 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute view |> element("#node-#{a.id}") |> render() =~ "6 4"
   end
 
+  test "pasting a linking scan keeps the tree positions and only hints the loop", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, home} = setup_with_system(%{character: character}, "J150321")
+    {:ok, map} = Mapping.update_map(map, %{home_solar_system_id: 1, home_name: "J150321"})
+
+    {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
+    {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323"})
+    {:ok, jita} = Mapping.add_system_to_map(map, %{solar_system_id: 4, name: "J150324"})
+
+    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, a.id, %{hole_type: "N770"})
+    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "B274"})
+    {:ok, _, _} = Mapping.upsert_connection(map.id, b.id, jita.id, %{hole_type: "A641"})
+
+    {:ok, _} =
+      Mapping.create_signature(
+        jita,
+        %{
+          sig_id: "TUV-679",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (M555)"
+        },
+        character
+      )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    before = Map.new([home.id, a.id, b.id, jita.id], &{&1, Mapping.get_system!(&1)})
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    view
+    |> render_click("global-paste", %{
+      "text" => "TUV-679\tCosmic Signature\tUnstable Wormhole (M555)\t100.00%\t1.21 AU"
+    })
+
+    for id <- [home.id, a.id, b.id, jita.id] do
+      system = Mapping.get_system!(id)
+      assert {system.x, system.y} == {before[id].x, before[id].y}
+    end
+
+    link = Mapping.connection_between(map.id, home.id, jita.id)
+    assert %Mapping.MapConnection{} = link
+    refute has_element?(view, "#connection-#{link.id}")
+
+    assert view |> element("#node-#{home.id}") |> render() =~ "6 4"
+    assert view |> element("#node-#{jita.id}") |> render() =~ "6 4"
+    refute view |> element("#node-#{a.id}") |> render() =~ "6 4"
+  end
+
   test "pasting wormhole signatures auto-links systems sharing the scan", %{
     conn: conn,
     character: character

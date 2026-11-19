@@ -1995,13 +1995,25 @@ defmodule TripwireWeb.DashboardLive do
     if dropped + linked + hidden == 0 do
       socket
     else
-      socket = apply_tree_layout(socket, socket.assigns.map_layout || "top")
-      {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
+      socket =
+        if dropped + hidden > 0 do
+          socket = apply_tree_layout(socket, socket.assigns.map_layout || "top")
+          {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
+          push_event(socket, "reset-pan", %{x: x, y: y})
+        else
+          reload_map(socket)
+        end
 
-      socket
-      |> push_event("reset-pan", %{x: x, y: y})
-      |> sync_flash(dropped, linked, hidden)
+      sync_flash(socket, dropped, linked, hidden)
     end
+  end
+
+  defp reload_map(socket) do
+    map = socket.assigns.map
+
+    socket
+    |> assign(:systems, Mapping.list_chain_systems(map))
+    |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
   end
 
   defp sync_flash(socket, dropped, linked, hidden) do
