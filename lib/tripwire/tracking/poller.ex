@@ -1,8 +1,4 @@
 defmodule Tripwire.Tracking.Poller do
-  @moduledoc """
-  Polls a character's location via ESI while they are tracked and applies
-  changes to their personal map.
-  """
   use GenServer
 
   require Logger

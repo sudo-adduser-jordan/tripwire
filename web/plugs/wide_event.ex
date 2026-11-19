@@ -1,5 +1,4 @@
 defmodule TripwireWeb.Plugs.WideEvent do
-  @moduledoc false
   import Plug.Conn
 
   def init(opts), do: opts

@@ -13,7 +13,6 @@ config :tripwire, Tripwire.Repo,
   busy_timeout: 5000
 
 config :tripwire, TripwireWeb.Endpoint,
-  #   http: [ip: {127, 0, 0, 1}],
   http: [ip: {0, 0, 0, 0}],
   check_origin: false,
   code_reloader: true,

@@ -316,7 +316,6 @@ defmodule Tripwire.MappingTest do
     :ok = Mapping.sync_signature_to_connections(map, a, "B274", "N110")
     assert Mapping.get_connection!(conn.id).hole_type == "N110"
 
-    # A connection with a different code is left alone.
     {:ok, c} =
       Mapping.add_system_to_map(map, %{solar_system_id: 31_000_203, name: "J100203"})
 

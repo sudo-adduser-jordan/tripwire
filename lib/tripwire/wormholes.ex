@@ -1,26 +1,8 @@
 defmodule Tripwire.Wormholes do
-  @moduledoc """
-  Static wormhole-type database ported from official Tripwire's
-  `tools/wormholes.json`.
-
-  Each type code maps to its natural lifetime (`life`), the system classes it
-  connects (`from` → `leadsTo`), its total mass, and its maximum jump mass.
-  Official Tripwire reads this to label the two ends of a hole, style the
-  chain-map line by jump mass, and infer a likely hole size when the type is
-  unknown.
-
-  Labels are normalised to the short forms this port uses everywhere else
-  (`Class-4` → `C4`, `High-Sec` → `HS`, `Null-Sec` → `NS`, `Triglavian` →
-  `Trig`); a `leadsTo` that names a specific system (e.g. `Turnur`) is kept
-  verbatim.
-  """
-
   @path Path.expand("../../priv/data/wormholes.json", __DIR__)
   @external_resource @path
   @wormholes @path |> File.read!() |> Jason.decode!()
 
-  # Placeholder holes for when the exact type is unknown, matching official
-  # Tripwire's `wormholeAnalysis.dummyWormholes`.
   @dummy %{
     "GATE" => %{
       "from" => ["Null-Sec", "Low-Sec", "High-Sec", "Triglavian"],
@@ -51,26 +33,19 @@ defmodule Tripwire.Wormholes do
     "Triglavian" => "Trig"
   }
 
-  @doc "Every known wormhole type code."
   def all_codes, do: Map.keys(@wormholes) |> Enum.sort()
 
-  @doc "The raw data map for a type code, or `nil` when unknown."
   def get(code) when is_binary(code), do: Map.get(@wormholes, String.upcase(code))
   def get(_), do: nil
 
-  @doc "Natural lifetime label (e.g. `\"16 Hours\"`), or `nil`."
   def life(code), do: field(code, "life")
 
-  @doc "Source class labels a hole of this type comes from, normalised to short forms."
   def from(code), do: get(code) |> ends("from")
 
-  @doc "Destination class/system labels a hole of this type leads to, normalised."
   def leads_to(code), do: get(code) |> ends("leadsTo")
 
-  @doc "Total mass in kg, or `nil`."
   def mass(code), do: field(code, "mass")
 
-  @doc "Maximum jump mass in kg, or `nil`."
   def jump(code), do: field(code, "jump")
 
   defp field(code, key) do
@@ -89,21 +64,12 @@ defmodule Tripwire.Wormholes do
     |> Enum.map(&class_short/1)
   end
 
-  @doc """
-  Normalises a class/system label to its short form, leaving system names and
-  unknown labels untouched.
-  """
   def class_short(label) when is_binary(label), do: Map.get(@class_short, label, label)
   def class_short(label), do: label
 
-  @doc "Renders a jump mass as `\"375kt\"`, or `nil`."
   def render_mass(nil), do: nil
   def render_mass(mass) when is_number(mass), do: "#{div(trunc(mass), 1_000_000)}kt"
 
-  @doc """
-  Renders a wormhole type as official Tripwire does: `"B274: C4 ➔ C3 (375kt)"`.
-  Unknown types fall back to the bare code.
-  """
   def render(code) when is_binary(code) do
     key = String.upcase(code)
 
@@ -127,11 +93,6 @@ defmodule Tripwire.Wormholes do
   defp format_end([]), do: "?"
   defp format_end(types), do: Enum.join(types, ", ")
 
-  @doc """
-  Infers a dummy hole size (`"SML"`, `"MED"`, `"LRG"`, `"XLG"`) for a hole of
-  unknown type, from the classes of the two systems it connects. Port of
-  official Tripwire's `wormholeAnalysis.likelyWormhole`.
-  """
   def likely_wormhole(class1, class2) do
     cond do
       k_space?(class1) -> infer_k_space(class2)
@@ -143,19 +104,8 @@ defmodule Tripwire.Wormholes do
     end
   end
 
-  @doc """
-  The dummy data map for a likely hole size, e.g. for rendering mass when a
-  connection's type is unknown.
-  """
   def dummy(key), do: Map.get(@dummy, key)
 
-  @doc """
-  Returns `%{from: [codes], to: [codes]}` of wormhole types eligible for a
-  connection between two system classes. `source`/`target` are short class
-  labels (or `nil` for unknown). Port of official `eligibleWormholeTypes`,
-  simplified to class-only matching (no exclusion or multi-class variants
-  appear in the shipped database).
-  """
   def eligible_types(source, target) do
     source = source |> to_string() |> class_short() |> blank_to_nil()
     target = target |> to_string() |> class_short() |> blank_to_nil()

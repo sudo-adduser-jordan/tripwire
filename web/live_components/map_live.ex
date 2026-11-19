@@ -518,8 +518,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
       if angled? do
         "M #{x1} #{y1} L #{x2} #{y2}"
       else
-        # Orthogonal with 2 90° bends, originating from the center of the
-        # top-level (parent) node.
         {tx, ty, bx, by} = if y1 <= y2, do: {x1, y1, x2, y2}, else: {x2, y2, x1, y1}
 
         if abs(by - ty) >= abs(bx - tx) do
@@ -609,8 +607,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
   defp effect_icon(_), do: ""
 
-  # Bottom node field: the scanned signature code recorded on this system
-  # for its displayed connection — blank when nothing matches.
   defp node_footer(connections, wh_sigs, system_id) do
     case Enum.find(connections, fn {_conn, from, to} ->
            from.id == system_id or to.id == system_id
@@ -631,9 +627,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     end
   end
 
-  # Connection line weight scales with the hole's maximum jump mass, matching
-  # official Tripwire's jm-* line classes; unknown types fall back to a size
-  # inferred from the two system classes.
   defp edge_stroke(conn, from, to, line_weight) do
     factor = conn |> jump_for(from, to) |> mass_factor()
     max(1, round(line_weight * factor))
@@ -658,7 +651,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   defp mass_factor(jump) when jump <= 375_000_000, do: 1.3
   defp mass_factor(_jump), do: 1.7
 
-  # Hover label describing a connection, using the wormhole type database.
   defp edge_title(conn, from, to) do
     case conn.hole_type do
       code when is_binary(code) and code != "" -> Wormholes.render(code)

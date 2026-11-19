@@ -1382,7 +1382,6 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
-  # Demo admins may only touch demo-kind masks they belong to.
   defp scoped_mask(socket, id) do
     with {mask_id, ""} <- Integer.parse(to_string(id || "")),
          %{} = mask <-
@@ -1456,7 +1455,6 @@ defmodule TripwireWeb.DashboardLive do
 
   defp home_root_id(_, _), do: nil
 
-  # "top"/"bottom"/"left"/"right" name the side the tree is anchored to.
   defp normalize_layout("top"), do: "down"
   defp normalize_layout("bottom"), do: "up"
   defp normalize_layout("left"), do: "right"
@@ -1933,16 +1931,11 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
-  # Blue toast only when every pasted signature matched a known record;
-  # new signatures land silently and missing ones surface via the stale toast.
   defp maybe_match_flash(socket, 0, updated),
     do: put_flash(socket, :info, "All #{updated} signatures match")
 
   defp maybe_match_flash(socket, _added, _updated), do: socket
 
-  # Pushes a wormhole signature's connection code onto the chain map:
-  # connections touching the system with a blank code (or the signature's
-  # previous code) adopt the new code so the map reflects the widget edit.
   defp sync_map_hole_type(socket, system, old_code, new_code) do
     case new_code do
       nil ->
@@ -2362,8 +2355,6 @@ defmodule TripwireWeb.DashboardLive do
         {List.duplicate(0, length(labels)), List.duplicate(0, length(labels))}
       end
 
-    # ESI publishes only the current hour's jumps/NPC kills with no history,
-    # so the live value lands in the newest bucket ("now" tip).
     {jumps, npc_kills} =
       if Tripwire.Systems.esi_resolvable?(system) do
         activity = Tripwire.ESI.system_activity(system.solar_system_id)

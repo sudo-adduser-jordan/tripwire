@@ -1,8 +1,6 @@
 defmodule Mix.Tasks.Tripwire.ResetDemo do
   use Mix.Task
 
-  @shortdoc "Clears demo maps and rebuilds demo data"
-
   @impl Mix.Task
   def run(_args) do
     Mix.Task.run("app.start")

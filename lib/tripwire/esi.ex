@@ -1,16 +1,7 @@
 defmodule Tripwire.ESI do
-  @moduledoc """
-  Minimal EVE Swagger Interface (ESI) and EVE SSO token client built on Req.
-  """
-
   @login_base "https://login.eveonline.com/v2/oauth"
   @esi_base "https://esi.evetech.net/latest"
 
-  @doc """
-  Refreshes the access token for a stored refresh token.
-
-      {:ok, %{"access_token" => at, "expires_in" => 1200}} = Tripwire.ESI.refresh_access_token(rt)
-  """
   def refresh_access_token(refresh_token) do
     case req(:post, @login_base <> "/token",
            auth: {:basic, "#{client_id()}:#{client_secret()}"},
@@ -82,10 +73,6 @@ defmodule Tripwire.ESI do
 
   def get_sovereignty_map, do: public_get("/universe/sovereignty/map/")
 
-  @doc """
-  K-space route between two solar systems. Returns `{:ok, [solar_ids]}`.
-  Wormhole / Thera systems (>= 31_000_000) never route via gates.
-  """
   def get_route(origin, destination, opts \\ []) do
     flag = Keyword.get(opts, :flag, "shortest")
 
@@ -96,10 +83,6 @@ defmodule Tripwire.ESI do
     end
   end
 
-  @doc """
-  Resolves a system name to a solar system id via POST /universe/ids/.
-  Returns `{:ok, solar_system_id}` or `:error`.
-  """
   def resolve_system_id(name) when is_binary(name) do
     trimmed = String.trim(name)
 
@@ -131,11 +114,6 @@ defmodule Tripwire.ESI do
   defp kspace_id?(id) when is_integer(id), do: id < 31_000_000
   defp kspace_id?(_), do: false
 
-  @doc """
-  Returns live hourly activity for one solar system from the public
-  universe endpoints. Missing rows mean zero activity this hour.
-  ESI keys these rows by `system_id`.
-  """
   def system_activity(solar_system_id) do
     jumps =
       case get_system_jumps() do
@@ -164,9 +142,6 @@ defmodule Tripwire.ESI do
     %{jumps: jumps, ship_kills: ship_kills, pod_kills: pod_kills, npc_kills: npc_kills}
   end
 
-  @doc """
-  Returns an unexpired access token for the character, refreshing it when needed.
-  """
   def valid_access_token(%{eve_id: eve_id, refresh_token: refresh_token}, cache \\ TokenCache) do
     case cache.get(eve_id) do
       %{access_token: token, expires_at: expires_at} = cached ->

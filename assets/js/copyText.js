@@ -13,7 +13,6 @@ const CopyText = {
                 try {
                     document.execCommand('copy')
                 } catch (_) {
-                    // clipboard unavailable; no-op
                 }
                 ta.remove()
             }
@@ -23,7 +22,6 @@ const CopyText = {
     },
 
     updated() {
-        // LiveView may patch inner icons back to pre-copy state; clear stale timer.
         if (this._resetTimer) {
             clearTimeout(this._resetTimer)
             this._resetTimer = null
@@ -42,7 +40,6 @@ const CopyText = {
         if (this._resetTimer) clearTimeout(this._resetTimer)
         copyIcon.classList.add('hidden')
         copiedIcon.classList.remove('hidden')
-        // One-shot pop on each click.
         if (copiedIcon.animate) {
             copiedIcon.animate(
                 [{ transform: 'scale(0.5)' }, { transform: 'scale(1.25)' }, { transform: 'scale(1)' }],

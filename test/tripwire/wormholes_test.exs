@@ -10,7 +10,6 @@ defmodule Tripwire.WormholesTest do
   end
 
   test "from/1 and leads_to/1 normalise to short class labels" do
-    # B274 is a Class-2 → High-Sec hole
     assert Wormholes.from("B274") == ["C2"]
     assert Wormholes.leads_to("B274") == ["HS"]
   end

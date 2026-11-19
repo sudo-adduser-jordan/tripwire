@@ -1,10 +1,4 @@
 defmodule Tripwire.SyncServer do
-  @moduledoc """
-  Periodic background jobs replacing the original Tripwire PHP crons:
-
-  - every ~3 minutes: refresh corporation/alliance ids for known characters
-  - hourly: ping zKillboard for system activity data (stored in a later phase)
-  """
   use GenServer
 
   require Logger

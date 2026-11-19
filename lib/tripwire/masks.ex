@@ -6,9 +6,6 @@ defmodule Tripwire.Masks do
   alias Tripwire.Masks.{Mask, MaskMembership}
   alias Tripwire.Repo
 
-  @doc """
-  Returns the character's personal mask, creating it on first use.
-  """
   def ensure_personal_mask(%Character{id: id, name: name}) do
     case Repo.one(from(m in Mask, where: m.owner_character_id == ^id and m.kind == "personal")) do
       %Mask{} = mask ->
@@ -77,10 +74,6 @@ defmodule Tripwire.Masks do
 
   def delete_mask(%Mask{} = mask), do: Repo.delete(mask)
 
-  @doc """
-  Hard-deletes a mask with all of its maps (systems, connections,
-  signatures, comments, flares, stats) and memberships.
-  """
   def delete_mask_full(%Mask{id: mask_id} = mask) do
     mask_id
     |> Mapping.list_maps_for_mask()

@@ -33,9 +33,6 @@ if config_env() == :prod do
 
   config :tripwire, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
-  # `task start` runs prod on http://localhost:$PORT for local checks, while a
-  # deployment is reached through PHX_HOST over TLS. Allow both, otherwise the
-  # LiveView socket is rejected and the reconnect toasts never go away.
   config :tripwire, TripwireWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     check_origin: [

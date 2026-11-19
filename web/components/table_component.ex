@@ -2,33 +2,18 @@ defmodule TripwireWeb.TableComponent do
   use Phoenix.Component
   use Gettext, backend: TripwireWeb.Gettext
 
-  @doc """
-
-  Renders a table with generic styling.
-
-  ## Examples
-
-      <.table id="users" rows={@users}>
-        <:col :let={user} label="id">{user.id}</:col>
-        <:col :let={user} label="username">{user.username}</:col>
-      </.table>
-
-  """
-
   attr :id, :string, required: true
   attr :rows, :list, required: true
-  attr :row_id, :any, default: nil, doc: "the function for generating the row id"
-  attr :row_click, :any, default: nil, doc: "the function for handling phx-click on each row"
+  attr :row_id, :any, default: nil
+  attr :row_click, :any, default: nil
 
-  attr :row_item, :any,
-    default: &Function.identity/1,
-    doc: "the function for mapping each row before calling the :col and :action slots"
+  attr :row_item, :any, default: &Function.identity/1
 
   slot :col, required: true do
     attr :label, :string
   end
 
-  slot :action, doc: "the slot for showing user actions in the last table column"
+  slot :action
 
   def table(assigns) do
     assigns =

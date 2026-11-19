@@ -62,7 +62,6 @@ defmodule TripwireWeb do
     end
   end
 
-  # Edited
   defp html_helpers do
     quote do
       use Gettext, backend: TripwireWeb.Gettext

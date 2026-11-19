@@ -1,11 +1,4 @@
 defmodule Tripwire.EveImages do
-  @moduledoc """
-  URL builders for the official EVE image server (`images.evetech.net`).
-
-  NPC faction logos live in the `corporations` category under their
-  faction id. Requested sizes must be powers of two between 32 and 1024.
-  """
-
   @base "https://images.evetech.net"
 
   @faction_names %{

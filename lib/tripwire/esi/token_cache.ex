@@ -1,7 +1,4 @@
 defmodule Tripwire.ESI.TokenCache do
-  @moduledoc """
-  In-memory cache of ESI access tokens, keyed by character EVE id.
-  """
   use GenServer
 
   @ttl_sweep 60_000

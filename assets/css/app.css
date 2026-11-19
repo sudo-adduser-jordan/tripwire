@@ -114,7 +114,6 @@
   --noise: 0;
 }
 
-
 @plugin "daisyui/theme" {
   name: "native";
   default: false;
@@ -607,14 +606,10 @@
 @custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
 @custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
 
-/* Use the data attribute for dark mode  */
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
-/* Make LiveView wrapper divs transparent for layout */
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
-/* GridStack layout fallbacks: keep widgets positioned even if LiveView
-   strips GridStack's runtime inline styles during a morph. */
 #grid-stack {
   --gs-column-width: calc(100% / 12);
   --gs-cell-height: 80px;
@@ -626,10 +621,6 @@
 #grid-stack.gs-1 { --gs-column-width: 100%; }
 #grid-stack.gs-2 { --gs-column-width: 50%; }
 
-/* Hide the unpositioned pile-up before the GridStack hook initializes.
-   The gs-reveal animation is a dead-man's switch: if JS never initializes
-   the grid, the content still becomes visible after 3s (unpositioned but
-   readable) instead of staying hidden forever. */
 #grid-stack.grid-stack-loading {
   visibility: hidden;
   min-height: 100vh;
@@ -639,7 +630,6 @@
   to { visibility: visible; }
 }
 
-/* Settings opens first at the top; it slides down while the grid pushes the rest down. */
 #settings-widget {
   animation: settings-slide-in 200ms ease-out;
 }
@@ -647,8 +637,6 @@
   from { opacity: 0; transform: translateY(-12px); }
   to { opacity: 1; transform: translateY(0); }
 }
-/* Settings shares the other widgets' translucent background instead of
-   daisyUI's solid tabs-box fill (unlayered beats daisyUI's layered rule). */
 #settings-widget .tabs-box {
   background-color: transparent;
   box-shadow: none;
@@ -680,7 +668,6 @@
   --font-sans: var(--font-pirate);
 }
 
-/* ---- Base: one font, no page-level horizontal scroll ---- */
 @layer base {
   html {
     font-family: var(--font-sans);
@@ -698,7 +685,6 @@
   }
 }
 
-/* ---- Dashboard grid: full width, no page overflow ---- */
 @layer components {
   #grid-stack {
     width: 100%;
@@ -712,7 +698,6 @@
   }
 }
 
-/* ---- Settings: fit without vertical or horizontal scroll ---- */
 @layer components {
   #settings-widget .tabs {
     width: 100%;
@@ -744,7 +729,6 @@
   }
 }
 
-/* ---- Widget tables: single source of truth, ellipsis not overflow ---- */
 @layer components {
   .widget-table th,
   .widget-table td {
@@ -771,7 +755,6 @@
   }
 }
 
-/* ---- Mobile ---- */
 @media (max-width: 640px) {
   #settings-widget .tab {
     padding-left: 0.5rem;
@@ -784,7 +767,6 @@
   }
 }
 
-/* EVE SSO button: show the image matching the active theme. */
 .sso-black {
   display: none;
 }

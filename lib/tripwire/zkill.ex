@@ -1,34 +1,15 @@
 defmodule Tripwire.ZKill do
-  @moduledoc """
-  Read-only zKillboard API client used for kill history behind the system
-  activity graph. ESI only publishes the current hour's jumps/kills, so
-  ship/pod kill history over 24h/48h/week comes from recent killmails.
-  """
-
   @api "https://zkillboard.com/api"
   @user_agent "Tripwire/1.0 (system activity graph)"
   @capsule_type_id 670
   @page_size 200
 
-  @doc """
-  Returns `{:ok, kills}` where each kill is `%{time: DateTime, pod: boolean}`.
-  Fetches up to `max_pages` result pages (200 killmails each, newest first),
-  stopping early once killmails are older than `since` (a DateTime) or the
-  last page is reached. Partial results are returned when the API rate
-  limits or fails mid-way; `{:error, reason}` only when nothing was fetched.
-  """
   def kill_history(solar_system_id, opts \\ []) do
     since = Keyword.get(opts, :since, nil)
     max_pages = Keyword.get(opts, :max_pages, 3)
     fetch_pages(solar_system_id, 1, max_pages, since, [])
   end
 
-  @doc """
-  Buckets kills into `count` slots of `width_hours` hours ending at `now`.
-  Slot 0 is the oldest, slot `count - 1` covers `[now - width, now]`.
-  Returns `{ship_kills, pod_kills}` count lists. Capsule victims count as
-  pod kills only (matching ESI semantics); everything else is a ship kill.
-  """
   def bucket(kills, now, count, width_hours) do
     width_s = width_hours * 3600
     slots = List.duplicate(0, count)
@@ -38,7 +19,6 @@ defmodule Tripwire.ZKill do
         age_s = DateTime.diff(now, time)
 
         if age_s >= 0 do
-          # Slot index from the right: last slot holds the newest window.
           idx = count - 1 - div(age_s, width_s)
 
           if idx >= 0 and idx < count do

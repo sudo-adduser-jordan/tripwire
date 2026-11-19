@@ -1,9 +1,6 @@
 import { GridStack } from 'gridstack'
 import 'gridstack/dist/gridstack.css'
 
-// Lock state is owned by LiveView (`data-grid-locked` on the grid element,
-// toggled via the `toggle-grid-lock` event). This module only applies it.
-
 function gridLocked(el) {
     return !el || el.dataset.gridLocked !== 'false'
 }
@@ -16,10 +13,6 @@ function syncLock(el) {
     if (lockSvg) lockSvg.style.fill = gridLocked(el) ? '#ff6700' : '#605dff'
 }
 
-// Reveal the grid on first layout so pre-init paint never shows a pile-up.
-// The loading class lives in the server template, so morphdom re-adds it
-// on every LiveView patch; only animate the very first reveal, later ones
-// just unhide so selecting systems never flashes the grid.
 function reveal(el) {
     if (!el || !el.classList.contains('grid-stack-loading')) return
     el.classList.remove('grid-stack-loading')
@@ -31,10 +24,6 @@ function reveal(el) {
     }
 }
 
-// The chain map is the view you work in, so it defaults to a window height
-// minus one row instead of the server-rendered gs-h fallback. Rows come from
-// the grid's own cell height (an item is h * cellHeight tall), so the fit
-// survives a change to cellHeight.
 function fitMap(el, grid) {
     const mapEl = el && el.querySelector('#map')
     if (!mapEl || !grid || !grid.engine || !mapEl.gridstackNode) return
@@ -70,7 +59,6 @@ function unwatchViewport(el) {
 
 function initGrid(el) {
     if (!el) return null
-    // Already initialized (e.g. hook remounted): still ensure visibility.
     if (el.gridstack) {
         syncLock(el)
         reveal(el)
@@ -105,9 +93,6 @@ function destroyGrid() {
     }
 }
 
-// LiveView re-renders the map's fallback gs-h on every patch, so read the
-// live engine values where a node is registered to keep the signature (and
-// thus the light touch path) stable.
 function itemSignature(el) {
     return Array.from(el.querySelectorAll(':scope > .grid-stack-item'))
         .map((n) => {
@@ -119,9 +104,6 @@ function itemSignature(el) {
         .join(';');
 }
 
-// Morphdom removes elements gridstack appended to the widget root, leaving the
-// resize handles detached instead of destroyed, so put them back rather than
-// rebuilding drag&drop (a rebuild would try to remove children that are gone).
 function restoreHandles(el) {
     const resizable = el.ddElement && el.ddElement.ddResizable
     if (!resizable || !resizable.handlers) return
@@ -135,11 +117,6 @@ function restoreHandles(el) {
     }
 }
 
-// GridStack writes the item's inline position, drag/resize classes and resize
-// handles onto the widget root. A widget that handles one of its own LiveView
-// events (column sort, column reorder, delete, ...) re-renders that root, and
-// morphdom then drops everything gridstack added there, collapsing the item to
-// a single cell. Re-assert what is missing from the node the engine still has.
 function restoreItem(grid, node) {
     if (!node || !node.el) return
     const el = node.el
@@ -155,8 +132,6 @@ function restoreItem(grid, node) {
     }
 }
 
-// Content-only patch (selection, signatures, notes): re-assert node
-// attributes morphdom may have wiped, without re-laying out the engine.
 function touchGrid(el) {
     const grid = el && el.gridstack
     if (!grid || !grid.engine) return
@@ -185,12 +160,6 @@ function reconcile(el, grid) {
     })
 }
 
-// LiveView re-renders the dashboard subtree on every patch (selection,
-// signatures, notes) and morphdom drops attributes it did not render
-// (gridstack's CSS vars and item inline styles), so re-apply the grid
-// state after each update. Full engine refresh is only needed when the
-// widget set itself changed (e.g. settings toggled); content-only patches
-// get a light touch so the whole grid doesn't visibly re-layout/flash.
 function refreshGrid(el) {
     const grid = el && el.gridstack
     if (!grid || !grid.engine) return
@@ -219,7 +188,6 @@ function refreshGrid(el) {
         el.style.setProperty('--gs-cell-height', `${grid.opts.cellHeight}${grid.opts.cellHeightUnit || 'px'}`)
     }
 
-    // Container margins are runtime inline styles, so a morph wipes them.
     const marginUnit = (grid.opts && grid.opts.marginUnit) || 'px'
     const margin = (grid.opts && grid.opts.margin !== undefined) ? grid.opts.margin : 10
     const pick = (v) => (v === undefined || v === null || v === '') ? margin : v
@@ -247,6 +215,4 @@ function refreshGrid(el) {
     fitMap(el, grid)
 }
 
-// The dashboard grid is owned by LiveView, so it is initialized from the
-// GridStack hook once the view has mounted instead of at script load.
 window.TripwireGridStack = { init: initGrid, refresh: refreshGrid, destroy: destroyGrid }

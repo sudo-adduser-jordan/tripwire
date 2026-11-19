@@ -3,9 +3,9 @@ defmodule TripwireWeb.RootLayout do
 
   embed_templates "/*"
 
-  attr :flash, :map, required: true, doc: "the map of flash messages"
+  attr :flash, :map, required: true
 
-  attr :current_user, :map, default: nil, doc: "the current logged in character"
+  attr :current_user, :map, default: nil
 
   slot :inner_block, required: true
 
@@ -20,8 +20,8 @@ defmodule TripwireWeb.RootLayout do
     """
   end
 
-  attr :flash, :map, required: true, doc: "the map of flash messages"
-  attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
+  attr :flash, :map, required: true
+  attr :id, :string, default: "flash-group"
 
   def flash_group(assigns) do
     ~H"""

@@ -31,9 +31,6 @@ defmodule Tripwire.Mapping do
   def thera_solar_system_id, do: @thera_solar_system_id
   def thera_name, do: @thera_name
 
-  @doc """
-  Favorite systems on other maps of the same mask, excluding `exclude_map_id`.
-  """
   def list_favorite_candidates(mask_id, exclude_map_id) do
     map_ids =
       from(m in Map, where: m.mask_id == ^mask_id and m.id != ^exclude_map_id, select: m.id)
@@ -46,10 +43,6 @@ defmodule Tripwire.Mapping do
     )
   end
 
-  @doc """
-  True when a recorded wormhole connection on any same-mask map links
-  `candidate_solar_id` to one of `chain_solar_ids`.
-  """
   def recorded_wormhole_link?(mask_id, candidate_solar_id, chain_solar_ids) do
     chain_set = Elixir.MapSet.new(chain_solar_ids)
 
@@ -76,10 +69,6 @@ defmodule Tripwire.Mapping do
     end
   end
 
-  @doc """
-  Finds the chain system (from `chain_systems`) that a recorded connection
-  links `candidate_solar_id` to, or nil.
-  """
   def wormhole_link_target(mask_id, candidate_solar_id, chain_systems) do
     by_solar = Elixir.Map.new(chain_systems, &{&1.solar_system_id, &1})
     chain_set = Elixir.MapSet.new(Elixir.Map.keys(by_solar))
@@ -110,10 +99,6 @@ defmodule Tripwire.Mapping do
     end)
   end
 
-  @doc """
-  Ensures a system with `solar_system_id` exists on `map`, creating it when
-  missing. Returns `{:ok, system, created?}`.
-  """
   def ensure_chain_system(%Map{} = map, attrs) do
     solar_id = attrs[:solar_system_id] || attrs["solar_system_id"]
 
@@ -144,10 +129,6 @@ defmodule Tripwire.Mapping do
     )
   end
 
-  @doc """
-  Returns the systems the chain map should render for `map`: every system when
-  the map shows detached chains (`show_all`), otherwise only unhidden systems.
-  """
   def list_chain_systems(%Map{show_all: true} = map), do: list_systems(map.id)
   def list_chain_systems(%Map{} = map), do: list_visible_systems(map.id)
 
@@ -165,10 +146,6 @@ defmodule Tripwire.Mapping do
     )
   end
 
-  @doc """
-  Lists connections as `{connection, from_system, to_system}` tuples for
-  direct use by the chain-map renderer.
-  """
   def list_connections_with_endpoints(map_id) do
     map_id
     |> list_connections()
@@ -182,39 +159,16 @@ defmodule Tripwire.Mapping do
   @view_h 700.0
   @default_zoom 0.8
 
-  @doc """
-  Chain-map node box as `{width, height}` in world units. The renderer and
-  the tidy layout both read this so the drawn box and the gutters agree.
-  """
   def node_size, do: {@node_w, @node_h}
 
-  @doc """
-  Default chain-map zoom. The map opens one zoom step out from the SVG's
-  `1000x700` world and shows the zoom label relative to this value.
-  """
   def default_zoom, do: @default_zoom
 
-  @doc """
-  World size of the chain map at the default zoom as `{width, height}`.
-  """
   def view_size, do: {@view_w / @default_zoom, @view_h / @default_zoom}
 
-  @doc """
-  Clamps a chain-map pan origin only to the top edge: the viewport never
-  pans above the topmost node, keeping a small margin above it. All other
-  directions pan freely. Returns `{x, y}` floats.
-  """
   def clamp_pan(systems, x, y) do
     {x, clamp_top(systems, y)}
   end
 
-  @doc """
-  Pan origin that centers the map's home system horizontally in the
-  default view. The top edge still wins over vertical centering, so a
-  top-down tree keeps its root near the top of the viewport. Falls back to
-  the default pan when the map has no home or the home node is not in the
-  chain.
-  """
   def home_center(systems, map) do
     with solar when is_integer(solar) <- map && map.home_solar_system_id,
          home when not is_nil(home) <- Enum.find(systems, &(&1.solar_system_id == solar)) do
@@ -232,12 +186,6 @@ defmodule Tripwire.Mapping do
     max(value, top)
   end
 
-  @doc """
-  Groups system ids into `{depth, [id]}` layers, sorted by depth. Depths
-  come from breadth-first search over the undirected graph, seeded at
-  systems with no incoming links so disconnected components each form
-  their own subtree.
-  """
   def depth_layers(systems, connections) do
     ids = Enum.map(systems, & &1.id)
 
@@ -266,12 +214,6 @@ defmodule Tripwire.Mapping do
     |> Enum.map(fn {depth, members} -> {depth, Enum.sort(members)} end)
   end
 
-  @doc """
-  Arranges `systems` radially around the root: depth-0 systems sit at the
-  center and each deeper layer spreads evenly over a wider ring.
-  `connections` are `{conn, from, to}` endpoint tuples. Returns
-  `%{system_id => %{x: float, y: float}}`.
-  """
   def radial_layout(systems, connections, spacing \\ 1.0) do
     systems
     |> depth_layers(connections)
@@ -288,23 +230,6 @@ defmodule Tripwire.Mapping do
     |> Elixir.Map.new(fn {id, {x, y}} -> {id, %{x: x, y: y}} end)
   end
 
-  @doc """
-  Arranges `systems` as a tree for the given `orientation`:
-
-  - `"down"` — root at the top, leaves grow down (default)
-  - `"up"` — root at the bottom, leaves grow up
-  - `"right"` — root at the left, leaves grow right
-  - `"left"` — root at the right, leaves grow left
-
-  `connections` are `{conn, from, to}` endpoint tuples. Returns
-  `%{system_id => %{x: float, y: float}}`.
-
-  Children are centered beneath their parent (tidy tree) at their
-  breadth-first depth from the root, mirroring the Tripwire chain
-  tree: each jump lands one level down and siblings share a row.
-  Components that do not reach the root are rooted at level 0 beside
-  the root's tree, including components made of a single system.
-  """
   def tree_layout(systems, connections, orientation \\ "down", spacing \\ 1.0, opts \\ []) do
     ids = Enum.map(systems, & &1.id)
 
@@ -496,10 +421,6 @@ defmodule Tripwire.Mapping do
     end
   end
 
-  @doc """
-  Finds a connection between two systems in either direction and updates it,
-  or creates it if none exists. Returns {:ok, connection} and whether it is new.
-  """
   def upsert_connection(map_id, system_a_id, system_b_id, attrs \\ %{}) do
     case do_upsert_connection(map_id, system_a_id, system_b_id, attrs) do
       {:ok, _, _} = ok ->
@@ -549,9 +470,6 @@ defmodule Tripwire.Mapping do
     end
   end
 
-  @doc """
-  Finds the connection between two systems on a map, in either direction.
-  """
   def connection_between(map_id, system_a_id, system_b_id) do
     Repo.one(
       from(c in MapConnection,
@@ -574,11 +492,6 @@ defmodule Tripwire.Mapping do
     |> Repo.insert()
   end
 
-  @doc """
-  Creates an unknown placeholder node for a scanned wormhole whose far side
-  has not been jumped yet. The node renders with empty class, name, security,
-  and signatures until the hole is mapped.
-  """
   def add_unknown_system(%Map{} = map, attrs \\ %{}) do
     add_system_to_map(
       map,
@@ -586,11 +499,6 @@ defmodule Tripwire.Mapping do
     )
   end
 
-  @doc """
-  Ensures every scanned wormhole signature on `system` that has no connection
-  for its hole code gets an unknown placeholder node linked to `system`.
-  Returns the number of placeholders created.
-  """
   def ensure_unknown_nodes(%MapSystem{} = system) do
     linked = connection_codes(system)
     map = get_map!(system.map_id)
@@ -624,9 +532,6 @@ defmodule Tripwire.Mapping do
     |> Elixir.MapSet.new()
   end
 
-  @doc """
-  Deletes unknown placeholder nodes that no longer have a connection.
-  """
   def delete_unlinked_unknowns(map_id) do
     Repo.delete_all(
       from(s in MapSystem,
@@ -639,10 +544,6 @@ defmodule Tripwire.Mapping do
     :ok
   end
 
-  @doc """
-  Turns an unknown placeholder into a real system once its hole is mapped,
-  keeping the row (and therefore its position and connection).
-  """
   def convert_unknown_system(%MapSystem{unknown: true} = system, attrs) do
     system
     |> MapSystem.changeset(Elixir.Map.put(attrs, :unknown, false))
@@ -671,10 +572,6 @@ defmodule Tripwire.Mapping do
     Repo.delete(system)
   end
 
-  @doc """
-  Deletes a map with all of its systems, connections, signatures, and
-  related rows.
-  """
   def delete_map_full(%Map{id: map_id} = map) do
     system_ids = from(s in MapSystem, where: s.map_id == ^map_id, select: s.id)
 
@@ -706,9 +603,6 @@ defmodule Tripwire.Mapping do
     Repo.delete(map)
   end
 
-  @doc """
-  Deletes every map on a mask and rebuilds the demo seed from scratch.
-  """
   def reset_demo_maps(mask_id) do
     mask_id
     |> list_maps_for_mask()
@@ -735,17 +629,6 @@ defmodule Tripwire.Mapping do
 
   def delete_connection(%MapConnection{} = connection), do: Repo.delete(connection)
 
-  @doc """
-  Aligns the chain map with a system's signature table: connections whose
-  wormhole code is no longer among the system's scanned signatures are
-  dropped, newly scanned holes are linked to other map systems sharing the
-  signature (`sig_id` match first, then a hole code present on exactly one
-  other system), and systems that end up with no connection or that no longer
-  reach the home system are hidden from the map. Hidden systems stay in the
-  database and reappear when a connection is re-created or the map enables
-  `show_all`. Returns `{dropped_connections, linked_connections,
-  hidden_systems}` counts.
-  """
   def sync_map_after_signature_change(%MapSystem{} = system, deleted_signatures)
       when is_list(deleted_signatures) do
     dropped = drop_connections_for_signatures(system, deleted_signatures)
@@ -865,13 +748,6 @@ defmodule Tripwire.Mapping do
     {code, Enum.min([system_a_id, system_b_id]), Enum.max([system_a_id, system_b_id])}
   end
 
-  @doc """
-  Hides systems from the chain map that are no longer connected: only the
-  `candidate_ids` are considered, and any of them left with no connection
-  gets `hidden_at` set. The map's home system is never hidden. Hidden systems
-  stay in the database and reappear when a connection is re-created. Returns
-  the number of newly hidden systems.
-  """
   def hide_orphan_systems(map_id, candidate_ids) do
     query =
       from(s in MapSystem,
@@ -903,12 +779,6 @@ defmodule Tripwire.Mapping do
     Elixir.MapSet.new(from_ids ++ to_ids) |> Elixir.MapSet.to_list()
   end
 
-  @doc """
-  Hides every system that cannot be reached from the map's home system by
-  following connections. Maps without a home system are left untouched.
-  Hidden systems come back through `upsert_connection/4` or the map's
-  `show_all` setting. Returns the number of newly hidden systems.
-  """
   def hide_detached_systems(map_id) do
     map = get_map!(map_id)
 
@@ -980,13 +850,6 @@ defmodule Tripwire.Mapping do
     end
   end
 
-  @doc """
-  Returns the ids of connections that close a loop. Connections are processed
-  in creation order, so the newest link in a cycle is the one marked as
-  redundant: a chain that already exists stays drawn and a freshly mapped
-  hole is the line left out. `connections` are `{conn, from, to}` endpoint
-  tuples.
-  """
   def cycle_connection_ids(connections, _root_id \\ nil) do
     connections
     |> Enum.sort_by(fn {conn, _from, _to} -> conn.id end)
@@ -1105,11 +968,6 @@ defmodule Tripwire.Mapping do
     )
   end
 
-  @doc """
-  Inserts or updates signatures for a system from parsed scan results.
-
-  Returns `{inserted, updated}` counts.
-  """
   def upsert_signatures(%MapSystem{} = system, entries, %Character{id: character_id})
       when is_list(entries) do
     {added, updated, counts} =
@@ -1293,11 +1151,6 @@ defmodule Tripwire.Mapping do
 
   def get_signature(id), do: Repo.get(Signature, id)
 
-  @doc """
-  Wormhole signatures for every system on a map, ordered by signature id.
-  The chain map labels each node with the scanned signature code recorded
-  on that system instead of the raw connection type.
-  """
   def list_wormhole_signatures(map_id) do
     system_ids = from(s in MapSystem, where: s.map_id == ^map_id, select: s.id)
 
@@ -1309,18 +1162,6 @@ defmodule Tripwire.Mapping do
     )
   end
 
-  @doc """
-  Applies official Tripwire's wormhole life side-effects to the signatures
-  that back a connection. Setting the connection's `time_status` rewrites
-  the paired wormhole signatures' expiry:
-
-    - `"<1h"`     → expires in 1 hour
-    - `"critical"` → expires in 4 hours
-    - `"stable"`   → recomputed from the signature's life length
-
-  Signatures are matched by hole type code: a wormhole signature on either
-  endpoint system whose type name carries the connection's `hole_type`.
-  """
   def sync_connection_life(%MapConnection{} = connection) do
     with code when is_binary(code) and code != "" <- connection.hole_type,
          :update <- time_status_action(connection.time_status) do
@@ -1365,11 +1206,6 @@ defmodule Tripwire.Mapping do
     |> Enum.filter(&(Tripwire.Signatures.wormhole_code(&1.type_name) == code))
   end
 
-  @doc """
-  Pushes a wormhole signature's connection code onto the chain map: any
-  connection touching `system` with a blank code (or the signature's previous
-  code) adopts `new_code`, mirroring a signature edit in the map.
-  """
   def sync_signature_to_connections(%Map{} = map, %MapSystem{} = system, old_code, new_code)
       when is_binary(new_code) do
     map.id
@@ -1524,10 +1360,6 @@ defmodule Tripwire.Mapping do
   def get_system_stat(system_id),
     do: Repo.get_by(Tripwire.Mapping.SystemStat, map_system_id: system_id)
 
-  @doc """
-  Returns a `system_id => %SystemStat{}` map for every system on a map that
-  has recorded activity, used to render node activity dots.
-  """
   def list_system_stats(map_id) do
     system_ids = from(s in MapSystem, where: s.map_id == ^map_id, select: s.id)
 

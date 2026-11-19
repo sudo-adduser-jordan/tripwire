@@ -1,12 +1,4 @@
 defmodule Tripwire.Tracking.DemoPresence do
-  @moduledoc """
-  Stands in for a location poller in demo mode.
-
-  The demo character has no SSO tokens, so a poller can never track it. This
-  GenServer holds a static tracked state in the tracking registry that powers
-  the topbar presence and the map's occupant tooltip with no ESI access.
-  """
-
   use GenServer
 
   def start_link(opts) do

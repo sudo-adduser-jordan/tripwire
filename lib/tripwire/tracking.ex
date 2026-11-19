@@ -1,8 +1,4 @@
 defmodule Tripwire.Tracking do
-  @moduledoc """
-  Tracks authenticated characters through New Eden and maintains the map graph.
-  """
-
   import Ecto.Query, only: [from: 2]
 
   alias Tripwire.{ESI, Mapping}
@@ -41,9 +37,6 @@ defmodule Tripwire.Tracking do
     end
   end
 
-  @doc """
-  Whether a poller is currently tracking the given character.
-  """
   def tracking?(%{eve_id: eve_id}) when is_integer(eve_id) do
     case Registry.lookup(Tripwire.TrackingRegistry, eve_id) do
       [{_pid, _}] -> true
@@ -53,13 +46,6 @@ defmodule Tripwire.Tracking do
 
   def tracking?(_), do: false
 
-  @doc """
-  Records a location change onto the map: adds the system when missing,
-  links it to the previous system and broadcasts the map update.
-
-  The previous system row is passed in by the poller so this stays a pure
-  data operation that can be exercised without ESI access.
-  """
   def apply_location_change(map, character_name, prev_system, solar_system_id, opts \\ []) do
     name_fetcher = Keyword.get(opts, :name_fetcher, &fetch_system_info/1)
     route_fn = Keyword.get(opts, :route_fn, fn o, d -> ESI.get_route(o, d) end)
@@ -96,13 +82,6 @@ defmodule Tripwire.Tracking do
     end
   end
 
-  @doc """
-  Wormhole signatures in `from_system` that can be the hole the character
-  just jumped through into `to_system`, mirroring official Tripwire's
-  automapper: a scanned hole matches when its code leads to the jumped-to
-  class, when the code is eligible between the two system classes, or when
-  the hole carries neither a code nor any destination information.
-  """
   def wormholes_for_jump(from_system, to_system, signatures) do
     to_class = Tripwire.Systems.display_class(to_system)
     eligible = eligible_jump_codes(from_system, to_system)
@@ -271,9 +250,6 @@ defmodule Tripwire.Tracking do
   @map_center %{x: 460.0, y: 300.0}
   @placement_radius 170.0
 
-  # New systems spawn on a golden-angle spiral around the previous system so
-  # tracked jumps lay out a readable chain instead of piling at the origin.
-  # Positions are only assigned on creation; user drags are never touched.
   defp next_position(map, prev_system) do
     count = Repo.aggregate(from(s in MapSystem, where: s.map_id == ^map.id), :count)
 

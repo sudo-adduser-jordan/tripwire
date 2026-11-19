@@ -1,21 +1,4 @@
 defmodule Tripwire.Markdown do
-  @moduledoc """
-  Renders the Discord-style Markdown subset used in notes to safe HTML.
-
-  Supported: **bold**, ***bold italic***, *italic*, _italic_,
-  __underline__, ~~strikethrough~~, `code`, fenced code blocks,
-  [links](https://…), bare https:// links, > quotes, `-`/`+`/`*` lists
-  and `1.` lists. Everything else is plain text.
-
-  User input is HTML-escaped before any markup is applied, code and
-  links are stashed in placeholders while emphasis runs, and only
-  `http(s)` link targets are ever emitted, so the result is safe to
-  inject with `Phoenix.HTML.raw/1`.
-  """
-
-  @doc """
-  Converts Markdown text to an HTML string. Returns `""` for blank input.
-  """
   def to_html(text) do
     text
     |> to_string()

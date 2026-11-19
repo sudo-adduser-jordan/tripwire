@@ -1,23 +1,4 @@
 defmodule Tripwire.Signatures do
-  @moduledoc """
-  Parses EVE Online probe-scan results pasted from the scanning window.
-
-  Each line is expected to start with a signature ID (`XXX-123`), optionally
-  followed by tab-separated columns such as scan group, site type/name,
-  signal strength and distance. Lines without a valid signature ID are skipped.
-
-      iex> Tripwire.Signatures.parse_paste("ABC-123\\tCosmic Signature\\t\\tSerpentis Frigate Den")
-      [
-        %Tripwire.Signatures.Parsed{
-          sig_id: "ABC-123",
-          kind: :signature,
-          name: "Serpentis Frigate Den",
-          wormhole_type: nil,
-          category: :combat
-        }
-      ]
-  """
-
   alias Tripwire.Signatures.Parsed
 
   @id_regex ~r/^([A-Za-z]{3}-[0-9]{3})\b/
@@ -25,9 +6,6 @@ defmodule Tripwire.Signatures do
 
   @anomaly_label "cosmic anomaly"
 
-  @doc """
-  Parses an entire paste buffer, returning one entry per parsable line.
-  """
   @spec parse_paste(String.t()) :: [Parsed.t()]
   def parse_paste(text) when is_binary(text) do
     text
@@ -43,16 +21,6 @@ defmodule Tripwire.Signatures do
 
   def parse_paste(_), do: []
 
-  @doc """
-  Parses a single scan-result line.
-
-      iex> Tripwire.Signatures.parse_line("ghi-789\\tCosmic Anomaly\\tForsaken Hub")
-      {:ok, %Tripwire.Signatures.Parsed{sig_id: "GHI-789", kind: :anomaly, name: "Forsaken Hub",
-        wormhole_type: nil, category: :combat}}
-
-      iex> Tripwire.Signatures.parse_line("no signature here")
-      :error
-  """
   @spec parse_line(String.t()) :: {:ok, Parsed.t()} | :error
   def parse_line(line) when is_binary(line) do
     case Regex.run(@id_regex, String.trim(line)) do
@@ -83,14 +51,6 @@ defmodule Tripwire.Signatures do
 
   def parse_line(_), do: :error
 
-  @doc """
-  Remaining lifetime of a signature given its creation time and total life length.
-
-      iex> created = ~U[2026-01-01 00:00:00Z]
-      iex> now = DateTime.add(created, 3600, :second)
-      iex> Tripwire.Signatures.life_left(created, 72 * 3600, now)
-      255600
-  """
   def life_left(created_at, life_length \\ default_life_length(), now \\ DateTime.utc_now()) do
     created_at
     |> DateTime.add(life_length, :second)
@@ -100,31 +60,10 @@ defmodule Tripwire.Signatures do
 
   def default_life_length, do: 72 * 3600
 
-  @doc """
-  Returns how long ago a signature was scanned, in seconds.
-
-      iex> scanned = ~U[2026-01-01 00:00:00Z]
-      iex> now = DateTime.add(scanned, 90, :second)
-      iex> Tripwire.Signatures.age_seconds(scanned, now)
-      90
-  """
   def age_seconds(scanned_at, now \\ DateTime.utc_now()) do
     now |> DateTime.diff(scanned_at, :second) |> max(0)
   end
 
-  @doc """
-  Life state of a signature from its remaining lifetime, matching the labels
-  official Tripwire shows for a wormhole.
-
-      iex> Tripwire.Signatures.life_status(5 * 3600)
-      :stable
-      iex> Tripwire.Signatures.life_status(2 * 3600)
-      :eol
-      iex> Tripwire.Signatures.life_status(600)
-      :critical
-      iex> Tripwire.Signatures.life_status(0)
-      :expired
-  """
   def life_status(seconds_left) when seconds_left <= 0, do: :expired
   def life_status(seconds_left) when seconds_left < 3600, do: :critical
   def life_status(seconds_left) when seconds_left < 4 * 3600, do: :eol
@@ -202,10 +141,6 @@ defmodule Tripwire.Signatures do
 
   @known_site_set MapSet.new(@known_sites)
 
-  @doc """
-  Infers a concrete site type when the user names a wormhole but leaves
-  the type on "unknown", so a scanned signature is never shown as unscanned.
-  """
   @spec infer_site_type(String.t() | nil, String.t() | nil) :: String.t()
   def infer_site_type("unknown", name) when is_binary(name) do
     if Regex.match?(@wormhole_code_regex, String.upcase(name)), do: "wormhole", else: "unknown"
@@ -214,10 +149,6 @@ defmodule Tripwire.Signatures do
   def infer_site_type(type, _name) when is_binary(type) and type != "", do: type
   def infer_site_type(_, _), do: "unknown"
 
-  @doc """
-  Extracts a wormhole type code (`"B274"`) from a type name such as
-  `"Unstable Wormhole (B274)"`, or `nil` when none is present.
-  """
   @spec wormhole_code(String.t() | nil) :: String.t() | nil
   def wormhole_code(name) when is_binary(name) do
     case Regex.run(@wormhole_code_regex, String.upcase(name)) do
@@ -228,11 +159,6 @@ defmodule Tripwire.Signatures do
 
   def wormhole_code(_), do: nil
 
-  @doc """
-  Returns the eve-survival guide URL for a known site name, matching
-  official Tripwire. Any other named site falls back to the EVE
-  University wiki. Blank names have no external guide.
-  """
   @spec external_link(String.t() | nil) :: String.t() | nil
   def external_link(name) when is_binary(name) and name != "" do
     if MapSet.member?(@known_site_set, name) do

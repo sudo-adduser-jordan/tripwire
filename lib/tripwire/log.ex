@@ -1,6 +1,4 @@
 defmodule Tripwire.Log do
-  @moduledoc false
-
   @levels [:debug, :info, :warning, :error]
 
   def new(fields \\ %{}) do

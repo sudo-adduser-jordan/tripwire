@@ -28,8 +28,6 @@ const GridStack = {
         }
     },
 
-    // dashboard.js (gridstack lib) is 3MB+ and may still be downloading when
-    // LiveView mounts. Retry instead of leaving the grid hidden forever.
     _ensure() {
         if (window.TripwireGridStack) {
             window.TripwireGridStack.init(this.el)
@@ -41,7 +39,6 @@ const GridStack = {
             setTimeout(() => this._ensure(), 100)
             return
         }
-        // Last resort: never leave the dashboard invisible.
         this.el.classList.remove('grid-stack-loading')
     },
 
@@ -72,7 +69,6 @@ const liveSocket = new LiveSocket("/live", Socket, {
     hooks,
 })
 
-// Show progress bar on live navigation and form submits
 topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" })
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())

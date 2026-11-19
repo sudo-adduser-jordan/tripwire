@@ -5,20 +5,6 @@ defmodule TripwireWeb.CharacterVisibilityComponents do
 
   alias Tripwire.EveImages
 
-  @doc """
-
-  Renders the ship toggle for a character.
-
-  The button shows the character's current ship render when the character is the
-  logged in one and the ship type is known, and a neutral cube icon otherwise.
-  Each click flips whether the ship is drawn on chain; hidden state is dimmed.
-
-  ## Examples
-
-      <.character_ship_toggle character={character} size="lg" />
-
-  """
-
   attr :character, :map, required: true
   attr :current_character, :any, default: nil
   attr :current_ship_type_id, :any, default: nil
@@ -62,19 +48,6 @@ defmodule TripwireWeb.CharacterVisibilityComponents do
     </button>
     """
   end
-
-  @doc """
-
-  Renders the character portrait as the character visibility toggle.
-
-  Clicking the portrait hides or shows the character on chain; hidden state is
-  dimmed and the avatar dot still marks the logged in character.
-
-  ## Examples
-
-      <.character_portrait_toggle character={character} current_character={current} size="lg" />
-
-  """
 
   attr :character, :map, required: true
   attr :current_character, :any, default: nil

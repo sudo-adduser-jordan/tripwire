@@ -102,8 +102,6 @@ defmodule TripwireWeb.DashboardLiveTest do
   test "demo wormhole signatures are labelled with their connection destination", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/dashboard")
 
-    # Home backs three connections; its scanned wormhole signatures show the
-    # systems they lead to instead of the generic wormhole name.
     assert html =~ "J150322"
     assert html =~ "J150327"
     assert html =~ "J150329"
@@ -342,7 +340,6 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     html = render(view)
     assert html =~ "ABC-123"
-    # A scanned wormhole keeps its full typed name (no matching connection here)
     assert html =~ "Unstable Wormhole (Z647)"
 
     assert [%Mapping.Signature{} = sig] = Mapping.list_signatures(system.id)
@@ -951,7 +948,6 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element("#show-favorite")
     |> render_click()
 
-    # map-header star imports connected favorites, it does not untoggle
     html = render(view)
     assert html =~ "hero-star-solid"
     assert Mapping.get_system!(system.id).favorite
@@ -1042,7 +1038,6 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, other} =
       Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
 
-    # B274's 375kt max jump applies a 1.3x mass factor to the line weight.
     {:ok, _link, _new?} =
       Mapping.upsert_connection(map.id, system.id, other.id, %{hole_type: "B274"})
 

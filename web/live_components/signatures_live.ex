@@ -45,9 +45,6 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   defp reset_sort_on_system_change(socket, _previous, _current),
     do: assign(socket, :sort, nil)
 
-  # Maps {system_id, hole code} to the system the connection leads to, so a
-  # scanned wormhole signature can be labelled with its destination like in
-  # official Tripwire.
   defp wh_links(connections) do
     Enum.flat_map(connections, fn {conn, from, to} ->
       case hole_code(conn.hole_type) do
@@ -558,9 +555,6 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   defp sig_link(%{type_name: name}), do: SigParser.external_link(name)
   defp sig_link(_), do: nil
 
-  # A scanned wormhole that backs a connection is labelled with the system the
-  # connection leads to (Tripwire behaviour); otherwise the full typed name is
-  # kept so a scanned hole is never displayed like an unscanned one.
   defp wormhole_label(sig, wh_links) do
     case Map.get(wh_links, {sig.map_system_id, SigParser.wormhole_code(sig.type_name)}) do
       nil -> wormhole_display(sig)

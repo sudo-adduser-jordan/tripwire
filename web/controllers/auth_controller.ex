@@ -92,8 +92,6 @@ defmodule TripwireWeb.AuthController do
     end
   end
 
-  # Mirrors official Tripwire: registering as admin requires CEO, Director,
-  # or Tripwire Admin corp roles. Non-blocking — ESI failures keep is_admin false.
   defp maybe_grant_admin(character, auth) do
     token = auth.credentials && auth.credentials.token
 

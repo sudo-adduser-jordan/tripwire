@@ -1,6 +1,4 @@
 defmodule Tripwire.Tracking.PollerSupervisor do
-  @moduledoc false
-
   use DynamicSupervisor
 
   def start_link(init_arg) do

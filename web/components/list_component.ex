@@ -1,18 +1,6 @@
 defmodule TripwireWeb.ListComponent do
   use Phoenix.Component
 
-  @doc """
-
-  Renders a data list.
-
-  ## Examples
-
-      <.list>
-        <:item title="Title">{@post.title}</:item>
-        <:item title="Views">{@post.views}</:item>
-      </.list>
-
-  """
   slot :item, required: true do
     attr :title, :string, required: true
   end
