@@ -974,6 +974,31 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert xs == Enum.uniq(xs)
   end
 
+  test "layout reloads connections so edges follow the new node positions", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, home} = setup_with_system(%{character: character}, "J150321")
+    {:ok, child} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
+    {:ok, link, _} = Mapping.upsert_connection(map.id, home.id, child.id)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+
+    view
+    |> element(~s|#settings-widget form[phx-change="map-layout"]|)
+    |> render_change(%{layout: "bottom"})
+
+    home = Mapping.get_system!(home.id)
+    child = Mapping.get_system!(child.id)
+
+    path = view |> element("#connection-#{link.id}") |> render()
+
+    assert path =~ "M #{home.x + 60} #{home.y + 44}"
+    assert path =~ "L #{child.x + 60} #{child.y + 44}"
+  end
+
   test "map-layout rearranges the tree", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/dashboard")
 

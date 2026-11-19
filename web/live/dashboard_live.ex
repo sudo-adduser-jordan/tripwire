@@ -1431,7 +1431,7 @@ defmodule TripwireWeb.DashboardLive do
 
     socket
     |> assign(:systems, Mapping.list_chain_systems(map))
-    |> assign(:connections, connections)
+    |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
   end
 
   defp home_root_id(systems, %{home_solar_system_id: solar}) when is_integer(solar) do
