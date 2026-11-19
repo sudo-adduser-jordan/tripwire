@@ -2,6 +2,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   use TripwireWeb.ConnCase, async: false
 
   alias Tripwire.Accounts
+  alias Tripwire.Layouts
   alias Tripwire.Mapping
   alias Tripwire.Masks
   alias Tripwire.Repo
@@ -229,6 +230,138 @@ defmodule TripwireWeb.DashboardLiveTest do
     other_view |> element("#settings-button") |> render_click()
     render_click(other_view, "settings-tab", %{"tab" => "widgets"})
     refute has_element?(other_view, "#toggle-widget-notes[checked]")
+  end
+
+  test "layouts settings tab lists core layouts without remove controls", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "layouts"})
+
+    assert has_element?(view, "#layout-core-default")
+    assert has_element?(view, "#layout-core-map-focus")
+    assert has_element?(view, "#layout-core-signatures-focus")
+    assert has_element?(view, "#layout-core-compact")
+    assert has_element?(view, "#apply-layout-core-default")
+    refute has_element?(view, "#remove-layout-core-default")
+    assert has_element?(view, "#no-saved-layouts")
+    assert render(view) =~ "Map Focus"
+  end
+
+  test "applying a layout moves widgets, hides widgets and persists the choice", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    assert has_element?(view, "#signatures")
+    assert has_element?(view, "#map[gs-y='12']")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "layouts"})
+    view |> element("#apply-layout-core-map-focus") |> render_click()
+
+    assert has_element?(view, "#map[gs-y='0']")
+    refute has_element?(view, "#signatures")
+    assert Layouts.active_layout() == "core:map-focus"
+    assert render(view) =~ "Active"
+
+    {:ok, reloaded, _html} = live(login(conn, character), ~p"/dashboard")
+
+    assert has_element?(reloaded, "#map[gs-y='0']")
+    refute has_element?(reloaded, "#signatures")
+  end
+
+  test "saving the current layout stores positions and visibility", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "layouts"})
+
+    view |> element("#save-layout-form") |> render_submit(%{"name" => "Wide"})
+
+    widgets = %{
+      "system" => %{"x" => 0, "y" => 0, "w" => 6, "h" => 4},
+      "notes" => %{"x" => 6, "y" => 0, "w" => 6, "h" => 4},
+      "signatures" => %{"x" => 0, "y" => 4, "w" => 12, "h" => 6},
+      "map" => %{"x" => 0, "y" => 10, "w" => 12}
+    }
+
+    view |> element("#grid-stack") |> render_hook("layout-captured", %{"widgets" => widgets})
+
+    assert [layout] = Layouts.list_saved()
+    assert layout.name == "Wide"
+    assert has_element?(view, "#layout-saved-#{layout.id}")
+    assert has_element?(view, "#apply-layout-saved-#{layout.id}")
+    assert has_element?(view, "#remove-layout-saved-#{layout.id}")
+    assert Layouts.active_layout() == "saved:#{layout.id}"
+    assert render(view) =~ "Active"
+  end
+
+  test "saving a layout with a duplicate name shows an error", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, _layout} = Layouts.save_layout("Wide", Layouts.default_widgets())
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "layouts"})
+    view |> element("#save-layout-form") |> render_submit(%{"name" => "Wide"})
+    view |> element("#grid-stack") |> render_hook("layout-captured", %{"widgets" => %{}})
+
+    assert render(view) =~ "name has already been taken"
+    assert length(Layouts.list_saved()) == 1
+  end
+
+  test "only saved layouts can be removed", %{conn: conn, character: character} do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, layout} = Layouts.save_layout("Wide", Layouts.default_widgets())
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "layouts"})
+
+    view |> element("#remove-layout-saved-#{layout.id}") |> render_click()
+
+    assert Layouts.list_saved() == []
+    assert has_element?(view, "#no-saved-layouts")
+
+    render_click(view, "delete-layout", %{"id" => "core:default"})
+
+    assert render(view) =~ "Core layouts cannot be removed"
+    assert has_element?(view, "#layout-core-default")
+  end
+
+  test "changing widgets clears the active layout marker", %{conn: conn, character: character} do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "layouts"})
+    view |> element("#apply-layout-core-map-focus") |> render_click()
+    assert Layouts.active_layout() == "core:map-focus"
+
+    render_click(view, "settings-tab", %{"tab" => "widgets"})
+    view |> element("#toggle-widget-signatures") |> render_click()
+
+    assert Layouts.active_layout() == nil
   end
 
   test "settings survive switching masks", %{conn: conn, character: character} do

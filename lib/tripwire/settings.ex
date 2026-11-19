@@ -22,7 +22,8 @@ defmodule Tripwire.Settings do
     :widget_map,
     :include_thera,
     :show_all,
-    :chart_range
+    :chart_range,
+    :active_layout
   ]
 
   def get do

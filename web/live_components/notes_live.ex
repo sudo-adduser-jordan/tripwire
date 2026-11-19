@@ -102,15 +102,17 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
     {:noreply, assign(socket, :comments, Mapping.list_comments(comment.map_system_id))}
   end
 
+  attr :position, :map, default: %{"x" => 6, "y" => 0, "w" => 6, "h" => 6}
+
   def render(assigns) do
     ~H"""
     <div
       id="notes"
       class="grid-stack-item"
-      gs-w="6"
-      gs-h="6"
-      gs-x="6"
-      gs-y="0"
+      gs-w={@position["w"]}
+      gs-h={@position["h"]}
+      gs-x={@position["x"]}
+      gs-y={@position["y"]}
       tabindex="0"
       phx-hook="GridWidget"
     >

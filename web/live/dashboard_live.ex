@@ -3,6 +3,7 @@ defmodule TripwireWeb.DashboardLive do
 
   alias Tripwire.Accounts
   alias Tripwire.ESI
+  alias Tripwire.Layouts
   alias Tripwire.Mapping
   alias Tripwire.Masks
   alias Tripwire.Settings
@@ -17,7 +18,7 @@ defmodule TripwireWeb.DashboardLive do
   @topbar_refresh_ms 60_000
   @chart_refresh_ms 60_000
   @chart_ranges ~w(24h 48h week)
-  @settings_tabs ~w(account map widgets statistics themes admin)
+  @settings_tabs ~w(account map widgets layouts statistics themes admin)
   @widgets %{
     "system" => :widget_system,
     "notes" => :widget_notes,
@@ -112,6 +113,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
     |> assign_topbar_defaults()
     |> assign(settings)
+    |> assign_layouts()
     |> assign(:systems, Mapping.list_chain_systems(map, settings.show_all))
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
     |> refresh_occupants()
@@ -392,9 +394,108 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("toggle-widget", %{"widget" => widget}, socket) do
     case @widgets do
-      %{^widget => key} -> {:noreply, put_setting(socket, key, !socket.assigns[key])}
-      _ -> {:noreply, socket}
+      %{^widget => key} ->
+        socket =
+          socket
+          |> put_setting(key, !socket.assigns[key])
+          |> clear_active_layout()
+
+        {:noreply, socket}
+
+      _ ->
+        {:noreply, socket}
     end
+  end
+
+  def handle_event("apply-layout", %{"id" => id}, socket) do
+    case Layouts.get_layout(id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Layout not found")}
+
+      layout ->
+        _ = Layouts.set_active(layout.id)
+
+        socket =
+          socket
+          |> assign(:active_layout, layout.id)
+          |> assign_widget_layout(layout.widgets)
+          |> push_event("layout-apply", %{widgets: layout.widgets})
+
+        {:noreply, put_flash(socket, :info, "Applied #{layout.name}")}
+    end
+  end
+
+  def handle_event("apply-layout", _params, socket), do: {:noreply, socket}
+
+  def handle_event("save-layout", %{"name" => name}, socket) do
+    name = name |> to_string() |> String.trim()
+
+    if name == "" do
+      {:noreply, assign(socket, :layout_errors, ["Layout name is required"])}
+    else
+      socket = socket |> assign(:layout_name, name) |> assign(:layout_errors, [])
+      {:noreply, push_event(socket, "layout-capture", %{})}
+    end
+  end
+
+  def handle_event("save-layout", _params, socket) do
+    {:noreply, assign(socket, :layout_errors, ["Layout name is required"])}
+  end
+
+  def handle_event("layout-captured", %{"widgets" => widgets}, socket) do
+    widgets = Layouts.with_visibility(widgets, socket.assigns)
+
+    case Layouts.save_layout(socket.assigns[:layout_name], widgets) do
+      {:ok, layout} ->
+        _ = Layouts.set_active("saved:#{layout.id}")
+
+        socket =
+          socket
+          |> assign(:layouts, Layouts.list_layouts())
+          |> assign(:active_layout, "saved:#{layout.id}")
+          |> assign(:layout_name, "")
+          |> assign(:layout_errors, [])
+
+        {:noreply, put_flash(socket, :info, "Saved #{layout.name}")}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, :layout_errors, changeset_errors(changeset))}
+    end
+  end
+
+  def handle_event("layout-captured", _params, socket), do: {:noreply, socket}
+
+  def handle_event("delete-layout", %{"id" => id}, socket) do
+    case Layouts.delete_layout(id) do
+      {:ok, layout} ->
+        socket = assign(socket, :layouts, Layouts.list_layouts())
+
+        if socket.assigns[:active_layout] == id do
+          _ = Layouts.clear_active()
+
+          socket =
+            socket
+            |> assign(:active_layout, nil)
+            |> assign_widget_layout(Layouts.default_widgets())
+            |> push_event("layout-apply", %{widgets: Layouts.default_widgets()})
+
+          {:noreply, put_flash(socket, :info, "Removed #{layout.name}, back to Default")}
+        else
+          {:noreply, put_flash(socket, :info, "Removed #{layout.name}")}
+        end
+
+      {:error, :core} ->
+        {:noreply, put_flash(socket, :error, "Core layouts cannot be removed")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Layout not found")}
+    end
+  end
+
+  def handle_event("delete-layout", _params, socket), do: {:noreply, socket}
+
+  def handle_event("layout-changed", _params, socket) do
+    {:noreply, clear_active_layout(socket)}
   end
 
   def handle_event("toggle-map-lock", _params, socket) do
@@ -1568,6 +1669,40 @@ defmodule TripwireWeb.DashboardLive do
     Mapping.list_chain_systems(map || socket.assigns.map, socket.assigns.show_all)
   end
 
+  defp assign_layouts(socket) do
+    layouts = Layouts.list_layouts()
+
+    case Layouts.resolve_active() do
+      nil ->
+        socket
+        |> assign(:layouts, layouts)
+        |> assign(:active_layout, nil)
+
+      layout ->
+        socket
+        |> assign(:layouts, layouts)
+        |> assign(:active_layout, layout.id)
+        |> assign_widget_layout(layout.widgets)
+    end
+  end
+
+  defp assign_widget_layout(socket, widgets) do
+    Enum.reduce(@widgets, socket, fn {key, assign_key}, socket ->
+      socket
+      |> assign(:widget_positions, Map.put(socket.assigns.widget_positions, key, widgets[key]))
+      |> assign(assign_key, widgets[key]["visible"])
+    end)
+  end
+
+  defp clear_active_layout(socket) do
+    if socket.assigns[:active_layout] do
+      _ = Layouts.clear_active()
+      assign(socket, :active_layout, nil)
+    else
+      socket
+    end
+  end
+
   defp put_setting(socket, key, value) do
     case Settings.update(%{key => value}) do
       {:ok, _} ->
@@ -1637,6 +1772,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
     |> assign_topbar_defaults()
     |> assign(settings)
+    |> assign_layouts()
     |> assign(:systems, Mapping.list_chain_systems(map, settings.show_all))
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
     |> apply_tree_layout(settings.map_layout)
@@ -2272,6 +2408,11 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:widget_notes, true)
     |> assign(:widget_signatures, true)
     |> assign(:widget_map, true)
+    |> assign(:widget_positions, Layouts.default_widgets())
+    |> assign(:layouts, [])
+    |> assign(:active_layout, nil)
+    |> assign(:layout_name, "")
+    |> assign(:layout_errors, [])
     |> assign(:line_weight, 2)
     |> assign(:node_spacing, 100)
     |> assign(:map_scale, 100)

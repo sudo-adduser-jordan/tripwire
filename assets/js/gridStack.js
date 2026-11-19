@@ -174,6 +174,7 @@ function refreshGrid(el) {
 
     if (widgetSetChanged) {
         reconcile(el, grid)
+        suppressLayoutChange(el)
         if (typeof grid.compact === 'function') grid.compact()
     }
 
@@ -215,4 +216,64 @@ function refreshGrid(el) {
     fitMap(el, grid)
 }
 
-window.TripwireGridStack = { init: initGrid, refresh: refreshGrid, destroy: destroyGrid }
+const WIDGET_IDS = {
+    'system-container': 'system',
+    notes: 'notes',
+    signatures: 'signatures',
+    map: 'map',
+}
+
+function suppressLayoutChange(el) {
+    if (!el) return
+    el._layoutApplying = true
+    window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+            el._layoutApplying = false
+        })
+    })
+}
+
+function widgetElementId(key) {
+    return Object.keys(WIDGET_IDS).find((id) => WIDGET_IDS[id] === key)
+}
+
+function snapshotWidgets() {
+    const grid = window.TripwireGrid
+    if (!grid || !grid.engine) return {}
+
+    const widgets = {}
+    ;(grid.engine.nodes || []).forEach((node) => {
+        const key = node && node.el ? WIDGET_IDS[node.el.id] : null
+        if (!key) return
+        widgets[key] = { x: node.x, y: node.y, w: node.w }
+        if (key !== 'map') widgets[key].h = node.h
+    })
+    return widgets
+}
+
+function applyLayout(widgets) {
+    const grid = window.TripwireGrid
+    if (!grid || !grid.engine || !widgets) return
+
+    suppressLayoutChange(grid.el)
+
+    Object.entries(widgets).forEach(([key, position]) => {
+        const id = widgetElementId(key)
+        const el = id ? document.getElementById(id) : null
+        if (!el || !el.gridstackNode) return
+
+        const target = { x: position.x, y: position.y, w: position.w }
+        if (key !== 'map' && position.h) target.h = position.h
+        grid.update(el, target)
+    })
+
+    grid.el._gridSig = itemSignature(grid.el)
+}
+
+window.TripwireGridStack = {
+    init: initGrid,
+    refresh: refreshGrid,
+    destroy: destroyGrid,
+    snapshot: snapshotWidgets,
+    apply: applyLayout,
+}

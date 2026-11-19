@@ -26,6 +26,7 @@ defmodule Tripwire.Settings.UserSettings do
     field :show_all, :boolean, default: false
     field :chart_range, :string, default: "24h"
     field :chart_hidden, {:array, :string}, default: []
+    field :active_layout, :string
 
     timestamps(type: :utc_datetime)
   end
@@ -52,7 +53,8 @@ defmodule Tripwire.Settings.UserSettings do
       :include_thera,
       :show_all,
       :chart_range,
-      :chart_hidden
+      :chart_hidden,
+      :active_layout
     ])
     |> validate_inclusion(:map_layout, @layouts)
     |> validate_inclusion(:chart_range, @chart_ranges)

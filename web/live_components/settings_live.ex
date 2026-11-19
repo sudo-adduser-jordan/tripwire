@@ -3,6 +3,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
 
   alias TripwireWeb.LiveComponents.Settings.AccountLive
   alias TripwireWeb.LiveComponents.Settings.AdminLive
+  alias TripwireWeb.LiveComponents.Settings.LayoutsLive
   alias TripwireWeb.LiveComponents.Settings.MapLive
   alias TripwireWeb.LiveComponents.Settings.StatisticsLive
   alias TripwireWeb.LiveComponents.Settings.ThemesLive
@@ -24,6 +25,9 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   attr :widget_notes, :boolean, default: true
   attr :widget_signatures, :boolean, default: true
   attr :widget_map, :boolean, default: true
+  attr :layouts, :list, default: []
+  attr :active_layout, :string, default: nil
+  attr :layout_errors, :list, default: []
   attr :characters, :list, default: []
   attr :masks, :list, default: []
   attr :character, :any, default: nil
@@ -80,6 +84,12 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
             widget_notes={@widget_notes}
             widget_signatures={@widget_signatures}
             widget_map={@widget_map}
+          />
+          <LayoutsLive.settings_layouts_live
+            settings_tab={@settings_tab}
+            layouts={@layouts}
+            active_layout={@active_layout}
+            layout_errors={@layout_errors}
           />
           <StatisticsLive.settings_statistics_live
             settings_tab={@settings_tab}

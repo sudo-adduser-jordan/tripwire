@@ -93,6 +93,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     {:noreply, socket}
   end
 
+  attr :position, :map, default: %{"x" => 0, "y" => 12, "w" => 12, "h" => 12}
+
   def render(assigns) do
     visible = visible_connections(assigns)
     cycle = Mapping.cycle_connection_ids(visible)
@@ -113,10 +115,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     <div
       id="map"
       class="grid-stack-item"
-      gs-w="12"
-      gs-h="12"
-      gs-x="0"
-      gs-y="12"
+      gs-w={@position["w"]}
+      gs-h={@position["h"] || 12}
+      gs-x={@position["x"]}
+      gs-y={@position["y"]}
       tabindex="0"
       phx-hook="GridWidget"
     >

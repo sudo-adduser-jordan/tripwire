@@ -16,6 +16,7 @@ import SearchSuggest from "./searchSuggest"
 const GridStack = {
     mounted() {
         this._tries = 0
+        this._bindLayoutEvents()
         this._ensure()
     },
 
@@ -23,6 +24,7 @@ const GridStack = {
         if (window.TripwireGridStack) {
             window.TripwireGridStack.init(this.el)
             window.TripwireGridStack.refresh(this.el)
+            this._bindLayoutEvents()
         } else {
             this._ensure()
         }
@@ -32,6 +34,7 @@ const GridStack = {
         if (window.TripwireGridStack) {
             window.TripwireGridStack.init(this.el)
             window.TripwireGridStack.refresh(this.el)
+            this._bindLayoutEvents()
             return
         }
         if (this._tries < 100) {
@@ -40,6 +43,28 @@ const GridStack = {
             return
         }
         this.el.classList.remove('grid-stack-loading')
+    },
+
+    _bindLayoutEvents() {
+        if (!this._layoutEventsBound) {
+            this._layoutEventsBound = true
+            this.handleEvent('layout-capture', () => {
+                const widgets = window.TripwireGridStack?.snapshot() || {}
+                this.pushEvent('layout-captured', { widgets: widgets })
+            })
+            this.handleEvent('layout-apply', ({ widgets }) => {
+                window.TripwireGridStack?.apply(widgets)
+            })
+        }
+
+        const grid = window.TripwireGrid
+        if (!grid || grid._layoutChangeBound) return
+        grid._layoutChangeBound = true
+        grid.on('change', () => {
+            if (this.el._layoutApplying) return
+            if (grid.opts && grid.opts.staticGrid) return
+            this.pushEvent('layout-changed', {})
+        })
     },
 
     destroyed() {

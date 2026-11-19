@@ -212,15 +212,17 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
     {:noreply, assign(socket, :column_order, normalize_order(order))}
   end
 
+  attr :position, :map, default: %{"x" => 0, "y" => 6, "w" => 12, "h" => 6}
+
   def render(assigns) do
     ~H"""
     <div
       id={@id}
       class="grid-stack-item"
-      gs-w="12"
-      gs-h="6"
-      gs-x="0"
-      gs-y="6"
+      gs-w={@position["w"]}
+      gs-h={@position["h"]}
+      gs-x={@position["x"]}
+      gs-y={@position["y"]}
       tabindex="0"
       phx-hook="GridWidget"
     >

@@ -106,6 +106,9 @@
         widget_notes={@widget_notes}
         widget_signatures={@widget_signatures}
         widget_map={@widget_map}
+        layouts={@layouts}
+        active_layout={@active_layout}
+        layout_errors={@layout_errors}
         characters={@characters}
         masks={@masks}
         character={@character}
@@ -125,6 +128,7 @@
         chart_range={@chart_range}
         chart_hidden={@chart_hidden}
         chart_data={@chart_data}
+        position={@widget_positions["system"]}
       />
       <.live_component
         :if={@widget_notes}
@@ -134,6 +138,7 @@
         selected_system_name={@selected_system_name}
         comments={@comments}
         character={@character}
+        position={@widget_positions["notes"]}
       />
       <.live_component
         :if={@widget_signatures}
@@ -144,6 +149,7 @@
         signatures={@signatures}
         connections={@connections}
         character={@character}
+        position={@widget_positions["signatures"]}
       />
       <.live_component
         :if={@widget_map}
@@ -166,6 +172,7 @@
         line_weight={@line_weight}
         map_background={@map_background}
         map_name={if @map, do: @map.name, else: "Demo"}
+        position={@widget_positions["map"]}
       />
     </div>
   </div>

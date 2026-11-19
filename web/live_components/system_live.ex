@@ -40,14 +40,16 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
     {:noreply, socket}
   end
 
+  attr :position, :map, default: %{"x" => 0, "y" => 0, "w" => 6, "h" => 6}
+
   def render(assigns) do
     ~H"""
     <div
       id="system-container"
-      gs-w="6"
-      gs-h="6"
-      gs-x="0"
-      gs-y="0"
+      gs-w={@position["w"]}
+      gs-h={@position["h"]}
+      gs-x={@position["x"]}
+      gs-y={@position["y"]}
       class="grid-stack-item"
       tabindex="0"
       phx-hook="GridWidget"
