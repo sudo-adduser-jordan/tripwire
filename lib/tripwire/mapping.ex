@@ -535,6 +535,81 @@ defmodule Tripwire.Mapping do
     |> Repo.insert()
   end
 
+  @doc """
+  Creates an unknown placeholder node for a scanned wormhole whose far side
+  has not been jumped yet. The node renders with empty class, name, security,
+  and signatures until the hole is mapped.
+  """
+  def add_unknown_system(%Map{} = map, attrs \\ %{}) do
+    add_system_to_map(
+      map,
+      Elixir.Map.merge(%{unknown: true, solar_system_id: 0, name: "unknown"}, attrs)
+    )
+  end
+
+  @doc """
+  Ensures every scanned wormhole signature on `system` that has no connection
+  for its hole code gets an unknown placeholder node linked to `system`.
+  Returns the number of placeholders created.
+  """
+  def ensure_unknown_nodes(%MapSystem{} = system) do
+    linked = connection_codes(system)
+    map = get_map!(system.map_id)
+
+    system.id
+    |> list_signatures()
+    |> Enum.filter(&(&1.site_type == "wormhole"))
+    |> Enum.map(&SigParser.wormhole_code(&1.type_name))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.reject(&Elixir.MapSet.member?(linked, &1))
+    |> Enum.reduce(0, fn code, count ->
+      case add_unknown_system(map) do
+        {:ok, placeholder} ->
+          case upsert_connection(map.id, system.id, placeholder.id, %{hole_type: code}) do
+            {:ok, _conn, _created?} -> count + 1
+            _error -> count
+          end
+
+        _error ->
+          count
+      end
+    end)
+  end
+
+  defp connection_codes(%MapSystem{} = system) do
+    system.map_id
+    |> list_connections()
+    |> Enum.filter(&(&1.from_system_id == system.id or &1.to_system_id == system.id))
+    |> Enum.map(&(&1.hole_type || ""))
+    |> Elixir.MapSet.new()
+  end
+
+  @doc """
+  Deletes unknown placeholder nodes that no longer have a connection.
+  """
+  def delete_unlinked_unknowns(map_id) do
+    Repo.delete_all(
+      from(s in MapSystem,
+        where:
+          s.map_id == ^map_id and s.unknown and
+            s.id not in ^connected_system_ids(map_id)
+      )
+    )
+
+    :ok
+  end
+
+  @doc """
+  Turns an unknown placeholder into a real system once its hole is mapped,
+  keeping the row (and therefore its position and connection).
+  """
+  def convert_unknown_system(%MapSystem{unknown: true} = system, attrs) do
+    system
+    |> MapSystem.changeset(Elixir.Map.put(attrs, :unknown, false))
+    |> Repo.update()
+  end
+
   def update_system_position(%MapSystem{} = system, x, y) do
     system
     |> Ecto.Changeset.change(x: x, y: y)
@@ -638,6 +713,9 @@ defmodule Tripwire.Mapping do
 
     linked = auto_link_wormholes(system, dropped_pair_keys(dropped))
 
+    _ = ensure_unknown_nodes(system)
+    delete_unlinked_unknowns(system.map_id)
+
     candidates =
       (dropped |> Enum.flat_map(fn {conn, _, _} -> [conn.from_system_id, conn.to_system_id] end)) ++
         (linked |> Enum.flat_map(fn conn -> [conn.from_system_id, conn.to_system_id] end))
@@ -690,11 +768,52 @@ defmodule Tripwire.Mapping do
     |> Enum.map(fn target ->
       code = SigParser.wormhole_code(target.type_name)
 
-      {:ok, conn, _created?} =
-        upsert_connection(system.map_id, system.id, target.map_system_id, %{hole_type: code})
+      cond do
+        connection_between(system.map_id, system.id, target.map_system_id) != nil ->
+          {:ok, conn, _created?} =
+            upsert_connection(system.map_id, system.id, target.map_system_id, %{hole_type: code})
 
-      conn
+          conn
+
+        placeholder = placeholder_connection(system, code) ->
+          {:ok, conn} = repoint_placeholder(placeholder, system, target)
+          conn
+
+        true ->
+          {:ok, conn, _created?} =
+            upsert_connection(system.map_id, system.id, target.map_system_id, %{hole_type: code})
+
+          conn
+      end
     end)
+  end
+
+  defp placeholder_connection(%MapSystem{} = system, code) when is_binary(code) do
+    system.map_id
+    |> list_connections()
+    |> Enum.find(fn conn ->
+      conn.hole_type == code and
+        (conn.from_system_id == system.id or conn.to_system_id == system.id) and
+        placeholder_endpoint?(conn, system.id)
+    end)
+  end
+
+  defp placeholder_connection(_system, _code), do: nil
+
+  defp placeholder_endpoint?(conn, system_id) do
+    peer_id =
+      if conn.from_system_id == system_id, do: conn.to_system_id, else: conn.from_system_id
+
+    case get_system(peer_id) do
+      %MapSystem{unknown: true} -> true
+      _ -> false
+    end
+  end
+
+  defp repoint_placeholder(conn, system, target) do
+    conn
+    |> MapConnection.changeset(%{from_system_id: system.id, to_system_id: target.map_system_id})
+    |> Repo.update()
   end
 
   defp dropped_pair_keys(dropped) do
@@ -1527,7 +1646,9 @@ defmodule Tripwire.Mapping do
     %{solar_system_id: 31_000_019, name: "J150335", sys_class: "C6", x: 830.0, y: 90.0},
     %{solar_system_id: 31_000_020, name: "J150336", sys_class: "C5", x: 950.0, y: 280.0},
     %{solar_system_id: 31_000_021, name: "J150337", sys_class: "C3", x: 780.0, y: 420.0},
-    %{solar_system_id: 31_000_022, name: "J150338", sys_class: "C4", x: 1_020.0, y: 200.0}
+    %{solar_system_id: 31_000_022, name: "J150338", sys_class: "C4", x: 1_020.0, y: 200.0},
+    %{unknown: true, solar_system_id: 0, name: "unknown", x: 780.0, y: 540.0},
+    %{unknown: true, solar_system_id: 0, name: "unknown", x: 1_120.0, y: 340.0}
   ]
 
   @demo_shortcuts """
@@ -1586,7 +1707,9 @@ defmodule Tripwire.Mapping do
     {15, 21, "B041", "stable", "stable"},
     {3, 22, "H900", "stable", "stable"},
     {19, 23, "K162", "stable", "stable"},
-    {21, 24, "K162", "stable", "stable"}
+    {21, 24, "K162", "stable", "stable"},
+    {23, 25, "N062", "stable", "stable"},
+    {24, 26, "B274", "stable", "stable"}
   ]
 
   @demo_signatures %{
@@ -1956,6 +2079,12 @@ defmodule Tripwire.Mapping do
         kind: "signature",
         site_type: "wormhole",
         type_name: "Unstable Wormhole (K162)"
+      },
+      %{
+        sig_id: "KLM-795",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (N062)"
       }
     ],
     24 => [
@@ -1964,6 +2093,12 @@ defmodule Tripwire.Mapping do
         kind: "signature",
         site_type: "wormhole",
         type_name: "Unstable Wormhole (K162)"
+      },
+      %{
+        sig_id: "KLM-796",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (B274)"
       }
     ]
   }

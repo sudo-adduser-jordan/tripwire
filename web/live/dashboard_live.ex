@@ -1964,6 +1964,7 @@ defmodule TripwireWeb.DashboardLive do
       []
     else
       systems
+      |> Enum.reject(& &1.unknown)
       |> Enum.filter(fn s ->
         String.contains?(String.downcase(s.name || ""), q) ||
           String.contains?(String.downcase(s.alias || ""), q)
@@ -2041,7 +2042,9 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp preferred_system(systems) do
-    Enum.find(systems, &(String.downcase(&1.name) == "jita")) || List.first(systems)
+    known = Enum.reject(systems, & &1.unknown)
+
+    Enum.find(known, &(String.downcase(&1.name || "") == "jita")) || List.first(known)
   end
 
   defp ensure_jita_system(_map, systems) when systems != [] do

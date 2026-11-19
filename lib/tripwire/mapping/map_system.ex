@@ -12,6 +12,7 @@ defmodule Tripwire.Mapping.MapSystem do
     field :sys_class, :string
     field :effect, :string
     field :favorite, :boolean, default: false
+    field :unknown, :boolean, default: false
     field :hidden_at, :utc_datetime
     field :x, :float, default: 0.0
     field :y, :float, default: 0.0
@@ -35,12 +36,22 @@ defmodule Tripwire.Mapping.MapSystem do
       :sys_class,
       :effect,
       :favorite,
+      :unknown,
       :hidden_at,
       :x,
       :y
     ])
-    |> validate_required([:map_id, :solar_system_id, :name])
+    |> validate_required([:map_id])
+    |> require_known_fields()
     |> validate_inclusion(:sys_class, Tripwire.Systems.classes() ++ [nil])
     |> validate_inclusion(:effect, Tripwire.Systems.effects() ++ [nil])
+  end
+
+  defp require_known_fields(changeset) do
+    if get_field(changeset, :unknown) do
+      changeset
+    else
+      validate_required(changeset, [:solar_system_id, :name])
+    end
   end
 end

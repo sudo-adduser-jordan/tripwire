@@ -51,6 +51,40 @@ defmodule Tripwire.TrackingTest do
     assert length(Mapping.list_connections(map.id)) == 1
   end
 
+  test "a jump converts the unknown placeholder for the scanned hole in place", %{
+    map: map,
+    character: character
+  } do
+    from = hole_system(map, 31_000_431, "C3")
+
+    {:ok, _sig} =
+      Mapping.create_signature(
+        from,
+        %{
+          sig_id: "AAA-431",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    assert 1 = Mapping.ensure_unknown_nodes(from)
+    [placeholder] = Enum.filter(Mapping.list_systems(map.id), & &1.unknown)
+    [connection] = Mapping.list_connections(map.id)
+
+    {:ok, %{system: system, connection: jumped}} =
+      Tracking.apply_location_change(map, character.name, from, 32_000_431, name_fetcher: nf())
+
+    assert system.id == placeholder.id
+    refute system.unknown
+    assert system.name == "SYS-32000431"
+    assert system.solar_system_id == 32_000_431
+    assert jumped.id == connection.id
+    assert length(Mapping.list_systems(map.id)) == 2
+    assert length(Mapping.list_connections(map.id)) == 1
+  end
+
   defp hole_system(map, solar, class) do
     {:ok, system} =
       Mapping.add_system_to_map(map, %{

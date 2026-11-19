@@ -27,7 +27,7 @@ defmodule Tripwire.MappingTest do
   test "reset_demo_maps/1 clears custom content and restores the seed", %{mask: mask} do
     [map] = Mapping.list_maps_for_mask(mask.id)
     systems = Mapping.list_systems(map.id)
-    assert length(systems) == 25
+    assert length(systems) == 27
 
     {:ok, extra} =
       Mapping.add_system_to_map(map, %{solar_system_id: 99, name: "J999999"})
@@ -35,19 +35,20 @@ defmodule Tripwire.MappingTest do
     {:ok, _conn, _new?} =
       Mapping.upsert_connection(map.id, hd(systems).id, extra.id, %{hole_type: "K162"})
 
-    assert length(Mapping.list_systems(map.id)) == 26
+    assert length(Mapping.list_systems(map.id)) == 28
 
     {:ok, _map} = Mapping.reset_demo_maps(mask.id)
 
     [fresh] = Mapping.list_maps_for_mask(mask.id)
-    assert length(Mapping.list_systems(fresh.id)) == 25
+    assert length(Mapping.list_systems(fresh.id)) == 27
 
     links = Mapping.list_connections(fresh.id)
-    assert length(links) == 24
+    assert length(links) == 26
 
     assert Enum.map(links, & &1.hole_type) |> Enum.sort() == [
              "A641",
              "B041",
+             "B274",
              "B274",
              "B274",
              "D364",
@@ -58,6 +59,7 @@ defmodule Tripwire.MappingTest do
              "K162",
              "K329",
              "M555",
+             "N062",
              "N062",
              "N110",
              "N290",
@@ -75,17 +77,19 @@ defmodule Tripwire.MappingTest do
     assert Enum.frequencies(Enum.map(links, & &1.mass_status)) == %{
              "critical" => 1,
              "destab" => 2,
-             "stable" => 21
+             "stable" => 23
            }
 
     assert Enum.frequencies(Enum.map(links, & &1.time_status)) == %{
              "critical" => 1,
-             "stable" => 23
+             "stable" => 25
            }
 
     systems = Mapping.list_systems(fresh.id)
 
     assert Enum.map(systems, &Tripwire.Systems.display_class/1) |> Enum.sort() == [
+             nil,
+             nil,
              "C1",
              "C1",
              "C2",
@@ -405,6 +409,7 @@ defmodule Tripwire.MappingTest do
         character
       )
 
+    {:ok, _deleted} = Mapping.delete_signature(sig, character)
     assert {1, 0, 2} = Mapping.sync_map_after_signature_change(a, [sig])
 
     assert Enum.map(Mapping.list_visible_systems(map.id), & &1.name) == ["J500031"]
@@ -471,6 +476,113 @@ defmodule Tripwire.MappingTest do
     assert Mapping.list_signatures(b.id) == []
   end
 
+  test "ensure_unknown_nodes/1 creates an empty node for an unmapped wormhole", %{mask: mask} do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_108, name: "Unknowns"})
+    {:ok, map} = Mapping.create_map(%{name: "Unknowns", mask_id: mask.id})
+
+    {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_551, name: "J500051"})
+
+    {:ok, _sig} =
+      Mapping.create_signature(
+        a,
+        %{
+          sig_id: "AAA-551",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    assert 1 = Mapping.ensure_unknown_nodes(a)
+    assert 0 = Mapping.ensure_unknown_nodes(a)
+
+    assert [%{id: a_id}, placeholder] = Mapping.list_systems(map.id)
+    assert a_id == a.id
+    assert placeholder.unknown
+    assert placeholder.name == "unknown"
+    assert placeholder.solar_system_id == 0
+    assert is_nil(placeholder.sys_class)
+    assert is_nil(Tripwire.Systems.display_class(placeholder))
+
+    assert [conn] = Mapping.list_connections(map.id)
+    assert conn.hole_type == "N770"
+    assert conn.from_system_id in [a.id, placeholder.id]
+    assert conn.to_system_id in [a.id, placeholder.id]
+    refute conn.from_system_id == conn.to_system_id
+  end
+
+  test "delete_unlinked_unknowns/1 drops placeholders without a connection", %{mask: mask} do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_109, name: "Cleanup"})
+    {:ok, map} = Mapping.create_map(%{name: "Cleanup", mask_id: mask.id})
+
+    {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_552, name: "J500052"})
+
+    {:ok, _sig} =
+      Mapping.create_signature(
+        a,
+        %{
+          sig_id: "AAA-552",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    assert 1 = Mapping.ensure_unknown_nodes(a)
+    [conn] = Mapping.list_connections(map.id)
+
+    {:ok, _} = Mapping.delete_connection(conn)
+    assert :ok = Mapping.delete_unlinked_unknowns(map.id)
+
+    assert Enum.map(Mapping.list_systems(map.id), & &1.name) == ["J500052"]
+  end
+
+  test "auto_link_wormholes/2 reuses the placeholder connection for a real target", %{mask: mask} do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_110, name: "Reuse"})
+    {:ok, map} = Mapping.create_map(%{name: "Reuse", mask_id: mask.id})
+
+    {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_553, name: "J500053"})
+    {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_554, name: "J500054"})
+
+    {:ok, _sig_a} =
+      Mapping.create_signature(
+        a,
+        %{
+          sig_id: "AAA-553",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    assert 1 = Mapping.ensure_unknown_nodes(a)
+    [placeholder] = Enum.filter(Mapping.list_systems(map.id), & &1.unknown)
+
+    {:ok, _sig_b} =
+      Mapping.create_signature(
+        b,
+        %{
+          sig_id: "BBB-554",
+          kind: "signature",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (N770)"
+        },
+        character
+      )
+
+    Mapping.sync_map_after_signature_change(a, [])
+
+    assert Mapping.get_system(placeholder.id) == nil
+
+    assert %Mapping.MapConnection{hole_type: "N770"} =
+             Mapping.connection_between(map.id, a.id, b.id)
+
+    assert length(Mapping.list_connections(map.id)) == 1
+  end
+
   test "tree_layout/5 roots detached chains at level 0 beside the home tree" do
     systems = Enum.map(1..6, &%Mapping.MapSystem{id: &1})
 
@@ -515,6 +627,7 @@ defmodule Tripwire.MappingTest do
         character
       )
 
+    {:ok, _deleted} = Mapping.delete_signature(sig, character)
     assert {1, 0, 2} = Mapping.sync_map_after_signature_change(a, [sig])
     assert Enum.map(Mapping.list_visible_systems(map.id), & &1.name) == ["J500023"]
     assert Enum.map(Mapping.list_chain_systems(map), & &1.name) == ["J500023"]
@@ -561,6 +674,7 @@ defmodule Tripwire.MappingTest do
         character
       )
 
+    {:ok, _deleted} = Mapping.delete_signature(sig, character)
     {1, 0, 2} = Mapping.sync_map_after_signature_change(a, [sig])
 
     {:ok, _, true} = Mapping.upsert_connection(map.id, a.id, c.id, %{})

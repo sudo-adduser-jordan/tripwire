@@ -65,7 +65,8 @@ defmodule Tripwire.Tracking do
     route_fn = Keyword.get(opts, :route_fn, fn o, d -> ESI.get_route(o, d) end)
     position = next_position(map, prev_system)
 
-    with {:ok, system} <- ensure_system(map, solar_system_id, name_fetcher, position) do
+    with {:ok, system} <-
+           ensure_system(map, solar_system_id, name_fetcher, position, prev_system) do
       connection_result =
         if is_struct(prev_system, MapSystem) and prev_system.id != system.id do
           jumps = jump_count(prev_system, system, route_fn)
@@ -217,7 +218,7 @@ defmodule Tripwire.Tracking do
     )
   end
 
-  defp ensure_system(map, solar_system_id, name_fetcher, position) do
+  defp ensure_system(map, solar_system_id, name_fetcher, position, prev_system) do
     existing =
       Repo.one(
         from(s in MapSystem,
@@ -236,17 +237,36 @@ defmodule Tripwire.Tracking do
             fetched_name when is_binary(fetched_name) -> {fetched_name, nil}
           end
 
-        attrs = %{
-          solar_system_id: solar_system_id,
-          name: name,
-          security: security,
-          x: position.x,
-          y: position.y
-        }
+        attrs = %{solar_system_id: solar_system_id, name: name, security: security}
 
-        Mapping.add_system_to_map(map, attrs)
+        case unknown_placeholder(prev_system) do
+          %MapSystem{} = placeholder ->
+            Mapping.convert_unknown_system(placeholder, attrs)
+
+          nil ->
+            Mapping.add_system_to_map(
+              map,
+              Elixir.Map.merge(attrs, %{x: position.x, y: position.y})
+            )
+        end
     end
   end
+
+  defp unknown_placeholder(%MapSystem{id: id, map_id: map_id}) do
+    map_id
+    |> then(&Mapping.list_connections/1)
+    |> Enum.filter(&(&1.from_system_id == id or &1.to_system_id == id))
+    |> Enum.map(fn conn ->
+      if conn.from_system_id == id, do: conn.to_system, else: conn.from_system
+    end)
+    |> Enum.filter(&(&1 && &1.unknown))
+    |> case do
+      [placeholder] -> placeholder
+      _ -> nil
+    end
+  end
+
+  defp unknown_placeholder(_prev_system), do: nil
 
   @map_center %{x: 460.0, y: 300.0}
   @placement_radius 170.0

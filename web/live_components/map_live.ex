@@ -306,9 +306,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 :for={system <- @systems}
                 id={"node-#{system.id}"}
                 transform={"translate(#{system.x}, #{system.y})"}
-                class="cursor-pointer"
+                class={if system.unknown, do: "cursor-default", else: "cursor-pointer"}
                 data-system-id={system.id}
-                phx-click="select-system"
+                data-unknown={to_string(system.unknown)}
+                phx-click={unless system.unknown, do: "select-system"}
                 phx-value-id={system.id}
                 phx-target={@myself}
               >
@@ -400,11 +401,11 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   y="46"
                   text-anchor="middle"
                   class="fill-base-content text-base font-bold cursor-pointer hover:underline"
-                  phx-click="open-system"
+                  phx-click={unless system.unknown, do: "open-system"}
                   phx-value-id={system.id}
                   phx-target={@myself}
                 >
-                  {system.alias || system.name}
+                  {node_label(system)}
                 </text>
                 <text
                   x="60"
@@ -510,6 +511,9 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   end
 
   defp node_class(system), do: Tripwire.Systems.display_class(system)
+
+  defp node_label(%{unknown: true}), do: ""
+  defp node_label(system), do: system.alias || system.name
 
   defp node_color(system), do: Tripwire.Systems.color(system)
 

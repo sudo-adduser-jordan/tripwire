@@ -348,10 +348,12 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
 
   defp favorites(_), do: []
 
-  defp visible_systems(systems, _connections, nil), do: systems
+  defp visible_systems(systems, _connections, nil), do: Enum.reject(systems, & &1.unknown)
 
   defp visible_systems(systems, connections, selected_id) do
-    if Enum.any?(systems, &(&1.id == selected_id)) do
+    known = Enum.reject(systems, & &1.unknown)
+
+    if Enum.any?(known, &(&1.id == selected_id)) do
       neighbor_ids =
         for {_conn, from, to} <- connections,
             from.id == selected_id or to.id == selected_id,
@@ -361,9 +363,9 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
           id
         end
 
-      Enum.filter(systems, &(&1.id == selected_id or MapSet.member?(neighbor_ids, &1.id)))
+      Enum.filter(known, &(&1.id == selected_id or MapSet.member?(neighbor_ids, &1.id)))
     else
-      systems
+      known
     end
   end
 

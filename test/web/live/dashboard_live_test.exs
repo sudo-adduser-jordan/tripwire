@@ -117,7 +117,8 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     [map] = Repo.all(Mapping.Map)
     assert map.mask_id == mask.id
-    assert length(Mapping.list_systems(map.id)) == 25
+    assert length(Mapping.list_systems(map.id)) == 27
+    assert Enum.count(Mapping.list_systems(map.id), & &1.unknown) == 2
 
     assert html =~ "C3"
     assert html =~ "ABC-123"
@@ -189,6 +190,27 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, system} = Mapping.add_system_to_map(map, %{solar_system_id: 1, name: system_name})
     {mask, map, system}
+  end
+
+  test "unknown placeholder nodes render empty fields and stay out of the system list", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, placeholder} = Mapping.add_unknown_system(map)
+
+    {:ok, _, _} =
+      Mapping.upsert_connection(map.id, system.id, placeholder.id, %{hole_type: "N770"})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    node = view |> element("#node-#{placeholder.id}") |> render()
+    refute node =~ ~r/>\s*C[1-6]\s*</
+    refute node =~ ~r/>\s*J\d+\s*</
+    refute node =~ "Unstable Wormhole"
+
+    container = view |> element("#system-container") |> render()
+    refute container =~ ~s|Select system "|
   end
 
   test "add button opens a modal and creates a signature", %{
