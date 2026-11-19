@@ -1203,6 +1203,47 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert html =~ "ABC-123"
   end
 
+  test "notes can be edited inline without leaving their system", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, comment} = Mapping.create_comment(system, %{body: "first draft"}, character)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    refute has_element?(view, "#comment-#{comment.id} textarea")
+
+    view |> element("#note-edit-#{comment.id}") |> render_click()
+
+    assert view |> element("#comment-#{comment.id} textarea") |> render() =~ "first draft"
+
+    view |> element("#note-edit-cancel-#{comment.id}") |> render_click()
+    refute has_element?(view, "#comment-#{comment.id} textarea")
+    assert render(view) =~ "first draft"
+
+    view |> element("#note-edit-#{comment.id}") |> render_click()
+
+    view
+    |> element("#comment-#{comment.id} form[phx-submit='comment-edit-submit']")
+    |> render_submit(%{comment: "second draft"})
+
+    html = render(view)
+    assert html =~ "second draft"
+    refute html =~ "first draft"
+    assert html =~ "1 notes"
+    refute has_element?(view, "#comment-#{comment.id} textarea")
+
+    assert %{body: "second draft", map_system_id: map_system_id} =
+             Mapping.get_comment!(comment.id)
+
+    assert map_system_id == system.id
+  end
+
   test "chain settings show all reveals detached chains at level 0", %{
     conn: conn,
     character: character

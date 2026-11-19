@@ -15,7 +15,10 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
      socket
      |> assign(assigns)
      |> assign(:comments, comments)
-     |> assign_new(:comment_body, fn -> "" end)}
+     |> assign_new(:comment_body, fn -> "" end)
+     |> assign_new(:editing_comment_id, fn -> nil end)
+     |> assign_new(:edit_body, fn -> "" end)
+     |> drop_stale_edit(comments)}
   end
 
   def handle_event("comment-submit", params, socket) do
@@ -38,10 +41,64 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
     end
   end
 
+  def handle_event("comment-edit", %{"id" => id}, socket) do
+    comment = Mapping.get_comment!(id)
+
+    {:noreply,
+     socket
+     |> assign(:editing_comment_id, comment.id)
+     |> assign(:edit_body, comment.body)}
+  end
+
+  def handle_event("comment-edit-cancel", _params, socket) do
+    {:noreply, socket |> assign(:editing_comment_id, nil) |> assign(:edit_body, "")}
+  end
+
+  def handle_event("comment-edit-submit", params, socket) do
+    body = params |> Map.get("comment", "") |> to_string() |> String.trim()
+
+    case socket.assigns.editing_comment_id do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Select a note to edit")}
+
+      id ->
+        comment = Mapping.get_comment!(id)
+
+        with true <- body != "",
+             {:ok, _} <- Mapping.update_comment(comment, %{body: body}, socket.assigns.character) do
+          send(self(), {:comments_updated, comment.map_system_id})
+
+          {:noreply,
+           socket
+           |> assign(:editing_comment_id, nil)
+           |> assign(:edit_body, "")
+           |> assign(:comments, Mapping.list_comments(comment.map_system_id))}
+        else
+          false ->
+            {:noreply,
+             socket |> assign(:edit_body, body) |> put_flash(:error, "Comment cannot be empty")}
+
+          {:error, changeset} ->
+            {:noreply,
+             socket
+             |> assign(:edit_body, body)
+             |> put_flash(:error, changeset_errors(changeset))}
+        end
+    end
+  end
+
   def handle_event("comment-delete", %{"id" => id}, socket) do
     comment = Mapping.get_comment!(id)
     {:ok, _} = Mapping.delete_comment(comment, socket.assigns.character)
     send(self(), {:comments_updated, comment.map_system_id})
+
+    socket =
+      if socket.assigns[:editing_comment_id] == comment.id do
+        socket |> assign(:editing_comment_id, nil) |> assign(:edit_body, "")
+      else
+        socket
+      end
+
     {:noreply, assign(socket, :comments, Mapping.list_comments(comment.map_system_id))}
   end
 
@@ -116,32 +173,77 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
             id={"comment-#{comment.id}"}
             class="mb-2 rounded bg-base-200/50 p-2"
           >
-            <div class="markdown space-y-1 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/40 [&_blockquote]:pl-2 [&_blockquote]:opacity-70 [&_code]:rounded [&_code]:bg-black/30 [&_code]:px-1 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h3]:text-sm [&_h3]:font-bold [&_h4]:font-bold [&_h5]:font-bold [&_h6]:font-bold [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-black/30 [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-5">
-              {Phoenix.HTML.raw(Tripwire.Markdown.to_html(comment.body))}
-            </div>
-            <div class="mt-1 flex items-center justify-between text-xs opacity-60">
-              <span>{comment.character && comment.character.name}</span>
-              <div class="flex items-center gap-1">
+            <form
+              :if={@editing_comment_id == comment.id}
+              phx-submit="comment-edit-submit"
+              phx-target={@myself}
+              class="flex flex-col gap-2"
+            >
+              <textarea
+                name="comment"
+                class="textarea textarea-sm w-full resize-y"
+                rows="3"
+                autocomplete="off"
+              >{@edit_body}</textarea>
+              <div class="flex items-center justify-end gap-1">
                 <button
-                  id={"note-copy-#{comment.id}"}
-                  class="group btn btn-ghost btn-xs p-1"
-                  title="Copy note"
-                  phx-hook="CopyText"
-                  data-copy={comment.body}
-                >
-                  <.icon name="hero-clipboard" class="copy-icon size-3" />
-                  <.icon name="hero-check" class="copied-icon hidden size-3 text-success" />
-                </button>
-                <button
+                  type="button"
+                  id={"note-edit-cancel-#{comment.id}"}
                   class="btn btn-ghost btn-xs"
-                  title="Delete note"
-                  phx-click="comment-delete"
-                  phx-value-id={comment.id}
+                  title="Cancel edit"
+                  phx-click="comment-edit-cancel"
                   phx-target={@myself}
-                  data-confirm="Delete this note?"
                 >
-                  <.icon name="hero-trash" class="size-3" />
+                  Cancel
                 </button>
+                <button
+                  type="submit"
+                  id={"note-edit-save-#{comment.id}"}
+                  class="btn btn-primary btn-xs"
+                  title="Save note"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+            <div :if={@editing_comment_id != comment.id}>
+              <div class="markdown space-y-1 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/40 [&_blockquote]:pl-2 [&_blockquote]:opacity-70 [&_code]:rounded [&_code]:bg-black/30 [&_code]:px-1 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h3]:text-sm [&_h3]:font-bold [&_h4]:font-bold [&_h5]:font-bold [&_h6]:font-bold [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-black/30 [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-5">
+                {Phoenix.HTML.raw(Tripwire.Markdown.to_html(comment.body))}
+              </div>
+              <div class="mt-1 flex items-center justify-between text-xs opacity-60">
+                <span>{comment.character && comment.character.name}</span>
+                <div class="flex items-center gap-1">
+                  <button
+                    id={"note-copy-#{comment.id}"}
+                    class="group btn btn-ghost btn-xs p-1"
+                    title="Copy note"
+                    phx-hook="CopyText"
+                    data-copy={comment.body}
+                  >
+                    <.icon name="hero-clipboard" class="copy-icon size-3" />
+                    <.icon name="hero-check" class="copied-icon hidden size-3 text-success" />
+                  </button>
+                  <button
+                    id={"note-edit-#{comment.id}"}
+                    class="btn btn-ghost btn-xs p-1"
+                    title="Edit note"
+                    phx-click="comment-edit"
+                    phx-value-id={comment.id}
+                    phx-target={@myself}
+                  >
+                    <.icon name="hero-pencil" class="size-3" />
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-xs"
+                    title="Delete note"
+                    phx-click="comment-delete"
+                    phx-value-id={comment.id}
+                    phx-target={@myself}
+                    data-confirm="Delete this note?"
+                  >
+                    <.icon name="hero-trash" class="size-3" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -152,6 +254,20 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
       </div>
     </div>
     """
+  end
+
+  defp drop_stale_edit(socket, comments) do
+    case socket.assigns[:editing_comment_id] do
+      nil ->
+        socket
+
+      id ->
+        if Enum.any?(comments, &(&1.id == id)) do
+          socket
+        else
+          socket |> assign(:editing_comment_id, nil) |> assign(:edit_body, "")
+        end
+    end
   end
 
   defp changeset_errors(changeset) do

@@ -200,6 +200,22 @@ defmodule Tripwire.MappingTest do
     assert stats.comments_deleted == 1
   end
 
+  test "update_comment/3 rewrites the body and counts the edit", %{mask: mask} do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_003, name: "Note Editor"})
+    {:ok, map} = Mapping.create_map(%{name: "Edit", mask_id: mask.id})
+
+    {:ok, system} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_098, name: "J999998"})
+
+    {:ok, comment} = Mapping.create_comment(system, %{body: "draft"}, character)
+
+    assert {:ok, updated} = Mapping.update_comment(comment, %{body: "final"}, character)
+    assert updated.body == "final"
+    assert updated.map_system_id == system.id
+    assert Mapping.character_statistics(character).comments_updated == 1
+    assert {:error, _} = Mapping.update_comment(updated, %{body: ""}, character)
+  end
+
   test "sync_connection_life/1 rewrites matching wormhole signature expiry" do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 99_010, name: "Life Sync"})
     {:ok, mask} = Masks.ensure_personal_mask(character)

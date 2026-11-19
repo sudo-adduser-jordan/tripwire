@@ -1431,6 +1431,22 @@ defmodule Tripwire.Mapping do
 
   def get_comment!(id), do: Repo.get!(Tripwire.Mapping.Comment, id)
 
+  def update_comment(%Tripwire.Mapping.Comment{} = comment, attrs, character \\ nil) do
+    case comment
+         |> Tripwire.Mapping.Comment.changeset(attrs)
+         |> Repo.update() do
+      {:ok, _} = ok ->
+        if is_struct(character, Character) do
+          Accounts.bump_stats(character.id, comments_updated: 1)
+        end
+
+        ok
+
+      error ->
+        error
+    end
+  end
+
   def move_comment(%Tripwire.Mapping.Comment{} = comment, to_system_id, character \\ nil) do
     case comment
          |> Tripwire.Mapping.Comment.changeset(%{map_system_id: to_system_id})
