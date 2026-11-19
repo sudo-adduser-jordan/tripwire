@@ -133,7 +133,7 @@ fix:
 
 Server lifecycle blocks run under `sh -c` because Task's built-in shell does not implement `$!` or `kill`.
 
-Dev starts the Erlang `:os_mon` application (`mix.exs` `extra_applications` for `MIX_ENV=dev` only), so the LiveDashboard mounted at `/dev/dashboard` serves the OS Data page at `/dev/dashboard/os_mon`.
+Dev starts the Erlang `:os_mon` application (`mix.exs` `extra_applications` for `MIX_ENV=dev` only), so the LiveDashboard mounted at `/dev/dashboard` serves the OS Data page at `/dev/dashboard/os_mon`. The same dashboard's Ecto Stats page is backed by the dev-only `ecto_sqlite3_extras` dependency and an explicit `ecto_repos: [Tripwire.Repo]` route option, and reports total/table/index size, sequence numbers, PRAGMA and compile options, and integrity checks for `priv/db/tripwire-dev.db`.
 
 ## Conventions
 

@@ -55,7 +55,11 @@ defmodule TripwireWeb.Router do
 
     scope "/dev" do
       pipe_through :browser
-      live_dashboard "/dashboard", metrics: TripwireWeb.Telemetry
+
+      live_dashboard "/dashboard",
+        metrics: TripwireWeb.Telemetry,
+        ecto_repos: [Tripwire.Repo]
+
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
   end
