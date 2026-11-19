@@ -79,7 +79,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
             id="system-search"
             name="search"
             value={@system_search}
-            class="mx-1 h-8 w-36 rounded bg-base-100 px-2 py-1 text-xs placeholder:text-xs sm:w-44"
+            class="mx-1 h-6 w-36 rounded bg-base-100 px-2 text-xs placeholder:text-xs sm:w-44"
             placeholder="Search systems"
             autocomplete="off"
             phx-debounce="200"
