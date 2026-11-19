@@ -120,7 +120,7 @@ fix:
 | `task migrate` | `mix ecto.migrate`, `MIX_ENV=test mix ecto.migrate`, `MIX_ENV=prod mix ecto.migrate` |
 | `task start` | `task stop`, then launch detached with `DATABASE_PATH` defaulting to `./priv/db/tripwire-prod.db`; block until `logs/prod.log` reports a running endpoint, then print the URL (fails with the log tail if the server dies while booting) |
 | `task stop` | stop the managed production process group recorded in `tmp/tripwire-prod.pid`, then wait for the process and port to be released |
-| `task dev` | `task stop`, `mkdir -p logs/test logs/errors priv/sde`, `mix ecto.migrate`, then `MIX_ENV=dev mix phx.server` attached on port `PORT` (default `4000`) with live reload and the `config/dev.exs` watchers; Ctrl-C stops it |
+| `task dev` | `task stop`, `mkdir -p logs/test logs/errors priv/sde`, `mix ecto.migrate`, `mix tripwire.reset_demo`, then `MIX_ENV=dev mix phx.server` attached on port `PORT` (default `4000`) with live reload and the `config/dev.exs` watchers; Ctrl-C stops it |
 
 Server lifecycle blocks run under `sh -c` because Task's built-in shell does not implement `$!` or `kill`.
 

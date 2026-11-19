@@ -25,7 +25,7 @@ Automation uses `Taskfile.yml` (Task v3); server lifecycle tasks run inline shel
 | `task migrate` | Run database migrations for dev and test |
 | `task start` | Restart the production server in the background (`DATABASE_PATH` defaults to `./priv/db/tripwire-prod.db`) and wait until it answers before printing the URL |
 | `task stop` | Stop the background production server |
-| `task dev` | Stop the production server, run dev migrations, then boot `MIX_ENV=dev mix phx.server` attached on port `4000` with live reload; Ctrl-C stops it |
+| `task dev` | Stop the production server, run dev migrations, rebuild the demo seed with `mix tripwire.reset_demo`, then boot `MIX_ENV=dev mix phx.server` attached on port `4000` with live reload; Ctrl-C stops it |
 
 ## Demo Mode
 

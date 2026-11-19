@@ -126,5 +126,7 @@ tasks:
       - mkdir -p logs/test logs/errors priv/sde
       - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}mix ecto.migrate{{.RESET}}"
       - mix ecto.migrate
+      - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}reset demo data{{.RESET}}"
+      - mix tripwire.reset_demo
       - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}MIX_ENV=dev mix phx.server on http://localhost:${PORT:-4000}{{.RESET}}"
       - MIX_ENV=dev mix phx.server
