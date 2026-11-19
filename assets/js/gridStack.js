@@ -119,6 +119,42 @@ function itemSignature(el) {
         .join(';');
 }
 
+// Morphdom removes elements gridstack appended to the widget root, leaving the
+// resize handles detached instead of destroyed, so put them back rather than
+// rebuilding drag&drop (a rebuild would try to remove children that are gone).
+function restoreHandles(el) {
+    const resizable = el.ddElement && el.ddElement.ddResizable
+    if (!resizable || !resizable.handlers) return
+
+    resizable.handlers.forEach((handle) => {
+        if (handle.el && handle.el.parentElement !== el) el.appendChild(handle.el)
+    })
+
+    if (resizable.option && resizable.option.autoHide) {
+        el.classList.add('ui-resizable-autohide')
+    }
+}
+
+// GridStack writes the item's inline position, drag/resize classes and resize
+// handles onto the widget root. A widget that handles one of its own LiveView
+// events (column sort, column reorder, delete, ...) re-renders that root, and
+// morphdom then drops everything gridstack added there, collapsing the item to
+// a single cell. Re-assert what is missing from the node the engine still has.
+function restoreItem(grid, node) {
+    if (!node || !node.el) return
+    const el = node.el
+
+    el.classList.add('grid-stack-item')
+    if (typeof grid._writeAttr === 'function') grid._writeAttr(el, node)
+    restoreHandles(el)
+
+    if (typeof grid.prepareDragDrop !== 'function') return
+
+    if ((grid.opts && grid.opts.staticGrid) || !node._initDD) {
+        grid.prepareDragDrop(el)
+    }
+}
+
 // Content-only patch (selection, signatures, notes): re-assert node
 // attributes morphdom may have wiped, without re-laying out the engine.
 function touchGrid(el) {
@@ -126,10 +162,8 @@ function touchGrid(el) {
     if (!grid || !grid.engine) return
 
     grid.engine.nodes.forEach((node) => {
-        if (!node || !node.el || node._moving || node._resizing) return
-        if (typeof grid._writeAttr === 'function') {
-            grid._writeAttr(node.el, node)
-        }
+        if (!node || node._moving || node._resizing) return
+        restoreItem(grid, node)
     })
 
     if (typeof grid._updateContainerHeight === 'function') grid._updateContainerHeight()
@@ -202,11 +236,8 @@ function refreshGrid(el) {
     if (!grid.opts || grid.opts.animate !== false) el.classList.add('grid-stack-animate')
 
     grid.engine.nodes.forEach((node) => {
-        if (!node || !node.el || node._moving || node._resizing) return
-        node.el.classList.add('grid-stack-item')
-        if (typeof grid._writeAttr === 'function') {
-            grid._writeAttr(node.el, node)
-        }
+        if (!node || node._moving || node._resizing) return
+        restoreItem(grid, node)
     })
 
     if (typeof grid._updateContainerHeight === 'function') grid._updateContainerHeight()

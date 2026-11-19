@@ -26,6 +26,14 @@ const GridWidget = {
         if (container && window.TripwireGridStack) window.TripwireGridStack.refresh(container)
     },
 
+    // An event this widget handled itself patches only this subtree, so the
+    // grid container hook never runs and the item loses the styles gridstack
+    // wrote onto it. Re-assert them before the browser paints the collapse.
+    updated() {
+        const container = this.el.closest ? this.el.closest('.grid-stack') : null
+        if (container && window.TripwireGridStack) window.TripwireGridStack.refresh(container)
+    },
+
     destroyed() {
         const grid = window.TripwireGrid
         if (grid && this.el.gridstackNode) grid.removeWidget(this.el, false)
