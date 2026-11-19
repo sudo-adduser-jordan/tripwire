@@ -896,68 +896,41 @@ defmodule Tripwire.Mapping do
   end
 
   @doc """
-  Returns the ids of connections that close a loop. The graph is walked as a
-  spanning forest seeded at `root_id` (or at the lowest system id when the
-  root is absent), so the returned connections are the redundant links that
-  would otherwise draw a cycle. `connections` are `{conn, from, to}` endpoint
+  Returns the ids of connections that close a loop. Connections are processed
+  in creation order, so the newest link in a cycle is the one marked as
+  redundant: a chain that already exists stays drawn and a freshly mapped
+  hole is the line left out. `connections` are `{conn, from, to}` endpoint
   tuples.
   """
-  def cycle_connection_ids(connections, root_id \\ nil) do
-    adj =
-      Enum.reduce(connections, %{}, fn {conn, from, to}, acc ->
-        acc
-        |> Elixir.Map.update(from.id, [{to.id, conn.id}], &[{to.id, conn.id} | &1])
-        |> Elixir.Map.update(to.id, [{from.id, conn.id}], &[{from.id, conn.id} | &1])
-      end)
+  def cycle_connection_ids(connections, _root_id \\ nil) do
+    connections
+    |> Enum.sort_by(fn {conn, _from, _to} -> conn.id end)
+    |> Enum.reduce({%{}, Elixir.MapSet.new()}, fn {conn, from, to}, {parents, cycle} ->
+      parents =
+        parents
+        |> Elixir.Map.put_new(from.id, from.id)
+        |> Elixir.Map.put_new(to.id, to.id)
 
-    ids = adj |> Elixir.Map.keys() |> Enum.sort()
-    seeds = if root_id in ids, do: [root_id | ids], else: ids
-
-    {_visited, cycle} =
-      Enum.reduce(seeds, {Elixir.MapSet.new(), Elixir.MapSet.new()}, fn seed, {visited, cycle} ->
-        if Elixir.MapSet.member?(visited, seed) do
-          {visited, cycle}
-        else
-          {visited, _tree, cycle} =
-            walk_spanning_tree(
-              :queue.from_list([seed]),
-              adj,
-              Elixir.MapSet.put(visited, seed),
-              Elixir.MapSet.new(),
-              cycle
-            )
-
-          {visited, cycle}
-        end
-      end)
-
-    cycle
+      if from.id == to.id or root_of(parents, from.id) == root_of(parents, to.id) do
+        {parents, Elixir.MapSet.put(cycle, conn.id)}
+      else
+        {union(parents, from.id, to.id), cycle}
+      end
+    end)
+    |> elem(1)
   end
 
-  defp walk_spanning_tree(queue, adj, visited, tree, cycle) do
-    case :queue.out(queue) do
-      {:empty, _} ->
-        {visited, tree, cycle}
-
-      {{:value, id}, rest} ->
-        {queue, visited, tree, cycle} =
-          Enum.reduce(Elixir.Map.get(adj, id, []), {rest, visited, tree, cycle}, fn
-            {neighbor, conn_id}, {q, vis, tree, cyc} ->
-              cond do
-                Elixir.MapSet.member?(tree, conn_id) ->
-                  {q, vis, tree, cyc}
-
-                Elixir.MapSet.member?(vis, neighbor) ->
-                  {q, vis, tree, Elixir.MapSet.put(cyc, conn_id)}
-
-                true ->
-                  {:queue.in(neighbor, q), Elixir.MapSet.put(vis, neighbor),
-                   Elixir.MapSet.put(tree, conn_id), cyc}
-              end
-          end)
-
-        walk_spanning_tree(queue, adj, visited, tree, cycle)
+  defp root_of(parents, id) do
+    case Elixir.Map.get(parents, id, id) do
+      ^id -> id
+      parent -> root_of(parents, parent)
     end
+  end
+
+  defp union(parents, a, b) do
+    root_a = root_of(parents, a)
+    root_b = root_of(parents, b)
+    Elixir.Map.put(parents, root_b, root_a)
   end
 
   defp deleted_codes(signatures) do

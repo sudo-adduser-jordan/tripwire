@@ -569,8 +569,8 @@ defmodule Tripwire.MappingTest do
       {%Mapping.MapConnection{id: 3}, %Mapping.MapSystem{id: 10}, %Mapping.MapSystem{id: 12}}
     ]
 
-    assert Mapping.cycle_connection_ids(connections, 10) == MapSet.new([2])
-    assert Mapping.cycle_connection_ids(connections) == MapSet.new([2])
+    assert Mapping.cycle_connection_ids(connections, 10) == MapSet.new([3])
+    assert Mapping.cycle_connection_ids(connections) == MapSet.new([3])
     assert Mapping.cycle_connection_ids(Enum.take(connections, 2), 10) == MapSet.new()
   end
 

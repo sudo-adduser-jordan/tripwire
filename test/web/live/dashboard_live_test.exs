@@ -416,19 +416,20 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
     {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323"})
 
-    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, a.id)
-    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id)
-    {:ok, _, _} = Mapping.upsert_connection(map.id, b.id, home.id)
+    {:ok, first, _} = Mapping.upsert_connection(map.id, home.id, a.id)
+    {:ok, second, _} = Mapping.upsert_connection(map.id, a.id, b.id)
+    {:ok, closing, _} = Mapping.upsert_connection(map.id, b.id, home.id)
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     connections = Mapping.list_connections_with_endpoints(map.id)
-    [cycle_id] = Mapping.cycle_connection_ids(connections) |> MapSet.to_list()
-    connection_ids = Enum.map(connections, fn {conn, _from, _to} -> conn.id end)
-    drawn_ids = connection_ids -- [cycle_id]
+    assert [cycle_id] = Mapping.cycle_connection_ids(connections) |> MapSet.to_list()
+    assert cycle_id == closing.id
+    assert cycle_id > first.id and cycle_id > second.id
 
     refute has_element?(view, "#connection-#{cycle_id}")
-    Enum.each(drawn_ids, &assert(has_element?(view, "#connection-#{&1}")))
+    assert has_element?(view, "#connection-#{first.id}")
+    assert has_element?(view, "#connection-#{second.id}")
 
     assert view |> element("#node-#{home.id}") |> render() =~ "6 4"
   end

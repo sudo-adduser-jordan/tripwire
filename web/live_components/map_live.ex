@@ -95,7 +95,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     assigns =
       assigns
       |> assign(:visible_connections, visible)
-      |> assign(:drawn_connections, drawn_connections(visible, assigns))
+      |> assign(:drawn_connections, drawn_connections(visible))
 
     ~H"""
     <div id="map" class="grid-stack-item" gs-w="12" gs-h="6" gs-x="0" gs-y="12" tabindex="0">
@@ -524,24 +524,11 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     end)
   end
 
-  defp drawn_connections(connections, assigns) do
-    systems = Map.get(assigns, :systems, [])
-    root_id = home_root_id(systems, Map.get(assigns, :map))
-    cycle = Mapping.cycle_connection_ids(connections, root_id)
+  defp drawn_connections(connections) do
+    cycle = Mapping.cycle_connection_ids(connections)
 
     Enum.reject(connections, fn {conn, _from, _to} -> Elixir.MapSet.member?(cycle, conn.id) end)
   end
-
-  defp home_root_id(_systems, nil), do: nil
-
-  defp home_root_id(systems, %{home_solar_system_id: solar}) when is_integer(solar) do
-    case Enum.find(systems, &(&1.solar_system_id == solar)) do
-      %{id: id} -> id
-      _ -> nil
-    end
-  end
-
-  defp home_root_id(_systems, _map), do: nil
 
   defp node_badges(system) do
     Tripwire.Systems.statics(Tripwire.Systems.display_class(system))
