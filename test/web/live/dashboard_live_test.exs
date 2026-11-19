@@ -160,7 +160,14 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element("#chain-zoom-reset")
     |> render_click()
 
-    assert_push_event(view, "reset-pan", %{x: 0, y: 20.0})
+    home =
+      map.id
+      |> Mapping.list_systems()
+      |> Enum.find(&(&1.solar_system_id == map.home_solar_system_id))
+
+    assert_push_event(view, "reset-pan", %{x: x, y: 20.0})
+    assert_in_delta x, home.x + 60.0 - 625.0, 0.001
+    assert render(view) =~ "1250.0 875.0"
 
     reloaded = Mapping.get_system!(system.id)
     assert reloaded.y == 60.0
@@ -643,6 +650,8 @@ defmodule TripwireWeb.DashboardLiveTest do
   test "reset zoom notifies the map to reset its pan", %{conn: conn, character: character} do
     {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
 
+    {:ok, map} = Mapping.update_map(map, %{home_solar_system_id: 1, home_name: "J150321"})
+
     {:ok, other} =
       Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 880.0, y: 612.0})
 
@@ -652,6 +661,28 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert html =~ ~s|id="chain-map"|
     assert html =~ "J150321"
+
+    view
+    |> element("#chain-zoom-reset")
+    |> render_click()
+
+    home =
+      map.id
+      |> Mapping.list_systems()
+      |> Enum.find(&(&1.solar_system_id == map.home_solar_system_id))
+
+    assert_push_event(view, "reset-pan", %{x: x, y: 20.0})
+    assert_in_delta x, home.x + 60.0 - 625.0, 0.001
+    assert_in_delta x, -105.0, 0.001
+  end
+
+  test "reset zoom without a home falls back to the top-left pan", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
     |> element("#chain-zoom-reset")

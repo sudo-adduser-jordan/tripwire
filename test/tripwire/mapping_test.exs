@@ -24,6 +24,28 @@ defmodule Tripwire.MappingTest do
     assert Mapping.clamp_pan(small, 999.0, 999.0) == {999.0, 999.0}
   end
 
+  test "home_center/2 centers the home system horizontally" do
+    assert Mapping.default_zoom() == 0.8
+    assert Mapping.view_size() == {1250.0, 875.0}
+
+    home = %Mapping.MapSystem{solar_system_id: 1, x: 460.0, y: 60.0}
+    other = %Mapping.MapSystem{solar_system_id: 2, x: 1000.0, y: 220.0}
+    map = %Mapping.Map{home_solar_system_id: 1}
+
+    {x, y} = Mapping.home_center([home, other], map)
+    assert_in_delta x, -105.0, 0.001
+    assert y == 20.0
+
+    {x, y} = Mapping.home_center([other, %{home | x: 0.0}], map)
+    assert_in_delta x, -565.0, 0.001
+    assert y == 20.0
+
+    assert Mapping.home_center([home, other], %Mapping.Map{home_solar_system_id: 99}) ==
+             {0, 20.0}
+
+    assert Mapping.home_center([], nil) == {0, 0}
+  end
+
   test "reset_demo_maps/1 clears custom content and restores the seed", %{mask: mask} do
     [map] = Mapping.list_maps_for_mask(mask.id)
     systems = Mapping.list_systems(map.id)

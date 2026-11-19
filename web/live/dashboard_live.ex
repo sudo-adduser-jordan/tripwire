@@ -549,7 +549,7 @@ defmodule TripwireWeb.DashboardLive do
       {:noreply, put_flash(socket, :error, "Map is locked")}
     else
       socket = socket |> assign(:map_layout, "top") |> apply_tree_layout("top")
-      {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
+      {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map)
       {:noreply, push_event(socket, "reset-pan", %{x: x, y: y})}
     end
   end
@@ -607,7 +607,7 @@ defmodule TripwireWeb.DashboardLive do
   def handle_event("node-spacing", %{"spacing" => spacing}, socket) do
     socket = assign(socket, :node_spacing, parse_int(spacing, 100, 50, 200))
     socket = socket |> apply_tree_layout(socket.assigns.map_layout || "top")
-    {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
+    {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map)
     {:noreply, push_event(socket, "reset-pan", %{x: x, y: y})}
   end
 
@@ -1710,7 +1710,7 @@ defmodule TripwireWeb.DashboardLive do
         |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
         |> apply_tree_layout(socket.assigns.map_layout || "top")
 
-      {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
+      {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map)
 
       socket =
         socket
@@ -1809,7 +1809,7 @@ defmodule TripwireWeb.DashboardLive do
         |> assign(:chain_errors, [])
         |> assign(:maps, Mapping.list_maps_for_mask(socket.assigns.mask.id))
 
-      {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
+      {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map)
 
       socket
       |> push_event("reset-pan", %{x: x, y: y})
@@ -2012,7 +2012,7 @@ defmodule TripwireWeb.DashboardLive do
       socket =
         if dropped + hidden > 0 do
           socket = apply_tree_layout(socket, socket.assigns.map_layout || "top")
-          {x, y} = Mapping.clamp_pan(socket.assigns.systems, 0, 0)
+          {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map)
           push_event(socket, "reset-pan", %{x: x, y: y})
         else
           reload_map(socket)

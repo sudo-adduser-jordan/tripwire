@@ -176,6 +176,22 @@ defmodule Tripwire.Mapping do
   end
 
   @pan_pad_y 40
+  @node_w 120.0
+  @node_h 88.0
+  @view_w 1000.0
+  @view_h 700.0
+  @default_zoom 0.8
+
+  @doc """
+  Default chain-map zoom. The map opens one zoom step out from the SVG's
+  `1000x700` world and shows the zoom label relative to this value.
+  """
+  def default_zoom, do: @default_zoom
+
+  @doc """
+  World size of the chain map at the default zoom as `{width, height}`.
+  """
+  def view_size, do: {@view_w / @default_zoom, @view_h / @default_zoom}
 
   @doc """
   Clamps a chain-map pan origin only to the top edge: the viewport never
@@ -184,6 +200,23 @@ defmodule Tripwire.Mapping do
   """
   def clamp_pan(systems, x, y) do
     {x, clamp_top(systems, y)}
+  end
+
+  @doc """
+  Pan origin that centers the map's home system horizontally in the
+  default view. The top edge still wins over vertical centering, so a
+  top-down tree keeps its root near the top of the viewport. Falls back to
+  the default pan when the map has no home or the home node is not in the
+  chain.
+  """
+  def home_center(systems, map) do
+    with solar when is_integer(solar) <- map && map.home_solar_system_id,
+         home when not is_nil(home) <- Enum.find(systems, &(&1.solar_system_id == solar)) do
+      {view_w, view_h} = view_size()
+      clamp_pan(systems, home.x + @node_w / 2 - view_w / 2, home.y + @node_h / 2 - view_h / 2)
+    else
+      _ -> clamp_pan(systems, 0, 0)
+    end
   end
 
   defp clamp_top([], value), do: value

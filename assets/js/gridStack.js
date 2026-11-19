@@ -31,16 +31,16 @@ function reveal(el) {
     }
 }
 
-// The chain map is the view you work in, so it defaults to a full window
-// height instead of the server-rendered gs-h fallback. Rows come from the
-// grid's own cell height (an item is h * cellHeight tall), so the fit
+// The chain map is the view you work in, so it defaults to a window height
+// minus one row instead of the server-rendered gs-h fallback. Rows come from
+// the grid's own cell height (an item is h * cellHeight tall), so the fit
 // survives a change to cellHeight.
 function fitMap(el, grid) {
     const mapEl = el && el.querySelector('#map')
     if (!mapEl || !grid || !grid.engine || !mapEl.gridstackNode) return
 
     const cellHeight = parseFloat((grid.opts && grid.opts.cellHeight) || '') || 80
-    const rows = Math.max(6, Math.round(window.innerHeight / cellHeight))
+    const rows = Math.max(6, Math.round(window.innerHeight / cellHeight) - 1)
 
     if (mapEl.gridstackNode.h === rows) return
     grid.update(mapEl, { h: rows })

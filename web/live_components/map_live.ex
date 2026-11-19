@@ -17,6 +17,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
     stats = Map.get_lazy(assigns, :stats, fn -> Mapping.list_system_stats(map_id) end)
     occupants = Map.get(assigns, :occupants, [])
+    {pan_x, pan_y} = Mapping.home_center(systems, Map.get(assigns, :map))
 
     {:ok,
      socket
@@ -26,8 +27,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign(:stats, stats)
      |> assign(:occupants, occupants)
      |> assign(:wh_sigs, wormhole_sigs(map_id))
-     |> assign_new(:pan_x, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 0) end)
-     |> assign_new(:pan_y, fn -> elem(Mapping.clamp_pan(systems, 0, 0), 1) end)
+     |> assign_new(:pan_x, fn -> pan_x end)
+     |> assign_new(:pan_y, fn -> pan_y end)
      |> assign_new(:map_locked, fn -> false end)
      |> assign_new(:show_row_guides, fn -> false end)
      |> assign_new(:show_row_counts, fn -> false end)
@@ -92,10 +93,13 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   def render(assigns) do
     visible = visible_connections(assigns)
     cycle = Mapping.cycle_connection_ids(visible)
+    {view_w, view_h} = Mapping.view_size()
 
     assigns =
       assigns
       |> assign(:visible_connections, visible)
+      |> assign(:view_w, view_w)
+      |> assign(:view_h, view_h)
       |> assign(
         :drawn_connections,
         Enum.reject(visible, fn {conn, _from, _to} -> Elixir.MapSet.member?(cycle, conn.id) end)
@@ -267,7 +271,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
         >
           <svg
             id="chain-map"
-            viewBox={"#{@pan_x} #{@pan_y} 1000 700"}
+            viewBox={"#{@pan_x} #{@pan_y} #{@view_w} #{@view_h}"}
             preserveAspectRatio="xMidYMid meet"
             class="block size-full touch-pan-y select-none"
             phx-hook="MapDrag"

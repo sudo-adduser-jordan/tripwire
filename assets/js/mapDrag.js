@@ -5,6 +5,7 @@ const PAD_Y = 40
 const MIN_ZOOM = 0.25
 const MAX_ZOOM = 4
 const ZOOM_STEP = 1.25
+const DEFAULT_ZOOM = 1 / ZOOM_STEP
 const WHEEL_SENS = 0.0015
 
 function clampZoom(z) {
@@ -23,7 +24,7 @@ const MapDrag = {
     this._top = null
     this._raf = 0
     this._pending = null
-    this.zoom = 1
+    this.zoom = DEFAULT_ZOOM
     const at = this.viewBox()
     this.ox = at.x
     this.oy = at.y
@@ -111,7 +112,7 @@ const MapDrag = {
     }
     this.onZoomReset = () => {
       if (this.isLocked()) return
-      this.setView(this.ox, this.oy, 1)
+      this.setView(this.ox, this.oy, DEFAULT_ZOOM)
     }
 
     this.onKeyDown = (ev) => {
@@ -124,7 +125,7 @@ const MapDrag = {
         this.zoomBy(1 / ZOOM_STEP)
       } else if (ev.key === "0") {
         ev.preventDefault()
-        this.setView(this.ox, this.oy, 1)
+        this.setView(this.ox, this.oy, DEFAULT_ZOOM)
       }
     }
 
@@ -143,12 +144,12 @@ const MapDrag = {
       if (this.isLocked()) return
       this._top = this.topBound()
       const next = this.clampView(x, y)
-      this.setView(next.x, next.y, 1)
+      this.setView(next.x, next.y, DEFAULT_ZOOM)
     })
 
     this.handleEvent("map-zoom", ({ zoom }) => {
       if (this.isLocked()) return
-      this.setView(this.ox, this.oy, zoom)
+      this.setView(this.ox, this.oy, zoom * DEFAULT_ZOOM)
     })
 
     this.svg.addEventListener("pointerdown", this.onPointerDown)
@@ -189,8 +190,14 @@ const MapDrag = {
   },
 
   viewBox() {
-    const parts = (this.svg.getAttribute("viewBox") || "0 0 1000 700").split(/\s+/).map(Number)
-    return { x: parts[0] || 0, y: parts[1] || 0, w: parts[2] || VIEW_W, h: parts[3] || VIEW_H }
+    const fallback = `0 0 ${VIEW_W / DEFAULT_ZOOM} ${VIEW_H / DEFAULT_ZOOM}`
+    const parts = (this.svg.getAttribute("viewBox") || fallback).split(/\s+/).map(Number)
+    return {
+      x: parts[0] || 0,
+      y: parts[1] || 0,
+      w: parts[2] || VIEW_W / DEFAULT_ZOOM,
+      h: parts[3] || VIEW_H / DEFAULT_ZOOM,
+    }
   },
 
   isLocked() {
@@ -224,7 +231,7 @@ const MapDrag = {
 
   updateZoomLabel() {
     const label = document.getElementById("chain-zoom-level")
-    if (label) label.textContent = `${Math.round(this.zoom * 100)}%`
+    if (label) label.textContent = `${Math.round((this.zoom / DEFAULT_ZOOM) * 100)}%`
   },
 
   clampView(x, y) {
