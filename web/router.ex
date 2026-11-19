@@ -2,11 +2,12 @@ defmodule TripwireWeb.Router do
   use TripwireWeb, :router
 
   defp load_current_user(conn, _opts) do
-    case get_session(conn, :current_user) do
+    case TripwireWeb.SessionUser.get(get_session(conn)) do
       %{id: eve_id} ->
-        character = Tripwire.Accounts.get_character_by_eve_id(eve_id)
-
-        assign(conn, :current_user, character && %{id: character.eve_id, name: character.name})
+        case Tripwire.Accounts.get_character_by_eve_id(eve_id) do
+          nil -> assign(conn, :current_user, nil)
+          character -> assign(conn, :current_user, %{id: character.eve_id, name: character.name})
+        end
 
       _ ->
         assign(conn, :current_user, nil)

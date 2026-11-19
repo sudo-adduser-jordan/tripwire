@@ -2,6 +2,7 @@ defmodule TripwireWeb.AuthController do
   use TripwireWeb, :controller
 
   alias Tripwire.SSO
+  alias TripwireWeb.SessionUser
 
   @detail_limit 120
 
@@ -43,12 +44,8 @@ defmodule TripwireWeb.AuthController do
     character = maybe_grant_admin(character, auth)
     Tripwire.Accounts.bump_stats(character.id, login_count: 1)
 
-    character_ids =
-      ((get_session(conn, :character_ids) || []) ++ [character.eve_id]) |> Enum.uniq()
-
     conn
-    |> put_session(:character_ids, character_ids)
-    |> put_session(:current_user, %{id: character.eve_id, name: character.name})
+    |> SessionUser.put(character)
     |> redirect(to: "/Jita")
   end
 
@@ -74,9 +71,9 @@ defmodule TripwireWeb.AuthController do
   end
 
   def switch(conn, %{"eve_id" => eve_id}) do
-    character_ids = List.wrap(get_session(conn, :character_ids))
-    current = get_session(conn, :current_user)
-    current_id = if is_map(current), do: current[:id] || current["id"], else: nil
+    character_ids = SessionUser.ids(get_session(conn))
+    current = SessionUser.get(get_session(conn))
+    current_id = current && current.id
 
     with {id, ""} <- Integer.parse(to_string(eve_id)),
          %{} = character <- Tripwire.Accounts.get_character_by_eve_id(id),
@@ -85,7 +82,7 @@ defmodule TripwireWeb.AuthController do
              to_string(id) in Enum.map(character_ids, &to_string/1) or
              Tripwire.SSO.demo?() do
       conn
-      |> put_session(:current_user, %{id: character.eve_id, name: character.name})
+      |> SessionUser.put(character)
       |> redirect(to: "/dashboard")
     else
       _ ->

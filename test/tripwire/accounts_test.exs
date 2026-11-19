@@ -109,4 +109,39 @@ defmodule Tripwire.AccountsTest do
     assert attrs.refresh_token == "rt"
     assert attrs.scopes == ["scope-a"]
   end
+
+  test "admin_exists?/0 ignores the demo character" do
+    refute Accounts.admin_exists?()
+
+    {:ok, _demo} =
+      Accounts.upsert_character(%{
+        eve_id: Tripwire.Demo.character_eve_id(),
+        name: Tripwire.Demo.character_name(),
+        is_admin: true
+      })
+
+    refute Accounts.admin_exists?()
+
+    {:ok, _real} = Accounts.upsert_character(%{eve_id: 5555, name: "Real", is_admin: true})
+    assert Accounts.admin_exists?()
+  end
+
+  test "claim_admin/1 promotes the first character and then refuses" do
+    {:ok, character} = Accounts.upsert_character(@valid_attrs)
+    refute Accounts.admin_exists?()
+
+    assert {:ok, admin} = Accounts.claim_admin(character)
+    assert admin.is_admin
+    assert Accounts.admin_exists?()
+
+    {:ok, other} = Accounts.upsert_character(%{eve_id: 6789, name: "Other"})
+    assert {:error, :admin_exists} = Accounts.claim_admin(other)
+    refute Accounts.get_character(other.id).is_admin
+  end
+
+  test "claim_admin/1 leaves existing admins untouched" do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 1111, name: "Admin", is_admin: true})
+
+    assert {:ok, ^character} = Accounts.claim_admin(character)
+  end
 end

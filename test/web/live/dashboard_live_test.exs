@@ -17,6 +17,12 @@ defmodule TripwireWeb.DashboardLiveTest do
     })
   end
 
+  defp login_legacy(conn, character) do
+    Plug.Test.init_test_session(conn, %{
+      current_user: %{id: character.eve_id, name: character.name}
+    })
+  end
+
   test "anonymous visitors get the demo dashboard", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/dashboard")
     assert html =~ "Demo mode"
@@ -66,6 +72,108 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     refute has_element?(view, "#settings-widget")
     assert render(view) =~ "→"
+  end
+
+  test "logged in characters get their own map instead of the demo map", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, _view, html} = live(login(conn, character), ~p"/dashboard")
+
+    refute html =~ "Demo mode"
+    refute html =~ "Demo User"
+    refute html =~ "J150321"
+    assert html =~ character.name
+    assert html =~ "Jita"
+  end
+
+  test "legacy sessions with nested atom keys still provision the character", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, _view, html} = live(login_legacy(conn, character), ~p"/dashboard")
+
+    refute html =~ "Demo mode"
+    refute html =~ "Demo User"
+    assert html =~ character.name
+  end
+
+  test "a session user without a character row is sent home, not into the demo", %{conn: conn} do
+    conn =
+      Plug.Test.init_test_session(conn, %{
+        "current_user" => %{"id" => 999_999, "name" => "Ghost"}
+      })
+
+    assert {:error, {:redirect, %{to: "/", flash: flash}}} = live(conn, ~p"/dashboard")
+    assert flash["error"] =~ "Session expired"
+  end
+
+  test "the first login asks to claim admin", %{conn: conn, character: character} do
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
+
+    assert html =~ "No admin is configured"
+    assert has_element?(view, "#claim-admin-modal")
+    assert has_element?(view, "#claim-admin-banner")
+  end
+
+  test "deferring the admin prompt keeps the banner", %{conn: conn, character: character} do
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#claim-admin-modal button", "Later") |> render_click()
+
+    refute has_element?(view, "#claim-admin-modal")
+    assert has_element?(view, "#claim-admin-banner")
+    refute Accounts.get_character(character.id).is_admin
+  end
+
+  test "claiming admin promotes the character and unlocks mask administration", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    html = view |> element("#claim-admin-modal button", "Make admin") |> render_click()
+
+    assert html =~ "You are now an admin"
+    refute has_element?(view, "#claim-admin-modal")
+    refute has_element?(view, "#claim-admin-banner")
+    assert Accounts.get_character(character.id).is_admin
+
+    view |> element("#settings-button") |> render_click()
+    html = render_click(view, "settings-tab", %{"tab" => "admin"})
+    assert html =~ "Mask administration"
+  end
+
+  test "non-admins see no prompt once an admin exists", %{conn: conn, character: character} do
+    {:ok, _admin} = Accounts.upsert_character(%{eve_id: 43_000, name: "Existing", is_admin: true})
+
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
+
+    refute html =~ "No admin is configured"
+    refute has_element?(view, "#claim-admin-modal")
+    refute has_element?(view, "#claim-admin-banner")
+  end
+
+  test "claiming fails when another character became admin first", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    {:ok, _faster} = Accounts.upsert_character(%{eve_id: 43_000, name: "Faster", is_admin: true})
+
+    html = view |> element("#claim-admin-banner button") |> render_click()
+
+    assert html =~ "An admin already exists"
+    refute Accounts.get_character(character.id).is_admin
+  end
+
+  test "admins never see the admin prompt", %{conn: conn, character: character} do
+    {:ok, admin} = Accounts.upsert_character(%{eve_id: character.eve_id, is_admin: true})
+
+    {:ok, _view, html} = live(login(conn, admin), ~p"/dashboard")
+
+    refute html =~ "No admin is configured"
   end
 
   test "widgets settings tab hides unchecked widgets and keeps the settings panel", %{conn: conn} do
@@ -1967,7 +2075,9 @@ defmodule TripwireWeb.DashboardLiveTest do
       |> get("/auth/switch/#{other.eve_id}")
 
     assert redirected_to(conn) == "/dashboard"
-    assert get_session(conn, :current_user).id == other.eve_id
+    assert %{"id" => id, "name" => _} = get_session(conn, "current_user")
+    assert id == other.eve_id
+    assert other.eve_id in get_session(conn, "character_ids")
 
     denied =
       build_conn()
@@ -1978,6 +2088,6 @@ defmodule TripwireWeb.DashboardLiveTest do
       |> get("/auth/switch/999999")
 
     assert redirected_to(denied) == "/dashboard"
-    assert get_session(denied, :current_user)["id"] == character.eve_id
+    assert get_session(denied, "current_user")["id"] == character.eve_id
   end
 end

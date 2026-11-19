@@ -48,6 +48,17 @@
     </div>
   </div>
 
+  <div :if={@claim_admin?} class="px-2 pt-3 sm:px-3">
+    <div id="claim-admin-banner" class="alert alert-info flex-wrap gap-2 py-2 text-sm">
+      <span>
+        No admin is configured. Make {@character.name} the admin to unlock mask administration.
+      </span>
+      <button type="button" class="btn btn-primary btn-xs ml-auto" phx-click="claim-admin">
+        Make admin
+      </button>
+    </div>
+  </div>
+
   <div
     class="flex w-full max-w-full flex-col gap-2 overflow-x-clip p-2 sm:p-3"
     id="dashboard-paste"
@@ -448,6 +459,24 @@
     </div>
     <div class="modal-backdrop">
       <button type="button" phx-click="close-chain-modal">Close</button>
+    </div>
+  </div>
+
+  <div :if={@claim_admin_modal?} id="claim-admin-modal" class="modal modal-open">
+    <div class="modal-box">
+      <h3 class="text-lg font-bold">No admin configured</h3>
+      <p class="mt-2 text-sm">
+        Make {@character.name} the admin to unlock mask administration? You can also decide later.
+      </p>
+      <div class="modal-action justify-between">
+        <button type="button" class="btn btn-sm" phx-click="defer-claim-admin">Later</button>
+        <button type="button" class="btn btn-primary btn-sm" phx-click="claim-admin">
+          Make admin
+        </button>
+      </div>
+    </div>
+    <div class="modal-backdrop">
+      <button type="button" phx-click="defer-claim-admin">Close</button>
     </div>
   </div>
 </RootLayout.app>

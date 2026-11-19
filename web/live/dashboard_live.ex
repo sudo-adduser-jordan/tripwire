@@ -8,10 +8,10 @@ defmodule TripwireWeb.DashboardLive do
   alias Tripwire.Signatures, as: SigParser
   alias Tripwire.Tracking
 
-  @demo_character_eve_id 9_000_002
-  @demo_character_name "Demo User"
-  @demo_ship_name "Cenotaph"
-  @demo_ship_type_id 85_086
+  @demo_character_eve_id Tripwire.Demo.character_eve_id()
+  @demo_character_name Tripwire.Demo.character_name()
+  @demo_ship_name Tripwire.Demo.ship_name()
+  @demo_ship_type_id Tripwire.Demo.ship_type_id()
   @topbar_refresh_ms 60_000
   @chart_refresh_ms 60_000
   @chart_ranges ~w(24h 48h week)
@@ -25,19 +25,36 @@ defmodule TripwireWeb.DashboardLive do
 
   @impl true
   def mount(_params, session, socket) do
-    {:ok, socket} =
-      case session["current_user"] do
-        %{"id" => eve_id} ->
-          case Accounts.get_character_by_eve_id(eve_id) do
-            nil -> {:ok, mount_demo(socket)}
-            character -> {:ok, provision(socket, character)}
-          end
+    case session_character(session) do
+      {:ok, character} ->
+        {:ok, socket |> provision(character) |> assign_characters(session)}
 
-        _ ->
-          {:ok, mount_demo(socket)}
-      end
+      :expired ->
+        {:ok,
+         socket
+         |> put_flash(:error, "Session expired, log in again")
+         |> redirect(to: "/")}
 
-    {:ok, assign(socket, :characters, session_characters(session, socket.assigns.character))}
+      :anonymous ->
+        {:ok, socket |> mount_demo() |> assign_characters(session)}
+    end
+  end
+
+  defp session_character(session) do
+    case TripwireWeb.SessionUser.get(session) do
+      %{id: eve_id} ->
+        case Accounts.get_character_by_eve_id(eve_id) do
+          nil -> :expired
+          character -> {:ok, character}
+        end
+
+      nil ->
+        :anonymous
+    end
+  end
+
+  defp assign_characters(socket, session) do
+    assign(socket, :characters, session_characters(session, socket.assigns.character))
   end
 
   defp ensure_demo_presence(character, map, systems) do
@@ -107,6 +124,8 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:undo, [])
     |> assign(:redo, [])
     |> assign(:demo?, true)
+    |> assign(:claim_admin?, false)
+    |> assign(:claim_admin_modal?, false)
     |> assign(:branding, nil)
     |> assign(:sig_modal_open, false)
     |> assign(:sig_edit_id, nil)
@@ -469,6 +488,36 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("open-settings", _params, socket), do: {:noreply, socket}
+
+  def handle_event("claim-admin", _params, socket) do
+    with true <- socket.assigns[:claim_admin?],
+         {:ok, character} <- Accounts.claim_admin(socket.assigns.character) do
+      Tripwire.Log.emit(:info, %{
+        event: "admin_claimed",
+        eve_id: character.eve_id,
+        name: character.name
+      })
+
+      {:noreply,
+       socket
+       |> assign(:character, character)
+       |> assign(:characters, replace_character(socket.assigns.characters, character))
+       |> assign(:claim_admin?, false)
+       |> assign(:claim_admin_modal?, false)
+       |> assign(:branding, Accounts.branding())
+       |> put_flash(:info, "You are now an admin")}
+    else
+      {:error, :admin_exists} ->
+        {:noreply, put_flash(socket, :error, "An admin already exists")}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("defer-claim-admin", _params, socket) do
+    {:noreply, assign(socket, :claim_admin_modal?, false)}
+  end
 
   def handle_event("add-character", _params, socket) do
     {:noreply, put_flash(socket, :error, "EVE SSO is not configured, demo mode is active")}
@@ -1361,7 +1410,7 @@ defmodule TripwireWeb.DashboardLive do
   defp admin?(_), do: false
 
   defp session_characters(session, current) do
-    ids = session["character_ids"] || []
+    ids = TripwireWeb.SessionUser.ids(session)
 
     known =
       ids
@@ -1371,8 +1420,28 @@ defmodule TripwireWeb.DashboardLive do
     [current | known] |> Enum.reject(&is_nil/1) |> Enum.uniq_by(& &1.id)
   end
 
+  defp replace_character(characters, character) do
+    Enum.map(characters, fn
+      %{id: id} = other -> if id == character.id, do: character, else: other
+    end)
+  end
+
   defp demo?(%{assigns: %{demo?: true}}), do: true
   defp demo?(_), do: false
+
+  defp assign_claim_admin(socket, %{is_admin: false}) do
+    claim? = not Accounts.admin_exists?()
+
+    socket
+    |> assign(:claim_admin?, claim?)
+    |> assign(:claim_admin_modal?, claim?)
+  end
+
+  defp assign_claim_admin(socket, _character) do
+    socket
+    |> assign(:claim_admin?, false)
+    |> assign(:claim_admin_modal?, false)
+  end
 
   defp masks_for_admin(socket) do
     if demo?(socket) do
@@ -1534,6 +1603,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:undo, [])
     |> assign(:redo, [])
     |> assign(:demo?, false)
+    |> assign_claim_admin(character)
     |> assign(:branding, Accounts.branding())
     |> assign(:sig_modal_open, false)
     |> assign(:sig_edit_id, nil)

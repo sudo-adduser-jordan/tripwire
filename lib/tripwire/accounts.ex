@@ -87,6 +87,24 @@ defmodule Tripwire.Accounts do
     auth |> attrs_from_ueberauth() |> upsert_character()
   end
 
+  def admin_exists? do
+    Repo.exists?(
+      from(c in Character,
+        where: c.is_admin == true and c.eve_id != ^Tripwire.Demo.character_eve_id()
+      )
+    )
+  end
+
+  def claim_admin(%Character{is_admin: true} = character), do: {:ok, character}
+
+  def claim_admin(%Character{} = character) do
+    if admin_exists?() do
+      {:error, :admin_exists}
+    else
+      update_character(character, %{is_admin: true})
+    end
+  end
+
   def branding do
     query =
       from(c in Character,
