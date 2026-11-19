@@ -1,6 +1,9 @@
 defmodule Tripwire.Systems do
   @classes ~w(C1 C2 C3 C4 C5 C6 HS LS NS Trig)
 
+  @w_space_min 31_000_000
+  @w_space_max 32_000_000
+
   @effects [
     "Black Hole",
     "Cataclysmic Variable",
@@ -29,7 +32,8 @@ defmodule Tripwire.Systems do
     "HS" => "#50D25A",
     "LS" => "#F5B544",
     "NS" => "#FF4747",
-    "Trig" => "#FF4747"
+    "Trig" => "#FF4747",
+    "W" => "#6b7280"
   }
 
   @unknown_color "#6b7280"
@@ -59,6 +63,11 @@ defmodule Tripwire.Systems do
   def statics(_), do: []
 
   def display_class(%{sys_class: class}) when is_binary(class) and class != "", do: class
+
+  def display_class(%{solar_system_id: id})
+      when is_integer(id) and id >= @w_space_min and id < @w_space_max,
+      do: "W"
+
   def display_class(%{security: security}) when is_number(security) and security >= 0.45, do: "HS"
   def display_class(%{security: security}) when is_number(security) and security > 0.0, do: "LS"
   def display_class(%{security: security}) when is_number(security), do: "NS"
@@ -71,6 +80,10 @@ defmodule Tripwire.Systems do
 
   def badge_text_color(label) when label in ["HS", "LS"], do: "#111111"
   def badge_text_color(_), do: "#ffffff"
+
+  def security_label(%{solar_system_id: id})
+      when is_integer(id) and id >= @w_space_min and id < @w_space_max,
+      do: "W-Space"
 
   def security_label(%{security: security}) when is_number(security) and security >= 0.45,
     do: "High-Sec"
@@ -86,7 +99,7 @@ defmodule Tripwire.Systems do
 
   def format_security(_), do: ""
 
-  def esi_resolvable?(%{solar_system_id: id}) when is_integer(id), do: id < 31_000_000
+  def esi_resolvable?(%{solar_system_id: id}) when is_integer(id), do: id < @w_space_min
   def esi_resolvable?(_), do: false
 
   def external_links(%{name: name, solar_system_id: solar_id} = system) do

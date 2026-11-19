@@ -23,6 +23,29 @@ defmodule Tripwire.SystemsTest do
     assert Systems.display_class(%{sys_class: nil, security: -1.0}) == "NS"
   end
 
+  test "display_class/1 renders unclassified wormhole systems as W-space" do
+    system = %{sys_class: nil, solar_system_id: 31_001_663, security: -1.0}
+
+    assert Systems.display_class(system) == "W"
+    assert Systems.color(system) == "#6b7280"
+    assert Systems.security_label(system) == "W-Space"
+  end
+
+  test "display_class/1 keeps an explicit class on wormhole systems" do
+    assert Systems.display_class(%{sys_class: "C5", solar_system_id: 31_001_663}) == "C5"
+  end
+
+  test "display_class/1 still treats k-space ids with negative security as nullsec" do
+    assert Systems.display_class(%{sys_class: nil, solar_system_id: 30_000_301, security: -1.0}) ==
+             "NS"
+  end
+
+  test "esi_resolvable?/1 keeps wormhole and abyssal systems out of ESI lookups" do
+    assert Systems.esi_resolvable?(%{solar_system_id: 30_000_142})
+    refute Systems.esi_resolvable?(%{solar_system_id: 31_001_663})
+    refute Systems.esi_resolvable?(%{solar_system_id: 32_000_001})
+  end
+
   test "color/1 mirrors official Tripwire class colors" do
     assert Systems.color(%{sys_class: "C3", security: nil}) == "#4399F0"
     assert Systems.color(%{sys_class: "C1", security: nil}) == "#4399F0"
