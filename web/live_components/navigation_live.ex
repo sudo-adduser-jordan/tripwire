@@ -10,7 +10,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
 
   attr :character, :string, required: true
   attr :characters, :list, default: []
-  attr :ship_type_id, :any, default: nil
+  attr :presences, :map, default: %{}
   attr :masks, :list, default: []
   attr :tq_online, :boolean, default: false
   attr :tq_players, :any, default: nil
@@ -123,13 +123,13 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
               <div class="flex items-center gap-1">
                 <.character_ship_toggle
                   character={character}
-                  current_character={current_character(@characters, @character)}
-                  current_ship_type_id={@ship_type_id}
+                  ship_type_id={presence_ship_type_id(@presences, character)}
                   size="lg"
                 />
                 <.character_portrait_toggle
                   character={character}
                   current_character={current_character(@characters, @character)}
+                  online={presence_online(@presences, character)}
                   size="lg"
                 />
                 <a
@@ -341,4 +341,11 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
   end
 
   defp current_character(_, _), do: nil
+
+  defp presence(%{eve_id: eve_id}, presences), do: Map.get(presences || %{}, eve_id, %{})
+
+  defp presence_ship_type_id(presences, character),
+    do: Map.get(presence(character, presences), :ship_type_id)
+
+  defp presence_online(presences, character), do: Map.get(presence(character, presences), :online)
 end

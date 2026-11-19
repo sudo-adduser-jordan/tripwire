@@ -9,7 +9,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
   attr :character, :any, default: nil
   attr :mask, :any, default: nil
   attr :sso_configured?, :boolean, default: false
-  attr :ship_type_id, :any, default: nil
+  attr :presences, :map, default: %{}
 
   def settings_account_live(assigns) do
     ~H"""
@@ -57,45 +57,66 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
         <div class="grid w-full max-w-full grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4">
           <div
             :for={entry <- @characters}
+            id={"character-card-#{entry.id}"}
             class={[
-              "flex min-w-0 items-center gap-2 rounded-lg border bg-base-100/50 p-2",
+              "relative flex min-w-0 items-center gap-2 rounded-lg border bg-base-100/50 p-2 transition-colors hover:bg-base-200/60",
               current_character?(@character, entry) &&
                 "border-primary ring-1 ring-primary",
               !current_character?(@character, entry) && "border-base-300"
             ]}
-            tabindex="0"
           >
-            <.character_ship_toggle
-              character={entry}
-              current_character={@character}
-              current_ship_type_id={@ship_type_id}
-            />
-            <.character_portrait_toggle character={entry} current_character={@character} />
-            <div class="min-w-0 flex-1">
-              <div class="truncate text-xs font-semibold">{entry.name}</div>
-              <div class="truncate text-[11px] opacity-70">{corporation(entry)}</div>
-              <div class="mt-0.5 flex min-w-0 flex-row flex-wrap gap-1">
-                <div :if={entry.alliance_name} class="badge badge-info badge-xs truncate max-w-full">
-                  {entry.alliance_name}
+            <a
+              href={"/auth/switch/#{entry.eve_id}"}
+              title={"Switch to #{entry.name}"}
+              aria-label={"Switch to #{entry.name}"}
+              class="absolute inset-0 z-0 rounded-lg"
+            >
+            </a>
+            <div class="pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-2">
+              <.character_ship_toggle
+                character={entry}
+                ship_type_id={presence_field(@presences, entry, :ship_type_id)}
+              />
+              <.character_portrait_toggle
+                character={entry}
+                current_character={@character}
+                online={presence_field(@presences, entry, :online)}
+              />
+              <div class="min-w-0 flex-1">
+                <div class="truncate text-xs font-semibold">{entry.name}</div>
+                <div class="truncate text-[11px] opacity-70">{corporation(entry)}</div>
+                <div class="truncate text-[11px] opacity-70">
+                  {presence_line(@presences, entry)}
                 </div>
-                <div
-                  :if={current_character?(@character, entry)}
-                  class="badge badge-success badge-xs"
-                >
-                  Current
+                <div class="mt-0.5 flex min-w-0 flex-row flex-wrap gap-1">
+                  <div :if={entry.alliance_name} class="badge badge-info badge-xs truncate max-w-full">
+                    {entry.alliance_name}
+                  </div>
+                  <div
+                    :if={presence_field(@presences, entry, :online) == false}
+                    class="badge badge-ghost badge-xs"
+                  >
+                    Offline
+                  </div>
+                  <div
+                    :if={current_character?(@character, entry)}
+                    class="badge badge-success badge-xs"
+                  >
+                    Current
+                  </div>
                 </div>
               </div>
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs pointer-events-auto shrink-0 p-1"
+                title={"Remove #{entry.name}"}
+                data-confirm={"Remove #{entry.name}?"}
+                phx-click="remove-character"
+                phx-value-id={entry.id}
+              >
+                Remove
+              </button>
             </div>
-            <button
-              type="button"
-              class="btn btn-ghost btn-xs shrink-0 p-1"
-              title={"Remove #{entry.name}"}
-              data-confirm={"Remove #{entry.name}?"}
-              phx-click="remove-character"
-              phx-value-id={entry.id}
-            >
-              Remove
-            </button>
           </div>
           <div
             :if={@characters == []}
@@ -123,42 +144,55 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
         <div class="grid w-full max-w-full grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4">
           <div
             :for={entry <- @masks}
+            id={"mask-card-#{entry.id}"}
             class={[
-              "flex min-w-0 items-center gap-2 rounded-lg border bg-base-100/50 p-2",
+              "relative flex min-w-0 items-center gap-2 rounded-lg border bg-base-100/50 p-2 transition-colors hover:bg-base-200/60",
               current_mask?(@mask, entry) && "border-primary ring-1 ring-primary",
               !current_mask?(@mask, entry) && "border-base-300"
             ]}
-            tabindex="0"
           >
-            <div class={[
-              "avatar shrink-0",
-              (current_mask?(@mask, entry) && "avatar-online") || "avatar-offline"
-            ]}>
-              <div class="w-8 rounded-lg">
-                <img src="/images/alliance-default.png" alt="" loading="lazy" />
-              </div>
-            </div>
-            <div class="min-w-0 flex-1">
-              <div class="truncate text-xs font-semibold">{entry.name}</div>
-              <div class="truncate text-[11px] opacity-70 capitalize">{entry.kind || "custom"}</div>
-              <div class="mt-0.5 flex min-w-0 flex-row flex-wrap gap-1">
-                <div class={["badge badge-xs", mask_badge(entry.kind)]}>{entry.kind || "custom"}</div>
-                <div :if={current_mask?(@mask, entry)} class="badge badge-success badge-xs">
-                  Current
+            <button
+              type="button"
+              phx-click="switch-mask"
+              phx-value-id={entry.id}
+              title={"Switch to #{entry.name}"}
+              aria-label={"Switch to #{entry.name}"}
+              class="absolute inset-0 z-0 rounded-lg hover:cursor-pointer"
+            >
+            </button>
+            <div class="pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-2">
+              <div class={[
+                "avatar shrink-0",
+                (current_mask?(@mask, entry) && "avatar-online") || "avatar-offline"
+              ]}>
+                <div class="w-8 rounded-lg">
+                  <img src="/images/alliance-default.png" alt="" loading="lazy" />
                 </div>
               </div>
+              <div class="min-w-0 flex-1">
+                <div class="truncate text-xs font-semibold">{entry.name}</div>
+                <div class="truncate text-[11px] opacity-70 capitalize">{entry.kind || "custom"}</div>
+                <div class="mt-0.5 flex min-w-0 flex-row flex-wrap gap-1">
+                  <div class={["badge badge-xs", mask_badge(entry.kind)]}>
+                    {entry.kind || "custom"}
+                  </div>
+                  <div :if={current_mask?(@mask, entry)} class="badge badge-success badge-xs">
+                    Current
+                  </div>
+                </div>
+              </div>
+              <button
+                :if={admin?(@character)}
+                type="button"
+                class="btn btn-ghost btn-xs pointer-events-auto shrink-0 p-1"
+                title={"Remove #{entry.name}"}
+                data-confirm={"Delete #{entry.name} and all of its maps?"}
+                phx-click="delete-mask"
+                phx-value-id={entry.id}
+              >
+                Remove
+              </button>
             </div>
-            <button
-              :if={admin?(@character)}
-              type="button"
-              class="btn btn-ghost btn-xs shrink-0 p-1"
-              title={"Remove #{entry.name}"}
-              data-confirm={"Delete #{entry.name} and all of its maps?"}
-              phx-click="delete-mask"
-              phx-value-id={entry.id}
-            >
-              Remove
-            </button>
           </div>
           <div
             :if={@masks == []}
@@ -180,6 +214,26 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
 
   defp current_mask?(%{id: id}, %{id: other_id}), do: id == other_id
   defp current_mask?(_, _), do: false
+
+  defp presence(%{eve_id: eve_id}, presences), do: Map.get(presences || %{}, eve_id, %{})
+
+  defp presence_field(presences, character, key),
+    do: Map.get(presence(character, presences), key)
+
+  defp presence_line(presences, character) do
+    ship = presence_field(presences, character, :ship_name)
+    system = presence_field(presences, character, :system_name)
+
+    case {present(ship), present(system)} do
+      {nil, nil} -> "No location yet"
+      {nil, system} -> system
+      {ship, nil} -> ship
+      {ship, system} -> "#{ship} · #{system}"
+    end
+  end
+
+  defp present(value) when is_binary(value) and value != "", do: value
+  defp present(_), do: nil
 
   defp corporation(%{corporation_name: name}) when is_binary(name) and name != "",
     do: name

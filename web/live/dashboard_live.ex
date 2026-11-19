@@ -75,13 +75,14 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp assign_demo_presence(socket) do
-    {system_name, online, ship_type_id} =
-      fetch_character_presence(socket.assigns.character)
+    presence = fetch_character_presence(socket.assigns.character)
+    presences = Map.new(socket.assigns.characters, &{&1.eve_id, presence})
 
     socket
-    |> assign(:current_system_name, system_name)
-    |> assign(:character_online, online)
-    |> assign(:ship_type_id, ship_type_id)
+    |> assign(:current_system_name, presence.system_name)
+    |> assign(:character_online, presence.online)
+    |> assign(:ship_type_id, presence.ship_type_id)
+    |> assign(:presences, presences)
   end
 
   defp mount_demo(socket) do
@@ -288,7 +289,8 @@ defmodule TripwireWeb.DashboardLive do
     if topbar_esi_enabled?() do
       pid = self()
       character = socket.assigns.character
-      Task.start(fn -> send(pid, {:topbar_loaded, fetch_topbar_data(character)}) end)
+      characters = socket.assigns.characters
+      Task.start(fn -> send(pid, {:topbar_loaded, fetch_topbar_data(character, characters)}) end)
     end
 
     schedule_topbar_refresh()
@@ -299,7 +301,8 @@ defmodule TripwireWeb.DashboardLive do
     if topbar_esi_enabled?() do
       pid = self()
       character = socket.assigns.character
-      Task.start(fn -> send(pid, {:topbar_loaded, fetch_topbar_data(character)}) end)
+      characters = socket.assigns.characters
+      Task.start(fn -> send(pid, {:topbar_loaded, fetch_topbar_data(character, characters)}) end)
     end
 
     schedule_topbar_refresh()
@@ -317,6 +320,7 @@ defmodule TripwireWeb.DashboardLive do
      )
      |> assign(:character_online, data.character_online)
      |> assign(:ship_type_id, data.ship_type_id)
+     |> assign(:presences, data.presences)
      |> assign(:topbar_now, data.now)}
   end
 
@@ -2191,6 +2195,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:current_system_name, nil)
     |> assign(:character_online, nil)
     |> assign(:ship_type_id, nil)
+    |> assign(:presences, %{})
     |> assign(:topbar_now, DateTime.utc_now())
     |> assign(:grid_locked, true)
     |> assign(:system_search, "")
@@ -2293,32 +2298,55 @@ defmodule TripwireWeb.DashboardLive do
     Application.get_env(:tripwire, :topbar_esi, true)
   end
 
-  defp fetch_topbar_data(character) do
+  defp fetch_topbar_data(character, characters) do
     {tq_online, tq_players} =
       case ESI.get_status() do
         {:ok, %{"players" => players}} -> {true, players}
         _ -> {false, nil}
       end
 
-    {current_system_name, character_online, ship_type_id} =
-      fetch_character_presence(character)
+    presences = fetch_presences(characters)
+    presence = Map.get(presences, character.eve_id, empty_presence())
 
     %{
       tq_online: tq_online,
       tq_players: tq_players,
-      current_system_name: current_system_name,
-      character_online: character_online,
-      ship_type_id: ship_type_id,
+      current_system_name: presence.system_name,
+      character_online: presence.online,
+      ship_type_id: presence.ship_type_id,
+      presences: presences,
       now: DateTime.utc_now()
     }
   end
 
-  defp fetch_character_presence(nil), do: {nil, nil, nil}
+  defp fetch_presences(characters) do
+    characters
+    |> Task.async_stream(
+      fn character -> {character.eve_id, fetch_character_presence(character)} end,
+      max_concurrency: 4,
+      timeout: 20_000,
+      on_timeout: :kill_task
+    )
+    |> Enum.reduce(%{}, fn
+      {:ok, {eve_id, presence}}, acc -> Map.put(acc, eve_id, presence)
+      _other, acc -> acc
+    end)
+  end
 
-  defp fetch_character_presence(%{eve_id: @demo_character_eve_id}),
-    do: {"J150321", true, @demo_ship_type_id}
+  defp empty_presence, do: %{system_name: nil, online: nil, ship_name: nil, ship_type_id: nil}
 
-  defp fetch_character_presence(%{refresh_token: nil}), do: {nil, nil, nil}
+  defp fetch_character_presence(nil), do: empty_presence()
+
+  defp fetch_character_presence(%{eve_id: @demo_character_eve_id}) do
+    %{
+      system_name: "J150321",
+      online: true,
+      ship_name: @demo_ship_name,
+      ship_type_id: @demo_ship_type_id
+    }
+  end
+
+  defp fetch_character_presence(%{refresh_token: nil}), do: empty_presence()
 
   defp fetch_character_presence(character) do
     with {:ok, token} <- ESI.valid_access_token(character),
@@ -2329,10 +2357,13 @@ defmodule TripwireWeb.DashboardLive do
           _ -> nil
         end
 
-      ship_type_id =
+      {ship_name, ship_type_id} =
         case ESI.get_character_ship(character.eve_id, token) do
-          {:ok, %{"ship_type_id" => type_id}} -> type_id
-          _ -> nil
+          {:ok, %{"ship_type_id" => type_id} = ship} ->
+            {ship["ship_name"], type_id}
+
+          _ ->
+            {nil, nil}
         end
 
       system_name =
@@ -2347,12 +2378,17 @@ defmodule TripwireWeb.DashboardLive do
             nil
         end
 
-      {system_name, online, ship_type_id}
+      %{
+        system_name: system_name,
+        online: online,
+        ship_name: ship_name,
+        ship_type_id: ship_type_id
+      }
     else
-      _ -> {nil, nil, nil}
+      _ -> empty_presence()
     end
   rescue
-    _ -> {nil, nil, nil}
+    _ -> empty_presence()
   end
 
   defp push_undo(socket, op), do: update(socket, :undo, &[op | &1])

@@ -2054,6 +2054,88 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute html =~ "delete-mask"
   end
 
+  test "account cards show every character's ship and location and switch on selection", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, other} = Accounts.upsert_character(%{eve_id: 43_100, name: "lostcoastwizard"})
+
+    session =
+      Plug.Test.init_test_session(conn, %{
+        "current_user" => %{"id" => character.eve_id, "name" => character.name},
+        "character_ids" => [character.eve_id, other.eve_id]
+      })
+
+    {:ok, view, _html} = live(session, ~p"/dashboard")
+
+    send(view.pid, {
+      :topbar_loaded,
+      %{
+        tq_online: true,
+        tq_players: 1000,
+        current_system_name: "Jita",
+        character_online: true,
+        ship_type_id: 587,
+        presences: %{
+          character.eve_id => %{
+            system_name: "Jita",
+            online: true,
+            ship_name: "Rifter",
+            ship_type_id: 587
+          },
+          other.eve_id => %{
+            system_name: "J123456",
+            online: false,
+            ship_name: "Torrent",
+            ship_type_id: 81_047
+          }
+        },
+        now: DateTime.utc_now()
+      }
+    })
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "account"})
+
+    current_card = view |> element("#character-card-#{character.id}") |> render()
+    other_card = view |> element("#character-card-#{other.id}") |> render()
+
+    assert current_card =~ "Rifter · Jita"
+    assert current_card =~ "https://images.evetech.net/types/587/render?size=64"
+
+    assert other_card =~ "Torrent · J123456"
+    assert other_card =~ "https://images.evetech.net/types/81047/render?size=64"
+    assert other_card =~ "Offline"
+    assert other_card =~ ~s(href="/auth/switch/#{other.eve_id}")
+  end
+
+  test "mask cards switch the active mask when selected", %{conn: conn, character: character} do
+    {:ok, personal} = Masks.ensure_personal_mask(character)
+
+    {:ok, other_mask} =
+      Masks.create_mask(%{
+        name: "Corp Ops",
+        kind: "corporation",
+        owner_character_id: character.id
+      })
+
+    {:ok, _} = Masks.add_membership(other_mask, character)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "account"})
+
+    assert has_element?(view, "#mask-card-#{personal.id} .badge-success")
+
+    view
+    |> element("#mask-card-#{other_mask.id} button[phx-click='switch-mask']")
+    |> render_click()
+
+    assert has_element?(view, "#mask-card-#{other_mask.id} .badge-success")
+    refute has_element?(view, "#mask-card-#{personal.id} .badge-success")
+  end
+
   test "removing the current character navigates away", %{conn: conn, character: character} do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 

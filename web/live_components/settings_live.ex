@@ -29,7 +29,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   attr :character, :any, default: nil
   attr :mask, :any, default: nil
   attr :sso_configured?, :boolean, default: false
-  attr :ship_type_id, :any, default: nil
+  attr :presences, :map, default: %{}
 
   def settings_live(assigns) do
     ~H"""
@@ -58,7 +58,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
             character={@character}
             mask={@mask}
             sso_configured?={@sso_configured?}
-            ship_type_id={@ship_type_id}
+            presences={@presences}
           />
           <MapLive.settings_map_live
             map_layout={@map_layout}

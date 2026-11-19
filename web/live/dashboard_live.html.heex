@@ -14,7 +14,7 @@
     selected_system_name={@selected_system_name}
     current_system_name={@current_system_name}
     character_online={@character_online}
-    ship_type_id={@ship_type_id}
+    presences={@presences}
     topbar_now={@topbar_now}
     grid_locked={@grid_locked}
     system_search={@system_search}
@@ -111,7 +111,7 @@
         character={@character}
         mask={@mask}
         sso_configured?={@sso_configured?}
-        ship_type_id={@ship_type_id}
+        presences={@presences}
       />
       <.live_component
         :if={@widget_system}
