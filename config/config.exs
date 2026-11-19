@@ -67,6 +67,9 @@ config :tailwind,
     cd: Path.expand("..", __DIR__)
   ]
 
+config :tripwire, Tripwire.Systems.Catalog,
+  path: Path.expand("../priv/sde/eve-online-static-data-latest-jsonl.zip", __DIR__)
+
 config :tripwire, Tripwire.Log,
   service: "tripwire",
   sample_rate: 1.0,

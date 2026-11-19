@@ -6,6 +6,7 @@ defmodule TripwireWeb.DashboardLive do
   alias Tripwire.Mapping
   alias Tripwire.Masks
   alias Tripwire.Signatures, as: SigParser
+  alias Tripwire.Systems
   alias Tripwire.Tracking
 
   @demo_character_eve_id Tripwire.Demo.character_eve_id()
@@ -445,24 +446,35 @@ defmodule TripwireWeb.DashboardLive do
   def handle_event("system-search-submit", %{"search" => search}, socket) do
     trimmed = String.trim(search || "")
 
-    system =
-      Enum.find(socket.assigns.systems, fn s ->
-        String.downcase(s.name) == String.downcase(trimmed)
-      end)
+    case Enum.find(socket.assigns.systems, fn s ->
+           String.downcase(s.name) == String.downcase(trimmed)
+         end) do
+      %{id: id, name: name} ->
+        {:noreply,
+         socket
+         |> select_system(id)
+         |> push_patch(to: "/" <> name)}
 
-    if system do
-      {:noreply,
-       socket
-       |> select_system(system.id)
-       |> push_patch(to: "/" <> system.name)}
-    else
-      {:noreply,
-       socket
-       |> assign(:system_search, search || "")
-       |> assign(:system_suggestions, suggest_systems(socket.assigns.systems, trimmed))
-       |> put_flash(:error, "No system matching #{inspect(trimmed)} on this map")}
+      nil ->
+        case Systems.Catalog.find(trimmed) do
+          %{name: name} ->
+            {:noreply, push_system_patch(socket, name)}
+
+          nil ->
+            {:noreply,
+             socket
+             |> assign(:system_search, search || "")
+             |> assign(:system_suggestions, suggest_systems(socket.assigns.systems, trimmed))
+             |> put_flash(:error, "No system matching #{inspect(trimmed)}")}
+        end
     end
   end
+
+  def handle_event("system-search-pick", %{"name" => name}, socket) do
+    {:noreply, push_system_patch(socket, name)}
+  end
+
+  def handle_event("system-search-pick", _params, socket), do: {:noreply, socket}
 
   def handle_event("system-search-change", %{"search" => search}, socket) do
     {:noreply,
@@ -2035,13 +2047,22 @@ defmodule TripwireWeb.DashboardLive do
     if q == "" do
       []
     else
-      systems
-      |> Enum.reject(& &1.unknown)
-      |> Enum.filter(fn s ->
-        String.contains?(String.downcase(s.name || ""), q) ||
-          String.contains?(String.downcase(s.alias || ""), q)
-      end)
-      |> Enum.take(8)
+      local =
+        systems
+        |> Enum.reject(& &1.unknown)
+        |> Enum.filter(fn s ->
+          String.contains?(String.downcase(s.name || ""), q) ||
+            String.contains?(String.downcase(s.alias || ""), q)
+        end)
+
+      taken = Enum.map(local, & &1.solar_system_id) |> MapSet.new()
+
+      remote =
+        Systems.Catalog.search(q, 8)
+        |> Enum.reject(&MapSet.member?(taken, &1.solar_system_id))
+        |> Enum.map(&Map.put(&1, :id, nil))
+
+      Enum.take(local ++ remote, 8)
     end
   end
 
@@ -2134,6 +2155,13 @@ defmodule TripwireWeb.DashboardLive do
       {:ok, _} -> Mapping.list_systems(map.id)
       _ -> []
     end
+  end
+
+  defp push_system_patch(socket, name) do
+    socket
+    |> assign(:system_search, "")
+    |> assign(:system_suggestions, [])
+    |> push_patch(to: "/" <> name)
   end
 
   defp select_system_and_patch(socket, system_id) do

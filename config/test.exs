@@ -12,6 +12,7 @@ config :tripwire, TripwireWeb.Endpoint,
   secret_key_base: "oRmSSMd12xHQZCytekL1JqwYNt5SvFEvz4TUqidiRwOjk8odehw2oxVq8kwp9C8g",
   server: false
 
+config :tripwire, Tripwire.Systems.Catalog, path: nil
 config :tripwire, Tripwire.Mailer, adapter: Swoosh.Adapters.Test
 config :swoosh, :api_client, false
 config :tripwire, :topbar_esi, false

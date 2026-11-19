@@ -91,8 +91,9 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
         >
           <button
             :for={sug <- @system_suggestions}
-            phx-click="select-system"
-            phx-value-id={sug.id}
+            phx-click={if Map.get(sug, :id), do: "select-system", else: "system-search-pick"}
+            phx-value-id={Map.get(sug, :id)}
+            phx-value-name={sug.name}
             title={"Select #{sug.name}"}
             data-suggest-item
             class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-base-300"
@@ -102,7 +103,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
               style={"background-color: #{Systems.color(sug)}"}
             >
             </span>
-            <span class="truncate font-mono">{sug.alias || sug.name}</span>
+            <span class="truncate font-mono">{Map.get(sug, :alias) || sug.name}</span>
           </button>
         </div>
       </div>

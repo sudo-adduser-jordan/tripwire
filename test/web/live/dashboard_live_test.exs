@@ -5,6 +5,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   alias Tripwire.Mapping
   alias Tripwire.Masks
   alias Tripwire.Repo
+  alias Tripwire.Systems
 
   setup do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 42_000, name: "Kariyo Astrien"})
@@ -361,6 +362,11 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, system} = Mapping.add_system_to_map(map, %{solar_system_id: 1, name: system_name})
     {mask, map, system}
+  end
+
+  defp seed_catalog(entries) do
+    Systems.Catalog.put_systems(entries)
+    on_exit(fn -> Systems.Catalog.clear() end)
   end
 
   defp column_keys(html) do
@@ -1259,6 +1265,44 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert view |> element("#topbar-system") |> render() =~ "J150321"
     assert view |> element("#system-search") |> render() =~ ~s|value=""|
     assert view |> element("#system-search") |> render() =~ ~s|placeholder="Search systems"|
+  end
+
+  test "system search suggests systems outside the map", %{conn: conn, character: character} do
+    {_mask, map, _system} = setup_with_system(%{character: character}, "J150321")
+    seed_catalog([%{solar_system_id: 30_001_385, name: "Rancer", security: 0.3}])
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element(~s|nav form[phx-submit="system-search-submit"]|)
+    |> render_change(%{search: "ranc"})
+
+    suggestion = view |> element(~s|nav button[title="Select Rancer"]|) |> render()
+    assert suggestion =~ "Rancer"
+    assert suggestion =~ ~s|phx-click="system-search-pick"|
+
+    view |> element(~s|nav button[title="Select Rancer"]|) |> render_click()
+
+    assert view |> element("#topbar-system") |> render() =~ "J150321"
+    assert length(Mapping.list_systems(map.id)) == 1
+    assert view |> element("#system-search") |> render() =~ ~s|value=""|
+  end
+
+  test "submitting an outside system name only patches the url", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, _system} = setup_with_system(%{character: character}, "J150321")
+    seed_catalog([%{solar_system_id: 30_001_385, name: "Rancer", security: 0.3}])
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element(~s|nav form[phx-submit="system-search-submit"]|)
+    |> render_submit(%{search: "Rancer"})
+
+    assert view |> element("#topbar-system") |> render() =~ "J150321"
+    assert length(Mapping.list_systems(map.id)) == 1
   end
 
   test "typing in system search sends nothing until submit", %{conn: conn} do
