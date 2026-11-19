@@ -34,7 +34,9 @@ const SearchSuggest = {
   },
 
   updated() {
-    this.active = -1
+    const items = this.menuItems()
+    this.active = items.length ? 0 : -1
+    this.highlight(items)
   },
 
   destroyed() {
