@@ -42,9 +42,24 @@ defmodule TripwireWeb.AuthController do
     |> redirect(to: "/Jita")
   end
 
-  def callback(%{assigns: %{ueberauth_failure: _fails}} = conn, _params) do
+  def callback(%{assigns: %{ueberauth_failure: failure}} = conn, _params) do
+    details = failure_details(failure)
+
+    Tripwire.Log.emit(:warning, %{
+      event: "sso_login_failed",
+      provider: failure.provider,
+      strategy: failure.strategy,
+      message_keys: Enum.map(failure.errors, & &1.message_key),
+      messages: Enum.map(failure.errors, & &1.message),
+      has_code: is_binary(conn.params["code"]),
+      params: conn.params |> Map.keys() |> Enum.sort(),
+      state_cookie: Map.has_key?(conn.req_cookies, "ueberauth.state_param"),
+      sso_error: conn.params["error"],
+      sso_error_description: conn.params["error_description"]
+    })
+
     conn
-    |> put_flash(:error, "EVE SSO login failed")
+    |> put_flash(:error, "EVE SSO login failed: #{details}")
     |> redirect(to: "/")
   end
 
@@ -67,6 +82,13 @@ defmodule TripwireWeb.AuthController do
         conn
         |> put_flash(:error, "Character not found")
         |> redirect(to: "/dashboard")
+    end
+  end
+
+  defp failure_details(%{errors: errors}) do
+    case errors |> Enum.map(& &1.message) |> Enum.reject(&is_nil/1) do
+      [] -> "unknown error"
+      messages -> Enum.join(messages, ", ")
     end
   end
 
