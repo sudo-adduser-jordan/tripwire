@@ -166,7 +166,7 @@ defmodule TripwireWeb.DashboardLiveTest do
       |> Enum.find(&(&1.solar_system_id == map.home_solar_system_id))
 
     assert_push_event(view, "reset-pan", %{x: x, y: 20.0})
-    assert_in_delta x, home.x + 60.0 - 625.0, 0.001
+    assert_in_delta x, home.x + elem(Mapping.node_size(), 0) / 2 - 625.0, 0.001
     assert render(view) =~ "1250.0 875.0"
 
     reloaded = Mapping.get_system!(system.id)
@@ -672,8 +672,7 @@ defmodule TripwireWeb.DashboardLiveTest do
       |> Enum.find(&(&1.solar_system_id == map.home_solar_system_id))
 
     assert_push_event(view, "reset-pan", %{x: x, y: 20.0})
-    assert_in_delta x, home.x + 60.0 - 625.0, 0.001
-    assert_in_delta x, -105.0, 0.001
+    assert_in_delta x, home.x + elem(Mapping.node_size(), 0) / 2 - 625.0, 0.001
   end
 
   test "reset zoom without a home falls back to the top-left pan", %{
@@ -1241,9 +1240,10 @@ defmodule TripwireWeb.DashboardLiveTest do
     child = Mapping.get_system!(child.id)
 
     path = view |> element("#connection-#{link.id}") |> render()
+    {node_w, node_h} = Mapping.node_size()
 
-    assert path =~ "M #{home.x + 60} #{home.y + 44}"
-    assert path =~ "L #{child.x + 60} #{child.y + 44}"
+    assert path =~ "M #{home.x + node_w / 2} #{home.y + node_h / 2}"
+    assert path =~ "L #{child.x + node_w / 2} #{child.y + node_h / 2}"
   end
 
   test "map-layout rearranges the tree", %{conn: conn} do
@@ -1251,13 +1251,19 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     view |> element("#settings-button") |> render_click()
 
-    html =
-      view
-      |> element(~s|#settings-widget form[phx-change="map-layout"]|)
-      |> render_change(%{layout: "bottom"})
+    view
+    |> element(~s|#settings-widget form[phx-change="map-layout"]|)
+    |> render_change(%{layout: "bottom"})
 
-    assert html =~ "translate(693.3333333333331, 590.0)"
-    refute html =~ "translate(693.3333333333331, 60.0)"
+    map = Repo.one(Mapping.Map)
+
+    home =
+      Enum.find(Mapping.list_systems(map.id), &(&1.solar_system_id == map.home_solar_system_id))
+
+    node = view |> element("#node-#{home.id}") |> render()
+
+    assert node =~ ", 590.0)"
+    refute node =~ ", 60.0)"
   end
 
   test "demo user is admin and sees the Admin settings tab", %{conn: conn} do

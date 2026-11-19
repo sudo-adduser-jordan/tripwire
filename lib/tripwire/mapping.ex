@@ -176,11 +176,17 @@ defmodule Tripwire.Mapping do
   end
 
   @pan_pad_y 40
-  @node_w 120.0
+  @node_w 140.0
   @node_h 88.0
   @view_w 1000.0
   @view_h 700.0
   @default_zoom 0.8
+
+  @doc """
+  Chain-map node box as `{width, height}` in world units. The renderer and
+  the tidy layout both read this so the drawn box and the gutters agree.
+  """
+  def node_size, do: {@node_w, @node_h}
 
   @doc """
   Default chain-map zoom. The map opens one zoom step out from the SVG's
@@ -449,17 +455,17 @@ defmodule Tripwire.Mapping do
   end
 
   defp orient_tidy_position(orientation, depth, xi, mid, spacing) do
-    x = 460.0 + (xi - mid) * 150.0 * spacing
+    x = 460.0 + (xi - mid) * 170.0 * spacing
 
     case orientation do
       "up" ->
         {x, 590.0 - depth * 160.0 * spacing}
 
       "left" ->
-        {860.0 - depth * 170.0 * spacing, 325.0 + (xi - mid) * 120.0 * spacing}
+        {860.0 - depth * 190.0 * spacing, 325.0 + (xi - mid) * 120.0 * spacing}
 
       "right" ->
-        {60.0 + depth * 170.0 * spacing, 325.0 + (xi - mid) * 120.0 * spacing}
+        {60.0 + depth * 190.0 * spacing, 325.0 + (xi - mid) * 120.0 * spacing}
 
       _ ->
         {x, 60.0 + depth * 160.0 * spacing}

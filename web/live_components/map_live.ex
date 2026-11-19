@@ -18,6 +18,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     stats = Map.get_lazy(assigns, :stats, fn -> Mapping.list_system_stats(map_id) end)
     occupants = Map.get(assigns, :occupants, [])
     {pan_x, pan_y} = Mapping.home_center(systems, Map.get(assigns, :map))
+    {node_w, node_h} = Mapping.node_size()
 
     {:ok,
      socket
@@ -26,6 +27,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign(:connections, connections)
      |> assign(:stats, stats)
      |> assign(:occupants, occupants)
+     |> assign(:node_w, node_w)
+     |> assign(:node_h, node_h)
      |> assign(:wh_sigs, wormhole_sigs(map_id))
      |> assign_new(:pan_x, fn -> pan_x end)
      |> assign_new(:pan_y, fn -> pan_y end)
@@ -344,8 +347,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   {Phoenix.HTML.raw(effect_icon(effect))}
                 </svg>
                 <rect
-                  width="120"
-                  height="88"
+                  width={@node_w}
+                  height={@node_h}
                   rx="8"
                   stroke={node_stroke(system, @selected_system_id)}
                   stroke-dasharray={if MapSet.member?(@loop_hint_ids, system.id), do: "6 4"}
@@ -363,7 +366,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 />
                 <g
                   :if={occupied_count(@occupants, system.id) > 0}
-                  transform="translate(104, 0)"
+                  transform={"translate(#{@node_w - 16}, 0)"}
                 >
                   <title>{occupied_names(@occupants, system.id)}</title>
                   <clipPath id={"occupant-clip-#{system.id}"}>
@@ -393,7 +396,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 </g>
                 <g
                   :if={occupied_count(@occupants, system.id) > 1}
-                  transform="translate(117, 13)"
+                  transform={"translate(#{@node_w - 3}, 13)"}
                 >
                   <circle r="7" class="fill-primary" />
                   <text y="3" text-anchor="middle" class="fill-primary-content text-[9px] font-bold">
@@ -401,7 +404,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   </text>
                 </g>
                 <text
-                  x="60"
+                  x={@node_w / 2}
                   y="20"
                   text-anchor="middle"
                   fill={node_color(system)}
@@ -410,7 +413,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   {node_class(system)}
                 </text>
                 <text
-                  x="60"
+                  x={@node_w / 2}
                   y="46"
                   text-anchor="middle"
                   class="fill-base-content text-base font-bold cursor-pointer hover:underline"
@@ -421,7 +424,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   {node_label(system)}
                 </text>
                 <text
-                  x="60"
+                  x={@node_w / 2}
                   y="70"
                   text-anchor="middle"
                   class="fill-base-content/60 text-xs"
@@ -429,17 +432,29 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   {node_footer(@connections, @wh_sigs, system.id)}
                 </text>
                 <g :if={activity = node_activity(@stats, system.id)}>
-                  <circle :if={activity.jumps > 0} cx="98" cy="88" r="4" class="fill-info">
+                  <circle
+                    :if={activity.jumps > 0}
+                    cx={@node_w - 22}
+                    cy={@node_h}
+                    r="4"
+                    class="fill-info"
+                  >
                     <title>{"#{activity.jumps} jumps"}</title>
                   </circle>
-                  <circle :if={activity.kills > 0} cx="112" cy="88" r="4" class="fill-error">
+                  <circle
+                    :if={activity.kills > 0}
+                    cx={@node_w - 8}
+                    cy={@node_h}
+                    r="4"
+                    class="fill-error"
+                  >
                     <title>{"#{activity.kills} kills"}</title>
                   </circle>
                 </g>
                 <g
                   :for={{label, tip, x, color, text_color} <- node_badges(system)}
                   :if={Map.get(assigns, :show_node_badges, true)}
-                  transform={"translate(#{x}, 80)"}
+                  transform={"translate(#{x}, #{@node_h - 8})"}
                 >
                   <rect
                     width={badge_width(label)}
@@ -491,10 +506,11 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   defp edge_dash(_), do: nil
 
   defp edge_path(from, to, angled?) do
-    x1 = from.x + 60
-    y1 = from.y + 44
-    x2 = to.x + 60
-    y2 = to.y + 44
+    {node_w, node_h} = Mapping.node_size()
+    x1 = from.x + node_w / 2
+    y1 = from.y + node_h / 2
+    x2 = to.x + node_w / 2
+    y2 = to.y + node_h / 2
 
     if x1 == x2 and y1 == y2 do
       "M #{x1} #{y1} C #{x1 - 40} #{y1 - 50}, #{x1 + 40} #{y1 - 50}, #{x1} #{y1}"
@@ -516,7 +532,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   end
 
   defp row_groups(systems) do
-    systems |> Enum.group_by(&(&1.y + 44)) |> Enum.sort_by(&elem(&1, 0))
+    {_node_w, node_h} = Mapping.node_size()
+    systems |> Enum.group_by(&(&1.y + node_h / 2)) |> Enum.sort_by(&elem(&1, 0))
   end
 
   defp row_counts(systems) do

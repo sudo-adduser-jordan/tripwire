@@ -32,12 +32,14 @@ defmodule Tripwire.MappingTest do
     other = %Mapping.MapSystem{solar_system_id: 2, x: 1000.0, y: 220.0}
     map = %Mapping.Map{home_solar_system_id: 1}
 
+    {node_w, _node_h} = Mapping.node_size()
+
     {x, y} = Mapping.home_center([home, other], map)
-    assert_in_delta x, -105.0, 0.001
+    assert_in_delta x, 460.0 + node_w / 2 - 625.0, 0.001
     assert y == 20.0
 
     {x, y} = Mapping.home_center([other, %{home | x: 0.0}], map)
-    assert_in_delta x, -565.0, 0.001
+    assert_in_delta x, node_w / 2 - 625.0, 0.001
     assert y == 20.0
 
     assert Mapping.home_center([home, other], %Mapping.Map{home_solar_system_id: 99}) ==
