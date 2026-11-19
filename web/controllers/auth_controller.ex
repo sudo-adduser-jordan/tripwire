@@ -3,7 +3,10 @@ defmodule TripwireWeb.AuthController do
 
   alias Tripwire.SSO
 
+  @detail_limit 120
+
   plug :require_sso when action in [:request, :callback, :delete]
+  plug :restore_state_param when action in [:callback]
   plug Ueberauth
 
   defp require_sso(conn, _opts) do
@@ -14,6 +17,13 @@ defmodule TripwireWeb.AuthController do
       |> halt()
     else
       conn
+    end
+  end
+
+  defp restore_state_param(conn, _opts) do
+    case SSO.state_param(conn) do
+      nil -> conn
+      state -> put_private(conn, :ueberauth_state_param, state)
     end
   end
 
@@ -43,14 +53,14 @@ defmodule TripwireWeb.AuthController do
   end
 
   def callback(%{assigns: %{ueberauth_failure: failure}} = conn, _params) do
-    details = failure_details(failure)
+    details = failure_message(failure)
 
     Tripwire.Log.emit(:warning, %{
       event: "sso_login_failed",
       provider: failure.provider,
       strategy: failure.strategy,
       message_keys: Enum.map(failure.errors, & &1.message_key),
-      messages: Enum.map(failure.errors, & &1.message),
+      messages: Enum.map(failure.errors, &log_message(&1.message)),
       has_code: is_binary(conn.params["code"]),
       params: conn.params |> Map.keys() |> Enum.sort(),
       state_cookie: Map.has_key?(conn.req_cookies, "ueberauth.state_param"),
@@ -85,10 +95,31 @@ defmodule TripwireWeb.AuthController do
     end
   end
 
+  defp failure_message(%{errors: errors} = failure) do
+    if Enum.any?(errors, &(&1.message_key in ["csrf_attack", "invalid_state"])) do
+      "login session expired, sign in again"
+    else
+      failure_details(failure)
+    end
+  end
+
   defp failure_details(%{errors: errors}) do
     case errors |> Enum.map(& &1.message) |> Enum.reject(&is_nil/1) do
       [] -> "unknown error"
-      messages -> Enum.join(messages, ", ")
+      messages -> messages |> Enum.map(&first_line/1) |> Enum.join(", ") |> shorten()
+    end
+  end
+
+  defp log_message(nil), do: nil
+  defp log_message(message), do: message |> first_line() |> shorten()
+
+  defp first_line(message), do: message |> String.split("\n", parts: 2) |> hd() |> String.trim()
+
+  defp shorten(message) do
+    if String.length(message) > @detail_limit do
+      String.slice(message, 0, @detail_limit) <> "..."
+    else
+      message
     end
   end
 

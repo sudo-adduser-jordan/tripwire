@@ -74,6 +74,12 @@ fix:
 - Compiled paths: `lib`, `web`, plus `test` under `MIX_ENV=test` (`mix.exs` `elixirc_paths`).
 - Mix aliases: `setup` (deps.get, ecto.setup, assets.setup, assets.build), `ecto.setup`, `ecto.reset`, `test` (create, migrate, test), `assets.setup/build/deploy`, `precommit` (compile warnings-as-errors, deps.unlock, format, test).
 
+## EVE SSO
+
+- `ueberauth` 0.11 generates the OAuth `state`, keeps it in the signed `ueberauth.state_param` cookie, and exposes it as `conn.private[:ueberauth_state_param]` only during the request phase; `ueberauth_eve_online` 1.0.4 re-checks the callback state against that private value and falls back to the raw signed cookie, which never matches. `AuthController` therefore reseeds the private param from the verified cookie (`Tripwire.SSO.state_param/1`) in a `:restore_state_param` plug before `plug Ueberauth`, keeping both CSRF checks working.
+- Failures whose message key is `csrf_attack` or `invalid_state` flash "login session expired, sign in again" (the wide event still logs the raw keys and messages); a stale cookie only needs a browser retry. Other failures are trimmed to their first line and `@detail_limit` characters before they reach the flash or the log, because EVE answers a bad code with a full HTML error page that overflows the session cookie.
+- The registered redirect URI is `http://localhost:4000/auth/evesso/callback`, so browse `localhost`, not `127.0.0.1`. Dev and prod share port 4000 with different `secret_key_base` values, so a cookie left by `task start` makes the first `task dev` login attempt fail once.
+
 ## Layout
 
 - `lib/tripwire/` contexts and support modules: `accounts`, `esi` (+ `esi/token_cache`), `mapping`, `masks`, `signatures` (scan-paste parser), `systems` (class/color/static tables), `tracking` (ESI location pollers and chain upkeep), `wormholes` (hole type database), `eve_images`, `zkill`, `sso`, `notifier`, `markdown`, `log`, plus `sync_server` (background jobs), `vault`, `repo`, `mailer`, `ecto_types`.
