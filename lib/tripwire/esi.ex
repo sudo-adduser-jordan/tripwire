@@ -1,4 +1,6 @@
 defmodule Tripwire.ESI do
+  alias Tripwire.ESI.TokenCache
+
   @login_base "https://login.eveonline.com/v2/oauth"
   @esi_base "https://esi.evetech.net/latest"
 
@@ -65,6 +67,8 @@ defmodule Tripwire.ESI do
   def get_status, do: public_get("/status/")
 
   def get_system(system_id), do: public_get("/universe/systems/#{system_id}/")
+
+  def get_type(type_id), do: public_get("/universe/types/#{type_id}/")
 
   def get_constellation(constellation_id),
     do: public_get("/universe/constellations/#{constellation_id}/")
@@ -164,19 +168,36 @@ defmodule Tripwire.ESI do
       expires_at =
         DateTime.add(
           DateTime.utc_now(),
-          body["expires_in"] || 1200 - 60,
+          (body["expires_in"] || 1200) - 60,
           :second
         )
 
+      rotated = body["refresh_token"] || refresh_token
+
       cache.put(eve_id, %{
         access_token: body["access_token"],
-        refresh_token: body["refresh_token"] || refresh_token,
+        refresh_token: rotated,
         expires_at: expires_at
       })
+
+      persist_refresh_token(eve_id, rotated)
 
       {:ok, body["access_token"]}
     end
   end
+
+  defp persist_refresh_token(eve_id, refresh_token) when is_binary(refresh_token) do
+    case Tripwire.Accounts.get_character_by_eve_id(eve_id) do
+      %{refresh_token: current} = character when current != refresh_token ->
+        _ = Tripwire.Accounts.update_character(character, %{refresh_token: refresh_token})
+        :ok
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp persist_refresh_token(_eve_id, _refresh_token), do: :ok
 
   defp authorized_get(path, access_token) do
     case req(:get, @esi_base <> path, headers: [{"authorization", "Bearer #{access_token}"}]) do
@@ -226,17 +247,6 @@ defmodule Tripwire.ESI do
     end
   end
 
-  defp client_id, do: resolve_credential(:client_id)
-  defp client_secret, do: resolve_credential(:client_secret)
-
-  defp resolve_credential(key) do
-    :tripwire
-    |> Application.get_env(Ueberauth.Strategy.EVESSO.OAuth, [])
-    |> Keyword.get(key)
-    |> case do
-      {:system, env_var} -> System.get_env(env_var, "")
-      value when is_binary(value) -> value
-      _ -> ""
-    end
-  end
+  defp client_id, do: Tripwire.SSO.client_id()
+  defp client_secret, do: Tripwire.SSO.client_secret()
 end

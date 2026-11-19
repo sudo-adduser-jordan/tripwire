@@ -2084,10 +2084,11 @@ defmodule TripwireWeb.DashboardLiveTest do
             ship_type_id: 587
           },
           other.eve_id => %{
-            system_name: "J123456",
+            system_name: "J231710",
             online: false,
-            ship_name: "Torrent",
-            ship_type_id: 81_047
+            ship_name: "/",
+            ship_type_id: 81_047,
+            ship_type_name: "Torrent"
           }
         },
         now: DateTime.utc_now()
@@ -2103,7 +2104,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert current_card =~ "Rifter · Jita"
     assert current_card =~ "https://images.evetech.net/types/587/render?size=64"
 
-    assert other_card =~ "Torrent · J123456"
+    assert other_card =~ "Torrent · J231710"
     assert other_card =~ "https://images.evetech.net/types/81047/render?size=64"
     assert other_card =~ "Offline"
     assert other_card =~ ~s(href="/auth/switch/#{other.eve_id}")

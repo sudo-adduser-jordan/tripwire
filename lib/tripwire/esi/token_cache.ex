@@ -26,7 +26,14 @@ defmodule Tripwire.ESI.TokenCache do
 
   @impl true
   def init(_opts) do
-    table = :ets.new(__MODULE__, [:named_table, read_concurrency: true])
+    table =
+      :ets.new(__MODULE__, [
+        :named_table,
+        :public,
+        read_concurrency: true,
+        write_concurrency: true
+      ])
+
     schedule_sweep()
     {:ok, table}
   end

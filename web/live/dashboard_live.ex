@@ -2333,7 +2333,8 @@ defmodule TripwireWeb.DashboardLive do
     end)
   end
 
-  defp empty_presence, do: %{system_name: nil, online: nil, ship_name: nil, ship_type_id: nil}
+  defp empty_presence,
+    do: %{system_name: nil, online: nil, ship_name: nil, ship_type_id: nil, ship_type_name: nil}
 
   defp fetch_character_presence(nil), do: empty_presence()
 
@@ -2342,53 +2343,73 @@ defmodule TripwireWeb.DashboardLive do
       system_name: "J150321",
       online: true,
       ship_name: @demo_ship_name,
-      ship_type_id: @demo_ship_type_id
+      ship_type_id: @demo_ship_type_id,
+      ship_type_name: @demo_ship_name
     }
   end
 
   defp fetch_character_presence(%{refresh_token: nil}), do: empty_presence()
 
   defp fetch_character_presence(character) do
-    with {:ok, token} <- ESI.valid_access_token(character),
-         {:ok, location} <- ESI.get_character_location(character.eve_id, token) do
-      online =
-        case ESI.get_character_online(character.eve_id, token) do
-          {:ok, %{"online" => online}} -> online
-          _ -> nil
-        end
+    case ESI.valid_access_token(character) do
+      {:ok, token} ->
+        {ship_name, ship_type_id, ship_type_name} = fetch_character_ship(character.eve_id, token)
 
-      {ship_name, ship_type_id} =
-        case ESI.get_character_ship(character.eve_id, token) do
-          {:ok, %{"ship_type_id" => type_id} = ship} ->
-            {ship["ship_name"], type_id}
+        %{
+          system_name: fetch_character_system(character.eve_id, token),
+          online: fetch_character_online(character.eve_id, token),
+          ship_name: ship_name,
+          ship_type_id: ship_type_id,
+          ship_type_name: ship_type_name
+        }
 
-          _ ->
-            {nil, nil}
-        end
-
-      system_name =
-        case location do
-          %{"solar_system_id" => id} ->
-            case ESI.get_system(id) do
-              {:ok, %{"name" => name}} -> name
-              _ -> nil
-            end
-
-          _ ->
-            nil
-        end
-
-      %{
-        system_name: system_name,
-        online: online,
-        ship_name: ship_name,
-        ship_type_id: ship_type_id
-      }
-    else
-      _ -> empty_presence()
+      {:error, _reason} ->
+        empty_presence()
     end
   rescue
-    _ -> empty_presence()
+    exception ->
+      Tripwire.Log.emit(:warning, %{
+        event: "character_presence_failed",
+        eve_id: character.eve_id,
+        error: Exception.message(exception)
+      })
+
+      empty_presence()
+  end
+
+  defp fetch_character_online(eve_id, token) do
+    case ESI.get_character_online(eve_id, token) do
+      {:ok, %{"online" => online}} -> online
+      _ -> nil
+    end
+  end
+
+  defp fetch_character_ship(eve_id, token) do
+    case ESI.get_character_ship(eve_id, token) do
+      {:ok, %{"ship_type_id" => type_id} = ship} ->
+        {ship["ship_name"], type_id, fetch_type_name(type_id)}
+
+      _ ->
+        {nil, nil, nil}
+    end
+  end
+
+  defp fetch_type_name(type_id) when is_integer(type_id) do
+    case ESI.get_type(type_id) do
+      {:ok, %{"name" => name}} -> name
+      _ -> nil
+    end
+  end
+
+  defp fetch_type_name(_type_id), do: nil
+
+  defp fetch_character_system(eve_id, token) do
+    with {:ok, %{"solar_system_id" => system_id}} <- ESI.get_character_location(eve_id, token),
+         {:ok, %{"name" => name}} <- ESI.get_system(system_id) do
+      name
+    else
+      _ -> nil
+    end
   end
 
   defp push_undo(socket, op), do: update(socket, :undo, &[op | &1])

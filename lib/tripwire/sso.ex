@@ -7,6 +7,8 @@ defmodule Tripwire.SSO do
 
   def demo?, do: not configured?()
 
+  def client_id, do: first_env(@client_id_vars)
+
   def client_secret, do: first_env(@client_secret_vars)
 
   def state_param(conn) do

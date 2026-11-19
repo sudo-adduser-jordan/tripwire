@@ -221,14 +221,26 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
     do: Map.get(presence(character, presences), key)
 
   defp presence_line(presences, character) do
-    ship = presence_field(presences, character, :ship_name)
-    system = presence_field(presences, character, :system_name)
+    ship = ship_label(presences, character)
+    system = present(presence_field(presences, character, :system_name))
 
-    case {present(ship), present(system)} do
-      {nil, nil} -> "No location yet"
+    case {ship, system} do
+      {nil, nil} -> "Location unknown"
       {nil, system} -> system
       {ship, nil} -> ship
       {ship, system} -> "#{ship} · #{system}"
+    end
+  end
+
+  defp ship_label(presences, character) do
+    present(presence_field(presences, character, :ship_type_name)) ||
+      custom_ship_name(presence_field(presences, character, :ship_name))
+  end
+
+  defp custom_ship_name(name) do
+    case present(name) do
+      "/" -> nil
+      other -> other
     end
   end
 
