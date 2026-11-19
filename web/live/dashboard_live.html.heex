@@ -91,6 +91,10 @@
         map_scale={@map_scale}
         map_background={@map_background}
         settings_tab={@settings_tab}
+        widget_system={@widget_system}
+        widget_notes={@widget_notes}
+        widget_signatures={@widget_signatures}
+        widget_map={@widget_map}
         characters={@characters}
         masks={@masks}
         character={@character}
@@ -99,6 +103,7 @@
         ship_type_id={@ship_type_id}
       />
       <.live_component
+        :if={@widget_system}
         module={TripwireWeb.LiveComponents.SystemLive}
         id="system-live"
         map_id={@map && @map.id}
@@ -111,6 +116,7 @@
         chart_data={@chart_data}
       />
       <.live_component
+        :if={@widget_notes}
         module={TripwireWeb.LiveComponents.NotesLive}
         id="notes-live"
         selected_system_id={@selected_system_id}
@@ -119,6 +125,7 @@
         character={@character}
       />
       <.live_component
+        :if={@widget_signatures}
         module={TripwireWeb.LiveComponents.SignaturesLive}
         id="signatures"
         selected_system_id={@selected_system_id}
@@ -128,6 +135,7 @@
         character={@character}
       />
       <.live_component
+        :if={@widget_map}
         module={TripwireWeb.LiveComponents.MapLive}
         id="map-live"
         map_id={@map && @map.id}

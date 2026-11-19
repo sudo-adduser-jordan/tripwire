@@ -86,6 +86,21 @@ function touchGrid(el) {
     syncLock(el)
 }
 
+function reconcile(el, grid) {
+    const nodes = (grid.engine && grid.engine.nodes) || []
+
+    nodes.slice().forEach((node) => {
+        if (!node || !node.el) return
+        if (!el.contains(node.el)) grid.removeWidget(node.el, false)
+    })
+
+    Array.from(el.children).forEach((child) => {
+        if (!child.classList || !child.classList.contains('grid-stack-item')) return
+        if (child.gridstackNode) return
+        grid.makeWidget(child)
+    })
+}
+
 // LiveView re-renders the dashboard subtree on every patch (selection,
 // signatures, notes) and morphdom drops attributes it did not render
 // (gridstack's CSS vars and item inline styles), so re-apply the grid
@@ -101,7 +116,13 @@ function refreshGrid(el) {
         touchGrid(el)
         return
     }
+    const widgetSetChanged = el._gridSig !== undefined
     el._gridSig = sig
+
+    if (widgetSetChanged) {
+        reconcile(el, grid)
+        if (typeof grid.compact === 'function') grid.compact()
+    }
 
     if (typeof grid._updateColumnVar === 'function') {
         grid._updateColumnVar()

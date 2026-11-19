@@ -68,6 +68,37 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "→"
   end
 
+  test "widgets settings tab hides unchecked widgets and keeps the settings panel", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "widgets"})
+
+    assert has_element?(view, "#toggle-widget-system")
+    assert has_element?(view, "#toggle-widget-notes")
+    assert has_element?(view, "#toggle-widget-signatures")
+    assert has_element?(view, "#toggle-widget-map")
+    refute has_element?(view, "#toggle-widget-settings")
+
+    view |> element("#toggle-widget-notes") |> render_click()
+    refute has_element?(view, "#notes")
+    assert has_element?(view, "#system-container")
+    assert has_element?(view, "#settings-widget")
+
+    view |> element("#toggle-widget-notes") |> render_click()
+    assert has_element?(view, "#notes")
+
+    view |> element("#toggle-widget-map") |> render_click()
+    refute has_element?(view, "#chain-map")
+    refute has_element?(view, "#map")
+
+    view |> element("#toggle-widget-system") |> render_click()
+    refute has_element?(view, "#system-container")
+
+    view |> element("#toggle-widget-signatures") |> render_click()
+    refute has_element?(view, "#signatures")
+  end
+
   test "demo wormhole signatures are labelled with their connection destination", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/dashboard")
 

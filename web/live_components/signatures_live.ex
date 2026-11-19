@@ -182,7 +182,16 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
 
   def render(assigns) do
     ~H"""
-    <div id={@id} class="grid-stack-item" gs-w="12" gs-h="6" gs-x="0" gs-y="6" tabindex="0">
+    <div
+      id={@id}
+      class="grid-stack-item"
+      gs-w="12"
+      gs-h="6"
+      gs-x="0"
+      gs-y="6"
+      tabindex="0"
+      phx-hook="GridWidget"
+    >
       <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
         <div class="shrink-0">
           <ul class="list rounded-box shadow-md">

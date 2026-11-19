@@ -16,6 +16,12 @@ defmodule TripwireWeb.DashboardLive do
   @chart_refresh_ms 60_000
   @chart_ranges ~w(24h 48h week)
   @settings_tabs ~w(account map widgets statistics themes admin)
+  @widgets %{
+    "system" => :widget_system,
+    "notes" => :widget_notes,
+    "signatures" => :widget_signatures,
+    "map" => :widget_map
+  }
 
   @impl true
   def mount(_params, session, socket) do
@@ -355,6 +361,13 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("toggle-grid-lock", _params, socket) do
     {:noreply, update(socket, :grid_locked, &(!&1))}
+  end
+
+  def handle_event("toggle-widget", %{"widget" => widget}, socket) do
+    case @widgets do
+      %{^widget => key} -> {:noreply, update(socket, key, &(!&1))}
+      _ -> {:noreply, socket}
+    end
   end
 
   def handle_event("toggle-map-lock", _params, socket) do
@@ -2125,6 +2138,10 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:show_jump_lines, true)
     |> assign(:show_line_glow, true)
     |> assign(:show_node_badges, true)
+    |> assign(:widget_system, true)
+    |> assign(:widget_notes, true)
+    |> assign(:widget_signatures, true)
+    |> assign(:widget_map, true)
     |> assign(:line_weight, 2)
     |> assign(:node_spacing, 100)
     |> assign(:map_scale, 100)

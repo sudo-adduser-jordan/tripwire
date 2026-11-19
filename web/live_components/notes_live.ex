@@ -47,7 +47,16 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
 
   def render(assigns) do
     ~H"""
-    <div id="notes" class="grid-stack-item" gs-w="6" gs-h="6" gs-x="6" gs-y="0" tabindex="0">
+    <div
+      id="notes"
+      class="grid-stack-item"
+      gs-w="6"
+      gs-h="6"
+      gs-x="6"
+      gs-y="0"
+      tabindex="0"
+      phx-hook="GridWidget"
+    >
       <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
         <ul class="list rounded-box shadow-md shrink-0">
           <li class="list-row h-fit items-center gap-1 p-1">

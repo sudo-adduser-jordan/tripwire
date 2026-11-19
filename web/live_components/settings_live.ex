@@ -20,6 +20,10 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   attr :map_scale, :integer, default: 100
   attr :map_background, :string, default: nil
   attr :settings_tab, :string, default: "account"
+  attr :widget_system, :boolean, default: true
+  attr :widget_notes, :boolean, default: true
+  attr :widget_signatures, :boolean, default: true
+  attr :widget_map, :boolean, default: true
   attr :characters, :list, default: []
   attr :masks, :list, default: []
   attr :character, :any, default: nil
@@ -70,7 +74,13 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
             map_scale={@map_scale}
             map_background={@map_background}
           />
-          <WidgetsLive.settings_widgets_live settings_tab={@settings_tab} />
+          <WidgetsLive.settings_widgets_live
+            settings_tab={@settings_tab}
+            widget_system={@widget_system}
+            widget_notes={@widget_notes}
+            widget_signatures={@widget_signatures}
+            widget_map={@widget_map}
+          />
           <StatisticsLive.settings_statistics_live
             settings_tab={@settings_tab}
             character={@character}

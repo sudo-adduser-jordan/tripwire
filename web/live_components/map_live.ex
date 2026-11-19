@@ -103,7 +103,16 @@ defmodule TripwireWeb.LiveComponents.MapLive do
       |> assign(:loop_hint_ids, loop_hint_ids(visible, cycle))
 
     ~H"""
-    <div id="map" class="grid-stack-item" gs-w="12" gs-h="6" gs-x="0" gs-y="12" tabindex="0">
+    <div
+      id="map"
+      class="grid-stack-item"
+      gs-w="12"
+      gs-h="6"
+      gs-x="0"
+      gs-y="12"
+      tabindex="0"
+      phx-hook="GridWidget"
+    >
       <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
         <ul class="list rounded-box shadow-md shrink-0">
           <li class="flex h-fit flex-wrap items-center justify-start gap-1 p-1">
