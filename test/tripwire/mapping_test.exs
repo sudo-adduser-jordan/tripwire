@@ -27,7 +27,7 @@ defmodule Tripwire.MappingTest do
   test "reset_demo_maps/1 clears custom content and restores the seed", %{mask: mask} do
     [map] = Mapping.list_maps_for_mask(mask.id)
     systems = Mapping.list_systems(map.id)
-    assert length(systems) == 23
+    assert length(systems) == 25
 
     {:ok, extra} =
       Mapping.add_system_to_map(map, %{solar_system_id: 99, name: "J999999"})
@@ -35,15 +35,15 @@ defmodule Tripwire.MappingTest do
     {:ok, _conn, _new?} =
       Mapping.upsert_connection(map.id, hd(systems).id, extra.id, %{hole_type: "K162"})
 
-    assert length(Mapping.list_systems(map.id)) == 24
+    assert length(Mapping.list_systems(map.id)) == 26
 
     {:ok, _map} = Mapping.reset_demo_maps(mask.id)
 
     [fresh] = Mapping.list_maps_for_mask(mask.id)
-    assert length(Mapping.list_systems(fresh.id)) == 23
+    assert length(Mapping.list_systems(fresh.id)) == 25
 
     links = Mapping.list_connections(fresh.id)
-    assert length(links) == 22
+    assert length(links) == 24
 
     assert Enum.map(links, & &1.hole_type) |> Enum.sort() == [
              "A641",
@@ -54,6 +54,8 @@ defmodule Tripwire.MappingTest do
              "E175",
              "F216",
              "H900",
+             "K162",
+             "K162",
              "K329",
              "M555",
              "N062",
@@ -70,55 +72,16 @@ defmodule Tripwire.MappingTest do
              "Y790"
            ]
 
-    assert Enum.map(links, & &1.mass_status) |> Enum.sort() == [
-             "critical",
-             "destab",
-             "destab",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable"
-           ]
+    assert Enum.frequencies(Enum.map(links, & &1.mass_status)) == %{
+             "critical" => 1,
+             "destab" => 2,
+             "stable" => 21
+           }
 
-    assert Enum.map(links, & &1.time_status) |> Enum.sort() == [
-             "critical",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable",
-             "stable"
-           ]
+    assert Enum.frequencies(Enum.map(links, & &1.time_status)) == %{
+             "critical" => 1,
+             "stable" => 23
+           }
 
     systems = Mapping.list_systems(fresh.id)
 
@@ -129,6 +92,8 @@ defmodule Tripwire.MappingTest do
              "C2",
              "C2",
              "C3",
+             "C3",
+             "C4",
              "C4",
              "C4",
              "C4",

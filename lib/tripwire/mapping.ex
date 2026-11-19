@@ -1525,7 +1525,9 @@ defmodule Tripwire.Mapping do
     %{solar_system_id: 31_000_018, name: "J150334", sys_class: "C1", x: 620.0, y: 300.0},
     %{solar_system_id: 30_002_537, name: "Rens", security: 0.9, x: 460.0, y: 120.0},
     %{solar_system_id: 31_000_019, name: "J150335", sys_class: "C6", x: 830.0, y: 90.0},
-    %{solar_system_id: 31_000_020, name: "J150336", sys_class: "C5", x: 950.0, y: 280.0}
+    %{solar_system_id: 31_000_020, name: "J150336", sys_class: "C5", x: 950.0, y: 280.0},
+    %{solar_system_id: 31_000_021, name: "J150337", sys_class: "C3", x: 780.0, y: 420.0},
+    %{solar_system_id: 31_000_022, name: "J150338", sys_class: "C4", x: 1_020.0, y: 200.0}
   ]
 
   @demo_shortcuts """
@@ -1582,7 +1584,9 @@ defmodule Tripwire.Mapping do
     {2, 19, "Y790", "stable", "stable"},
     {15, 20, "A641", "stable", "stable"},
     {15, 21, "B041", "stable", "stable"},
-    {3, 22, "H900", "stable", "stable"}
+    {3, 22, "H900", "stable", "stable"},
+    {19, 23, "K162", "stable", "stable"},
+    {21, 24, "K162", "stable", "stable"}
   ]
 
   @demo_signatures %{
@@ -1944,6 +1948,22 @@ defmodule Tripwire.Mapping do
         kind: "signature",
         site_type: "wormhole",
         type_name: "Unstable Wormhole (H900)"
+      }
+    ],
+    23 => [
+      %{
+        sig_id: "KLM-793",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (K162)"
+      }
+    ],
+    24 => [
+      %{
+        sig_id: "KLM-794",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (K162)"
       }
     ]
   }

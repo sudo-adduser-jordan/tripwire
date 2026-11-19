@@ -117,7 +117,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     [map] = Repo.all(Mapping.Map)
     assert map.mask_id == mask.id
-    assert length(Mapping.list_systems(map.id)) == 23
+    assert length(Mapping.list_systems(map.id)) == 25
 
     assert html =~ "C3"
     assert html =~ "ABC-123"

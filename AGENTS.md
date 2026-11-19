@@ -99,7 +99,7 @@ fix:
 ## Testing
 
 - `mix test` covers contexts (`test/tripwire/`), LiveViews (`test/web/live/`), and controllers (`test/web/controllers/`). Tests run inside the SQL sandbox against `priv/db/tripwire-test.db`.
-- Context tests build their own maps (`Masks.ensure_demo_mask/0` + `Mapping.ensure_demo_map/1` seeds the 23-system demo chain with signatures and notes; the demo paste lives in a comment on the Home system).
+- Context tests build their own maps (`Masks.ensure_demo_mask/0` + `Mapping.ensure_demo_map/1` seeds the 25-system demo chain with signatures and notes, including two scanned-but-unmapped leaf holes; the demo paste lives in a comment on the Home system).
 - Dashboard LiveView tests drive the widgets (signature paste, stale toast, chain map rendering, settings tabs) through `TripwireWeb.LiveComponents` events; select systems via `#system-container button[title='Select system …']`.
 - The upstream reference (daimian/tripwire, PHP) ships no test suite. Its maintained fork's suites (mocha `app/js-test`, Playwright `e2e/`, `tests/php/note-html.test.php`) are the comparison baseline; behaviors already ported: signature paste parsing, wormhole eligibility and rendering, automapper jump labeling, mask kinds, note sanitization (as markdown escaping), and stat counters. Known upstream gaps not present in this port: faction-warfare conditional gates, mass dialog parsing, Drifter/C13–C18 generic system types, EVE-Scout Thera link supplier, and client-side pathfinding (routes come from ESI here).
 
