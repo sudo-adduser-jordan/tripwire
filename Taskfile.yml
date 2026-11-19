@@ -119,7 +119,12 @@ tasks:
         done'
       - echo -e "{{.GREEN}}[stop]{{.RESET}} stopped"
   dev:
-    desc: Attach to the production server output
+    desc: Run the Phoenix development server
     cmds:
-      - touch logs/prod.log
-      - tail -f logs/prod.log
+      - task: stop
+      - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}mkdir -p logs/test logs/errors priv/sde{{.RESET}}"
+      - mkdir -p logs/test logs/errors priv/sde
+      - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}mix ecto.migrate{{.RESET}}"
+      - mix ecto.migrate
+      - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}MIX_ENV=dev mix phx.server on http://localhost:${PORT:-4000}{{.RESET}}"
+      - MIX_ENV=dev mix phx.server

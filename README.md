@@ -25,7 +25,7 @@ Automation uses `Taskfile.yml` (Task v3); server lifecycle tasks run inline shel
 | `task migrate` | Run database migrations for dev and test |
 | `task start` | Restart the production server in the background (`DATABASE_PATH` defaults to `./priv/db/tripwire-prod.db`) and wait until it answers before printing the URL |
 | `task stop` | Stop the background production server |
-| `task dev` | Attach to the last 100 lines and follow the server log; Ctrl-C detaches without stopping the server |
+| `task dev` | Stop the production server, run dev migrations, then boot `MIX_ENV=dev mix phx.server` attached on port `4000` with live reload; Ctrl-C stops it |
 
 ## Demo Mode
 
@@ -33,7 +33,7 @@ Tripwire needs no configuration to try it. When `EVESSO_CLIENT_ID` or `EVESSO_SE
 
 ## Deploy
 
-Deploys run the server in `MIX_ENV=prod` and are driven by the `start`, `stop`, and `dev` tasks.
+Deploys run the server in `MIX_ENV=prod` and are driven by the `start` and `stop` tasks. `task dev` runs the development server instead.
 
 1. Install dependencies and prepare the database, logs, and assets:
 
@@ -58,10 +58,10 @@ Deploys run the server in `MIX_ENV=prod` and are driven by the `start`, `stop`, 
 
    ```sh
    task start   # build + digest assets, boot in prod, log to logs/prod.log
-   task dev     # follow logs/prod.log
+   tail -f logs/prod.log
    task stop    # stop the background server
    ```
 
-`task start` rebuilds and digests assets before boot so `cache_static_manifest` resolves, then waits until the endpoint reports it is listening before printing the URL. If the port is already taken the task fails and prints the tail of `logs/prod.log`.
+`task dev` stops the production server, runs dev migrations, and boots the development server in the foreground on port `4000`, with live reload and the esbuild/tailwind watchers from `config/dev.exs`; Ctrl-C stops it. `task start` rebuilds and digests assets before boot so `cache_static_manifest` resolves, then waits until the endpoint reports it is listening before printing the URL. If the port is already taken the task fails and prints the tail of `logs/prod.log`.
 
 Production sets `force_ssl` with `rewrite_on: [:x_forwarded_proto]`, so terminate TLS in a reverse proxy (or a platform edge) and forward `X-Forwarded-Proto: https`. Plain `http://` requests to a non-loopback host are redirected to `https`.
