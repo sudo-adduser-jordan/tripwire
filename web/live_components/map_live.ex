@@ -69,8 +69,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     {:noreply, socket}
   end
 
-  def handle_event("open-chain-modal", _params, socket) do
-    send(self(), :open_chain_modal)
+  def handle_event("open-map-modal", _params, socket) do
+    send(self(), :open_map_modal)
     {:noreply, socket}
   end
 
@@ -160,10 +160,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
             </button>
             <span class="opacity-30">|</span>
             <button
-              id="chain-edit"
+              id="map-edit"
               class="btn btn-ghost btn-xs"
-              title="Edit chain settings"
-              phx-click="open-chain-modal"
+              title="Edit map settings"
+              phx-click="open-map-modal"
               phx-target={@myself}
               disabled={@map_locked}
             >

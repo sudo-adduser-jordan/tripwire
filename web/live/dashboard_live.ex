@@ -368,8 +368,8 @@ defmodule TripwireWeb.DashboardLive do
   def handle_info(:show_favorites, socket),
     do: handle_event("show-favorites", %{}, socket)
 
-  def handle_info(:open_chain_modal, socket),
-    do: handle_event("open-chain-modal", %{}, socket)
+  def handle_info(:open_map_modal, socket),
+    do: handle_event("open-map-modal", %{}, socket)
 
   def handle_info(_message, socket), do: {:noreply, socket}
 
@@ -492,7 +492,7 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply, update(socket, :map_locked, &(!&1))}
   end
 
-  def handle_event("open-chain-modal", _params, socket) do
+  def handle_event("open-map-modal", _params, socket) do
     if socket.assigns[:map_locked] do
       {:noreply, put_flash(socket, :error, "Map is locked")}
     else
@@ -507,9 +507,10 @@ defmodule TripwireWeb.DashboardLive do
 
       {:noreply,
        socket
-       |> assign(:chain_modal_open, true)
-       |> assign(:chain_errors, [])
-       |> assign(:chain_form, %{
+       |> assign(:map_modal_open, true)
+       |> assign(:map_errors, [])
+       |> assign(:map_form, %{
+         "name" => (map && map.name) || "",
          "home" => home || "",
          "include_thera" => socket.assigns.include_thera,
          "show_all" => socket.assigns.show_all
@@ -517,15 +518,15 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
-  def handle_event("close-chain-modal", _params, socket) do
-    {:noreply, assign(socket, :chain_modal_open, false)}
+  def handle_event("close-map-modal", _params, socket) do
+    {:noreply, assign(socket, :map_modal_open, false)}
   end
 
-  def handle_event("save-chain-settings", %{"chain" => params}, socket) do
+  def handle_event("save-map-settings", %{"map" => params}, socket) do
     if socket.assigns[:map_locked] do
       {:noreply, put_flash(socket, :error, "Map is locked")}
     else
-      {:noreply, save_chain_settings(socket, params)}
+      {:noreply, save_map_settings(socket, params)}
     end
   end
 
@@ -1368,7 +1369,7 @@ defmodule TripwireWeb.DashboardLive do
 
         {:ok, _deleted} = Mapping.delete_map_full(target)
 
-        socket = assign(socket, :chain_modal_open, false)
+        socket = assign(socket, :map_modal_open, false)
 
         socket =
           if current? do
@@ -2161,8 +2162,9 @@ defmodule TripwireWeb.DashboardLive do
     end)
   end
 
-  defp save_chain_settings(socket, params) do
+  defp save_map_settings(socket, params) do
     map = socket.assigns.map
+    name = params["name"] |> to_string() |> String.trim()
     home_input = params["home"] |> to_string() |> String.trim()
     include_thera = params["include_thera"] in ["true", "on", "1"]
     show_all = params["show_all"] in ["true", "on", "1"]
@@ -2170,6 +2172,7 @@ defmodule TripwireWeb.DashboardLive do
     with {:ok, home_solar, home_name} <- resolve_home_input(socket, home_input),
          {:ok, updated} <-
            Mapping.update_map(map, %{
+             name: name,
              home_solar_system_id: home_solar,
              home_name: home_name
            }),
@@ -2197,21 +2200,24 @@ defmodule TripwireWeb.DashboardLive do
       socket =
         socket
         |> apply_tree_layout_with_home(socket.assigns.map_layout || "top", updated)
-        |> assign(:chain_modal_open, false)
-        |> assign(:chain_errors, [])
+        |> assign(:map_modal_open, false)
+        |> assign(:map_errors, [])
         |> assign(:maps, Mapping.list_maps_for_mask(socket.assigns.mask.id))
 
       {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map)
 
       socket
       |> push_event("reset-pan", %{x: x, y: y})
-      |> put_flash(:info, "Chain settings saved")
+      |> put_flash(:info, "Map saved")
     else
       {:error, message} when is_binary(message) ->
-        assign(socket, :chain_errors, [message])
+        assign(socket, :map_errors, [message])
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        assign(socket, :map_errors, changeset_errors(changeset))
 
       {:error, _} ->
-        assign(socket, :chain_errors, ["Could not save chain settings"])
+        assign(socket, :map_errors, ["Could not save map settings"])
     end
   end
 
@@ -2596,9 +2602,14 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:chart_hidden, MapSet.new())
     |> assign(:chart_data, %{labels: [], jumps: [], ship_kills: [], pod_kills: [], npc_kills: []})
     |> assign(:map_locked, false)
-    |> assign(:chain_modal_open, false)
-    |> assign(:chain_form, %{"home" => "", "include_thera" => false, "show_all" => false})
-    |> assign(:chain_errors, [])
+    |> assign(:map_modal_open, false)
+    |> assign(:map_form, %{
+      "name" => "",
+      "home" => "",
+      "include_thera" => false,
+      "show_all" => false
+    })
+    |> assign(:map_errors, [])
   end
 
   defp toggle_visibility(socket, id, attrs_fn) do

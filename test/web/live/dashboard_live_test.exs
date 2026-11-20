@@ -1685,7 +1685,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert map_system_id == system.id
   end
 
-  test "chain settings show all reveals detached chains at level 0", %{
+  test "known space reveals detached chains at level 0", %{
     conn: conn,
     character: character
   } do
@@ -1707,13 +1707,13 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute html =~ "J150323"
     refute html =~ "J150324"
 
-    view |> element("#chain-edit") |> render_click()
+    view |> element("#map-edit") |> render_click()
 
-    assert render(view) =~ "Show all chains"
+    assert render(view) =~ "Known space"
 
     view
-    |> element("#chain-modal form[phx-submit='save-chain-settings']")
-    |> render_submit(%{"chain" => %{"home" => "J150321", "show_all" => "true"}})
+    |> element("#map-modal form[phx-submit='save-map-settings']")
+    |> render_submit(%{"map" => %{"home" => "J150321", "show_all" => "true"}})
 
     html = render(view)
     assert html =~ "J150323"
@@ -1729,7 +1729,49 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert xs == Enum.uniq(xs)
   end
 
-  test "the edit chain modal deletes the selected chain and opens the next one", %{
+  test "the edit map modal renames the map and its tab", %{conn: conn, character: character} do
+    {_mask, map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#map-edit") |> render_click()
+
+    view
+    |> element("#map-modal form[phx-submit='save-map-settings']")
+    |> render_submit(%{"map" => %{"name" => "Rolling Hole", "home" => "J150321"}})
+
+    assert Mapping.get_map!(map.id).name == "Rolling Hole"
+
+    html = render(view)
+    assert html =~ "Map saved"
+    refute has_element?(view, "#map-modal")
+    assert has_element?(view, "#chainTabs button[title='Rolling Hole']")
+
+    view |> element("#map-edit") |> render_click()
+
+    assert has_element?(
+             view,
+             "#map-modal input[name='map[name]'][value='Rolling Hole']"
+           )
+  end
+
+  test "the edit map modal rejects a blank map name", %{conn: conn, character: character} do
+    {_mask, map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#map-edit") |> render_click()
+
+    view
+    |> element("#map-modal form[phx-submit='save-map-settings']")
+    |> render_submit(%{"map" => %{"name" => "   ", "home" => "J150321"}})
+
+    assert render(view) =~ "name can&#39;t be blank"
+    assert has_element?(view, "#map-modal")
+    assert Mapping.get_map!(map.id).name == "Home"
+  end
+
+  test "the edit map modal deletes the selected map and opens the next one", %{
     conn: conn,
     character: character
   } do
@@ -1739,10 +1781,10 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view |> element("#chain-edit") |> render_click()
-    assert has_element?(view, "#chain-modal #delete-map")
+    view |> element("#map-edit") |> render_click()
+    assert has_element?(view, "#map-modal #delete-map")
 
-    view |> element("#chain-modal #delete-map") |> render_click()
+    view |> element("#map-modal #delete-map") |> render_click()
 
     assert [remaining] = Mapping.list_maps_for_mask(mask.id)
     assert remaining.id == second.id
@@ -1751,13 +1793,13 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     html = render(view)
     assert html =~ "Deleted #{first.name}"
-    refute has_element?(view, "#chain-modal")
+    refute has_element?(view, "#map-modal")
     refute has_element?(view, "#chainTabs button[title='#{first.name}']")
     assert has_element?(view, "#chainTabs button[title='Chain 2']")
     assert html =~ "J150322"
   end
 
-  test "deleting a chain that is not selected keeps the current chain open", %{
+  test "deleting a map that is not selected keeps the current map open", %{
     conn: conn,
     character: character
   } do
@@ -1766,10 +1808,10 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view |> element("#chain-edit") |> render_click()
+    view |> element("#map-edit") |> render_click()
     view |> element("#chainTabs button[title='Chain 2']") |> render_click()
-    view |> element("#chain-edit") |> render_click()
-    view |> element("#chain-modal #delete-map") |> render_click()
+    view |> element("#map-edit") |> render_click()
+    view |> element("#map-modal #delete-map") |> render_click()
 
     assert [remaining] = Mapping.list_maps_for_mask(mask.id)
     assert remaining.id == map.id
@@ -1781,7 +1823,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert Mapping.get_system(system.id)
   end
 
-  test "deleting the only chain restores the default Jita chain", %{
+  test "deleting the only map restores the default Jita map", %{
     conn: conn,
     character: character
   } do
@@ -1789,8 +1831,8 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view |> element("#chain-edit") |> render_click()
-    view |> element("#chain-modal #delete-map") |> render_click()
+    view |> element("#map-edit") |> render_click()
+    view |> element("#map-modal #delete-map") |> render_click()
 
     assert [restored] = Mapping.list_maps_for_mask(mask.id)
     assert restored.id != map.id
@@ -1803,14 +1845,14 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert has_element?(view, "#chainTabs button[title='Home']")
   end
 
-  test "deleting the only demo chain reseeds the demo map", %{conn: conn} do
+  test "deleting the only demo map reseeds it", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/dashboard")
 
     {:ok, demo_mask} = Masks.ensure_demo_mask()
     [demo_map] = Mapping.list_maps_for_mask(demo_mask.id)
 
-    view |> element("#chain-edit") |> render_click()
-    view |> element("#chain-modal #delete-map") |> render_click()
+    view |> element("#map-edit") |> render_click()
+    view |> element("#map-modal #delete-map") |> render_click()
 
     assert [restored] = Mapping.list_maps_for_mask(demo_mask.id)
     assert restored.id != demo_map.id
@@ -1822,21 +1864,21 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "Deleted #{demo_map.name}"
   end
 
-  test "a locked map refuses to delete the chain", %{conn: conn, character: character} do
+  test "a locked map refuses to delete itself", %{conn: conn, character: character} do
     {mask, map, _system} = setup_with_system(%{character: character}, "J150321")
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view |> element("#chain-edit") |> render_click()
+    view |> element("#map-edit") |> render_click()
     view |> element("#toggle-lock") |> render_click()
-    view |> element("#chain-modal #delete-map") |> render_click()
+    view |> element("#map-modal #delete-map") |> render_click()
 
     assert [remaining] = Mapping.list_maps_for_mask(mask.id)
     assert remaining.id == map.id
     assert render(view) =~ "Map is locked"
   end
 
-  test "only the home chain renders until show all chains is enabled", %{
+  test "only the home map renders until known space is enabled", %{
     conn: conn,
     character: character
   } do
