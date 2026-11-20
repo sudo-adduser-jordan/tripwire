@@ -2162,7 +2162,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert [_restored] = Mapping.list_signatures(system.id)
   end
 
-  test "topbar character dropdown adds, switches, and removes characters", %{
+  test "topbar character dropdown adds and switches characters", %{
     conn: conn,
     character: character
   } do
@@ -2187,10 +2187,15 @@ defmodule TripwireWeb.DashboardLiveTest do
                "nav button[phx-click='switch-character'][phx-value-id='#{other.id}']"
              )
 
+      refute has_element?(view, "nav button[phx-click='remove-character']")
+
       assert html =~ "Manage masks"
 
+      view |> element("#settings-button") |> render_click()
+      render_click(view, "settings-tab", %{"tab" => "account"})
+
       view
-      |> element(~s|button[title="Remove Second Char"]|)
+      |> element(~s|#character-card-#{other.id} button[title="Remove Second Char"]|)
       |> render_click()
 
       html = render(view)
@@ -2645,12 +2650,20 @@ defmodule TripwireWeb.DashboardLiveTest do
              "/images/alliance-default.png"
   end
 
-  test "removing the current character navigates away", %{conn: conn, character: character} do
+  test "removing the current character from the account tab navigates away", %{
+    conn: conn,
+    character: character
+  } do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "account"})
 
     assert {_, {:live_redirect, %{to: "/dashboard"}}} =
              view
-             |> element(~s|button[title="Remove #{character.name}"]|)
+             |> element(
+               ~s|#character-card-#{character.id} button[title="Remove #{character.name}"]|
+             )
              |> render_click()
   end
 

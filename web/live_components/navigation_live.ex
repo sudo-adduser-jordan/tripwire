@@ -146,15 +146,6 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
                 >
                   {character_name(character)}
                 </button>
-                <button
-                  phx-click="remove-character"
-                  phx-value-id={character.id}
-                  title={"Remove #{character_name(character)}"}
-                  data-confirm={"Remove #{character_name(character)}?"}
-                  class="btn btn-ghost btn-xs shrink-0 p-1"
-                >
-                  <.icon name="hero-trash" class="size-4" />
-                </button>
               </div>
             </li>
             <li :if={@characters == []}>
