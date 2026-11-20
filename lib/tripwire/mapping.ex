@@ -130,8 +130,19 @@ defmodule Tripwire.Mapping do
     )
   end
 
-  def list_chain_systems(%Map{} = map, show_all) do
-    if show_all, do: list_systems(map.id), else: list_visible_systems(map.id)
+  def list_chain_systems(%Map{} = map, true), do: list_systems(map.id)
+
+  def list_chain_systems(%Map{} = map, _show_all) do
+    systems = list_visible_systems(map.id)
+
+    case home_system_id(map) do
+      nil ->
+        systems
+
+      home_id ->
+        reachable = reachable_system_ids(map.id, home_id)
+        Enum.filter(systems, &Elixir.MapSet.member?(reachable, &1.id))
+    end
   end
 
   def get_system!(id), do: Repo.get!(MapSystem, id)
@@ -191,19 +202,16 @@ defmodule Tripwire.Mapping do
   def depth_layers(systems, connections) do
     ids = Enum.map(systems, & &1.id)
 
-    {adj, incoming} =
-      Enum.reduce(connections, {%{}, Elixir.MapSet.new()}, fn {_conn, from, to}, {adj, inc} ->
-        adj =
-          adj
-          |> Elixir.Map.update(from.id, [to.id], &[to.id | &1])
-          |> Elixir.Map.update(to.id, [from.id], &[from.id | &1])
-
-        {adj, Elixir.MapSet.put(inc, to.id)}
+    adj =
+      Enum.reduce(connections, %{}, fn {_conn, from, to}, adj ->
+        adj
+        |> Elixir.Map.update(from.id, [to.id], &[to.id | &1])
+        |> Elixir.Map.update(to.id, [from.id], &[from.id | &1])
       end)
 
     adj = Enum.reduce(ids, adj, &Elixir.Map.put_new(&2, &1, []))
-    seeds = Enum.filter(ids, &(!Elixir.MapSet.member?(incoming, &1)))
-    seeds = if seeds == [], do: ids, else: seeds ++ (ids -- seeds)
+    seeds = component_roots(ids, connections)
+    seeds = seeds ++ (ids -- seeds)
 
     depths =
       Enum.reduce(seeds, %{}, fn seed, depths ->
@@ -283,17 +291,38 @@ defmodule Tripwire.Mapping do
   defp tree_roots(ids, connections, opts) do
     case Keyword.get(opts, :root_id) do
       nil ->
-        incoming =
-          Enum.reduce(connections, Elixir.MapSet.new(), fn {_conn, _from, to}, acc ->
-            Elixir.MapSet.put(acc, to.id)
-          end)
-
-        roots = Enum.filter(ids, &(!Elixir.MapSet.member?(incoming, &1)))
-        if roots == [], do: [ids |> Enum.sort() |> hd()], else: Enum.sort(roots)
+        component_roots(ids, connections)
 
       root_id ->
         if root_id in ids, do: [root_id], else: [ids |> Enum.sort() |> hd()]
     end
+  end
+
+  defp component_roots(ids, connections) do
+    adj = undirected_adj(ids, connections)
+
+    incoming =
+      Enum.reduce(connections, Elixir.MapSet.new(), fn {_conn, _from, to}, acc ->
+        Elixir.MapSet.put(acc, to.id)
+      end)
+
+    ids
+    |> Enum.sort()
+    |> Enum.reduce({[], Elixir.MapSet.new()}, fn id, {roots, seen} ->
+      if Elixir.MapSet.member?(seen, id) do
+        {roots, seen}
+      else
+        component = bfs_reachable(:queue.from_list([id]), adj, Elixir.MapSet.new([id]))
+
+        root =
+          component
+          |> Enum.sort()
+          |> Enum.find(id, &(!Elixir.MapSet.member?(incoming, &1)))
+
+        {roots ++ [root], Elixir.MapSet.union(seen, component)}
+      end
+    end)
+    |> elem(0)
   end
 
   defp spanning_tree(adj, roots, ids) do

@@ -2267,6 +2267,17 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp ensure_home_node(socket, map, solar, name) do
+    case Enum.find(Mapping.list_systems(map.id), &(&1.solar_system_id == solar)) do
+      %{id: id} ->
+        _ = Mapping.unhide_systems([id])
+        socket
+
+      nil ->
+        create_home_node(socket, map, solar, name)
+    end
+  end
+
+  defp create_home_node(socket, map, solar, name) do
     resolved_name = name || "System #{solar}"
 
     attrs =
@@ -2283,8 +2294,12 @@ defmodule TripwireWeb.DashboardLive do
       end
 
     case Mapping.ensure_chain_system(map, attrs) do
-      {:ok, _system, _} -> socket
-      _ -> socket
+      {:ok, system, _} ->
+        _ = Mapping.unhide_systems([system.id])
+        socket
+
+      _ ->
+        socket
     end
   end
 

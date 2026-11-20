@@ -748,6 +748,44 @@ defmodule Tripwire.MappingTest do
     assert positions[3].x > positions[1].x
   end
 
+  test "tree_layout/5 keeps one root per connected component without a home root" do
+    systems = Enum.map(1..4, &%Mapping.MapSystem{id: &1})
+
+    connections = [
+      {nil, %Mapping.MapSystem{id: 1}, %Mapping.MapSystem{id: 2}},
+      {nil, %Mapping.MapSystem{id: 3}, %Mapping.MapSystem{id: 2}}
+    ]
+
+    positions = Mapping.tree_layout(systems, connections, "down", 1.0)
+
+    assert positions[1].y == 60.0
+    assert positions[2].y == 220.0
+    assert positions[3].y == 380.0
+    assert positions[4].y == 60.0
+    assert Enum.count(positions, fn {_id, %{y: y}} -> y == 60.0 end) == 2
+  end
+
+  test "list_chain_systems/2 renders only the home component unless told to show all", %{
+    mask: mask
+  } do
+    {:ok, map} = Mapping.create_map(%{name: "Home Component", mask_id: mask.id})
+
+    {:ok, home} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_541, name: "J500041"})
+    {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_542, name: "J500042"})
+
+    {:ok, _orphan} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_543, name: "J500043"})
+
+    {:ok, map} = Mapping.update_map(map, %{home_solar_system_id: home.solar_system_id})
+
+    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, a.id, %{})
+
+    assert Enum.map(Mapping.list_chain_systems(map, false), & &1.name) == ["J500041", "J500042"]
+
+    assert Enum.map(Mapping.list_chain_systems(map, true), & &1.name) ==
+             ["J500041", "J500042", "J500043"]
+  end
+
   test "list_chain_systems/2 includes hidden systems only when told to show all", %{mask: mask} do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 99_105, name: "Show All"})
     {:ok, map} = Mapping.create_map(%{name: "Show All", mask_id: mask.id})

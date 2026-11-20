@@ -457,6 +457,17 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute html =~ "Unstable Wormhole (N062)"
   end
 
+  test "the demo map renders every seeded node with show all off", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    map = Repo.one(Mapping.Map)
+    systems = Mapping.list_systems(map.id)
+
+    assert length(systems) == 27
+    assert length(Mapping.list_chain_systems(map, false)) == 27
+    assert Enum.all?(systems, &has_element?(view, "#node-#{&1.id}"))
+  end
+
   test "demo user is tracked at home in a Cenotaph", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/dashboard")
 
@@ -1823,6 +1834,38 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert [remaining] = Mapping.list_maps_for_mask(mask.id)
     assert remaining.id == map.id
     assert render(view) =~ "Map is locked"
+  end
+
+  test "only the home chain renders until show all chains is enabled", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, home} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, map} =
+      Mapping.update_map(map, %{
+        home_solar_system_id: home.solar_system_id,
+        home_name: home.name
+      })
+
+    {:ok, child} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
+    {:ok, orphan} = Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323"})
+    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, child.id)
+
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
+
+    assert html =~ "J150321"
+    assert html =~ "J150322"
+    assert has_element?(view, "#node-#{home.id}")
+    assert has_element?(view, "#node-#{child.id}")
+    refute has_element?(view, "#node-#{orphan.id}")
+
+    {:ok, _} = Settings.update(%{show_all: true})
+
+    {:ok, all_view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    assert has_element?(all_view, "#node-#{home.id}")
+    assert has_element?(all_view, "#node-#{orphan.id}")
   end
 
   test "layout reloads connections so edges follow the new node positions", %{
