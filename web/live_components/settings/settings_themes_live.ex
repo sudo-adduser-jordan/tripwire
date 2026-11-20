@@ -85,7 +85,6 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
                   class="theme-button border-base-content/20 hover:border-base-content/40 min-w-0 overflow-hidden rounded-lg border outline-offset-2"
                   phx-click={JS.dispatch("phx:set-theme")}
                   data-phx-theme={theme}
-                  tabindex="0"
                 >
                   <div
                     data-theme={theme}
