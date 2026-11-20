@@ -135,7 +135,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
             >
               <textarea
                 name="comment"
-                class="textarea textarea-sm w-full resize-y"
+                class="textarea textarea-sm w-full resize-y bg-base-200/60"
                 rows="2"
                 placeholder="Add a note for the selected system"
                 autocomplete="off"
@@ -183,7 +183,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
             >
               <textarea
                 name="comment"
-                class="textarea textarea-sm w-full resize-y"
+                class="textarea textarea-sm w-full resize-y bg-base-200/60"
                 rows="3"
                 autocomplete="off"
               >{@edit_body}</textarea>

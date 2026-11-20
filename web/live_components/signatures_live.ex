@@ -301,7 +301,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
               id="signature-columns"
               phx-hook="ColumnReorder"
               phx-target={@myself}
-              class="sticky top-0 z-10 bg-base-100"
+              class="sticky top-0 z-10 bg-base-200/80 backdrop-blur"
             >
               <tr>
                 <th
