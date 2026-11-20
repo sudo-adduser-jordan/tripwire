@@ -1324,26 +1324,10 @@ defmodule TripwireWeb.DashboardLive do
 
       case Mapping.create_map(%{name: name, mask_id: mask.id}) do
         {:ok, map} ->
-          Phoenix.PubSub.unsubscribe(
-            Tripwire.PubSub,
-            Tripwire.Tracking.map_topic(socket.assigns.map.id)
-          )
-
-          Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map.id))
-
           {:noreply,
            socket
-           |> assign(:map, map)
            |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
-           |> assign(:systems, [])
-           |> assign(:connections, [])
-           |> assign(:selected_system_id, nil)
-           |> assign(:selected_system_name, nil)
-           |> assign(:system_suggestions, [])
-           |> assign(:signatures, [])
-           |> assign(:comments, [])
-           |> assign(:flares, [])
-           |> assign(:system_stat, nil)
+           |> assign_active_map(map)
            |> put_flash(:info, "Created #{name}")}
 
         {:error, changeset} ->
@@ -1360,26 +1344,7 @@ defmodule TripwireWeb.DashboardLive do
 
       case Mapping.get_map!(map_id) do
         %{mask_id: mask_id} = map when mask_id == socket.assigns.mask.id ->
-          Phoenix.PubSub.unsubscribe(
-            Tripwire.PubSub,
-            Tripwire.Tracking.map_topic(socket.assigns.map.id)
-          )
-
-          Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map.id))
-
-          {:noreply,
-           socket
-           |> assign(:map, map)
-           |> assign(:systems, chain_systems(socket, map))
-           |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
-           |> assign(:selected_system_id, nil)
-           |> assign(:selected_system_name, nil)
-           |> assign(:system_suggestions, [])
-           |> assign(:signatures, [])
-           |> assign(:comments, [])
-           |> assign(:flares, [])
-           |> assign(:system_stat, nil)
-           |> patch_to_preferred(chain_systems(socket, map))}
+          {:noreply, assign_active_map(socket, map)}
 
         _ ->
           {:noreply, put_flash(socket, :error, "Map not found")}
@@ -1387,6 +1352,42 @@ defmodule TripwireWeb.DashboardLive do
     end
   rescue
     _ -> {:noreply, put_flash(socket, :error, "Map not found")}
+  end
+
+  def handle_event("delete-map", %{"id" => id}, socket) do
+    if socket.assigns[:map_locked] do
+      {:noreply, put_flash(socket, :error, "Map is locked")}
+    else
+      mask = socket.assigns.mask
+      maps = Mapping.list_maps_for_mask(mask.id)
+      target = Enum.find(maps, &(to_string(&1.id) == to_string(id)))
+
+      if target do
+        current? = socket.assigns.map && socket.assigns.map.id == target.id
+        primary? = List.first(maps) == target
+
+        {:ok, _deleted} = Mapping.delete_map_full(target)
+
+        socket = assign(socket, :chain_modal_open, false)
+
+        socket =
+          if current? do
+            assign_active_map(socket, replacement_map(socket, mask))
+          else
+            socket
+          end
+
+        socket =
+          socket
+          |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
+          |> after_map_replaced()
+          |> restart_pollers_for(primary?)
+
+        {:noreply, put_flash(socket, :info, "Deleted #{target.name}")}
+      else
+        {:noreply, put_flash(socket, :error, "Map not found")}
+      end
+    end
   end
 
   def handle_event("add-viewing", _params, socket) do
@@ -1843,6 +1844,63 @@ defmodule TripwireWeb.DashboardLive do
       [] -> elem(Mapping.create_map(%{name: "Home", mask_id: mask.id}), 1)
       [map | _] -> map
     end
+  end
+
+  defp assign_active_map(socket, map) do
+    if socket.assigns[:map], do: unsubscribe_from_map(socket.assigns.map.id)
+    _ = subscribe_to_map(socket, map.id)
+    systems = chain_systems(socket, map)
+
+    socket
+    |> assign(:map, map)
+    |> assign(:systems, systems)
+    |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
+    |> assign(:selected_system_id, nil)
+    |> assign(:selected_system_name, nil)
+    |> assign(:system_suggestions, [])
+    |> assign(:signatures, [])
+    |> assign(:comments, [])
+    |> assign(:flares, [])
+    |> assign(:system_stat, nil)
+    |> patch_to_preferred(systems)
+  end
+
+  defp replacement_map(socket, mask) do
+    case Mapping.list_maps_for_mask(mask.id) do
+      [map | _] -> map
+      [] -> default_map(socket, mask)
+    end
+  end
+
+  defp default_map(%{assigns: %{demo?: true}}, mask) do
+    {:ok, map} = Mapping.ensure_demo_map(mask.id)
+    map
+  end
+
+  defp default_map(_socket, mask) do
+    map = personal_map(mask)
+    _ = ensure_jita_system(map, [])
+    map
+  end
+
+  defp after_map_replaced(%{assigns: %{demo?: true}} = socket) do
+    ensure_demo_presence(socket.assigns.character, socket.assigns.map, socket.assigns.systems)
+    refresh_occupants(socket)
+  end
+
+  defp after_map_replaced(socket), do: socket
+
+  defp restart_pollers_for(%{assigns: %{mask: mask, demo?: demo?}} = socket, primary?) do
+    if primary? and not demo? and mask.kind == "personal" do
+      Enum.each(socket.assigns[:characters] || [], fn character ->
+        if Tracking.tracking?(character) do
+          _ = Tracking.stop_poller(character)
+          _ = Tracking.ensure_poller(character)
+        end
+      end)
+    end
+
+    socket
   end
 
   defp switch_character(socket, character) do
@@ -2464,6 +2522,10 @@ defmodule TripwireWeb.DashboardLive do
   defp subscribe_to_map(socket, map_id) do
     Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map_id))
     socket
+  end
+
+  defp unsubscribe_from_map(map_id) do
+    Phoenix.PubSub.unsubscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map_id))
   end
 
   defp assign_topbar_defaults(socket) do

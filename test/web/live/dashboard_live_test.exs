@@ -1718,6 +1718,113 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert xs == Enum.uniq(xs)
   end
 
+  test "the edit chain modal deletes the selected chain and opens the next one", %{
+    conn: conn,
+    character: character
+  } do
+    {mask, first, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, second} = Mapping.create_map(%{name: "Chain 2", mask_id: mask.id})
+    {:ok, other} = Mapping.add_system_to_map(second, %{solar_system_id: 2, name: "J150322"})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#chain-edit") |> render_click()
+    assert has_element?(view, "#chain-modal #delete-map")
+
+    view |> element("#chain-modal #delete-map") |> render_click()
+
+    assert [remaining] = Mapping.list_maps_for_mask(mask.id)
+    assert remaining.id == second.id
+    assert Mapping.get_system(system.id) == nil
+    assert Mapping.get_system(other.id)
+
+    html = render(view)
+    assert html =~ "Deleted #{first.name}"
+    refute has_element?(view, "#chain-modal")
+    refute has_element?(view, "#chainTabs button[title='#{first.name}']")
+    assert has_element?(view, "#chainTabs button[title='Chain 2']")
+    assert html =~ "J150322"
+  end
+
+  test "deleting a chain that is not selected keeps the current chain open", %{
+    conn: conn,
+    character: character
+  } do
+    {mask, map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, spare} = Mapping.create_map(%{name: "Chain 2", mask_id: mask.id})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#chain-edit") |> render_click()
+    view |> element("#chainTabs button[title='Chain 2']") |> render_click()
+    view |> element("#chain-edit") |> render_click()
+    view |> element("#chain-modal #delete-map") |> render_click()
+
+    assert [remaining] = Mapping.list_maps_for_mask(mask.id)
+    assert remaining.id == map.id
+    refute Enum.any?(Mapping.list_maps_for_mask(mask.id), &(&1.id == spare.id))
+
+    html = render(view)
+    assert html =~ "Deleted Chain 2"
+    assert html =~ "J150321"
+    assert Mapping.get_system(system.id)
+  end
+
+  test "deleting the only chain restores the default Jita chain", %{
+    conn: conn,
+    character: character
+  } do
+    {mask, map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#chain-edit") |> render_click()
+    view |> element("#chain-modal #delete-map") |> render_click()
+
+    assert [restored] = Mapping.list_maps_for_mask(mask.id)
+    assert restored.id != map.id
+    assert restored.name == "Home"
+    assert Enum.any?(Mapping.list_systems(restored.id), &(&1.name == "Jita"))
+
+    html = render(view)
+    assert html =~ "Deleted Home"
+    assert html =~ "Jita"
+    assert has_element?(view, "#chainTabs button[title='Home']")
+  end
+
+  test "deleting the only demo chain reseeds the demo map", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    {:ok, demo_mask} = Masks.ensure_demo_mask()
+    [demo_map] = Mapping.list_maps_for_mask(demo_mask.id)
+
+    view |> element("#chain-edit") |> render_click()
+    view |> element("#chain-modal #delete-map") |> render_click()
+
+    assert [restored] = Mapping.list_maps_for_mask(demo_mask.id)
+    assert restored.id != demo_map.id
+
+    systems = Mapping.list_systems(restored.id)
+    assert Enum.any?(systems, &(&1.alias == "Home"))
+    assert length(systems) > 1
+
+    assert render(view) =~ "Deleted #{demo_map.name}"
+  end
+
+  test "a locked map refuses to delete the chain", %{conn: conn, character: character} do
+    {mask, map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#chain-edit") |> render_click()
+    view |> element("#toggle-lock") |> render_click()
+    view |> element("#chain-modal #delete-map") |> render_click()
+
+    assert [remaining] = Mapping.list_maps_for_mask(mask.id)
+    assert remaining.id == map.id
+    assert render(view) =~ "Map is locked"
+  end
+
   test "layout reloads connections so edges follow the new node positions", %{
     conn: conn,
     character: character
