@@ -12,6 +12,8 @@ import ColumnReorder from "./columnReorder"
 import CopyText from "./copyText"
 import GlobalPaste from "./globalPaste"
 import SearchSuggest from "./searchSuggest"
+import CardGrid from "./cardGrid"
+import CharacterSwitch from "./characterSwitch"
 
 const GridStack = {
     mounted() {
@@ -85,6 +87,8 @@ const hooks = {
     CopyText: CopyText,
     GlobalPaste: GlobalPaste,
     SearchSuggest: SearchSuggest,
+    CardGrid: CardGrid,
+    CharacterSwitch: CharacterSwitch,
 }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")

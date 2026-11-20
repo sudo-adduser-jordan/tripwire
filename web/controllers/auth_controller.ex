@@ -71,6 +71,25 @@ defmodule TripwireWeb.AuthController do
   end
 
   def switch(conn, %{"eve_id" => eve_id}) do
+    case put_character_session(conn, eve_id) do
+      {:ok, conn} ->
+        redirect(conn, to: "/dashboard")
+
+      {:error, conn} ->
+        conn
+        |> put_flash(:error, "Character not found")
+        |> redirect(to: "/dashboard")
+    end
+  end
+
+  def switch_session(conn, %{"eve_id" => eve_id}) do
+    case put_character_session(conn, eve_id) do
+      {:ok, conn} -> send_resp(conn, :no_content, "")
+      {:error, conn} -> send_resp(conn, :not_found, "")
+    end
+  end
+
+  defp put_character_session(conn, eve_id) do
     character_ids = SessionUser.ids(get_session(conn))
     current = SessionUser.get(get_session(conn))
     current_id = current && current.id
@@ -81,14 +100,9 @@ defmodule TripwireWeb.AuthController do
            to_string(id) == to_string(current_id) or
              to_string(id) in Enum.map(character_ids, &to_string/1) or
              Tripwire.SSO.demo?() do
-      conn
-      |> SessionUser.put(character)
-      |> redirect(to: "/dashboard")
+      {:ok, SessionUser.put(conn, character)}
     else
-      _ ->
-        conn
-        |> put_flash(:error, "Character not found")
-        |> redirect(to: "/dashboard")
+      _ -> {:error, conn}
     end
   end
 

@@ -534,7 +534,9 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     nav = view |> element("nav") |> render()
 
-    assert nav =~ ~r/toggle-ship-visibility.*toggle-character-visibility.*\/auth\/switch/s
+    assert nav =~
+             ~r/toggle-ship-visibility.*toggle-character-visibility.*switch-character/s
+
     refute nav =~ "size-4 rounded-full"
 
     assert has_element?(
@@ -549,7 +551,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert has_element?(
              view,
-             "nav a[href='/auth/switch/#{character.eve_id}']"
+             "nav button[phx-click='switch-character'][phx-value-id='#{character.id}']"
            )
   end
 
@@ -2144,7 +2146,12 @@ defmodule TripwireWeb.DashboardLiveTest do
       {:ok, view, html} = live(session, ~p"/dashboard")
 
       assert html =~ "Add character"
-      assert html =~ "/auth/switch/#{other.eve_id}"
+
+      assert has_element?(
+               view,
+               "nav button[phx-click='switch-character'][phx-value-id='#{other.id}']"
+             )
+
       assert html =~ "Manage masks"
 
       view
@@ -2154,7 +2161,12 @@ defmodule TripwireWeb.DashboardLiveTest do
       html = render(view)
       assert html =~ "Removed Second Char"
       refute html =~ "Remove Second Char"
-      refute html =~ "/auth/switch/43000"
+
+      refute has_element?(
+               view,
+               "button[phx-click='switch-character'][phx-value-id='#{other.id}']"
+             )
+
       assert html =~ character.name
       assert Accounts.get_character(other.id) == nil
     after
@@ -2463,12 +2475,83 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert current_card =~ "Rifter · Jita"
     assert current_card =~ "https://images.evetech.net/types/587/render?size=64"
+    assert current_card =~ "avatar avatar-online"
+    assert current_card =~ "border-success"
+    refute current_card =~ "Current"
 
     assert other_card =~ "Torrent · J231710"
     assert other_card =~ "https://images.evetech.net/types/81047/render?size=64"
     assert other_card =~ ~s(class="size-8 object-contain")
     assert other_card =~ "Offline"
-    assert other_card =~ ~s(href="/auth/switch/#{other.eve_id}")
+    assert other_card =~ "avatar avatar-offline"
+    refute other_card =~ "border-success"
+
+    assert other_card =~
+             ~s(phx-click="switch-character")
+
+    assert other_card =~ ~s(phx-value-id="#{other.id}")
+  end
+
+  test "account character cards keep session order and expose keyboard navigation", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, other} = Accounts.upsert_character(%{eve_id: 43_200, name: "Second Char"})
+
+    session =
+      Plug.Test.init_test_session(conn, %{
+        "current_user" => %{"id" => other.eve_id, "name" => other.name},
+        "character_ids" => [character.eve_id, other.eve_id]
+      })
+
+    {:ok, view, _html} = live(session, ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    html = render_click(view, "settings-tab", %{"tab" => "account"})
+
+    {first, _} = :binary.match(html, "character-card-#{character.id}")
+    {second, _} = :binary.match(html, "character-card-#{other.id}")
+
+    assert first < second
+    assert html =~ ~s(phx-hook="CardGrid")
+    assert html =~ "data-card-grid"
+
+    assert view |> element("#character-card-#{other.id}") |> render() =~
+             ~s(role="button")
+
+    assert has_element?(view, "#character-card-#{other.id}[data-card][tabindex='0']")
+    assert has_element?(view, "#character-card-#{character.id}[data-card][tabindex='-1']")
+    assert has_element?(view, "#character-card-#{other.id}[aria-current='true']")
+    refute has_element?(view, "#character-card-#{character.id}[aria-current='true']")
+  end
+
+  test "switching characters from the account tab keeps settings open", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, other} = Accounts.upsert_character(%{eve_id: 43_400, name: "Live Switch"})
+    eve_id = other.eve_id
+
+    session =
+      Plug.Test.init_test_session(conn, %{
+        "current_user" => %{"id" => character.eve_id, "name" => character.name},
+        "character_ids" => [character.eve_id, other.eve_id]
+      })
+
+    {:ok, view, _html} = live(session, ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "account"})
+
+    view
+    |> element("#character-card-#{other.id} button[phx-click='switch-character']")
+    |> render_click()
+
+    assert has_element?(view, "#settings-widget")
+    assert has_element?(view, "#character-card-#{other.id}.border-success")
+    refute has_element?(view, "#character-card-#{character.id}.border-success")
+
+    assert_push_event(view, "character-switched", %{eve_id: ^eve_id})
   end
 
   test "mask cards switch the active mask when selected", %{conn: conn, character: character} do
@@ -2488,14 +2571,18 @@ defmodule TripwireWeb.DashboardLiveTest do
     view |> element("#settings-button") |> render_click()
     render_click(view, "settings-tab", %{"tab" => "account"})
 
-    assert has_element?(view, "#mask-card-#{personal.id} .badge-success")
+    assert has_element?(view, "#mask-card-#{personal.id}.border-success")
+    assert has_element?(view, "#mask-card-#{personal.id} .avatar-online")
+    refute has_element?(view, "#mask-card-#{other_mask.id}.border-success")
 
     view
     |> element("#mask-card-#{other_mask.id} button[phx-click='switch-mask']")
     |> render_click()
 
-    assert has_element?(view, "#mask-card-#{other_mask.id} .badge-success")
-    refute has_element?(view, "#mask-card-#{personal.id} .badge-success")
+    assert has_element?(view, "#mask-card-#{other_mask.id}.border-success")
+    assert has_element?(view, "#mask-card-#{other_mask.id} .avatar-online")
+    refute has_element?(view, "#mask-card-#{personal.id}.border-success")
+    refute has_element?(view, "#mask-card-#{personal.id} .avatar-online")
   end
 
   test "mask cards show corporation logos and a placeholder for the personal mask", %{

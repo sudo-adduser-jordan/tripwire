@@ -293,27 +293,13 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_info(:load_topbar, socket) do
-    if topbar_esi_enabled?() do
-      pid = self()
-      character = socket.assigns.character
-      characters = socket.assigns.characters
-      Task.start(fn -> send(pid, {:topbar_loaded, fetch_topbar_data(character, characters)}) end)
-    end
-
     schedule_topbar_refresh()
-    {:noreply, refresh_occupants(socket)}
+    {:noreply, socket |> request_topbar_data() |> refresh_occupants()}
   end
 
   def handle_info(:refresh_topbar, socket) do
-    if topbar_esi_enabled?() do
-      pid = self()
-      character = socket.assigns.character
-      characters = socket.assigns.characters
-      Task.start(fn -> send(pid, {:topbar_loaded, fetch_topbar_data(character, characters)}) end)
-    end
-
     schedule_topbar_refresh()
-    {:noreply, refresh_occupants(socket)}
+    {:noreply, socket |> request_topbar_data() |> refresh_occupants()}
   end
 
   def handle_info({:topbar_loaded, data}, socket) do
@@ -1269,6 +1255,23 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
+  def handle_event("switch-character", %{"id" => id}, socket) do
+    case Enum.find(socket.assigns.characters, &(to_string(&1.id) == to_string(id))) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Character not found")}
+
+      character ->
+        if socket.assigns.character && socket.assigns.character.id == character.id do
+          {:noreply, socket}
+        else
+          {:noreply,
+           socket
+           |> switch_character(character)
+           |> push_event("character-switched", %{eve_id: character.eve_id})}
+        end
+    end
+  end
+
   def handle_event("switch-mask", %{"id" => id}, socket) do
     mask_id = String.to_integer(id)
 
@@ -1531,14 +1534,20 @@ defmodule TripwireWeb.DashboardLive do
   defp admin?(_), do: false
 
   defp session_characters(session, current) do
-    ids = TripwireWeb.SessionUser.ids(session)
-
     known =
-      ids
+      session
+      |> TripwireWeb.SessionUser.ids()
       |> Enum.map(&Accounts.get_character_by_eve_id/1)
       |> Enum.reject(&is_nil/1)
+      |> Enum.uniq_by(& &1.id)
 
-    [current | known] |> Enum.reject(&is_nil/1) |> Enum.uniq_by(& &1.id)
+    case current do
+      nil ->
+        known
+
+      %{id: id} = character ->
+        if Enum.any?(known, &(&1.id == id)), do: known, else: known ++ [character]
+    end
   end
 
   defp replace_character(characters, character) do
@@ -1751,26 +1760,8 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp provision(socket, character) do
-    {:ok, mask} = Masks.ensure_personal_mask(character)
-    _ = Masks.add_membership(mask, character)
-
-    _ =
-      case Masks.ensure_corporation_mask(character) do
-        {:ok, m} -> Masks.add_membership(m, character)
-        _ -> :ok
-      end
-
-    _ =
-      case Masks.ensure_alliance_mask(character) do
-        {:ok, m} -> Masks.add_membership(m, character)
-        _ -> :ok
-      end
-
-    map =
-      case Mapping.list_maps_for_mask(mask.id) do
-        [] -> elem(Mapping.create_map(%{name: "Home", mask_id: mask.id}), 1)
-        [map | _] -> map
-      end
+    mask = ensure_character_masks(character)
+    map = personal_map(mask)
 
     masks = Masks.list_masks()
     admin_masks = Masks.list_masks_for_character(character.id)
@@ -1823,6 +1814,76 @@ defmodule TripwireWeb.DashboardLive do
     |> schedule_topbar_load()
     |> schedule_chart_refresh()
     |> push_map_scale()
+  end
+
+  defp ensure_character_masks(character) do
+    {:ok, mask} = Masks.ensure_personal_mask(character)
+    _ = Masks.add_membership(mask, character)
+
+    _ =
+      case Masks.ensure_corporation_mask(character) do
+        {:ok, m} -> Masks.add_membership(m, character)
+        _ -> :ok
+      end
+
+    _ =
+      case Masks.ensure_alliance_mask(character) do
+        {:ok, m} -> Masks.add_membership(m, character)
+        _ -> :ok
+      end
+
+    mask
+  end
+
+  defp personal_map(mask) do
+    case Mapping.list_maps_for_mask(mask.id) do
+      [] -> elem(Mapping.create_map(%{name: "Home", mask_id: mask.id}), 1)
+      [map | _] -> map
+    end
+  end
+
+  defp switch_character(socket, character) do
+    mask = ensure_character_masks(character)
+    map = personal_map(mask)
+    _ = ensure_jita_system(map, Mapping.list_systems(map.id))
+    settings = socket.assigns
+    claim_admin_modal? = settings[:claim_admin_modal?]
+
+    Phoenix.PubSub.unsubscribe(
+      Tripwire.PubSub,
+      Tripwire.Tracking.map_topic(socket.assigns.map.id)
+    )
+
+    Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map.id))
+
+    socket
+    |> assign(:character, character)
+    |> assign(:current_user, %{id: character.eve_id, name: character.name})
+    |> assign(:mask, mask)
+    |> assign(:masks, Masks.list_masks())
+    |> assign(:admin_masks, Masks.list_masks_for_character(character.id))
+    |> assign(:map, map)
+    |> assign(:maps, Mapping.list_maps_for_mask(mask.id))
+    |> apply_tree_layout_with_home(settings.map_layout, map)
+    |> assign(:selected_system_id, nil)
+    |> assign(:selected_system_name, nil)
+    |> assign(:system_suggestions, [])
+    |> assign(:signatures, [])
+    |> assign(:comments, [])
+    |> assign(:flares, [])
+    |> assign(:system_stat, nil)
+    |> assign(:system_info, nil)
+    |> assign(:chart_data, empty_chart_data(settings[:chart_range] || "24h"))
+    |> assign(:stale_ids, [])
+    |> assign(:stale_system_id, nil)
+    |> assign(:undo, [])
+    |> assign(:redo, [])
+    |> assign(:presences, %{})
+    |> assign(:sys_form, %{"alias" => "", "sys_class" => "", "effect" => ""})
+    |> assign_claim_admin(character)
+    |> assign(:claim_admin_modal?, claim_admin_modal?)
+    |> request_topbar_data()
+    |> patch_to_preferred(chain_systems(socket, map))
   end
 
   defp apply_inverse(:delete, signature, socket) do
@@ -2503,6 +2564,17 @@ defmodule TripwireWeb.DashboardLive do
 
   defp schedule_topbar_refresh do
     Process.send_after(self(), :refresh_topbar, @topbar_refresh_ms)
+  end
+
+  defp request_topbar_data(socket) do
+    if topbar_esi_enabled?() do
+      pid = self()
+      character = socket.assigns.character
+      characters = socket.assigns.characters
+      Task.start(fn -> send(pid, {:topbar_loaded, fetch_topbar_data(character, characters)}) end)
+    end
+
+    socket
   end
 
   defp schedule_chart_refresh(socket \\ nil) do

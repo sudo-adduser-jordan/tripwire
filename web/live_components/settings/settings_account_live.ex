@@ -55,24 +55,38 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
             </button>
           </div>
         </div>
-        <div class="grid w-full max-w-full grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4">
+        <div
+          id="character-cards"
+          phx-hook="CardGrid"
+          data-card-grid
+          class="grid w-full max-w-full grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4"
+        >
           <div
             :for={entry <- @characters}
             id={"character-card-#{entry.id}"}
+            role="button"
+            tabindex={if current_character?(@character, entry), do: "0", else: "-1"}
+            aria-label={"Switch to #{entry.name}"}
+            aria-current={current_character?(@character, entry) && "true"}
+            data-card
             class={[
-              "relative flex min-w-0 items-center gap-2 rounded-lg border bg-base-100/50 p-2 transition-colors hover:bg-base-200/60",
+              "relative flex min-w-0 items-center gap-2 rounded-lg border bg-base-100/50 p-2 transition-colors hover:bg-base-200/60 focus-visible:ring-2 focus-visible:ring-success focus-visible:outline-none",
               current_character?(@character, entry) &&
-                "border-primary ring-1 ring-primary",
+                "border-success bg-success/10 ring-1 ring-success",
               !current_character?(@character, entry) && "border-base-300"
             ]}
           >
-            <a
-              href={"/auth/switch/#{entry.eve_id}"}
+            <button
+              type="button"
+              phx-click="switch-character"
+              phx-value-id={entry.id}
+              tabindex="-1"
+              data-card-action
               title={"Switch to #{entry.name}"}
               aria-label={"Switch to #{entry.name}"}
-              class="absolute inset-0 z-0 rounded-lg"
+              class="absolute inset-0 z-0 rounded-lg hover:cursor-pointer"
             >
-            </a>
+            </button>
             <div class="pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-2">
               <.character_ship_toggle
                 character={entry}
@@ -98,12 +112,6 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
                     class="badge badge-ghost badge-xs"
                   >
                     Offline
-                  </div>
-                  <div
-                    :if={current_character?(@character, entry)}
-                    class="badge badge-success badge-xs"
-                  >
-                    Current
                   </div>
                 </div>
               </div>
@@ -142,13 +150,23 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
             </button>
           </div>
         </div>
-        <div class="grid w-full max-w-full grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4">
+        <div
+          id="mask-cards"
+          phx-hook="CardGrid"
+          data-card-grid
+          class="grid w-full max-w-full grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4"
+        >
           <div
             :for={entry <- @masks}
             id={"mask-card-#{entry.id}"}
+            role="button"
+            tabindex={if current_mask?(@mask, entry), do: "0", else: "-1"}
+            aria-label={"Switch to #{entry.name}"}
+            aria-current={current_mask?(@mask, entry) && "true"}
+            data-card
             class={[
-              "relative flex min-w-0 items-center gap-2 rounded-lg border bg-base-100/50 p-2 transition-colors hover:bg-base-200/60",
-              current_mask?(@mask, entry) && "border-primary ring-1 ring-primary",
+              "relative flex min-w-0 items-center gap-2 rounded-lg border bg-base-100/50 p-2 transition-colors hover:bg-base-200/60 focus-visible:ring-2 focus-visible:ring-success focus-visible:outline-none",
+              current_mask?(@mask, entry) && "border-success bg-success/10 ring-1 ring-success",
               !current_mask?(@mask, entry) && "border-base-300"
             ]}
           >
@@ -156,6 +174,8 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
               type="button"
               phx-click="switch-mask"
               phx-value-id={entry.id}
+              tabindex="-1"
+              data-card-action
               title={"Switch to #{entry.name}"}
               aria-label={"Switch to #{entry.name}"}
               class="absolute inset-0 z-0 rounded-lg hover:cursor-pointer"
@@ -172,9 +192,6 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
                 <div class="mt-0.5 flex min-w-0 flex-row flex-wrap gap-1">
                   <div class={["badge badge-xs", mask_badge(entry.kind)]}>
                     {entry.kind || "custom"}
-                  </div>
-                  <div :if={current_mask?(@mask, entry)} class="badge badge-success badge-xs">
-                    Current
                   </div>
                 </div>
               </div>

@@ -30,7 +30,11 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
 
   def navigation_live(assigns) do
     ~H"""
-    <nav class="sticky top-0 z-30 flex w-full max-w-full flex-wrap items-center gap-x-2 gap-y-1 bg-base-200/75 p-2">
+    <nav
+      id="topbar"
+      phx-hook="CharacterSwitch"
+      class="sticky top-0 z-30 flex w-full max-w-full flex-wrap items-center gap-x-2 gap-y-1 bg-base-200/75 p-2"
+    >
       <a href="/" class="flex w-fit items-center gap-2">
         <img
           :if={is_nil(@branding)}
@@ -133,13 +137,15 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
                   online={presence_online(@presences, character)}
                   size="lg"
                 />
-                <a
-                  href={"/auth/switch/#{character.eve_id}"}
+                <button
+                  type="button"
+                  phx-click="switch-character"
+                  phx-value-id={character.id}
                   title={"Switch to #{character_name(character)}"}
-                  class="min-w-0 flex-1 truncate py-1 text-xs"
+                  class="min-w-0 flex-1 truncate py-1 text-left text-xs"
                 >
                   {character_name(character)}
-                </a>
+                </button>
                 <button
                   phx-click="remove-character"
                   phx-value-id={character.id}

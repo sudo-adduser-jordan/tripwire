@@ -96,4 +96,22 @@ defmodule TripwireWeb.AuthControllerTest do
     assert redirected_to(conn) == "/"
     assert get_session(conn, "phoenix_flash")["info"] =~ "demo mode"
   end
+
+  test "session switch endpoint stores the character without redirecting", %{conn: conn} do
+    {:ok, character} =
+      Tripwire.Accounts.upsert_character(%{eve_id: 77_001, name: "Session Char"})
+
+    conn = get(conn, "/auth/session/#{character.eve_id}")
+
+    assert conn.status == 204
+    assert %{"id" => 77_001, "name" => "Session Char"} = get_session(conn, "current_user")
+    assert character.eve_id in get_session(conn, "character_ids")
+  end
+
+  test "session switch endpoint rejects unknown characters", %{conn: conn} do
+    conn = get(conn, "/auth/session/999999")
+
+    assert conn.status == 404
+    assert get_session(conn, "current_user") == nil
+  end
 end

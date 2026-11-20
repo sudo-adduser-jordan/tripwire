@@ -108,9 +108,8 @@ defmodule TripwireWeb.CharacterVisibilityComponents do
   defp ship_image_class("lg"), do: "size-12 object-contain"
   defp ship_image_class(_), do: "size-8 object-contain"
 
-  defp dot(true, _character, _current), do: "avatar-online"
-  defp dot(false, _character, _current), do: "avatar-offline"
   defp dot(_online, %{id: id}, %{id: other_id}) when id == other_id, do: "avatar-online"
+  defp dot(true, _character, _current), do: "avatar-online"
   defp dot(_online, _character, _current), do: "avatar-offline"
 
   defp ship_title(%{ship_on_chain: false, name: name}), do: "Show #{name}'s ship on chain"
