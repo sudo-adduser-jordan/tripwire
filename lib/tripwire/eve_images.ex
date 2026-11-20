@@ -1,5 +1,6 @@
 defmodule Tripwire.EveImages do
   @base "https://images.evetech.net"
+  @unknown_character_id 1
 
   @faction_names %{
     500_001 => "Caldari State",
@@ -42,6 +43,8 @@ defmodule Tripwire.EveImages do
 
   def character_portrait(character_id, size \\ 64),
     do: "#{@base}/characters/#{character_id}/portrait?size=#{size}"
+
+  def unknown_character_portrait(size \\ 64), do: character_portrait(@unknown_character_id, size)
 
   def type_icon(type_id, size \\ 64),
     do: "#{@base}/types/#{type_id}/icon?size=#{size}"

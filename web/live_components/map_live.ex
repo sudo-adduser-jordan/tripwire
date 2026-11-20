@@ -385,7 +385,9 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                     height="28"
                     preserveAspectRatio="xMidYMid slice"
                     clip-path={"url(#occupant-clip-#{system.id})"}
-                    onerror="this.onerror=null;this.setAttribute('href','/images/alliance-default.png')"
+                    onerror={
+                      "this.onerror=null;this.setAttribute('href','#{EveImages.unknown_character_portrait(64)}')"
+                    }
                   />
                   <rect
                     x="-14"
@@ -427,7 +429,9 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                           src={EveImages.character_portrait(occupant.eve_id, 64)}
                           alt=""
                           class="size-7 shrink-0 rounded-full border border-primary"
-                          onerror="this.onerror=null;this.src='/images/alliance-default.png'"
+                          onerror={
+                            "this.onerror=null;this.src='#{EveImages.unknown_character_portrait(64)}'"
+                          }
                         />
                         <span class="min-w-0 truncate text-xs leading-tight">
                           <span class="font-semibold">{occupant.character_name}</span><span :if={
@@ -748,7 +752,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   end
 
   defp occupant_badge([occupant]), do: EveImages.character_portrait(occupant.eve_id, 64)
-  defp occupant_badge(_members), do: "/images/alliance-default.png"
+  defp occupant_badge(_members), do: EveImages.unknown_character_portrait(64)
 
   defp occupied_count(occupants, system_id) do
     length(system_occupants(occupants, system_id))

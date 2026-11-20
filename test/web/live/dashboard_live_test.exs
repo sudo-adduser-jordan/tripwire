@@ -118,7 +118,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     map_html = view |> element("#chain-map") |> render()
 
-    assert map_html =~ ~s|href="/images/alliance-default.png"|
+    assert map_html =~ ~s|href="https://images.evetech.net/characters/1/portrait?size=64"|
     refute map_html =~ ~s|href="https://images.evetech.net/characters/42000/portrait|
     assert has_element?(view, "#chain-map foreignobject", "Kariyo Astrien - Rifter")
     assert has_element?(view, "#chain-map foreignobject", "Second Pilot")
