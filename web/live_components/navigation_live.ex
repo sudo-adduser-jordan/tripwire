@@ -231,7 +231,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
             <path d="M21 2h-5v20h5c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1M2 21c0 .6.4 1 1 1h11v-9H2zM2 3v8h12V2H3c-.6 0-1 .4-1 1" />
           </svg>
         </button>
-        <.theme_toggle />
+        <.mode_toggle />
         <form :if={@current_user} action="/auth/logout" method="post">
           <input type="hidden" name="_method" value="delete" />
           <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
@@ -255,31 +255,34 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
     """
   end
 
-  def theme_toggle(assigns) do
+  def mode_toggle(assigns) do
     ~H"""
     <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-md">
-      <div class="absolute w-1/3 h-full rounded border border-base-200 bg-base-100 brightness-200 left-0 in-data-[theme=light]:left-1/3 in-data-[theme=dark]:left-2/3 transition-[left]" />
+      <div class="absolute w-1/3 h-full rounded border border-base-200 bg-base-100 brightness-200 left-0 in-data-[mode=light]:left-1/3 in-data-[mode=dark]:left-2/3 transition-[left]" />
 
       <button
         class="flex p-1.5 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="system"
+        phx-click={JS.dispatch("phx:set-mode")}
+        data-phx-mode="system"
+        title="Follow the system light or dark mode"
       >
         <.icon name="hero-computer-desktop-micro" class="size-3 opacity-75 hover:opacity-100" />
       </button>
 
       <button
         class="flex p-1.5 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="light"
+        phx-click={JS.dispatch("phx:set-mode")}
+        data-phx-mode="light"
+        title="Light mode"
       >
         <.icon name="hero-sun-micro" class="size-3 opacity-75 hover:opacity-100" />
       </button>
 
       <button
         class="flex p-1.5 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="dark"
+        phx-click={JS.dispatch("phx:set-mode")}
+        data-phx-mode="dark"
+        title="Dark mode"
       >
         <.icon name="hero-moon-micro" class="size-3 opacity-75 hover:opacity-100" />
       </button>

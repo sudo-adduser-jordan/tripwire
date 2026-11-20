@@ -15,22 +15,56 @@
     </script>
 
     <script>
-      const setTheme = (theme) => {
-          if (theme === "system") {
-              localStorage.removeItem("phx:theme");
-              document.documentElement.removeAttribute("data-theme");
-          } else {
-              localStorage.setItem("phx:theme", theme);
-              document.documentElement.setAttribute("data-theme", theme);
-          }
+      const themeKey = "phx:theme";
+      const modeKey = "phx:mode";
+      const legacyThemes = {
+        system: ["phoenix", "system"],
+        light: ["phoenix", "light"],
+        native: ["phoenix", "light"],
+        dark: ["phoenix", "dark"],
+        "native-dark": ["phoenix", "dark"]
       };
 
-      if (!document.documentElement.hasAttribute("data-theme")) {
-          setTheme(localStorage.getItem("phx:theme") || "tripwire");
+      const setTheme = (theme) => {
+        localStorage.setItem(themeKey, theme);
+        document.documentElement.setAttribute("data-theme", theme);
+      };
+
+      const setMode = (mode) => {
+        if (mode === "system") {
+          localStorage.removeItem(modeKey);
+          mode = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        } else {
+          localStorage.setItem(modeKey, mode);
+        }
+        document.documentElement.setAttribute("data-mode", mode);
+      };
+
+      const storedTheme = localStorage.getItem(themeKey);
+      const legacy = legacyThemes[storedTheme];
+
+      if (legacy) {
+        setTheme(legacy[0]);
+        if (!localStorage.getItem(modeKey)) setMode(legacy[1]);
+      } else {
+        setTheme(storedTheme || "phoenix");
       }
 
-      window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+      if (!document.documentElement.hasAttribute("data-mode")) {
+        setMode(localStorage.getItem(modeKey) || "system");
+      }
+
+      window
+        .matchMedia("(prefers-color-scheme: dark)")
+        .addEventListener("change", () => {
+          if (!localStorage.getItem(modeKey)) setMode("system");
+        });
+      window.addEventListener("storage", (e) => {
+        if (e.key === themeKey) setTheme(e.newValue || "phoenix");
+        if (e.key === modeKey) setMode(e.newValue || "system");
+      });
       window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+      window.addEventListener("phx:set-mode", (e) => setMode(e.target.dataset.phxMode));
     </script>
     <style>
       /* eveonline.com hero art: the Fractured Skies loop over its still frame */

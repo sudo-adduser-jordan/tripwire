@@ -341,6 +341,34 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute has_element?(view, "#signatures")
   end
 
+  test "theme settings list phoenix, eve and carbon in core and tripwire under mapper", %{
+    conn: conn
+  } do
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    for mode <- ~w(system light dark) do
+      assert has_element?(view, "button[data-phx-mode='#{mode}']")
+    end
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "themes"})
+
+    core = view |> element("#theme-container-core") |> render()
+    mapper = view |> element("#theme-container-mapper") |> render()
+
+    for theme <- ~w(phoenix eve carbon) do
+      assert core =~ ~s|id="theme-button-#{theme}"|
+    end
+
+    assert mapper =~ ~s|id="theme-button-tripwire"|
+    assert mapper =~ ~s|id="theme-button-wanderer"|
+
+    for theme <- ~w(light dark native native-dark) do
+      refute core =~ ~s|id="theme-button-#{theme}"|
+      refute mapper =~ ~s|id="theme-button-#{theme}"|
+    end
+  end
+
   test "settings are shared across characters", %{conn: conn, character: character} do
     {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
 

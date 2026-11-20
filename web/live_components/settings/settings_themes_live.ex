@@ -20,7 +20,7 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
       id: "core",
       label: "Core",
       icon: "hero-cube",
-      themes: ["tripwire", "native", "native-dark", "light", "dark", "eve", "carbon"]
+      themes: ["phoenix", "eve", "carbon"]
     },
     %{
       id: "faction",
@@ -38,7 +38,7 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
       id: "mapper",
       label: "Mapper",
       icon: "hero-map",
-      themes: ["wanderer"]
+      themes: ["tripwire", "wanderer"]
     }
   ]
 
