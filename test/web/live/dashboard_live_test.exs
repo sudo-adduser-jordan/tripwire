@@ -77,6 +77,42 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "→"
   end
 
+  test "the demo map shows the tracked character badge and its tooltip", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    map_html = view |> element("#chain-map") |> render()
+
+    assert map_html =~ "<foreignobject"
+    assert map_html =~ ~s(width="28")
+    assert map_html =~ "https://images.evetech.net/characters/9000002/portrait?size=64"
+    assert map_html =~ "https://images.evetech.net/types/85086/render?size=64"
+    refute map_html =~ "<title>Demo User"
+    assert has_element?(view, "#chain-map foreignobject", "Demo User - Cenotaph")
+  end
+
+  test "the occupant tooltip opens below a lone root node instead of flipping off the map", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    [map] = Repo.all(Mapping.Map)
+    [system] = Mapping.list_systems(map.id)
+    on_exit(fn -> Tripwire.Tracking.stop_poller(character) end)
+
+    {:ok, _} =
+      Tripwire.Tracking.DemoPresence.ensure_started(character, map, system,
+        ship_name: "Rifter",
+        ship_type_id: 587
+      )
+
+    render_click(view, "refresh-occupants", %{})
+
+    map_html = view |> element("#chain-map") |> render()
+    [_, y] = Regex.run(~r/<foreignobject[^>]*y="([-\d.]+)"/, map_html)
+    assert y == "96.0"
+  end
+
   test "logged in characters get their own map instead of the demo map", %{
     conn: conn,
     character: character
@@ -429,9 +465,8 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute has_element?(view, "div[title='Characters tracked on chain']")
 
     map_html = view |> element("#chain-map") |> render()
-    assert map_html =~ "Demo User - Cenotaph"
     assert map_html =~ "characters/9000002/portrait"
-    assert has_element?(view, "#chain-map title", "Demo User - Cenotaph")
+    assert has_element?(view, "#chain-map foreignobject", "Demo User - Cenotaph")
   end
 
   test "hiding the demo user on chain clears their occupancy badge", %{conn: conn} do

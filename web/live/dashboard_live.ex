@@ -63,7 +63,10 @@ defmodule TripwireWeb.DashboardLive do
   defp ensure_demo_presence(character, map, systems) do
     case Enum.find(systems, &(&1.alias == "Home")) do
       %{id: _} = home ->
-        Tracking.DemoPresence.ensure_started(character, map, home, ship_name: @demo_ship_name)
+        Tracking.DemoPresence.ensure_started(character, map, home,
+          ship_name: @demo_ship_name,
+          ship_type_id: @demo_ship_type_id
+        )
 
       nil ->
         :ok

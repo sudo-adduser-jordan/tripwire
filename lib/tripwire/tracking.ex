@@ -150,7 +150,8 @@ defmodule Tripwire.Tracking do
                   system_id: system.id,
                   system_name: system.name,
                   solar_system_id: system.solar_system_id,
-                  ship_name: occupant_ship_name(character, state)
+                  ship_name: occupant_ship_name(character, state),
+                  ship_type_id: occupant_ship_type_id(character, state)
                 }
               ]
 
@@ -170,6 +171,9 @@ defmodule Tripwire.Tracking do
 
   defp occupant_ship_name(%{ship_on_chain: false}, _state), do: nil
   defp occupant_ship_name(_character, state), do: Map.get(state, :ship_name)
+
+  defp occupant_ship_type_id(%{ship_on_chain: false}, _state), do: nil
+  defp occupant_ship_type_id(_character, state), do: Map.get(state, :ship_type_id)
 
   def list_tracked_characters do
     Registry.select(Tripwire.TrackingRegistry, [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])

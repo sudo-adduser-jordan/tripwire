@@ -6,6 +6,12 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   alias Tripwire.Signatures, as: SigParser
   alias Tripwire.Wormholes
 
+  @occupant_tip_w 280
+  @occupant_row_h 28
+  @occupant_row_gap 4
+  @occupant_tip_pad 8
+  @map_width 1000.0
+
   def update(assigns, socket) do
     map_id = Map.get(assigns, :map_id)
     systems = Map.get_lazy(assigns, :systems, fn -> Mapping.list_visible_systems(map_id) end)
@@ -105,6 +111,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
       |> assign(:visible_connections, visible)
       |> assign(:view_w, view_w)
       |> assign(:view_h, view_h)
+      |> assign(:map_bottom, map_bottom(assigns))
       |> assign(
         :drawn_connections,
         Enum.reject(visible, fn {conn, _from, _to} -> Elixir.MapSet.member?(cycle, conn.id) end)
@@ -363,41 +370,84 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   stroke-width="2"
                 />
                 <g
-                  :if={occupied_count(@occupants, system.id) > 0}
-                  transform={"translate(#{@node_w - 16}, 0)"}
+                  :if={tip = occupant_tip(@occupants, system, assigns)}
+                  transform={"translate(#{tip.badge_x}, 0)"}
+                  class="group"
                 >
-                  <title>{occupied_names(@occupants, system.id)}</title>
                   <clipPath id={"occupant-clip-#{system.id}"}>
-                    <rect x="-8" y="-8" width="16" height="16" rx="4" />
+                    <rect x="-14" y="-14" width="28" height="28" rx="8" />
                   </clipPath>
                   <image
-                    href={
-                      EveImages.character_portrait(system_occupant(@occupants, system.id).eve_id, 32)
-                    }
-                    x="-8"
-                    y="-8"
-                    width="16"
-                    height="16"
+                    href={EveImages.character_portrait(hd(tip.members).eve_id, 64)}
+                    x="-14"
+                    y="-14"
+                    width="28"
+                    height="28"
                     preserveAspectRatio="xMidYMid slice"
                     clip-path={"url(#occupant-clip-#{system.id})"}
                     onerror="this.onerror=null;this.setAttribute('href','/images/alliance-default.png')"
                   />
                   <rect
-                    x="-8"
-                    y="-8"
-                    width="16"
-                    height="16"
-                    rx="4"
+                    x="-14"
+                    y="-14"
+                    width="28"
+                    height="28"
+                    rx="8"
                     class="fill-none stroke-primary"
-                    stroke-width="1.5"
+                    stroke-width="2"
                   />
+                  <foreignObject
+                    x={tip.x}
+                    y={tip.y}
+                    width={tip.width}
+                    height={tip.height}
+                    class="pointer-events-none opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                  >
+                    <div
+                      xmlns="http://www.w3.org/1999/xhtml"
+                      class="space-y-1 rounded-box border border-base-content/20 bg-base-300/95 p-2 shadow-xl"
+                    >
+                      <div
+                        :for={occupant <- tip.members}
+                        class="flex items-center gap-2"
+                      >
+                        <img
+                          :if={occupant.ship_type_id}
+                          src={EveImages.type_render(occupant.ship_type_id, 64)}
+                          alt=""
+                          class="size-7 shrink-0 rounded object-cover"
+                          onerror={ship_fallback(occupant.ship_type_id)}
+                        />
+                        <.icon
+                          :if={is_nil(occupant.ship_type_id)}
+                          name="hero-cube"
+                          class="size-7 shrink-0 rounded bg-base-200 p-1 opacity-50"
+                        />
+                        <img
+                          src={EveImages.character_portrait(occupant.eve_id, 64)}
+                          alt=""
+                          class="size-7 shrink-0 rounded-full border border-primary"
+                          onerror="this.onerror=null;this.src='/images/alliance-default.png'"
+                        />
+                        <span class="min-w-0 truncate text-xs leading-tight">
+                          <span class="font-semibold">{occupant.character_name}</span><span :if={
+                            occupant.ship_name
+                          }>{" - " <> occupant.ship_name}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </foreignObject>
                 </g>
                 <g
                   :if={occupied_count(@occupants, system.id) > 1}
-                  transform={"translate(#{@node_w - 3}, 13)"}
+                  transform={"translate(#{@node_w - 2}, 12)"}
                 >
-                  <circle r="7" class="fill-primary" />
-                  <text y="3" text-anchor="middle" class="fill-primary-content text-[9px] font-bold">
+                  <circle r="8" class="fill-primary" />
+                  <text
+                    y="3.5"
+                    text-anchor="middle"
+                    class="fill-primary-content text-[10px] font-bold"
+                  >
                     {occupied_count(@occupants, system.id)}
                   </text>
                 </g>
@@ -678,25 +728,68 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     "Likely #{size} wormhole (#{class1 || "?"} ➔ #{class2 || "?"})"
   end
 
-  defp occupied_count(occupants, system_id) do
-    Enum.count(occupants, &(&1.system_id == system_id))
+  defp map_bottom(assigns) do
+    assigns
+    |> Map.get(:systems, [])
+    |> Enum.reduce(0, &max(&1.y, &2))
   end
 
-  defp system_occupant(occupants, system_id) do
-    Enum.find(occupants, &(&1.system_id == system_id))
+  defp flips_above?(system, height, map_bottom) do
+    passes_bottom? = system.y + height + 8 > map_bottom
+    room_above? = system.y >= height + 22
+
+    passes_bottom? and room_above?
   end
 
-  defp occupied_names(occupants, system_id) do
+  defp system_occupants(occupants, system_id) do
     occupants
     |> Enum.filter(&(&1.system_id == system_id))
-    |> Enum.map_join("\n", &occupant_label/1)
+    |> Enum.sort_by(& &1.character_name)
   end
 
-  defp occupant_label(%{character_name: name, ship_name: ship})
-       when is_binary(ship) and ship != "",
-       do: "#{name} - #{ship}"
+  defp occupied_count(occupants, system_id) do
+    length(system_occupants(occupants, system_id))
+  end
 
-  defp occupant_label(%{character_name: name}), do: name
+  defp occupant_tip(occupants, system, assigns) do
+    case system_occupants(occupants, system.id) do
+      [] ->
+        nil
+
+      members ->
+        node_w = Map.get(assigns, :node_w)
+        node_h = Map.get(assigns, :node_h)
+        rows = length(members)
+
+        height =
+          rows * @occupant_row_h + (rows - 1) * @occupant_row_gap + 2 * @occupant_tip_pad
+
+        x =
+          if system.x + node_w / 2 <= @map_width / 2,
+            do: 14 - node_w,
+            else: 14 - @occupant_tip_w
+
+        y =
+          if flips_above?(system, height, Map.get(assigns, :map_bottom, 0.0)),
+            do: -(height + 22),
+            else: node_h + 8
+
+        %{
+          members: members,
+          x: x,
+          y: y,
+          width: @occupant_tip_w,
+          height: height,
+          badge_x: node_w - 14
+        }
+    end
+  end
+
+  defp ship_fallback(type_id) when is_integer(type_id) and type_id > 0 do
+    "this.onerror=null;this.src='#{EveImages.type_icon(type_id, 64)}'"
+  end
+
+  defp ship_fallback(_type_id), do: nil
 
   defp node_activity(stats, system_id) do
     case Map.get(stats, system_id) do

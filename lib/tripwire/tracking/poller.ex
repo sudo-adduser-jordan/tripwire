@@ -39,6 +39,7 @@ defmodule Tripwire.Tracking.Poller do
        interval: interval,
        online: nil,
        ship_name: nil,
+       ship_type_id: nil,
        last_solar_system_id: nil,
        last_system_row: nil
      }}
@@ -46,12 +47,15 @@ defmodule Tripwire.Tracking.Poller do
 
   @impl true
   def handle_info(:tick, state) do
+    {ship_name, ship_type_id} = fetch_ship(state.character)
+
     new_state =
       state.character
       |> fetch_current_system()
       |> apply_change(state)
       |> Map.put(:online, fetch_online(state.character))
-      |> Map.put(:ship_name, fetch_ship_name(state.character) || state.ship_name)
+      |> Map.put(:ship_name, ship_name || state.ship_name)
+      |> Map.put(:ship_type_id, ship_type_id || state.ship_type_id)
 
     schedule_tick(state.interval)
 
@@ -85,12 +89,13 @@ defmodule Tripwire.Tracking.Poller do
     end
   end
 
-  defp fetch_ship_name(character) do
+  defp fetch_ship(character) do
     with {:ok, token} <- ESI.valid_access_token(character),
-         {:ok, %{"ship_name" => name}} <- ESI.get_character_ship(character.eve_id, token) do
-      name
+         {:ok, %{"ship_type_id" => type_id} = ship} <-
+           ESI.get_character_ship(character.eve_id, token) do
+      {ship["ship_name"], type_id}
     else
-      _ -> nil
+      _ -> {nil, nil}
     end
   end
 
