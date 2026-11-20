@@ -136,20 +136,42 @@ defmodule Tripwire.Tracking do
   end
 
   def list_occupants(map_id) do
+    systems =
+      Repo.all(
+        from(s in MapSystem,
+          where: s.map_id == ^map_id,
+          select: {s.solar_system_id, s.id, s.name}
+        )
+      )
+      |> Map.new(fn {solar_system_id, id, name} -> {solar_system_id, {id, name}} end)
+
+    tracked_occupants()
+    |> Enum.flat_map(fn occupant ->
+      case Map.get(systems, occupant.solar_system_id) do
+        nil ->
+          []
+
+        {system_id, system_name} ->
+          [Map.merge(occupant, %{system_id: system_id, system_name: system_name})]
+      end
+    end)
+  end
+
+  defp tracked_occupants do
     Registry.select(Tripwire.TrackingRegistry, [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
     |> Enum.flat_map(fn {_eve_id, pid} ->
       case GenServer.call(pid, :state) do
-        %{character: character, map: %{id: ^map_id}, last_system_row: system} = state
-        when not is_nil(system) ->
+        %{character: character, last_system_row: %{solar_system_id: solar}} = state
+        when is_integer(solar) ->
           case Accounts.get_character_by_eve_id(character.eve_id) do
             %{character_on_chain: true} = character ->
               [
                 %{
                   character_name: character.name,
                   eve_id: character.eve_id,
-                  system_id: system.id,
-                  system_name: system.name,
-                  solar_system_id: system.solar_system_id,
+                  corporation_id: character.corporation_id,
+                  alliance_id: character.alliance_id,
+                  solar_system_id: solar,
                   ship_name: occupant_ship_name(character, state),
                   ship_type_id: occupant_ship_type_id(character, state)
                 }

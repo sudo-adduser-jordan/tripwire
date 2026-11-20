@@ -30,7 +30,11 @@ defmodule TripwireWeb.DashboardLive do
   def mount(_params, session, socket) do
     case session_character(session) do
       {:ok, character} ->
-        {:ok, socket |> provision(character) |> assign_characters(session)}
+        {:ok,
+         socket
+         |> provision(character)
+         |> assign_characters(session)
+         |> ensure_character_pollers()}
 
       :expired ->
         {:ok,
@@ -60,6 +64,18 @@ defmodule TripwireWeb.DashboardLive do
     assign(socket, :characters, session_characters(session, socket.assigns.character))
   end
 
+  defp ensure_character_pollers(%{assigns: %{demo?: true}} = socket), do: socket
+
+  defp ensure_character_pollers(socket) do
+    socket.assigns[:characters]
+    |> List.wrap()
+    |> Enum.reject(&(&1.eve_id == @demo_character_eve_id))
+    |> Enum.reject(&is_nil(&1.refresh_token))
+    |> Enum.each(&Tracking.ensure_poller/1)
+
+    socket
+  end
+
   defp ensure_demo_presence(character, map, systems) do
     case Enum.find(systems, &(&1.alias == "Home")) do
       %{id: _} = home ->
@@ -75,10 +91,28 @@ defmodule TripwireWeb.DashboardLive do
 
   defp refresh_occupants(socket) do
     occupants =
-      if socket.assigns.map, do: Tracking.list_occupants(socket.assigns.map.id), else: []
+      case socket.assigns[:map] do
+        nil ->
+          []
+
+        map ->
+          map.id
+          |> Tracking.list_occupants()
+          |> Enum.filter(&mask_member?(&1, socket.assigns[:mask]))
+      end
 
     assign(socket, :occupants, occupants)
   end
+
+  defp mask_member?(occupant, %{kind: "corporation", eve_owner_id: corp_id})
+       when is_integer(corp_id),
+       do: occupant.corporation_id == corp_id
+
+  defp mask_member?(occupant, %{kind: "alliance", eve_owner_id: alliance_id})
+       when is_integer(alliance_id),
+       do: occupant.alliance_id == alliance_id
+
+  defp mask_member?(_occupant, _mask), do: true
 
   defp assign_demo_presence(socket) do
     presence = fetch_character_presence(socket.assigns.character)
@@ -1311,6 +1345,7 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:comments, [])
          |> assign(:flares, [])
          |> assign(:system_stat, nil)
+         |> refresh_occupants()
          |> patch_to_preferred(chain_systems(socket, map))}
     end
   end
@@ -1864,6 +1899,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:flares, [])
     |> assign(:system_stat, nil)
     |> patch_to_preferred(systems)
+    |> refresh_occupants()
   end
 
   defp replacement_map(socket, mask) do
@@ -1944,6 +1980,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:sys_form, %{"alias" => "", "sys_class" => "", "effect" => ""})
     |> assign_claim_admin(character)
     |> assign(:claim_admin_modal?, claim_admin_modal?)
+    |> ensure_character_pollers()
     |> request_topbar_data()
     |> patch_to_preferred(chain_systems(socket, map))
   end

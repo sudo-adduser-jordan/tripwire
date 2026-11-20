@@ -11,7 +11,14 @@ defmodule TripwireWeb.DashboardLiveTest do
 
   setup do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 42_000, name: "Kariyo Astrien"})
+    on_exit(fn -> stop_trackers() end)
     %{character: character}
+  end
+
+  defp stop_trackers do
+    Tripwire.TrackingRegistry
+    |> Registry.select([{{:"$1", :"$2", :_}, [], [:"$2"]}])
+    |> Enum.each(&DynamicSupervisor.terminate_child(Tripwire.Tracking.PollerSupervisor, &1))
   end
 
   defp login(conn, character) do
@@ -88,6 +95,94 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert map_html =~ "https://images.evetech.net/types/85086/render?size=64"
     refute map_html =~ "<title>Demo User"
     assert has_element?(view, "#chain-map foreignobject", "Demo User - Cenotaph")
+  end
+
+  test "several characters in one system share the default badge and list both in the tooltip", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, other} = Accounts.upsert_character(%{eve_id: 42_500, name: "Second Pilot"})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    {:ok, _} =
+      Tripwire.Tracking.DemoPresence.ensure_started(character, map, system,
+        ship_name: "Rifter",
+        ship_type_id: 587
+      )
+
+    {:ok, _} = Tripwire.Tracking.DemoPresence.ensure_started(other, map, system)
+
+    render_click(view, "refresh-occupants", %{})
+
+    map_html = view |> element("#chain-map") |> render()
+
+    assert map_html =~ ~s|href="/images/alliance-default.png"|
+    refute map_html =~ ~s|href="https://images.evetech.net/characters/42000/portrait|
+    assert has_element?(view, "#chain-map foreignobject", "Kariyo Astrien - Rifter")
+    assert has_element?(view, "#chain-map foreignobject", "Second Pilot")
+    assert map_html =~ ~r|>\s*2\s*</text>|
+  end
+
+  test "every session character with a token gets its own tracker", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, character} =
+      Accounts.upsert_character(%{eve_id: character.eve_id, refresh_token: "one"})
+
+    {:ok, other} =
+      Accounts.upsert_character(%{eve_id: 42_600, name: "Alt Pilot", refresh_token: "two"})
+
+    conn =
+      Plug.Test.init_test_session(conn, %{
+        "current_user" => %{"id" => character.eve_id, "name" => character.name},
+        "character_ids" => [character.eve_id, other.eve_id]
+      })
+
+    {:ok, _view, _html} = live(conn, ~p"/dashboard")
+
+    assert Tripwire.Tracking.tracking?(character)
+    assert Tripwire.Tracking.tracking?(other)
+  end
+
+  test "a corporation mask lists only corporation members on the map", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, character} =
+      Accounts.update_character(character, %{
+        corporation_id: 98_000_001,
+        corporation_name: "Test Corp"
+      })
+
+    {:ok, corp_mask} = Masks.ensure_corporation_mask(character)
+    {:ok, corp_map} = Mapping.create_map(%{name: "Corp Chain", mask_id: corp_mask.id})
+
+    {:ok, corp_system} =
+      Mapping.add_system_to_map(corp_map, %{solar_system_id: 1, name: "J150321"})
+
+    {:ok, outsider} =
+      Accounts.upsert_character(%{
+        eve_id: 42_700,
+        name: "Other Corp Pilot",
+        corporation_id: 98_000_002,
+        corporation_name: "Other Corp"
+      })
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    {:ok, _} = Tripwire.Tracking.DemoPresence.ensure_started(character, corp_map, corp_system)
+    {:ok, _} = Tripwire.Tracking.DemoPresence.ensure_started(outsider, corp_map, corp_system)
+
+    view
+    |> element(~s|button[phx-click="switch-mask"][phx-value-id="#{corp_mask.id}"]|)
+    |> render_click()
+
+    map_html = view |> element("#chain-map") |> render()
+    assert map_html =~ "Kariyo Astrien"
+    refute map_html =~ "Other Corp Pilot"
   end
 
   test "the occupant tooltip opens below a lone root node instead of flipping off the map", %{
@@ -2101,7 +2196,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute toggle =~ "bg-primary"
   end
 
-  test "auto-tracker toggle is enabled for a character with SSO credentials", %{
+  test "auto-tracker toggle is enabled and on for a character with SSO credentials", %{
     conn: conn,
     character: character
   } do
@@ -2120,7 +2215,8 @@ defmodule TripwireWeb.DashboardLiveTest do
         |> render()
 
       refute toggle_html =~ "disabled"
-      assert toggle_html =~ "Auto-track this character"
+      assert toggle_html =~ "Stop auto-tracking this character"
+      assert Tripwire.Tracking.tracking?(character)
     after
       System.delete_env("EVESSO_CLIENT_ID")
       System.delete_env("EVESSO_SECRET_KEY")

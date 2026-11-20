@@ -378,7 +378,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                     <rect x="-14" y="-14" width="28" height="28" rx="8" />
                   </clipPath>
                   <image
-                    href={EveImages.character_portrait(hd(tip.members).eve_id, 64)}
+                    href={occupant_badge(tip.members)}
                     x="-14"
                     y="-14"
                     width="28"
@@ -746,6 +746,9 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     |> Enum.filter(&(&1.system_id == system_id))
     |> Enum.sort_by(& &1.character_name)
   end
+
+  defp occupant_badge([occupant]), do: EveImages.character_portrait(occupant.eve_id, 64)
+  defp occupant_badge(_members), do: "/images/alliance-default.png"
 
   defp occupied_count(occupants, system_id) do
     length(system_occupants(occupants, system_id))
