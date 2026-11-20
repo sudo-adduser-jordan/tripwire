@@ -512,6 +512,10 @@ html[data-mode="light"] {
   --color-base-content: oklch(21% 0.006 285.885);
 }
 
+html[data-mode="light"] :is(.input, .select, .textarea) {
+  background-color: var(--color-base-200);
+}
+
 html[data-mode="light"] .eve-landing {
   color-scheme: dark;
   --color-base-100: oklch(30.33% 0.016 252.42);
