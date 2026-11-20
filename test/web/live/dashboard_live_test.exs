@@ -1306,7 +1306,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert html =~ "Statics"
   end
 
-  test "chain nodes show real wormhole class, effect and static codes", %{
+  test "chain nodes show real wormhole class, effect and static destinations", %{
     conn: conn,
     character: character
   } do
@@ -1316,9 +1316,34 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
 
     assert html =~ "System effect: Magnetar"
-    assert html =~ "Static C247 to C3"
-    assert html =~ "Static H900 to C5"
-    assert view |> element("#chain-map") |> render() =~ "C4"
+
+    map_html = view |> element("#chain-map") |> render()
+    assert map_html =~ ~r/>\s*C3\s*<title>Static C247 to C3/
+    assert map_html =~ ~r/>\s*C5\s*<title>Static H900 to C5/
+    refute map_html =~ ~r/>\s*C247\s*</
+    refute map_html =~ ~r/>\s*H900\s*</
+    assert map_html =~ "C4"
+  end
+
+  test "static badges wrap under the node when a system has many statics", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, _system} = setup_with_system(%{character: character}, "Jita")
+
+    {:ok, _} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_001, name: "Sentinel MZ"})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+    map_html = view |> element("#chain-map") |> render()
+
+    for class <- ~w(C1 C2 C3 C4 C5 C6) do
+      assert map_html =~ ~r/>\s*#{class}\s*<title>Static /
+    end
+
+    assert map_html =~ "translate(4, 80.0)"
+    assert map_html =~ "translate(4, 100.0)"
+    assert map_html =~ "translate(34, 100.0)"
   end
 
   test "system editor saves the wormhole effect and badges it", %{
