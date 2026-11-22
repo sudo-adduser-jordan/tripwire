@@ -17,11 +17,11 @@ function clampValue(value, low, high) {
     return Math.min(high, Math.max(low, value))
 }
 
-function clampAxis(value, min, max, size) {
+function clampAxis(value, min, max, size, align) {
     const low = min - PAD
     const high = max + PAD - size
     if (low <= high) return clampValue(value, low, high)
-    return (min + max - size) / 2
+    return align === "start" ? low : (min + max - size) / 2
 }
 
 const MapDrag = {
@@ -233,8 +233,8 @@ const MapDrag = {
     if (!bounds) return { x, y }
     const z = zoom || this.zoom
     return {
-      x: clampAxis(x, bounds.minX, bounds.maxX, VIEW_W / z),
-      y: clampAxis(y, bounds.minY, bounds.maxY, VIEW_H / z),
+      x: clampAxis(x, bounds.minX, bounds.maxX, VIEW_W / z, "center"),
+      y: clampAxis(y, bounds.minY, bounds.maxY, VIEW_H / z, "start"),
     }
   },
 

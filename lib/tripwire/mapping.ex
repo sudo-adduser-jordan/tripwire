@@ -186,7 +186,8 @@ defmodule Tripwire.Mapping do
         {x, y}
 
       {min_x, min_y, max_x, max_y} ->
-        {clamp_axis(x, min_x, max_x, view_w), clamp_axis(y, min_y, max_y, view_h)}
+        {clamp_axis(x, min_x, max_x, view_w, :center),
+         clamp_axis(y, min_y, max_y, view_h, :start)}
     end
   end
 
@@ -217,14 +218,17 @@ defmodule Tripwire.Mapping do
     end)
   end
 
-  defp clamp_axis(value, first, last, size) do
+  defp clamp_axis(value, first, last, size, align) do
     low = first - @pan_pad
     high = last + @pan_pad - size
 
     if low <= high do
       value |> max(low) |> min(high)
     else
-      (first + last - size) / 2
+      case align do
+        :start -> low
+        :center -> (first + last - size) / 2
+      end
     end
   end
 

@@ -1249,7 +1249,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert_in_delta y, pan_y, 0.001
   end
 
-  test "reset zoom without a home centers the chain", %{
+  test "reset zoom without a home pins the chain to the top and centers it", %{
     conn: conn,
     character: character
   } do
@@ -1265,7 +1265,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert_push_event(view, "reset-pan", %{x: x, y: y})
     assert_in_delta x, system.x + 70.0 - 625.0, 0.001
-    assert_in_delta y, system.y + 44.0 - 437.5, 0.001
+    assert_in_delta y, system.y - 40.0, 0.001
   end
 
   test "header lock button toggles server-side and yellows when locked", %{
