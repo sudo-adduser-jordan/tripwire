@@ -71,17 +71,17 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
       phx-hook="ThemeSelect"
       class="tab-content w-full max-w-full overflow-hidden border-base-300 bg-base-100/50 p-3 sm:p-4"
     >
-      <div class="flex min-h-0 w-full max-w-full flex-col gap-4 overflow-hidden">
+      <div class="flex min-h-0 w-full max-w-full flex-col gap-4">
         <p class="text-sm font-semibold">Themes</p>
         <%= for section <- theme_sections() do %>
-          <div class="flex min-h-0 w-full max-w-full flex-col gap-2 overflow-hidden">
+          <div class="flex min-h-0 w-full max-w-full flex-col gap-2">
             <div class="flex items-center gap-1.5">
               <span class={[section.icon, "size-4 opacity-60"]} />
               <p class="text-xs font-semibold uppercase tracking-wider opacity-70">{section.label}</p>
             </div>
             <div
               id={"theme-container-" <> section.id}
-              class="rounded-box grid w-full max-w-full grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-5"
+              class="rounded-box grid w-full max-w-full grid-cols-[repeat(auto-fill,minmax(min(10rem,100%),10rem))] gap-2 sm:gap-3"
             >
               <%= for theme <- section.themes do %>
                 <button
