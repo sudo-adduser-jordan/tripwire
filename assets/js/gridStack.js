@@ -173,9 +173,9 @@ function refreshGrid(el) {
     el._gridSig = sig
 
     if (widgetSetChanged) {
-        reconcile(el, grid)
         suppressLayoutChange(el)
-        if (typeof grid.compact === 'function') grid.compact()
+        reconcile(el, grid)
+        repack(grid)
     }
 
     if (typeof grid._updateColumnVar === 'function') {
@@ -221,6 +221,15 @@ const WIDGET_IDS = {
     notes: 'notes',
     signatures: 'signatures',
     map: 'map',
+}
+
+function repack(grid) {
+    const engine = grid && grid.engine
+    if (engine && typeof engine._packNodes === 'function') {
+        engine._packNodes()
+        return
+    }
+    if (grid && typeof grid.compact === 'function') grid.compact()
 }
 
 function suppressLayoutChange(el) {
