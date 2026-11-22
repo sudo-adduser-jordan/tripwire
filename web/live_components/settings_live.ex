@@ -43,7 +43,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
       id="settings-widget"
       class="grid-stack-item scroll-mt-24"
       gs-w="10"
-      gs-h="10"
+      gs-h="8"
       gs-x="1"
       gs-y="0"
       tabindex="0"
