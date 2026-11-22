@@ -14,10 +14,10 @@ defmodule Tripwire.Layouts do
       description: "System and notes on top, signatures below, map underneath.",
       core?: true,
       widgets: %{
-        "system" => %{"x" => 0, "y" => 0, "w" => 5, "h" => 6, "visible" => true},
-        "notes" => %{"x" => 5, "y" => 0, "w" => 5, "h" => 6, "visible" => true},
-        "signatures" => %{"x" => 0, "y" => 6, "w" => 11, "h" => 6, "visible" => true},
-        "map" => %{"x" => 0, "y" => 12, "w" => 11, "h" => 12, "visible" => true}
+        "system" => %{"x" => 1, "y" => 0, "w" => 5, "h" => 6, "visible" => true},
+        "notes" => %{"x" => 6, "y" => 0, "w" => 5, "h" => 6, "visible" => true},
+        "signatures" => %{"x" => 1, "y" => 6, "w" => 10, "h" => 6, "visible" => true},
+        "map" => %{"x" => 1, "y" => 12, "w" => 10, "h" => 12, "visible" => true}
       }
     },
     %{
@@ -26,10 +26,10 @@ defmodule Tripwire.Layouts do
       description: "The chain fills the top of the dashboard; signatures are hidden.",
       core?: true,
       widgets: %{
-        "map" => %{"x" => 0, "y" => 0, "w" => 11, "h" => 12, "visible" => true},
-        "system" => %{"x" => 0, "y" => 12, "w" => 5, "h" => 6, "visible" => true},
-        "notes" => %{"x" => 5, "y" => 12, "w" => 5, "h" => 6, "visible" => true},
-        "signatures" => %{"x" => 0, "y" => 18, "w" => 11, "h" => 6, "visible" => false}
+        "map" => %{"x" => 1, "y" => 0, "w" => 10, "h" => 12, "visible" => true},
+        "system" => %{"x" => 1, "y" => 12, "w" => 5, "h" => 6, "visible" => true},
+        "notes" => %{"x" => 6, "y" => 12, "w" => 5, "h" => 6, "visible" => true},
+        "signatures" => %{"x" => 1, "y" => 18, "w" => 10, "h" => 6, "visible" => false}
       }
     },
     %{
@@ -38,10 +38,10 @@ defmodule Tripwire.Layouts do
       description: "The signature table is full width on top; the map is hidden.",
       core?: true,
       widgets: %{
-        "signatures" => %{"x" => 0, "y" => 0, "w" => 11, "h" => 8, "visible" => true},
-        "system" => %{"x" => 0, "y" => 8, "w" => 5, "h" => 6, "visible" => true},
-        "notes" => %{"x" => 5, "y" => 8, "w" => 5, "h" => 6, "visible" => true},
-        "map" => %{"x" => 0, "y" => 14, "w" => 11, "h" => 12, "visible" => false}
+        "signatures" => %{"x" => 1, "y" => 0, "w" => 10, "h" => 8, "visible" => true},
+        "system" => %{"x" => 1, "y" => 8, "w" => 5, "h" => 6, "visible" => true},
+        "notes" => %{"x" => 6, "y" => 8, "w" => 5, "h" => 6, "visible" => true},
+        "map" => %{"x" => 1, "y" => 14, "w" => 10, "h" => 12, "visible" => false}
       }
     },
     %{
@@ -50,10 +50,10 @@ defmodule Tripwire.Layouts do
       description: "System and signatures only; notes and the map are hidden.",
       core?: true,
       widgets: %{
-        "system" => %{"x" => 0, "y" => 0, "w" => 5, "h" => 4, "visible" => true},
-        "signatures" => %{"x" => 0, "y" => 4, "w" => 11, "h" => 6, "visible" => true},
-        "notes" => %{"x" => 5, "y" => 0, "w" => 5, "h" => 4, "visible" => false},
-        "map" => %{"x" => 0, "y" => 10, "w" => 11, "h" => 12, "visible" => false}
+        "system" => %{"x" => 1, "y" => 0, "w" => 5, "h" => 4, "visible" => true},
+        "signatures" => %{"x" => 1, "y" => 4, "w" => 10, "h" => 6, "visible" => true},
+        "notes" => %{"x" => 6, "y" => 0, "w" => 5, "h" => 4, "visible" => false},
+        "map" => %{"x" => 1, "y" => 10, "w" => 10, "h" => 12, "visible" => false}
       }
     }
   ]
