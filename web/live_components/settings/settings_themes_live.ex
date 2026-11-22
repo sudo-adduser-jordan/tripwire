@@ -66,7 +66,11 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
       phx-click="settings-tab"
       phx-value-tab="themes"
     />
-    <div class="tab-content w-full max-w-full overflow-hidden border-base-300 bg-base-100/50 p-3 sm:p-4">
+    <div
+      id="theme-settings"
+      phx-hook="ThemeSelect"
+      class="tab-content w-full max-w-full overflow-hidden border-base-300 bg-base-100/50 p-3 sm:p-4"
+    >
       <div class="flex min-h-0 w-full max-w-full flex-col gap-4 overflow-hidden">
         <p class="text-sm font-semibold">Themes</p>
         <%= for section <- theme_sections() do %>

@@ -14,6 +14,7 @@ import GlobalPaste from "./globalPaste"
 import SearchSuggest from "./searchSuggest"
 import CardGrid from "./cardGrid"
 import CharacterSwitch from "./characterSwitch"
+import ThemeSelect from "./themeSelect"
 
 const GridStack = {
     mounted() {
@@ -89,6 +90,7 @@ const hooks = {
     SearchSuggest: SearchSuggest,
     CardGrid: CardGrid,
     CharacterSwitch: CharacterSwitch,
+    ThemeSelect: ThemeSelect,
 }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
