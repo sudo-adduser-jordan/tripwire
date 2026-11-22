@@ -259,7 +259,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
               <button
                 class={[
                   "btn btn-ghost btn-xs",
-                  if(@tracking?, do: "btn-primary text-base-content"),
+                  if(@tracking?, do: "btn-primary"),
                   if(not @tracking_available?, do: "btn-disabled")
                 ]}
                 disabled={!@tracking_available?}
@@ -437,7 +437,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
       href={sig_link(@sig)}
       target="_blank"
       rel="noopener noreferrer"
-      class="link link-hover text-yellow-400"
+      class="link link-hover text-site-link"
     >
       {@sig.type_name}
     </a>

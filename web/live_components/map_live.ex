@@ -203,7 +203,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
             >
               <.icon
                 name={if @map_locked, do: "hero-lock-closed", else: "hero-lock-open"}
-                class={if @map_locked, do: "size-4 text-amber-400", else: "size-4"}
+                class={if @map_locked, do: "size-4 text-active-accent", else: "size-4"}
               />
             </button>
             <details id="show-chainLegend" class="dropdown">
@@ -348,7 +348,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   height="16"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke={node_color(system)}
+                  style={"--class-ink: #{node_color(system)}"}
+                  class="class-ink-stroke"
                   stroke-width="1.5"
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -361,18 +362,19 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   width={@node_w}
                   height={@node_h}
                   rx="8"
-                  stroke={node_stroke(system, @selected_system_id)}
                   stroke-dasharray={if MapSet.member?(@loop_hint_ids, system.id), do: "6 4"}
-                  style={
-                    if Map.get(assigns, :show_line_glow, true) and
-                         MapSet.member?(@loop_hint_ids, system.id),
-                       do: "filter: drop-shadow(0 0 6px #{node_color(system)})"
-                  }
-                  class={
-                    if system.id == @selected_system_id,
+                  style={"--class-ink: #{node_color(system)}"}
+                  class={[
+                    if(system.id == @selected_system_id,
                       do: "fill-primary/30 stroke-primary",
-                      else: "fill-base-200/75"
-                  }
+                      else: "fill-base-200/75 class-ink-stroke"
+                    ),
+                    if(
+                      Map.get(assigns, :show_line_glow, true) and
+                        MapSet.member?(@loop_hint_ids, system.id),
+                      do: "class-ink-glow"
+                    )
+                  ]}
                   stroke-width="2"
                 />
                 <g
@@ -465,8 +467,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   x={@node_w / 2}
                   y="20"
                   text-anchor="middle"
-                  fill={node_color(system)}
-                  class="text-sm font-semibold tracking-wider"
+                  style={"--class-ink: #{node_color(system)}"}
+                  class="class-ink-fill text-sm font-semibold tracking-wider"
                 >
                   {node_class(system)}
                 </text>
@@ -513,21 +515,20 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   :for={{label, tip, x, y, color, text_color} <- node_badges(system)}
                   :if={Map.get(assigns, :show_node_badges, true)}
                   transform={"translate(#{x}, #{y})"}
+                  style={"--badge-bg: #{color}; --badge-ink: #{text_color}"}
                 >
                   <rect
                     width={badge_width(label)}
                     height="16"
                     rx="4"
-                    style={"fill: #{color}"}
                     stroke-width="0.5"
-                    class="stroke-base-content/30"
+                    class="badge-swatch stroke-base-content/30"
                   />
                   <text
                     x={badge_width(label) / 2}
                     y="12"
                     text-anchor="middle"
-                    style={"fill: #{text_color}"}
-                    class="text-[10px] font-semibold"
+                    class="badge-swatch-ink text-[10px] font-semibold"
                   >
                     {label}<title>{tip}</title>
                   </text>
@@ -602,9 +603,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   defp node_label(system), do: system.alias || system.name
 
   defp node_color(system), do: Tripwire.Systems.color(system)
-
-  defp node_stroke(system, selected_id) when system.id == selected_id, do: nil
-  defp node_stroke(system, _selected_id), do: node_color(system)
 
   defp visible_connections(assigns) do
     connections = Map.get(assigns, :connections, [])

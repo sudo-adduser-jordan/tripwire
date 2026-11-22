@@ -1,6 +1,79 @@
 import * as echarts from 'echarts'
 
 let stackedChart = null
+let colorContext = null
+
+function colorContext2d() {
+    colorContext = colorContext || document.createElement("canvas").getContext("2d")
+    return colorContext
+}
+
+function cssColor(name, fallback) {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    if (!raw) return fallback
+    const context = colorContext2d()
+    const sentinel = "#010203"
+    context.fillStyle = sentinel
+    context.fillStyle = raw
+    return context.fillStyle === sentinel ? fallback : context.fillStyle
+}
+
+function withAlpha(color, alpha) {
+    const context = colorContext2d()
+    context.fillStyle = color
+    const resolved = context.fillStyle
+    if (resolved.startsWith("#")) {
+        const red = parseInt(resolved.slice(1, 3), 16)
+        const green = parseInt(resolved.slice(3, 5), 16)
+        const blue = parseInt(resolved.slice(5, 7), 16)
+        return `rgba(${red}, ${green}, ${blue}, ${alpha})`
+    }
+    const match = resolved.match(/rgba?\(([^)]+)\)/)
+    if (!match) return resolved
+    const [red, green, blue] = match[1].split(",").map(Number)
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`
+}
+
+function themeOption() {
+    const ink = cssColor("--color-base-content", "#e4e4e8")
+    const muted = withAlpha(ink, 0.62)
+    const faint = withAlpha(ink, 0.12)
+    const surface = cssColor("--color-base-200", "#1f1f23")
+    const border = cssColor("--color-base-300", "#141417")
+
+    return {
+        textStyle: { color: muted },
+        tooltip: {
+            backgroundColor: surface,
+            borderColor: border,
+            textStyle: { color: ink, fontSize: 12 },
+            axisPointer: { label: { backgroundColor: muted, color: surface } },
+        },
+        xAxis: [
+            {
+                axisLabel: { color: muted },
+                axisLine: { lineStyle: { color: border } },
+                splitLine: { show: false },
+            },
+        ],
+        yAxis: [
+            {
+                axisLabel: { color: muted },
+                axisLine: { show: false },
+                splitLine: { lineStyle: { color: faint } },
+            },
+        ],
+    }
+}
+
+function applyTheme() {
+    if (stackedChart) stackedChart.setOption(themeOption())
+}
+
+const refreshChartTheme = () => requestAnimationFrame(() => applyTheme())
+
+document.addEventListener("phx:set-mode", refreshChartTheme)
+document.addEventListener("phx:set-theme", refreshChartTheme)
 
 const stackedChartOptions = {
     backgroundColor: 'transparent',
@@ -140,7 +213,9 @@ function initSystemChart(dom) {
 
     stackedChart = echarts.init(target)
     stackedChart.setOption(stackedChartOptions)
+    applyTheme()
     applyData(readDataset(target))
+    window.TripwireCharts.instance = stackedChart
 
     new ResizeObserver(() => {
         if (stackedChart) stackedChart.resize()

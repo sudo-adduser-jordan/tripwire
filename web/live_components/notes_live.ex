@@ -209,7 +209,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
               </div>
             </form>
             <div :if={@editing_comment_id != comment.id}>
-              <div class="markdown space-y-1 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/40 [&_blockquote]:pl-2 [&_blockquote]:opacity-70 [&_code]:rounded [&_code]:bg-black/30 [&_code]:px-1 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h3]:text-sm [&_h3]:font-bold [&_h4]:font-bold [&_h5]:font-bold [&_h6]:font-bold [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-black/30 [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-5">
+              <div class="markdown space-y-1 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/40 [&_blockquote]:pl-2 [&_blockquote]:opacity-70 [&_code]:rounded [&_code]:bg-base-content/10 [&_code]:px-1 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h3]:text-sm [&_h3]:font-bold [&_h4]:font-bold [&_h5]:font-bold [&_h6]:font-bold [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-base-content/10 [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-5">
                 {Phoenix.HTML.raw(Tripwire.Markdown.to_html(comment.body))}
               </div>
               <div class="mt-1 flex items-center justify-between text-xs opacity-60">

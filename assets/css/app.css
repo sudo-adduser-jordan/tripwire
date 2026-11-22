@@ -126,7 +126,7 @@
   --color-primary: oklch(85% 0.01 285);
   --color-primary-content: oklch(22% 0.01 285);
   --color-secondary: oklch(55% 0.015 285);
-  --color-secondary-content: oklch(15% 0.005 285);
+  --color-secondary-content: oklch(98% 0.01 285);
   --color-accent: oklch(70% 0.02 285);
   --color-accent-content: oklch(20% 0.01 285);
   --color-neutral: oklch(27% 0.008 285);
@@ -196,7 +196,7 @@
   --color-primary: oklch(70% 0.14 250);
   --color-primary-content: oklch(16% 0.03 255);
   --color-secondary: oklch(55% 0.05 245);
-  --color-secondary-content: oklch(15% 0.015 250);
+  --color-secondary-content: oklch(98% 0.015 250);
   --color-accent: oklch(72% 0.14 210);
   --color-accent-content: oklch(17% 0.03 220);
   --color-neutral: oklch(26% 0.03 255);
@@ -266,7 +266,7 @@
   --color-primary: oklch(68% 0.19 45);
   --color-primary-content: oklch(18% 0.04 45);
   --color-secondary: oklch(55% 0.08 50);
-  --color-secondary-content: oklch(15% 0.02 55);
+  --color-secondary-content: oklch(98% 0.02 55);
   --color-accent: oklch(72% 0.16 80);
   --color-accent-content: oklch(20% 0.035 75);
   --color-neutral: oklch(26% 0.03 45);
@@ -371,7 +371,7 @@
   --color-primary: oklch(72% 0.19 145);
   --color-primary-content: oklch(16% 0.045 150);
   --color-secondary: oklch(55% 0.08 120);
-  --color-secondary-content: oklch(15% 0.02 130);
+  --color-secondary-content: oklch(98% 0.02 130);
   --color-accent: oklch(68% 0.18 50);
   --color-accent-content: oklch(18% 0.04 50);
   --color-neutral: oklch(24% 0.03 150);
@@ -498,6 +498,23 @@
   --depth: 1;
   --noise: 0;
 }
+:root {
+  --theme-primary: var(--color-primary);
+  --theme-primary-content: var(--color-primary-content);
+  --theme-secondary: var(--color-secondary);
+  --theme-secondary-content: var(--color-secondary-content);
+  --theme-accent: var(--color-accent);
+  --theme-accent-content: var(--color-accent-content);
+  --color-info: oklch(54% 0.19 258);
+  --color-info-content: oklch(97% 0.013 236.62);
+  --color-success: oklch(50% 0.15 160);
+  --color-success-content: oklch(98% 0.014 160);
+  --color-warning: oklch(56% 0.179 58.318);
+  --color-warning-content: oklch(98% 0.022 95.277);
+  --color-error: oklch(55% 0.23 22);
+  --color-error-content: oklch(97% 0.015 22);
+}
+
 @custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
 @custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
 @custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
@@ -512,16 +529,32 @@ html[data-mode="light"] {
   --color-base-content: oklch(21% 0.006 285.885);
 }
 
-html[data-mode="light"] :is(.input, .select, .textarea) {
+html[data-mode="light"] :is(.input, .select, .textarea, .field-surface) {
   background-color: var(--color-base-200);
+}
+
+html[data-mode="light"] body {
+  --color-primary: oklch(from var(--theme-primary) clamp(0.36, l, 0.5) c h);
+  --color-primary-content: oklch(from var(--theme-primary) 0.98 0.02 h);
+  --color-secondary: oklch(from var(--theme-secondary) clamp(0.36, l, 0.5) c h);
+  --color-secondary-content: oklch(from var(--theme-secondary) 0.98 0.02 h);
+  --color-accent: oklch(from var(--theme-accent) clamp(0.36, l, 0.5) c h);
+  --color-accent-content: oklch(from var(--theme-accent) 0.98 0.02 h);
 }
 
 html[data-mode="light"] .eve-landing {
   color-scheme: dark;
+  color: var(--color-base-content);
   --color-base-100: oklch(30.33% 0.016 252.42);
   --color-base-200: oklch(25.26% 0.014 253.1);
   --color-base-300: oklch(20.15% 0.012 254.09);
   --color-base-content: oklch(97.807% 0.029 256.847);
+  --color-primary: var(--theme-primary);
+  --color-primary-content: var(--theme-primary-content);
+  --color-secondary: var(--theme-secondary);
+  --color-secondary-content: var(--theme-secondary-content);
+  --color-accent: var(--theme-accent);
+  --color-accent-content: var(--theme-accent-content);
 }
 
 [data-phx-session], [data-phx-teleported-src] { display: contents }
@@ -704,6 +737,72 @@ html[data-mode="light"] .eve-landing {
   }
 }
 
+@layer components {
+  .field-surface {
+    background-color: var(--color-base-100);
+  }
+
+  .text-active-accent {
+    color: #fbbf24;
+  }
+
+  .text-site-link {
+    color: #fbbf24;
+  }
+
+  .class-ink {
+    color: var(--class-ink);
+  }
+
+  .class-ink-fill {
+    fill: var(--class-ink);
+  }
+
+  .class-ink-stroke {
+    stroke: var(--class-ink);
+  }
+
+  .class-ink-glow {
+    filter: drop-shadow(0 0 6px var(--class-ink));
+  }
+
+  .badge-swatch {
+    fill: var(--badge-bg);
+  }
+
+  .badge-swatch-ink {
+    fill: var(--badge-ink);
+  }
+}
+
+html[data-mode="light"] .text-active-accent {
+  color: #b45309;
+}
+
+html[data-mode="light"] .text-site-link {
+  color: #a16207;
+}
+
+html[data-mode="light"] .class-ink {
+  color: color-mix(in oklab, var(--class-ink) 68%, black);
+}
+
+html[data-mode="light"] .class-ink-fill {
+  fill: color-mix(in oklab, var(--class-ink) 68%, black);
+}
+
+html[data-mode="light"] .class-ink-stroke {
+  stroke: color-mix(in oklab, var(--class-ink) 68%, black);
+}
+
+html[data-mode="light"] .class-ink-glow {
+  filter: drop-shadow(0 0 6px color-mix(in oklab, var(--class-ink) 68%, black));
+}
+
+html[data-mode="light"] .badge-swatch {
+  fill: color-mix(in oklab, var(--badge-bg) 78%, black);
+}
+
 @media (max-width: 640px) {
   #settings-widget .tab {
     padding-left: 0.5rem;
@@ -726,4 +825,12 @@ html[data-mode="light"] .sso-white {
 
 html[data-mode="light"] .sso-black {
   display: inline;
+}
+
+html[data-mode="light"] .eve-landing .sso-white {
+  display: inline;
+}
+
+html[data-mode="light"] .eve-landing .sso-black {
+  display: none;
 }

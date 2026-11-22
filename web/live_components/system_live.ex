@@ -116,7 +116,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
                   }
                   class={
                     if selected_favorite?(@systems, @selected_system_id),
-                      do: "size-5 text-amber-400",
+                      do: "size-5 text-active-accent",
                       else: "size-5 opacity-60"
                   }
                 />
@@ -288,8 +288,8 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
     <div class="min-w-0 text-xs">
       <p class="flex min-w-0 items-center gap-x-2">
         <span
-          class="shrink-0 font-semibold"
-          style={"color: #{Systems.color(@system)}"}
+          class="class-ink shrink-0 font-semibold"
+          style={"--class-ink: #{Systems.color(@system)}"}
         >
           {Systems.display_class(@system) || "Unknown"}
         </span>

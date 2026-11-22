@@ -1302,7 +1302,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     view |> element("#toggle-lock") |> render_click()
     html = render(view)
     assert html =~ "hero-lock-closed"
-    assert html =~ "text-amber-400"
+    assert html =~ "text-active-accent"
     assert html =~ ~s|data-locked="true"|
 
     view |> element("#toggle-lock") |> render_click()
@@ -1553,7 +1553,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     html = render(view)
     assert html =~ "hero-star-solid"
-    assert html =~ "text-amber-400"
+    assert html =~ "text-active-accent"
     assert Mapping.get_system!(system.id).favorite
 
     assert render(view) =~ "favorites-list"
