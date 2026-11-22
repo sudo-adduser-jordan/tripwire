@@ -3,7 +3,7 @@ defmodule Tripwire.SyncServer do
 
   require Logger
 
-  alias Tripwire.{Accounts, ESI, Mapping, Repo}
+  alias Tripwire.{Accounts, ESI, Mapping, Masks, Repo}
 
   @corp_sync_interval 3 * 60 * 1000
   @activity_interval 60 * 60 * 1000
@@ -57,6 +57,16 @@ defmodule Tripwire.SyncServer do
         {:error, reason} ->
           Logger.debug("Corp sync skipped for #{character.name}: #{inspect(reason)}")
       end
+    end
+
+    case Masks.prune_orphan_masks() do
+      [] ->
+        :ok
+
+      masks ->
+        Logger.info(
+          "Pruned #{length(masks)} orphaned masks: #{Enum.map_join(masks, ", ", & &1.name)}"
+        )
     end
   end
 

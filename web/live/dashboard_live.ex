@@ -683,16 +683,22 @@ defmodule TripwireWeb.DashboardLive do
          %{} = character <- Accounts.get_character(char_id),
          {:ok, _} <- Accounts.delete_character(character) do
       Tracking.stop_poller(character)
+      pruned_ids = Masks.prune_orphan_masks() |> MapSet.new(& &1.id)
       remaining = Enum.reject(socket.assigns.characters, &(&1.id == character.id))
       socket = assign(socket, :characters, remaining)
 
       if socket.assigns.character && socket.assigns.character.id == character.id do
+        socket = refresh_masks(socket, pruned_ids)
+
         case remaining do
           [next | _] -> {:noreply, push_navigate(socket, to: "/auth/switch/#{next.eve_id}")}
           [] -> {:noreply, push_navigate(socket, to: "/dashboard")}
         end
       else
-        {:noreply, put_flash(socket, :info, "Removed #{character.name}")}
+        {:noreply,
+         socket
+         |> after_masks_removed(pruned_ids)
+         |> put_flash(:info, "Removed #{character.name}")}
       end
     else
       _ -> {:noreply, put_flash(socket, :error, "Character not found")}
@@ -904,38 +910,10 @@ defmodule TripwireWeb.DashboardLive do
     with true <- admin?(socket),
          {:ok, mask} <- scoped_mask(socket, id),
          {:ok, _} <- Masks.delete_mask_full(mask) do
-      remaining = mask_options(socket) |> Enum.reject(&(&1.id == mask.id))
-
-      socket =
-        if socket.assigns.mask.id == mask.id do
-          next = List.first(remaining) || elem(Masks.ensure_demo_mask(), 1)
-
-          next_map =
-            case Mapping.list_maps_for_mask(next.id) do
-              [] -> elem(Mapping.create_map(%{name: "Home", mask_id: next.id}), 1)
-              [m | _] -> m
-            end
-
-          next_systems = chain_systems(socket, next_map)
-
-          socket
-          |> assign(:mask, next)
-          |> assign(:masks, remaining)
-          |> assign(:map, next_map)
-          |> assign(:maps, Mapping.list_maps_for_mask(next.id))
-          |> assign(:systems, next_systems)
-          |> assign(:connections, Mapping.list_connections_with_endpoints(next_map.id))
-          |> assign(:selected_system_id, nil)
-          |> assign(:selected_system_name, nil)
-          |> assign(:system_suggestions, [])
-          |> assign(:signatures, [])
-          |> assign(:comments, [])
-          |> patch_to_preferred(next_systems)
-        else
-          assign(socket, masks: remaining)
-        end
-
-      {:noreply, socket |> assign_admin_masks() |> put_flash(:info, "Deleted #{mask.name}")}
+      {:noreply,
+       socket
+       |> after_masks_removed(MapSet.new([mask.id]))
+       |> put_flash(:info, "Deleted #{mask.name}")}
     else
       false ->
         {:noreply, put_flash(socket, :error, "Admin access required")}
@@ -1647,6 +1625,28 @@ defmodule TripwireWeb.DashboardLive do
 
   defp assign_admin_masks(socket) do
     assign(socket, :admin_masks, masks_for_admin(socket))
+  end
+
+  defp refresh_masks(socket, removed_ids) do
+    socket
+    |> assign(:masks, Enum.reject(socket.assigns.masks, &MapSet.member?(removed_ids, &1.id)))
+    |> assign_admin_masks()
+  end
+
+  defp after_masks_removed(socket, removed_ids) do
+    socket = refresh_masks(socket, removed_ids)
+
+    if MapSet.member?(removed_ids, socket.assigns.mask.id) do
+      next = List.first(socket.assigns.masks) || elem(Masks.ensure_demo_mask(), 1)
+      map = replacement_map(socket, next)
+
+      socket
+      |> assign(:mask, next)
+      |> assign(:maps, Mapping.list_maps_for_mask(next.id))
+      |> assign_active_map(map)
+    else
+      socket
+    end
   end
 
   defp scoped_mask(socket, id) do

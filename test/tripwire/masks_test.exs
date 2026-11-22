@@ -95,6 +95,64 @@ defmodule Tripwire.MasksTest do
     assert Mapping.list_signatures(system.id) == []
   end
 
+  test "prune_orphan_masks/0 removes masks with no character in their corporation or alliance" do
+    {:ok, character} =
+      Accounts.upsert_character(%{
+        eve_id: 7,
+        name: "Corp Pilot Seven",
+        corporation_id: 98_000_010,
+        alliance_id: 99_000_010
+      })
+
+    {:ok, personal} = Masks.ensure_personal_mask(character)
+    {:ok, corp} = Masks.ensure_corporation_mask(character)
+    {:ok, alliance} = Masks.ensure_alliance_mask(character)
+    {:ok, ownerless} = Masks.create_mask(%{name: "Ownerless Corp", kind: "corporation"})
+    {:ok, corp_map} = Mapping.create_map(%{name: "Corp Chain", mask_id: corp.id})
+    {:ok, _} = Masks.ensure_demo_mask()
+
+    assert Masks.prune_orphan_masks() == []
+
+    {:ok, _} =
+      Accounts.update_character(character, %{corporation_id: 98_000_011, alliance_id: nil})
+
+    pruned = Masks.prune_orphan_masks()
+
+    assert Enum.sort(Enum.map(pruned, & &1.id)) == Enum.sort([corp.id, alliance.id])
+    assert Mapping.list_maps_for_mask(corp_map.mask_id) == []
+
+    assert Enum.sort(Enum.map(Masks.list_masks(), & &1.id)) ==
+             Enum.sort([personal.id, ownerless.id])
+  end
+
+  test "prune_orphan_masks/0 keeps a corporation mask while another character matches" do
+    {:ok, one} =
+      Accounts.upsert_character(%{
+        eve_id: 8,
+        name: "Corp Pilot Eight",
+        corporation_id: 98_000_020
+      })
+
+    {:ok, two} =
+      Accounts.upsert_character(%{
+        eve_id: 9,
+        name: "Corp Pilot Nine",
+        corporation_id: 98_000_020
+      })
+
+    {:ok, mask} = Masks.ensure_corporation_mask(one)
+
+    {:ok, _} = Accounts.update_character(one, %{corporation_id: 98_000_021})
+
+    assert Masks.prune_orphan_masks() == []
+    assert Enum.any?(Masks.list_masks(), &(&1.id == mask.id))
+
+    {:ok, _} = Accounts.delete_character(two)
+
+    assert [%{id: id}] = Masks.prune_orphan_masks()
+    assert id == mask.id
+  end
+
   defp signature_changeset(system, attrs) do
     Mapping.Signature.changeset(
       %Mapping.Signature{},

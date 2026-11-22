@@ -2711,6 +2711,51 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute has_element?(view, "#mask-card-#{demo_mask.id}")
   end
 
+  test "removing the last character of a corporation prunes its mask", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, other} =
+      Accounts.upsert_character(%{
+        eve_id: 43_500,
+        name: "Corp Pilot",
+        corporation_id: 98_000_044,
+        corporation_name: "Leaving Corp"
+      })
+
+    {:ok, corp_mask} = Masks.ensure_corporation_mask(other)
+
+    session =
+      Plug.Test.init_test_session(conn, %{
+        "current_user" => %{"id" => character.eve_id, "name" => character.name},
+        "character_ids" => [character.eve_id, other.eve_id]
+      })
+
+    {:ok, view, _html} = live(session, ~p"/dashboard")
+
+    view
+    |> element(~s|button[phx-click="switch-mask"][phx-value-id="#{corp_mask.id}"]|)
+    |> render_click()
+
+    assert view |> element("#topbar-mask") |> render() =~ "Leaving Corp"
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "account"})
+
+    view
+    |> element(~s|#character-card-#{other.id} button[title="Remove Corp Pilot"]|)
+    |> render_click()
+
+    refute has_element?(
+             view,
+             ~s|button[phx-click="switch-mask"][phx-value-id="#{corp_mask.id}"]|
+           )
+
+    assert view |> element("#topbar-mask") |> render() =~ "Private"
+    refute Enum.any?(Masks.list_masks(), &(&1.id == corp_mask.id))
+    assert Mapping.list_maps_for_mask(corp_mask.id) == []
+  end
+
   test "the personal mask is shared by every character", %{conn: conn, character: character} do
     {:ok, other} = Accounts.upsert_character(%{eve_id: 44_100, name: "Other Pilot"})
 

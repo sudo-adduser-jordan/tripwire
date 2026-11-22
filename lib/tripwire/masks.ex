@@ -124,6 +124,30 @@ defmodule Tripwire.Masks do
     |> Enum.sort_by(&{kind_rank(&1.kind), &1.name})
   end
 
+  def prune_orphan_masks do
+    corporation_ids =
+      Repo.all(from c in Character, where: not is_nil(c.corporation_id), select: c.corporation_id)
+
+    alliance_ids =
+      Repo.all(from c in Character, where: not is_nil(c.alliance_id), select: c.alliance_id)
+
+    orphaned =
+      Repo.all(
+        from(m in Mask,
+          where:
+            (m.kind == "corporation" and not is_nil(m.eve_owner_id) and
+               m.eve_owner_id not in ^corporation_ids) or
+              (m.kind == "alliance" and not is_nil(m.eve_owner_id) and
+                 m.eve_owner_id not in ^alliance_ids)
+        )
+      )
+
+    Enum.map(orphaned, fn mask ->
+      {:ok, _} = delete_mask_full(mask)
+      mask
+    end)
+  end
+
   defp kind_rank("personal"), do: 0
   defp kind_rank("corporation"), do: 1
   defp kind_rank("alliance"), do: 2
