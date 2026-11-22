@@ -431,15 +431,15 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                         <img
                           src={EveImages.character_portrait(occupant.eve_id, 64)}
                           alt=""
-                          class="size-7 shrink-0 rounded-full border border-primary"
+                          class="size-7 shrink-0 rounded border border-primary"
                           onerror={
                             "this.onerror=null;this.src='#{EveImages.unknown_character_portrait(64)}'"
                           }
                         />
                         <span class="min-w-0 truncate text-xs leading-tight">
                           <span class="font-semibold">{occupant.character_name}</span><span :if={
-                            occupant.ship_name
-                          }>{" - " <> occupant.ship_name}</span>
+                            ship_label(occupant)
+                          }>{" - " <> ship_label(occupant)}</span>
                         </span>
                       </div>
                     </div>
@@ -807,6 +807,26 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   end
 
   defp ship_fallback(_type_id), do: nil
+
+  defp ship_label(occupant) do
+    present_name(occupant[:ship_type_name]) || custom_ship_name(occupant[:ship_name])
+  end
+
+  defp custom_ship_name(name) do
+    case present_name(name) do
+      "/" -> nil
+      name -> name
+    end
+  end
+
+  defp present_name(name) when is_binary(name) do
+    case String.trim(name) do
+      "" -> nil
+      name -> name
+    end
+  end
+
+  defp present_name(_name), do: nil
 
   defp node_activity(stats, system_id) do
     case Map.get(stats, system_id) do

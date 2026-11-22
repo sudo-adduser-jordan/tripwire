@@ -90,6 +90,8 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp refresh_occupants(socket) do
+    presences = socket.assigns[:presences] || %{}
+
     occupants =
       case socket.assigns[:map] do
         nil ->
@@ -99,9 +101,20 @@ defmodule TripwireWeb.DashboardLive do
           map.id
           |> Tracking.list_occupants()
           |> Enum.filter(&mask_member?(&1, socket.assigns[:mask]))
+          |> Enum.map(&put_ship_type_name(&1, presences))
       end
 
     assign(socket, :occupants, occupants)
+  end
+
+  defp put_ship_type_name(occupant, presences) do
+    case Map.get(presences, occupant.eve_id) do
+      %{ship_type_name: name} when is_binary(name) and name != "" ->
+        Map.put(occupant, :ship_type_name, name)
+
+      _ ->
+        occupant
+    end
   end
 
   defp mask_member?(occupant, %{kind: "corporation", eve_owner_id: corp_id})
@@ -351,7 +364,8 @@ defmodule TripwireWeb.DashboardLive do
      |> assign(:character_online, data.character_online)
      |> assign(:ship_type_id, data.ship_type_id)
      |> assign(:presences, data.presences)
-     |> assign(:topbar_now, data.now)}
+     |> assign(:topbar_now, data.now)
+     |> refresh_occupants()}
   end
 
   def handle_info({:system_info_loaded, system_id, info}, socket) do

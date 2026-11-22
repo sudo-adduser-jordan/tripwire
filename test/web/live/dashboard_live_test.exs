@@ -125,6 +125,67 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert map_html =~ ~r|>\s*2\s*</text>|
   end
 
+  test "the tooltip prefers the ship type name and hides raw ship names", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    {:ok, _} =
+      Tripwire.Tracking.DemoPresence.ensure_started(character, map, system,
+        ship_name: "u'ⁿ'",
+        ship_type_id: 587
+      )
+
+    send(
+      view.pid,
+      {:topbar_loaded,
+       %{
+         tq_online: true,
+         tq_players: 1000,
+         current_system_name: "J150321",
+         character_online: true,
+         ship_type_id: 587,
+         presences: %{
+           character.eve_id => %{
+             system_name: "J150321",
+             online: true,
+             ship_name: "u'ⁿ'",
+             ship_type_id: 587,
+             ship_type_name: "Rifter"
+           }
+         },
+         now: DateTime.utc_now()
+       }}
+    )
+
+    html = view |> element("#chain-map") |> render()
+
+    assert has_element?(view, "#chain-map foreignobject", "Kariyo Astrien - Rifter")
+    refute html =~ "u'ⁿ'"
+  end
+
+  test "the tooltip hides a slash ship name", %{conn: conn, character: character} do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    {:ok, _} =
+      Tripwire.Tracking.DemoPresence.ensure_started(character, map, system,
+        ship_name: "/",
+        ship_type_id: 587
+      )
+
+    render_click(view, "refresh-occupants", %{})
+
+    html = view |> element("#chain-map") |> render()
+
+    assert html =~ "Kariyo Astrien"
+    refute html =~ "Kariyo Astrien - /"
+  end
+
   test "every session character with a token gets its own tracker", %{
     conn: conn,
     character: character
