@@ -122,16 +122,16 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
                 />
               </button>
             </li>
-            <li :if={selected_system(@systems, @selected_system_id)} class="px-2 pb-1">
-              <.system_info
-                system={selected_system(@systems, @selected_system_id)}
-                system_info={@system_info}
-              />
-            </li>
-            <li
-              :if={selected_system(@systems, @selected_system_id)}
-              class="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 pb-1 text-xs"
-            >
+          </ul>
+          <div
+            :if={selected_system(@systems, @selected_system_id)}
+            class="flex shrink-0 flex-col gap-y-1 px-2 pt-1"
+          >
+            <.system_info
+              system={selected_system(@systems, @selected_system_id)}
+              system_info={@system_info}
+            />
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
               <a
                 :for={link <- Systems.external_links(selected_system(@systems, @selected_system_id))}
                 href={link.url}
@@ -141,8 +141,8 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
               >
                 {link.label}
               </a>
-            </li>
-          </ul>
+            </div>
+          </div>
           <.chart_range_buttons
             chart_range={@chart_range}
             systems={@systems}
