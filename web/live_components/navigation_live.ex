@@ -232,13 +232,6 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
           </svg>
         </button>
         <.mode_toggle />
-        <form :if={@current_user} action="/auth/logout" method="post">
-          <input type="hidden" name="_method" value="delete" />
-          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-          <button type="submit" class="btn btn-ghost btn-sm h-8 min-h-8 p-0">
-            Logout
-          </button>
-        </form>
         <button
           class="btn btn-primary btn-sm mr-2 h-8 min-h-8"
           id="settings-button"

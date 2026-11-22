@@ -11,6 +11,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
   attr :mask, :any, default: nil
   attr :sso_configured?, :boolean, default: false
   attr :presences, :map, default: %{}
+  attr :current_user, :map, default: nil
 
   def settings_account_live(assigns) do
     ~H"""
@@ -25,11 +26,24 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
     />
     <div class="tab-content w-full max-w-full overflow-hidden p-3 sm:p-4">
       <div class="flex min-h-0 w-full max-w-full flex-col gap-3 overflow-hidden">
-        <div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          <p class="text-sm font-semibold">Account</p>
-          <p :if={@character && @character.last_login_at} class="truncate text-xs opacity-60">
-            Last login: {@character.last_login_at}
-          </p>
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <p class="text-sm font-semibold">Account</p>
+            <p :if={@character && @character.last_login_at} class="truncate text-xs opacity-60">
+              Last login: {@character.last_login_at}
+            </p>
+          </div>
+          <form :if={@current_user} action="/auth/logout" method="post" class="shrink-0">
+            <input type="hidden" name="_method" value="delete" />
+            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+            <button
+              type="submit"
+              class="btn btn-ghost btn-xs"
+              title={"Log out #{@current_user.name}"}
+            >
+              Logout
+            </button>
+          </form>
         </div>
 
         <div class="flex items-center justify-between gap-2">

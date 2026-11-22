@@ -35,6 +35,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   attr :mask, :any, default: nil
   attr :sso_configured?, :boolean, default: false
   attr :presences, :map, default: %{}
+  attr :current_user, :map, default: nil
 
   def settings_live(assigns) do
     ~H"""
@@ -64,6 +65,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
             mask={@mask}
             sso_configured?={@sso_configured?}
             presences={@presences}
+            current_user={@current_user}
           />
           <MapLive.settings_map_live
             map_layout={@map_layout}
