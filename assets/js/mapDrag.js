@@ -1,15 +1,27 @@
 const DRAG_THRESHOLD = 4
 const VIEW_W = 1000
 const VIEW_H = 700
-const PAD_Y = 40
+const PAD = 40
+const NODE_W = 140
+const NODE_H = 88
 const MIN_ZOOM = 0.25
 const MAX_ZOOM = 4
 const ZOOM_STEP = 1.25
 const DEFAULT_ZOOM = 1 / ZOOM_STEP
-const WHEEL_SENS = 0.0015
 
 function clampZoom(z) {
     return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z))
+}
+
+function clampValue(value, low, high) {
+    return Math.min(high, Math.max(low, value))
+}
+
+function clampAxis(value, min, max, size) {
+    const low = min - PAD
+    const high = max + PAD - size
+    if (low <= high) return clampValue(value, low, high)
+    return (min + max - size) / 2
 }
 
 const MapDrag = {
@@ -21,7 +33,7 @@ const MapDrag = {
     this.startClient = null
     this.origin = null
     this.scale = null
-    this._top = null
+    this._bounds = null
     this._raf = 0
     this._pending = null
     this.zoom = DEFAULT_ZOOM
@@ -29,8 +41,8 @@ const MapDrag = {
     this.ox = at.x
     this.oy = at.y
     if (at.w) this.zoom = clampZoom(VIEW_W / at.w)
-    this._top = this.topBound()
-    this.updateZoomLabel()
+    this._bounds = this.bounds()
+    this.setView(this.ox, this.oy, this.zoom)
 
     this.onPointerDown = (ev) => {
       if (this.isLocked()) return
@@ -42,7 +54,7 @@ const MapDrag = {
       this.startClient = { x: ev.clientX, y: ev.clientY }
       this.scale = { x: ctm.a, y: ctm.d }
       this.origin = { x: this.ox, y: this.oy }
-      this._top = this.topBound()
+      this._bounds = this.bounds()
       ev.preventDefault()
     }
 
@@ -51,7 +63,7 @@ const MapDrag = {
       const dx = (ev.clientX - this.startClient.x) / this.scale.x
       const dy = (ev.clientY - this.startClient.y) / this.scale.y
       if (!this.suppressed && Math.hypot(dx, dy) > DRAG_THRESHOLD) this.suppressed = true
-      this._pending = this.clampView(this.origin.x - dx, this.origin.y - dy)
+      this._pending = { x: this.origin.x - dx, y: this.origin.y - dy }
       if (!this._raf) {
         this._raf = requestAnimationFrame(() => {
           this._raf = 0
@@ -86,22 +98,6 @@ const MapDrag = {
       ev.preventDefault()
     }
 
-    this.onWheel = (ev) => {
-      if (this.isLocked()) return
-      ev.preventDefault()
-      let dy = ev.deltaY
-      if (ev.deltaMode === 1) dy *= 33
-      if (!dy) return
-      const factor = Math.exp(-dy * WHEEL_SENS)
-      const rect = this.svg.getBoundingClientRect()
-      if (!rect.width || !rect.height) return
-      const w = VIEW_W / this.zoom
-      const h = VIEW_H / this.zoom
-      const fx = (ev.clientX - rect.left) / rect.width
-      const fy = (ev.clientY - rect.top) / rect.height
-      this.zoomAt(this.ox + fx * w, this.oy + fy * h, factor)
-    }
-
     this.onZoomIn = () => {
       if (this.isLocked()) return
       this.zoomBy(ZOOM_STEP)
@@ -112,7 +108,7 @@ const MapDrag = {
     }
     this.onZoomReset = () => {
       if (this.isLocked()) return
-      this.setView(this.ox, this.oy, DEFAULT_ZOOM)
+      this.zoomTo(DEFAULT_ZOOM)
     }
 
     this.onKeyDown = (ev) => {
@@ -125,7 +121,7 @@ const MapDrag = {
         this.zoomBy(1 / ZOOM_STEP)
       } else if (ev.key === "0") {
         ev.preventDefault()
-        this.setView(this.ox, this.oy, DEFAULT_ZOOM)
+        this.zoomTo(DEFAULT_ZOOM)
       }
     }
 
@@ -142,19 +138,17 @@ const MapDrag = {
 
     this.handleEvent("reset-pan", ({ x, y }) => {
       if (this.isLocked()) return
-      this._top = this.topBound()
-      const next = this.clampView(x, y)
-      this.setView(next.x, next.y, DEFAULT_ZOOM)
+      this._bounds = this.bounds()
+      this.setView(x, y, DEFAULT_ZOOM)
     })
 
     this.handleEvent("map-zoom", ({ zoom }) => {
       if (this.isLocked()) return
-      this.setView(this.ox, this.oy, zoom * DEFAULT_ZOOM)
+      this.zoomTo((zoom || 1) * DEFAULT_ZOOM)
     })
 
     this.svg.addEventListener("pointerdown", this.onPointerDown)
     this.svg.addEventListener("click", this.onClick, true)
-    this.svg.addEventListener("wheel", this.onWheel, { passive: false })
     this.svg.addEventListener("tripwire:zoom-in", this.onZoomIn)
     this.svg.addEventListener("tripwire:zoom-out", this.onZoomOut)
     this.svg.addEventListener("tripwire:zoom-reset", this.onZoomReset)
@@ -165,13 +159,8 @@ const MapDrag = {
   },
 
   updated() {
-    this._top = this.topBound()
-    const at = this.viewBox()
-    const w = VIEW_W / this.zoom
-    const h = VIEW_H / this.zoom
-    if (at.x !== this.ox || at.y !== this.oy || at.w !== w || at.h !== h) {
-      this.setView(this.ox, this.oy, this.zoom)
-    }
+    this._bounds = this.bounds()
+    this.setView(this.ox, this.oy, this.zoom)
   },
 
   destroyed() {
@@ -179,7 +168,6 @@ const MapDrag = {
     if (!this.svg) return
     this.svg.removeEventListener("pointerdown", this.onPointerDown)
     this.svg.removeEventListener("click", this.onClick, true)
-    this.svg.removeEventListener("wheel", this.onWheel)
     this.svg.removeEventListener("tripwire:zoom-in", this.onZoomIn)
     this.svg.removeEventListener("tripwire:zoom-out", this.onZoomOut)
     this.svg.removeEventListener("tripwire:zoom-reset", this.onZoomReset)
@@ -206,10 +194,11 @@ const MapDrag = {
 
   setView(x, y, zoom) {
     const z = clampZoom(zoom || this.zoom)
+    const next = this.clampView(x, y, z)
     this.zoom = z
-    this.ox = x
-    this.oy = y
-    this.svg.setAttribute("viewBox", `${x} ${y} ${VIEW_W / z} ${VIEW_H / z}`)
+    this.ox = next.x
+    this.oy = next.y
+    this.svg.setAttribute("viewBox", `${next.x} ${next.y} ${VIEW_W / z} ${VIEW_H / z}`)
     this.updateZoomLabel()
   },
 
@@ -219,14 +208,19 @@ const MapDrag = {
     this.zoomAt(this.ox + w / 2, this.oy + h / 2, factor)
   },
 
+  zoomTo(zoom) {
+    const target = clampZoom(zoom)
+    if (target === this.zoom) return
+    this.zoomBy(target / this.zoom)
+  },
+
   zoomAt(svgX, svgY, factor) {
     const next = clampZoom(this.zoom * factor)
     if (next === this.zoom) return
     const ratio = this.zoom / next
     const nx = svgX - (svgX - this.ox) * ratio
     const ny = svgY - (svgY - this.oy) * ratio
-    const clamped = this.clampView(nx, ny)
-    this.setView(clamped.x, clamped.y, next)
+    this.setView(nx, ny, next)
   },
 
   updateZoomLabel() {
@@ -234,20 +228,41 @@ const MapDrag = {
     if (label) label.textContent = `${Math.round((this.zoom / DEFAULT_ZOOM) * 100)}%`
   },
 
-  clampView(x, y) {
-    const top = this._top
-    return { x, y: top === null || top === undefined ? y : Math.max(y, top) }
+  clampView(x, y, zoom) {
+    const bounds = this._bounds
+    if (!bounds) return { x, y }
+    const z = zoom || this.zoom
+    return {
+      x: clampAxis(x, bounds.minX, bounds.maxX, VIEW_W / z),
+      y: clampAxis(y, bounds.minY, bounds.maxY, VIEW_H / z),
+    }
   },
 
-  topBound() {
+  nodeSize() {
+    const w = Number.parseFloat(this.svg.dataset.nodeW)
+    const h = Number.parseFloat(this.svg.dataset.nodeH)
+    return {
+      w: Number.isFinite(w) ? w : NODE_W,
+      h: Number.isFinite(h) ? h : NODE_H,
+    }
+  },
+
+  bounds() {
     const nodes = this.svg.querySelectorAll("g[data-system-id]")
     if (!nodes.length) return null
-    let min = Infinity
+    const { w, h } = this.nodeSize()
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
     nodes.forEach((node) => {
-      const [_x, y] = parseTransform(node.getAttribute("transform"))
-      if (y < min) min = y
+      const [x, y] = parseTransform(node.getAttribute("transform"))
+      if (x < minX) minX = x
+      if (y < minY) minY = y
+      if (x + w > maxX) maxX = x + w
+      if (y + h > maxY) maxY = y + h
     })
-    return min - PAD_Y
+    return { minX, minY, maxX, maxY }
   },
 }
 

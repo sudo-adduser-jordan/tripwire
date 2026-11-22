@@ -11,19 +11,26 @@ defmodule Tripwire.MappingTest do
     %{mask: mask}
   end
 
-  test "clamp_pan/3 only clamps to the top edge" do
+  test "clamp_pan/3 centers a chain that fits the view" do
     systems =
       for x <- [0.0, 500.0, 1000.0], y <- [100.0, 400.0] do
         %Mapping.MapSystem{x: x, y: y}
       end
 
-    assert Mapping.clamp_pan(systems, 0.0, 0.0) == {0.0, 60.0}
-    assert Mapping.clamp_pan(systems, -10_000.0, -10_000.0) == {-10_000.0, 60.0}
-    assert Mapping.clamp_pan(systems, 10_000.0, 10_000.0) == {10_000.0, 10_000.0}
+    assert Mapping.clamp_pan(systems, 0.0, 0.0) == {-55.0, -143.5}
+    assert Mapping.clamp_pan(systems, -10_000.0, -10_000.0) == {-55.0, -143.5}
+    assert Mapping.clamp_pan(systems, 10_000.0, 10_000.0) == {-55.0, -143.5}
     assert Mapping.clamp_pan([], 10_000.0, -10_000.0) == {10_000.0, -10_000.0}
 
     small = [%Mapping.MapSystem{x: 100.0, y: 100.0}]
-    assert Mapping.clamp_pan(small, 999.0, 999.0) == {999.0, 999.0}
+    assert Mapping.clamp_pan(small, 999.0, 999.0) == {-455.0, -293.5}
+  end
+
+  test "clamp_pan/3 keeps an overflowing chain inside the padded edges" do
+    systems = [%Mapping.MapSystem{x: 0.0, y: 0.0}, %Mapping.MapSystem{x: 3000.0, y: 0.0}]
+
+    assert Mapping.clamp_pan(systems, -10_000.0, 0.0) == {-40.0, -393.5}
+    assert Mapping.clamp_pan(systems, 10_000.0, 0.0) == {1930.0, -393.5}
   end
 
   test "home_center/2 centers the home system horizontally" do
@@ -34,18 +41,17 @@ defmodule Tripwire.MappingTest do
     other = %Mapping.MapSystem{solar_system_id: 2, x: 1000.0, y: 220.0}
     map = %Mapping.Map{home_solar_system_id: 1}
 
-    {node_w, _node_h} = Mapping.node_size()
+    assert Mapping.home_center([home, other], map) == {175.0, -253.5}
 
-    {x, y} = Mapping.home_center([home, other], map)
-    assert_in_delta x, 460.0 + node_w / 2 - 625.0, 0.001
-    assert y == 20.0
+    left = %Mapping.MapSystem{solar_system_id: 3, x: 0.0, y: 60.0}
+    right = %Mapping.MapSystem{solar_system_id: 4, x: 1800.0, y: 60.0}
+    wide_home = %{home | x: 900.0}
 
-    {x, y} = Mapping.home_center([other, %{home | x: 0.0}], map)
-    assert_in_delta x, node_w / 2 - 625.0, 0.001
-    assert y == 20.0
+    assert Mapping.home_center([left, wide_home, right], map) == {345.0, -333.5}
+    assert Mapping.home_center([left, %{home | x: 0.0}, right], map) == {-40.0, -333.5}
 
     assert Mapping.home_center([home, other], %Mapping.Map{home_solar_system_id: 99}) ==
-             {0, 20.0}
+             {175.0, -253.5}
 
     assert Mapping.home_center([], nil) == {0, 0}
   end

@@ -165,7 +165,7 @@ defmodule Tripwire.Mapping do
     |> Enum.map(fn conn -> {conn, conn.from_system, conn.to_system} end)
   end
 
-  @pan_pad_y 40
+  @pan_pad 40
   @node_w 140.0
   @node_h 88.0
   @view_w 1000.0
@@ -179,24 +179,53 @@ defmodule Tripwire.Mapping do
   def view_size, do: {@view_w / @default_zoom, @view_h / @default_zoom}
 
   def clamp_pan(systems, x, y) do
-    {x, clamp_top(systems, y)}
+    {view_w, view_h} = view_size()
+
+    case system_bounds(systems) do
+      nil ->
+        {x, y}
+
+      {min_x, min_y, max_x, max_y} ->
+        {clamp_axis(x, min_x, max_x, view_w), clamp_axis(y, min_y, max_y, view_h)}
+    end
   end
 
   def home_center(systems, map) do
     with solar when is_integer(solar) <- map && map.home_solar_system_id,
          home when not is_nil(home) <- Enum.find(systems, &(&1.solar_system_id == solar)) do
-      {view_w, view_h} = view_size()
-      clamp_pan(systems, home.x + @node_w / 2 - view_w / 2, home.y + @node_h / 2 - view_h / 2)
+      {view_w, _view_h} = view_size()
+      clamp_pan(systems, home.x + @node_w / 2 - view_w / 2, top_pan(systems))
     else
       _ -> clamp_pan(systems, 0, 0)
     end
   end
 
-  defp clamp_top([], value), do: value
+  defp top_pan([]), do: 0
 
-  defp clamp_top(systems, value) do
-    top = systems |> Enum.map(&(&1.y - @pan_pad_y)) |> Enum.min()
-    max(value, top)
+  defp top_pan(systems) do
+    systems |> Enum.map(&(&1.y - @pan_pad)) |> Enum.min()
+  end
+
+  defp system_bounds([]), do: nil
+
+  defp system_bounds(systems) do
+    Enum.reduce(systems, nil, fn system, acc ->
+      {min_x, min_y, max_x, max_y} = acc || {system.x, system.y, system.x, system.y}
+
+      {min(min_x, system.x), min(min_y, system.y), max(max_x, system.x + @node_w),
+       max(max_y, system.y + @node_h)}
+    end)
+  end
+
+  defp clamp_axis(value, first, last, size) do
+    low = first - @pan_pad
+    high = last + @pan_pad - size
+
+    if low <= high do
+      value |> max(low) |> min(high)
+    else
+      (first + last - size) / 2
+    end
   end
 
   def depth_layers(systems, connections) do

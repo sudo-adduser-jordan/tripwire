@@ -10,6 +10,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   @occupant_row_h 28
   @occupant_row_gap 4
   @occupant_tip_pad 8
+  @occupant_badge_inset 6
   @map_width 1000.0
 
   def update(assigns, socket) do
@@ -285,6 +286,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
             phx-hook="MapDrag"
             data-selected={@selected_system_id}
             data-locked={to_string(@map_locked)}
+            data-node-w={@node_w}
+            data-node-h={@node_h}
           >
             <g id="map-guides">
               <line
@@ -794,7 +797,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
           y: y,
           width: @occupant_tip_w,
           height: height,
-          badge_x: node_w - 14
+          badge_x: node_w - 14 - @occupant_badge_inset
         }
     end
   end

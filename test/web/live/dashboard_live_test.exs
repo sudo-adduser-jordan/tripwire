@@ -638,13 +638,16 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element("#chain-zoom-reset")
     |> render_click()
 
-    home =
-      map.id
-      |> Mapping.list_systems()
-      |> Enum.find(&(&1.solar_system_id == map.home_solar_system_id))
+    systems = map.id |> Mapping.list_systems() |> Enum.sort_by(& &1.id)
+    home = Enum.find(systems, &(&1.solar_system_id == map.home_solar_system_id))
+    {node_w, _node_h} = Mapping.node_size()
+    {pan_x, pan_y} = Mapping.home_center(systems, map)
 
-    assert_push_event(view, "reset-pan", %{x: x, y: 20.0})
-    assert_in_delta x, home.x + elem(Mapping.node_size(), 0) / 2 - 625.0, 0.001
+    assert_push_event(view, "reset-pan", %{x: x, y: y})
+    assert_in_delta x, pan_x, 0.001
+    assert_in_delta y, pan_y, 0.001
+    assert home.x - x < 1250.0
+    assert home.x + node_w - x > 0.0
     assert render(view) =~ "1250.0 875.0"
 
     reloaded = Mapping.get_system!(system.id)
@@ -1177,20 +1180,19 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element("#chain-zoom-reset")
     |> render_click()
 
-    home =
-      map.id
-      |> Mapping.list_systems()
-      |> Enum.find(&(&1.solar_system_id == map.home_solar_system_id))
+    systems = Mapping.list_systems(map.id)
+    {pan_x, pan_y} = Mapping.home_center(systems, map)
 
-    assert_push_event(view, "reset-pan", %{x: x, y: 20.0})
-    assert_in_delta x, home.x + elem(Mapping.node_size(), 0) / 2 - 625.0, 0.001
+    assert_push_event(view, "reset-pan", %{x: x, y: y})
+    assert_in_delta x, pan_x, 0.001
+    assert_in_delta y, pan_y, 0.001
   end
 
-  test "reset zoom without a home falls back to the top-left pan", %{
+  test "reset zoom without a home centers the chain", %{
     conn: conn,
     character: character
   } do
-    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+    {_mask, map, _system} = setup_with_system(%{character: character}, "J150321")
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -1198,7 +1200,11 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element("#chain-zoom-reset")
     |> render_click()
 
-    assert_push_event(view, "reset-pan", %{x: 0, y: 20.0})
+    [system] = map.id |> Mapping.list_systems()
+
+    assert_push_event(view, "reset-pan", %{x: x, y: y})
+    assert_in_delta x, system.x + 70.0 - 625.0, 0.001
+    assert_in_delta y, system.y + 44.0 - 437.5, 0.001
   end
 
   test "header lock button toggles server-side and yellows when locked", %{
