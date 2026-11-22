@@ -167,6 +167,26 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute html =~ "u'ⁿ'"
   end
 
+  test "the tooltip widens to fit a long ship name", %{conn: conn, character: character} do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    {:ok, _} =
+      Tripwire.Tracking.DemoPresence.ensure_started(character, map, system,
+        ship_name: "A Very Long Ship Name",
+        ship_type_id: 587
+      )
+
+    render_click(view, "refresh-occupants", %{})
+
+    map_html = view |> element("#chain-map") |> render()
+    [_, width] = Regex.run(~r/<foreignobject[^>]*width="([\d.]+)"/, map_html)
+    {width, _rest} = Float.parse(width)
+
+    assert width > 280.0
+  end
+
   test "the tooltip hides a slash ship name", %{conn: conn, character: character} do
     {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
 

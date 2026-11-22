@@ -7,6 +7,9 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   alias Tripwire.Wormholes
 
   @occupant_tip_w 280
+  @occupant_tip_max_w 560
+  @occupant_char_w 7.0
+  @occupant_tip_chrome 88
   @occupant_row_h 28
   @occupant_row_gap 4
   @occupant_tip_pad 8
@@ -777,14 +780,15 @@ defmodule TripwireWeb.LiveComponents.MapLive do
         node_w = Map.get(assigns, :node_w)
         node_h = Map.get(assigns, :node_h)
         rows = length(members)
+        width = tip_width(members)
 
         height =
           rows * @occupant_row_h + (rows - 1) * @occupant_row_gap + 2 * @occupant_tip_pad
 
         x =
-          if system.x + node_w / 2 <= @map_width / 2,
+          if system.x + width <= @map_width,
             do: 14 - node_w,
-            else: 14 - @occupant_tip_w
+            else: 14 - width
 
         y =
           if flips_above?(system, height, Map.get(assigns, :map_bottom, 0.0)),
@@ -795,10 +799,26 @@ defmodule TripwireWeb.LiveComponents.MapLive do
           members: members,
           x: x,
           y: y,
-          width: @occupant_tip_w,
+          width: width,
           height: height,
           badge_x: node_w - 14 - @occupant_badge_inset
         }
+    end
+  end
+
+  defp tip_width(members) do
+    longest = members |> Enum.map(&String.length(tip_row_label(&1))) |> Enum.max()
+
+    (longest * @occupant_char_w + @occupant_tip_chrome)
+    |> max(@occupant_tip_w)
+    |> min(@occupant_tip_max_w)
+    |> ceil()
+  end
+
+  defp tip_row_label(occupant) do
+    case ship_label(occupant) do
+      nil -> occupant.character_name
+      ship -> "#{occupant.character_name} - #{ship}"
     end
   end
 
