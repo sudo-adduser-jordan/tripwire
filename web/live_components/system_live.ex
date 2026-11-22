@@ -128,21 +128,21 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
                 system_info={@system_info}
               />
             </li>
-          </ul>
-          <div
-            :if={selected_system(@systems, @selected_system_id)}
-            class="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 pb-1 text-xs"
-          >
-            <a
-              :for={link <- Systems.external_links(selected_system(@systems, @selected_system_id))}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="link link-hover opacity-70 hover:opacity-100"
+            <li
+              :if={selected_system(@systems, @selected_system_id)}
+              class="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 pb-1 text-xs"
             >
-              {link.label}
-            </a>
-          </div>
+              <a
+                :for={link <- Systems.external_links(selected_system(@systems, @selected_system_id))}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link link-hover opacity-70 hover:opacity-100"
+              >
+                {link.label}
+              </a>
+            </li>
+          </ul>
           <.chart_range_buttons
             chart_range={@chart_range}
             systems={@systems}
