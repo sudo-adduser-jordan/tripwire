@@ -1857,6 +1857,39 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert Mapping.get_system!(system.id).name == "J150321"
   end
 
+  test "the notes add button slides the composer open and a submit closes it", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    assert has_element?(view, "#note-composer[data-open='false']")
+    refute render(view) =~ "grid-rows-[1fr]"
+
+    view |> element("#note-compose-toggle") |> render_click()
+
+    assert has_element?(view, "#note-composer[data-open='true']")
+    assert has_element?(view, "#note-compose-toggle[aria-expanded='true']")
+    assert render(view) =~ "grid-rows-[1fr]"
+
+    view
+    |> element(~s|#note-composer form[phx-submit="comment-submit"]|)
+    |> render_submit(%{comment: "slid in"})
+
+    assert has_element?(view, "#note-composer[data-open='false']")
+    assert has_element?(view, "#note-compose-toggle[aria-expanded='false']")
+
+    html = render(view)
+    assert html =~ "slid in"
+    assert html =~ "1 notes"
+  end
+
   test "adding a note leaves signatures untouched", %{conn: conn, character: character} do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
 

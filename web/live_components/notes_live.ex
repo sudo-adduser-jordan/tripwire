@@ -16,9 +16,15 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
      |> assign(assigns)
      |> assign(:comments, comments)
      |> assign_new(:comment_body, fn -> "" end)
+     |> assign_new(:composer_open, fn -> false end)
      |> assign_new(:editing_comment_id, fn -> nil end)
      |> assign_new(:edit_body, fn -> "" end)
      |> drop_stale_edit(comments)}
+  end
+
+  def handle_event("comment-compose-toggle", _params, socket) do
+    open? = !socket.assigns.composer_open
+    {:noreply, socket |> assign(:composer_open, open?) |> assign(:comment_body, "")}
   end
 
   def handle_event("comment-submit", params, socket) do
@@ -33,6 +39,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
       {:noreply,
        socket
        |> assign(:comment_body, "")
+       |> assign(:composer_open, false)
        |> assign(:comments, Mapping.list_comments(system_id))}
     else
       nil -> {:noreply, put_flash(socket, :error, "Select a system first")}
@@ -118,7 +125,21 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
     >
       <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
         <ul class="list rounded-box shadow-md shrink-0">
-          <li class="list-row h-fit items-center gap-1 p-1">
+          <li class="flex items-center gap-1 p-1">
+            <button
+              id="note-compose-toggle"
+              type="button"
+              class="btn btn-ghost btn-xs p-1"
+              title={if @composer_open, do: "Close note editor", else: "Add note"}
+              aria-expanded={to_string(@composer_open)}
+              phx-click="comment-compose-toggle"
+              phx-target={@myself}
+            >
+              <.icon
+                name="hero-plus"
+                class={"size-4 transition-transform " <> if(@composer_open, do: "rotate-45", else: "")}
+              />
+            </button>
             <span class="px-1 text-xs opacity-60">{length(@comments)} notes</span>
             <span
               :if={Map.get(assigns, :selected_system_name)}
@@ -127,11 +148,22 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
               {Map.get(assigns, :selected_system_name)}
             </span>
           </li>
-          <li>
+        </ul>
+        <div
+          id="note-composer"
+          data-open={to_string(@composer_open)}
+          aria-hidden={to_string(!@composer_open)}
+          phx-hook="NotesComposer"
+          class={
+            "grid shrink-0 transition-all duration-200 ease-out " <>
+              if(@composer_open, do: "grid-rows-[1fr] opacity-100", else: "grid-rows-[0fr] opacity-0")
+          }
+        >
+          <div class="min-h-0 overflow-hidden" inert={!@composer_open}>
             <form
               phx-submit="comment-submit"
               phx-target={@myself}
-              class="flex gap-2 p-2"
+              class="flex gap-2 px-2 pt-1 pb-2"
             >
               <textarea
                 name="comment"
@@ -144,8 +176,8 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
                 <.icon name="hero-plus" class="size-4" />
               </button>
             </form>
-          </li>
-        </ul>
+          </div>
+        </div>
         <div class="min-h-0 w-full flex-1 overflow-y-auto p-3 text-sm leading-6 sm:p-4">
           <div :if={@selected_system_id == nil} class="opacity-70">
             <h3 class="font-bold text-base">Welcome to zTripwire</h3>
