@@ -44,6 +44,9 @@ const MapDrag = {
     this._bounds = this.bounds()
     this.setView(this.ox, this.oy, this.zoom)
 
+    this._guideResize = new ResizeObserver(() => this.syncGuides())
+    this._guideResize.observe(this.svg)
+
     this.onPointerDown = (ev) => {
       if (this.isLocked()) return
       if (ev.target.closest("g[data-system-id]")) return
@@ -165,6 +168,7 @@ const MapDrag = {
 
   destroyed() {
     if (this._raf) cancelAnimationFrame(this._raf)
+    if (this._guideResize) this._guideResize.disconnect()
     if (!this.svg) return
     this.svg.removeEventListener("pointerdown", this.onPointerDown)
     this.svg.removeEventListener("click", this.onClick, true)
@@ -200,6 +204,23 @@ const MapDrag = {
     this.oy = next.y
     this.svg.setAttribute("viewBox", `${next.x} ${next.y} ${VIEW_W / z} ${VIEW_H / z}`)
     this.updateZoomLabel()
+    this.syncGuides()
+  },
+
+  syncGuides() {
+    if (!this.svg) return
+    const ctm = this.svg.getScreenCTM()
+    if (!ctm || !ctm.d) return
+    const view = this.viewBox()
+    const guides = document.getElementById("map-row-guides")
+    const height = this.svg.getBoundingClientRect().height
+    if (guides && height) guides.setAttribute("viewBox", `0 ${view.y} ${view.w} ${height / ctm.d}`)
+    const container = this.svg.parentElement
+    if (!container) return
+    container.querySelectorAll("[data-guide-y]").forEach((label) => {
+      const y = Number.parseFloat(label.dataset.guideY)
+      if (Number.isFinite(y)) label.style.top = `${(y - view.y) * ctm.d}px`
+    })
   },
 
   zoomBy(factor) {

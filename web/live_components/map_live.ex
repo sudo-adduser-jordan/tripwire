@@ -278,43 +278,50 @@ defmodule TripwireWeb.LiveComponents.MapLive do
           </li>
         </ul>
         <div
-          class="min-h-0 w-full flex-1 bg-cover bg-center bg-no-repeat"
+          class="relative min-h-0 w-full flex-1 bg-cover bg-center bg-no-repeat"
           style={if @map_background, do: "background-image: url('#{@map_background}')"}
         >
+          <svg
+            :if={@show_row_guides}
+            id="map-row-guides"
+            viewBox={"#{@pan_x} #{@pan_y} #{@view_w} #{@view_h}"}
+            preserveAspectRatio="none"
+            class="pointer-events-none absolute inset-0 z-0 size-full"
+            aria-hidden="true"
+          >
+            <line
+              :for={{cy, _} <- row_groups(@systems)}
+              x1="1%"
+              x2="99%"
+              y1={cy}
+              y2={cy}
+              class="stroke-base-content/20"
+              stroke-width="1"
+              stroke-dasharray="2 3"
+              vector-effect="non-scaling-stroke"
+            />
+          </svg>
+          <div :if={@show_row_counts} class="pointer-events-none absolute inset-0 z-20">
+            <span
+              :for={{cy, level} <- row_levels(@systems)}
+              data-guide-y={cy}
+              class="absolute left-[1%] ml-1.5 -translate-y-full pb-1 text-[10px] leading-none text-base-content/60 tabular-nums"
+              style={"top: #{(cy - @pan_y) / @view_h * 100}%"}
+            >
+              {level}
+            </span>
+          </div>
           <svg
             id="chain-map"
             viewBox={"#{@pan_x} #{@pan_y} #{@view_w} #{@view_h}"}
             preserveAspectRatio="xMidYMid meet"
-            class="block size-full touch-pan-y select-none"
+            class="relative z-10 block size-full touch-pan-y select-none"
             phx-hook="MapDrag"
             data-selected={@selected_system_id}
             data-locked={to_string(@map_locked)}
             data-node-w={@node_w}
             data-node-h={@node_h}
           >
-            <g id="map-guides">
-              <line
-                :for={{cy, _} <- row_groups(@systems)}
-                :if={@show_row_guides}
-                x1="0"
-                x2="1000"
-                y1={cy}
-                y2={cy}
-                class="stroke-base-content/20"
-                stroke-width="1"
-                stroke-dasharray="2 3"
-              />
-              <text
-                :for={{cy, count} <- row_counts(@systems)}
-                :if={@show_row_counts}
-                x="8"
-                y={cy - 8}
-                text-anchor="start"
-                class="fill-base-content/60 text-[10px]"
-              >
-                {count}
-              </text>
-            </g>
             <g :if={Map.get(assigns, :show_jump_lines, true)} id="map-edges">
               <path
                 :for={{conn, from, to} <- @drawn_connections}
@@ -593,8 +600,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     systems |> Enum.group_by(&(&1.y + node_h / 2)) |> Enum.sort_by(&elem(&1, 0))
   end
 
-  defp row_counts(systems) do
-    Enum.map(row_groups(systems), fn {cy, members} -> {cy, length(members)} end)
+  defp row_levels(systems) do
+    systems
+    |> row_groups()
+    |> Enum.with_index(fn {cy, _members}, level -> {cy, level} end)
   end
 
   defp node_class(system), do: Tripwire.Systems.display_class(system)

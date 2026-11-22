@@ -84,6 +84,30 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert render(view) =~ "→"
   end
 
+  test "row guides label rows by depth and span the chain edges", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    view |> element("#toggle-row-guides") |> render_click()
+    view |> element("#toggle-row-counts") |> render_click()
+
+    map_html = view |> element("#map") |> render()
+
+    levels =
+      ~r/data-guide-y="[-\d.]+"[^>]*>\s*(\d+)\s*<\/span>/
+      |> Regex.scan(map_html, capture: :all_but_first)
+      |> List.flatten()
+      |> Enum.map(&String.to_integer/1)
+
+    assert length(levels) > 1
+    assert levels == Enum.to_list(0..(length(levels) - 1))
+
+    guides_html = view |> element("#map-row-guides") |> render()
+    assert guides_html =~ ~s(preserveAspectRatio="none")
+    assert guides_html =~ ~s(x1="1%")
+    assert guides_html =~ ~s(x2="99%")
+  end
+
   test "the demo map shows the tracked character badge and its tooltip", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/dashboard")
 

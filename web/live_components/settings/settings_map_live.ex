@@ -82,7 +82,7 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
           />
         </div>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
-          <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Show Row Counts</p>
+          <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Show Row Levels</p>
           <input
             id="toggle-row-counts"
             type="checkbox"
