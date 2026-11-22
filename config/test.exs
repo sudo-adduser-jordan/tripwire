@@ -13,6 +13,7 @@ config :tripwire, TripwireWeb.Endpoint,
   server: false
 
 config :tripwire, Tripwire.Systems.Catalog, path: nil
+config :tripwire, Tripwire.SyncServer, prune_on_start: false
 config :tripwire, Tripwire.Mailer, adapter: Swoosh.Adapters.Test
 config :swoosh, :api_client, false
 config :tripwire, :topbar_esi, false

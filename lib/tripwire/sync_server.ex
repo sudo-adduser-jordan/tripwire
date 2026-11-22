@@ -17,6 +17,10 @@ defmodule Tripwire.SyncServer do
     corp_sync_interval = Keyword.get(opts, :corp_sync_interval, @corp_sync_interval)
     activity_interval = Keyword.get(opts, :activity_interval, @activity_interval)
 
+    if Application.get_env(:tripwire, __MODULE__, []) |> Keyword.get(:prune_on_start, true) do
+      prune_orphan_masks()
+    end
+
     schedule(:corp_sync, corp_sync_interval)
     schedule(:activity, activity_interval)
 
@@ -66,6 +70,18 @@ defmodule Tripwire.SyncServer do
       masks ->
         Logger.info(
           "Pruned #{length(masks)} orphaned masks: #{Enum.map_join(masks, ", ", & &1.name)}"
+        )
+    end
+  end
+
+  defp prune_orphan_masks do
+    case Masks.prune_orphan_masks() do
+      [] ->
+        :ok
+
+      masks ->
+        Logger.info(
+          "Pruned #{length(masks)} orphaned masks on startup: #{Enum.map_join(masks, ", ", & &1.name)}"
         )
     end
   end
