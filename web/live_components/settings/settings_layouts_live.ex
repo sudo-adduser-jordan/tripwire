@@ -50,7 +50,7 @@ defmodule TripwireWeb.LiveComponents.Settings.LayoutsLive do
           <div
             :for={layout <- @core}
             id={"layout-" <> dom_id(layout.id)}
-            class="flex min-w-0 flex-wrap items-center gap-2 rounded-box border border-base-300 p-2"
+            class="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-base-300 bg-base-100/50 p-2"
           >
             <div class="min-w-0 flex-1">
               <p class="text-sm font-medium">{layout.name}</p>
@@ -77,7 +77,7 @@ defmodule TripwireWeb.LiveComponents.Settings.LayoutsLive do
           <div
             :for={layout <- @saved}
             id={"layout-" <> dom_id(layout.id)}
-            class="flex min-w-0 flex-wrap items-center gap-2 rounded-box border border-base-300 p-2"
+            class="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-base-300 bg-base-100/50 p-2"
           >
             <div class="min-w-0 flex-1">
               <p class="text-sm font-medium">{layout.name}</p>

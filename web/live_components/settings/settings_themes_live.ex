@@ -20,7 +20,7 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
       id: "core",
       label: "Core",
       icon: "hero-cube",
-      themes: ["phoenix", "eve", "carbon", "eve-online"]
+      themes: ["phoenix", "carbon", "eve-online"]
     },
     %{
       id: "faction",
@@ -69,7 +69,7 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
     <div
       id="theme-settings"
       phx-hook="ThemeSelect"
-      class="tab-content w-full max-w-full overflow-hidden border-base-300 bg-base-100/50 p-3 sm:p-4"
+      class="tab-content w-full max-w-full overflow-hidden p-3 sm:p-4"
     >
       <div class="flex min-h-0 w-full max-w-full flex-col gap-4">
         <p class="text-sm font-semibold">Themes</p>
@@ -81,18 +81,18 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
             </div>
             <div
               id={"theme-container-" <> section.id}
-              class="rounded-box grid w-full max-w-full grid-cols-[repeat(auto-fill,minmax(min(10rem,100%),10rem))] gap-2 sm:gap-3"
+              class="grid w-full max-w-full grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4"
             >
               <%= for theme <- section.themes do %>
                 <button
                   id={"theme-button-" <> theme}
-                  class="theme-button border-base-content/20 hover:border-base-content/40 min-w-0 overflow-hidden rounded-lg border outline-offset-2"
+                  class="theme-button border-base-300 hover:border-base-content/40 focus-visible:ring-success min-w-0 overflow-hidden rounded-lg border transition-colors focus-visible:ring-2 focus-visible:outline-none"
                   phx-click={JS.dispatch("phx:set-theme")}
                   data-phx-theme={theme}
                 >
                   <div
                     data-theme={theme}
-                    class="bg-base-100 text-base-content flex w-full min-w-0 cursor-pointer items-center gap-1.5 p-2 font-sans"
+                    class="bg-base-100 text-base-content flex w-full min-w-0 cursor-pointer items-center gap-2 p-2 font-sans"
                   >
                     <img
                       src={theme_icon(theme)}
@@ -102,7 +102,7 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
                       loading="lazy"
                       onerror="this.onerror=null;this.src='/images/alliance-default.png'"
                     />
-                    <div class="truncate text-xs font-bold">{theme}</div>
+                    <div class="truncate text-xs font-semibold">{theme}</div>
                   </div>
                 </button>
               <% end %>

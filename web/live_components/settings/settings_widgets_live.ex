@@ -19,9 +19,10 @@ defmodule TripwireWeb.LiveComponents.Settings.WidgetsLive do
       phx-value-tab="widgets"
     />
     <div class="tab-content w-full max-w-full overflow-hidden p-3 sm:p-4">
-      <div class="flex min-h-0 w-full max-w-full flex-col gap-2 overflow-hidden">
+      <div class="flex min-h-0 w-full max-w-full flex-col gap-2 overflow-hidden sm:gap-3">
         <p class="text-sm font-semibold">Widgets</p>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">System</p>
           <input
             id="toggle-widget-system"
             type="checkbox"
@@ -30,10 +31,10 @@ defmodule TripwireWeb.LiveComponents.Settings.WidgetsLive do
             phx-value-widget="system"
             class="checkbox checkbox-primary checkbox-sm"
           />
-          <p class="text-sm">System</p>
         </div>
 
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Notes</p>
           <input
             id="toggle-widget-notes"
             type="checkbox"
@@ -42,10 +43,10 @@ defmodule TripwireWeb.LiveComponents.Settings.WidgetsLive do
             phx-value-widget="notes"
             class="checkbox checkbox-secondary checkbox-sm"
           />
-          <p class="text-sm">Notes</p>
         </div>
 
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Signatures</p>
           <input
             id="toggle-widget-signatures"
             type="checkbox"
@@ -54,10 +55,10 @@ defmodule TripwireWeb.LiveComponents.Settings.WidgetsLive do
             phx-value-widget="signatures"
             class="checkbox checkbox-accent checkbox-sm"
           />
-          <p class="text-sm">Signatures</p>
         </div>
 
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Map</p>
           <input
             id="toggle-widget-map"
             type="checkbox"
@@ -66,7 +67,6 @@ defmodule TripwireWeb.LiveComponents.Settings.WidgetsLive do
             phx-value-widget="map"
             class="checkbox checkbox-neutral checkbox-sm"
           />
-          <p class="text-sm">Map</p>
         </div>
       </div>
     </div>

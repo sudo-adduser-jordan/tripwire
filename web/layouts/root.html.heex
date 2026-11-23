@@ -18,6 +18,7 @@
       const themeKey = "phx:theme";
       const modeKey = "phx:mode";
       const legacyThemes = {
+        eve: ["eve-online", "dark"],
         system: ["phoenix", "system"],
         light: ["phoenix", "light"],
         native: ["phoenix", "light"],
@@ -47,7 +48,7 @@
         setTheme(legacy[0]);
         if (!localStorage.getItem(modeKey)) setMode(legacy[1]);
       } else {
-        setTheme(storedTheme || "phoenix");
+        setTheme(storedTheme || "eve-online");
       }
 
       if (!document.documentElement.hasAttribute("data-mode")) {
@@ -60,7 +61,7 @@
           if (!localStorage.getItem(modeKey)) setMode("system");
         });
       window.addEventListener("storage", (e) => {
-        if (e.key === themeKey) setTheme(e.newValue || "phoenix");
+        if (e.key === themeKey) setTheme(e.newValue || "eve-online");
         if (e.key === modeKey) setMode(e.newValue || "system");
       });
       window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));

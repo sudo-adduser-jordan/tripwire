@@ -447,10 +447,9 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute has_element?(view, "#signatures")
   end
 
-  test "theme settings list phoenix, eve, carbon and eve-online in core and tripwire under mapper",
-       %{
-         conn: conn
-       } do
+  test "theme settings list phoenix, carbon and eve-online in core and tripwire under mapper", %{
+    conn: conn
+  } do
     {:ok, view, _html} = live(conn, ~p"/dashboard")
 
     for mode <- ~w(system light dark) do
@@ -463,14 +462,14 @@ defmodule TripwireWeb.DashboardLiveTest do
     core = view |> element("#theme-container-core") |> render()
     mapper = view |> element("#theme-container-mapper") |> render()
 
-    for theme <- ~w(phoenix eve carbon eve-online) do
+    for theme <- ~w(phoenix carbon eve-online) do
       assert core =~ ~s|id="theme-button-#{theme}"|
     end
 
     assert mapper =~ ~s|id="theme-button-tripwire"|
     assert mapper =~ ~s|id="theme-button-wanderer"|
 
-    for theme <- ~w(light dark native native-dark) do
+    for theme <- ~w(light dark native native-dark eve) do
       refute core =~ ~s|id="theme-button-#{theme}"|
       refute mapper =~ ~s|id="theme-button-#{theme}"|
     end

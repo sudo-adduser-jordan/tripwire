@@ -14,13 +14,13 @@ const ThemeSelect = {
   },
 
   _sync() {
-    const active = localStorage.getItem("phx:theme") || "phoenix"
+    const active = localStorage.getItem("phx:theme") || "eve-online"
     for (const button of this.el.querySelectorAll("[data-phx-theme]")) {
       const selected = button.dataset.phxTheme === active
-      button.classList.toggle("ring-2", selected)
+      button.classList.toggle("border-success", selected)
+      button.classList.toggle("border-base-300", !selected)
+      button.classList.toggle("ring-1", selected)
       button.classList.toggle("ring-success", selected)
-      button.classList.toggle("ring-offset-2", selected)
-      button.classList.toggle("ring-offset-base-100", selected)
       button.setAttribute("aria-pressed", selected ? "true" : "false")
     }
   },
