@@ -126,7 +126,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
     >
       <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
         <ul class="list rounded-box shadow-md shrink-0">
-          <li class="flex items-center gap-1 p-1">
+          <li class="widget-header">
             <button
               id="note-compose-toggle"
               type="button"

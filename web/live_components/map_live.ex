@@ -135,8 +135,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     >
       <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
         <ul class="list rounded-box shadow-md shrink-0">
-          <li class="flex h-fit flex-wrap items-center justify-start gap-1 p-1">
-            <span id="chainTabs" class="join">
+          <li class="widget-header">
+            <span id="chainTabs" class="join widget-header-tabs">
               <button
                 :for={tab <- Map.get(assigns, :maps, [])}
                 class={[

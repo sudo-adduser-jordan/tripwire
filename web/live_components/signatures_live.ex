@@ -229,7 +229,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
       <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
         <div class="shrink-0">
           <ul class="list rounded-box shadow-md">
-            <li class="flex items-center gap-1 p-1">
+            <li class="widget-header">
               <button
                 class="btn btn-ghost btn-xs"
                 title="Add signature"

@@ -57,7 +57,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
       <div class="grid-stack-item-content bg-base-100/50 flex flex-col overflow-hidden">
         <div class="flex min-h-0 size-full flex-col">
           <ul class="list rounded-box shadow-md shrink-0">
-            <li class="flex items-center gap-1 p-1">
+            <li class="widget-header">
               <button
                 id="system-copy"
                 class="group flex min-w-0 cursor-pointer items-center gap-1 rounded px-1 hover:bg-base-200"
