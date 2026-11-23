@@ -19,6 +19,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
      |> assign_new(:composer_open, fn -> false end)
      |> assign_new(:editing_comment_id, fn -> nil end)
      |> assign_new(:edit_body, fn -> "" end)
+     |> assign_new(:welcome_notes, fn -> Mapping.welcome_notes() end)
      |> drop_stale_edit(comments)}
   end
 
@@ -179,28 +180,12 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
           </div>
         </div>
         <div class="min-h-0 w-full flex-1 overflow-y-auto p-3 text-sm leading-6 sm:p-4">
-          <div :if={@selected_system_id == nil} class="opacity-70">
-            <h3 class="font-bold text-base">Welcome to zTripwire</h3>
-            <p class="mt-1">Select a system to read and write notes.</p>
-            <ol class="list-decimal list-inside mt-3 space-y-1.5 opacity-90">
-              <li>
-                <span class="font-semibold">Log in with EVE SSO</span> to create your personal map.
-              </li>
-              <li>
-                <span class="font-semibold">Paste probe results</span>
-                into the Signatures widget, then select a system to file them under.
-              </li>
-              <li>
-                Manage signatures with delete and <span class="font-semibold">undo / redo</span>.
-              </li>
-              <li>
-                <span class="font-semibold">Drag systems</span>
-                on the map to arrange your chain; tracked character jumps add systems and links automatically.
-              </li>
-              <li>
-                Open <span class="font-semibold">Settings</span> to pick a theme and tune widgets.
-              </li>
-            </ol>
+          <div :if={@selected_system_id == nil} class="space-y-2">
+            <div :for={body <- @welcome_notes} class="rounded bg-base-200/50 p-2">
+              <div class={markdown_class()}>
+                {Phoenix.HTML.raw(Tripwire.Markdown.to_html(body))}
+              </div>
+            </div>
           </div>
           <div
             :for={comment <- @comments}
@@ -241,7 +226,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
               </div>
             </form>
             <div :if={@editing_comment_id != comment.id}>
-              <div class="markdown space-y-1 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/40 [&_blockquote]:pl-2 [&_blockquote]:opacity-70 [&_code]:rounded [&_code]:bg-base-content/10 [&_code]:px-1 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h3]:text-sm [&_h3]:font-bold [&_h4]:font-bold [&_h5]:font-bold [&_h6]:font-bold [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-base-content/10 [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-5">
+              <div class={markdown_class()}>
                 {Phoenix.HTML.raw(Tripwire.Markdown.to_html(comment.body))}
               </div>
               <div class="mt-1 flex items-center justify-between text-xs opacity-60">
@@ -288,6 +273,10 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
       </div>
     </div>
     """
+  end
+
+  defp markdown_class do
+    "markdown space-y-1 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/40 [&_blockquote]:pl-2 [&_blockquote]:opacity-70 [&_code]:rounded [&_code]:bg-base-content/10 [&_code]:px-1 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h3]:text-sm [&_h3]:font-bold [&_h4]:font-bold [&_h5]:font-bold [&_h6]:font-bold [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-base-content/10 [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-5"
   end
 
   defp drop_stale_edit(socket, comments) do
