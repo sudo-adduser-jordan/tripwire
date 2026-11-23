@@ -201,7 +201,6 @@ defmodule TripwireWeb.DashboardLive do
     |> subscribe_to_map(map.id)
     |> schedule_topbar_load()
     |> schedule_chart_refresh()
-    |> push_map_scale()
   end
 
   @impl true
@@ -758,9 +757,15 @@ defmodule TripwireWeb.DashboardLive do
     if socket.assigns[:map_locked] do
       {:noreply, put_flash(socket, :error, "Map is locked")}
     else
-      socket = socket |> put_setting(:map_layout, "top") |> apply_tree_layout("top")
-      {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map)
-      {:noreply, push_event(socket, "reset-pan", %{x: x, y: y})}
+      socket =
+        socket
+        |> put_setting(:map_scale, 100)
+        |> put_setting(:map_layout, "top")
+        |> apply_tree_layout("top")
+
+      zoom = map_zoom(socket)
+      {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map, zoom)
+      {:noreply, push_event(socket, "reset-pan", %{x: x, y: y, zoom: zoom})}
     end
   end
 
@@ -819,8 +824,9 @@ defmodule TripwireWeb.DashboardLive do
   def handle_event("node-spacing", %{"spacing" => spacing}, socket) do
     socket = put_setting(socket, :node_spacing, parse_int(spacing, 100, 50, 200))
     socket = socket |> apply_tree_layout(socket.assigns.map_layout || "top")
-    {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map)
-    {:noreply, push_event(socket, "reset-pan", %{x: x, y: y})}
+    zoom = map_zoom(socket)
+    {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map, zoom)
+    {:noreply, push_event(socket, "reset-pan", %{x: x, y: y, zoom: zoom})}
   end
 
   def handle_event("node-spacing", _params, socket), do: {:noreply, socket}
@@ -1804,11 +1810,10 @@ defmodule TripwireWeb.DashboardLive do
     assign(socket, key, value)
   end
 
-  defp push_map_scale(socket) do
-    if connected?(socket) and socket.assigns.map_scale != 100 do
-      push_event(socket, "map-zoom", %{zoom: socket.assigns.map_scale / 100})
-    else
-      socket
+  defp map_zoom(socket) do
+    case socket.assigns[:map_scale] do
+      scale when is_number(scale) -> Mapping.default_zoom() * scale / 100
+      _ -> Mapping.default_zoom()
     end
   end
 
@@ -1873,7 +1878,6 @@ defmodule TripwireWeb.DashboardLive do
     |> subscribe_to_map(map.id)
     |> schedule_topbar_load()
     |> schedule_chart_refresh()
-    |> push_map_scale()
   end
 
   defp restore_mask(default, session) do
@@ -2170,11 +2174,12 @@ defmodule TripwireWeb.DashboardLive do
         |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
         |> apply_tree_layout(socket.assigns.map_layout || "top")
 
-      {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map)
+      zoom = map_zoom(socket)
+      {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map, zoom)
 
       socket =
         socket
-        |> push_event("reset-pan", %{x: x, y: y})
+        |> push_event("reset-pan", %{x: x, y: y, zoom: zoom})
 
       cond do
         added == 0 and skipped == 0 ->
@@ -2275,10 +2280,11 @@ defmodule TripwireWeb.DashboardLive do
         |> assign(:map_errors, [])
         |> assign(:maps, Mapping.list_maps_for_mask(socket.assigns.mask.id))
 
-      {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map)
+      zoom = map_zoom(socket)
+      {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map, zoom)
 
       socket
-      |> push_event("reset-pan", %{x: x, y: y})
+      |> push_event("reset-pan", %{x: x, y: y, zoom: zoom})
       |> put_flash(:info, "Map saved")
     else
       {:error, message} when is_binary(message) ->
@@ -2500,8 +2506,9 @@ defmodule TripwireWeb.DashboardLive do
       socket =
         if dropped + hidden > 0 do
           socket = apply_tree_layout(socket, socket.assigns.map_layout || "top")
-          {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map)
-          push_event(socket, "reset-pan", %{x: x, y: y})
+          zoom = map_zoom(socket)
+          {x, y} = Mapping.home_center(socket.assigns.systems, socket.assigns.map, zoom)
+          push_event(socket, "reset-pan", %{x: x, y: y, zoom: zoom})
         else
           reload_map(socket)
         end

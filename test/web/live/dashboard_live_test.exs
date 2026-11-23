@@ -663,6 +663,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(conn, ~p"/dashboard")
 
     map = Repo.one(Mapping.Map)
+    systems = map |> Mapping.list_chain_systems(Settings.get().show_all)
 
     home =
       Enum.find(Mapping.list_systems(map.id), &(&1.solar_system_id == map.home_solar_system_id))
@@ -671,7 +672,13 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert node =~ ", 590.0)"
     refute has_element?(view, "#notes")
-    assert_push_event(view, "map-zoom", %{zoom: 1.5})
+
+    zoom = Mapping.default_zoom() * 150 / 100
+    {pan_x, pan_y} = Mapping.home_center(systems, map, zoom)
+    {view_w, view_h} = Mapping.view_size(zoom)
+
+    assert view |> element("#chain-map") |> render() =~
+             ~s|viewBox="#{pan_x} #{pan_y} #{view_w} #{view_h}"|
   end
 
   test "demo wormhole signatures are labelled with their connection destination", %{conn: conn} do
@@ -1288,9 +1295,29 @@ defmodule TripwireWeb.DashboardLiveTest do
     systems = Mapping.list_systems(map.id)
     {pan_x, pan_y} = Mapping.home_center(systems, map)
 
-    assert_push_event(view, "reset-pan", %{x: x, y: y})
+    assert_push_event(view, "reset-pan", %{x: x, y: y, zoom: zoom})
     assert_in_delta x, pan_x, 0.001
     assert_in_delta y, pan_y, 0.001
+    assert_in_delta zoom, Mapping.default_zoom(), 0.001
+  end
+
+  test "reset zoom clears a scaled up map and reopens at the default zoom", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, _} = Settings.update(%{map_scale: 150})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#chain-zoom-reset")
+    |> render_click()
+
+    assert Settings.get().map_scale == 100
+
+    assert_push_event(view, "reset-pan", %{zoom: zoom})
+    assert_in_delta zoom, Mapping.default_zoom(), 0.001
   end
 
   test "reset zoom without a home pins the chain to the top and centers it", %{

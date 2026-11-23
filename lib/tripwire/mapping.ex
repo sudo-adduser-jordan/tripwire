@@ -195,10 +195,10 @@ defmodule Tripwire.Mapping do
 
   def default_zoom, do: @default_zoom
 
-  def view_size, do: {@view_w / @default_zoom, @view_h / @default_zoom}
+  def view_size(zoom \\ @default_zoom), do: {@view_w / zoom, @view_h / zoom}
 
-  def clamp_pan(systems, x, y) do
-    {view_w, view_h} = view_size()
+  def clamp_pan(systems, x, y, zoom \\ @default_zoom) do
+    {view_w, view_h} = view_size(zoom)
 
     case system_bounds(systems) do
       nil ->
@@ -210,13 +210,13 @@ defmodule Tripwire.Mapping do
     end
   end
 
-  def home_center(systems, map) do
+  def home_center(systems, map, zoom \\ @default_zoom) do
     with solar when is_integer(solar) <- map && map.home_solar_system_id,
          home when not is_nil(home) <- Enum.find(systems, &(&1.solar_system_id == solar)) do
-      {view_w, _view_h} = view_size()
-      clamp_pan(systems, home.x + @node_w / 2 - view_w / 2, top_pan(systems))
+      {view_w, _view_h} = view_size(zoom)
+      clamp_pan(systems, home.x + @node_w / 2 - view_w / 2, top_pan(systems), zoom)
     else
-      _ -> clamp_pan(systems, 0, 0)
+      _ -> clamp_pan(systems, 0, 0, zoom)
     end
   end
 

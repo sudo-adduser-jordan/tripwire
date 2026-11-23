@@ -27,7 +27,9 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
     stats = Map.get_lazy(assigns, :stats, fn -> Mapping.list_system_stats(map_id) end)
     occupants = Map.get(assigns, :occupants, [])
-    {pan_x, pan_y} = Mapping.home_center(systems, Map.get(assigns, :map))
+    zoom = map_zoom(Map.get(assigns, :map_scale))
+    {pan_x, pan_y} = Mapping.home_center(systems, Map.get(assigns, :map), zoom)
+    {view_w, view_h} = Mapping.view_size(zoom)
     {node_w, node_h} = Mapping.node_size()
 
     {:ok,
@@ -42,6 +44,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign(:wh_sigs, wormhole_sigs(map_id))
      |> assign_new(:pan_x, fn -> pan_x end)
      |> assign_new(:pan_y, fn -> pan_y end)
+     |> assign_new(:view_w, fn -> view_w end)
+     |> assign_new(:view_h, fn -> view_h end)
      |> assign_new(:map_locked, fn -> false end)
      |> assign_new(:show_row_guides, fn -> false end)
      |> assign_new(:show_row_counts, fn -> false end)
@@ -52,6 +56,9 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign_new(:line_weight, fn -> 2 end)
      |> assign_new(:map_background, fn -> nil end)}
   end
+
+  defp map_zoom(scale) when is_number(scale), do: Mapping.default_zoom() * scale / 100
+  defp map_zoom(_), do: Mapping.default_zoom()
 
   def handle_event("select-system", %{"id" => id}, socket) do
     send(self(), {:select_system, String.to_integer(id)})
@@ -108,13 +115,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   def render(assigns) do
     visible = visible_connections(assigns)
     cycle = Mapping.cycle_connection_ids(visible)
-    {view_w, view_h} = Mapping.view_size()
 
     assigns =
       assigns
       |> assign(:visible_connections, visible)
-      |> assign(:view_w, view_w)
-      |> assign(:view_h, view_h)
       |> assign(:map_bottom, map_bottom(assigns))
       |> assign(
         :drawn_connections,

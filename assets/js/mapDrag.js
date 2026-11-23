@@ -139,15 +139,16 @@ const MapDrag = {
       this.zoomAt(this.ox + fx * w, this.oy + fy * h, ev.shiftKey ? 1 / ZOOM_STEP : ZOOM_STEP)
     }
 
-    this.handleEvent("reset-pan", ({ x, y }) => {
+    this.handleEvent("reset-pan", ({ x, y, zoom }) => {
       if (this.isLocked()) return
       this._bounds = this.bounds()
-      this.setView(x, y, DEFAULT_ZOOM)
+      this.setView(x, y, zoom || DEFAULT_ZOOM)
     })
 
     this.handleEvent("map-zoom", ({ zoom }) => {
       if (this.isLocked()) return
       this.zoomTo((zoom || 1) * DEFAULT_ZOOM)
+      this.anchorTop()
     })
 
     this.svg.addEventListener("pointerdown", this.onPointerDown)
@@ -227,6 +228,12 @@ const MapDrag = {
     const w = VIEW_W / this.zoom
     const h = VIEW_H / this.zoom
     this.zoomAt(this.ox + w / 2, this.oy + h / 2, factor)
+  },
+
+  anchorTop() {
+    this._bounds = this.bounds()
+    if (!this._bounds) return
+    this.setView(this.ox, this._bounds.minY - PAD, this.zoom)
   },
 
   zoomTo(zoom) {

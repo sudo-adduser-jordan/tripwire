@@ -36,6 +36,7 @@ defmodule Tripwire.MappingTest do
   test "home_center/2 centers the home system horizontally" do
     assert Mapping.default_zoom() == 0.8
     assert Mapping.view_size() == {1250.0, 875.0}
+    assert Mapping.view_size(1.6) == {625.0, 437.5}
 
     home = %Mapping.MapSystem{solar_system_id: 1, x: 460.0, y: 60.0}
     other = %Mapping.MapSystem{solar_system_id: 2, x: 1000.0, y: 220.0}
@@ -54,6 +55,19 @@ defmodule Tripwire.MappingTest do
              {175.0, 20.0}
 
     assert Mapping.home_center([], nil) == {0, 0}
+  end
+
+  test "home_center/3 keeps the top row pinned and centers home when zoomed in" do
+    home = %Mapping.MapSystem{solar_system_id: 1, x: 900.0, y: 60.0}
+    left = %Mapping.MapSystem{solar_system_id: 2, x: 0.0, y: 60.0}
+    right = %Mapping.MapSystem{solar_system_id: 3, x: 1800.0, y: 300.0}
+    map = %Mapping.Map{home_solar_system_id: 1}
+
+    assert Mapping.home_center([left, home, right], map) == {345.0, 20.0}
+    assert Mapping.home_center([left, home, right], map, 1.6) == {657.5, 20.0}
+
+    assert Mapping.clamp_pan([left, home, right], 10_000.0, 10_000.0, 1.6) ==
+             {1355.0, 20.0}
   end
 
   test "add_system_to_map/2 fills wormhole class, effect and statics", %{mask: mask} do
