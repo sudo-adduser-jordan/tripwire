@@ -593,6 +593,27 @@ defmodule Tripwire.Mapping do
       String.downcase(system.name || "") == "jita"
   end
 
+  def add_jita_system(%Map{} = map) do
+    add_system_to_map(map, %{
+      solar_system_id: @jita_solar_system_id,
+      name: "Jita",
+      security: 0.9,
+      x: 880.0,
+      y: 380.0
+    })
+  end
+
+  def seed_jita_systems do
+    from(m in Map, order_by: [asc: m.id])
+    |> Repo.all()
+    |> Enum.uniq_by(& &1.mask_id)
+    |> Enum.each(fn map ->
+      if list_systems(map.id) == [] do
+        {:ok, _} = add_jita_system(map)
+      end
+    end)
+  end
+
   def add_unknown_system(%Map{} = map, attrs \\ %{}) do
     add_system_to_map(
       map,

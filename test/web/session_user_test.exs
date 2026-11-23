@@ -47,4 +47,21 @@ defmodule TripwireWeb.SessionUserTest do
 
     assert Plug.Conn.get_session(conn, "character_ids") == [2]
   end
+
+  test "mask_id/1 reads integer and string masks" do
+    assert SessionUser.mask_id(%{"mask_id" => 7}) == 7
+    assert SessionUser.mask_id(%{mask_id: "9"}) == 9
+    assert SessionUser.mask_id(%{"mask_id" => "abc"}) == nil
+    assert SessionUser.mask_id(%{}) == nil
+  end
+
+  test "put_mask/2 stores the mask and put/2 clears it" do
+    conn =
+      Plug.Test.conn(:get, "/")
+      |> Plug.Test.init_test_session(%{"mask_id" => 3, "character_ids" => [1]})
+      |> SessionUser.put(%{eve_id: 2, name: "Pilot"})
+
+    assert Plug.Conn.get_session(conn, "mask_id") == nil
+    assert conn |> SessionUser.put_mask(5) |> Plug.Conn.get_session("mask_id") == 5
+  end
 end

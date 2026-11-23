@@ -114,4 +114,27 @@ defmodule TripwireWeb.AuthControllerTest do
     assert conn.status == 404
     assert get_session(conn, "current_user") == nil
   end
+
+  test "mask session endpoint stores the mask without redirecting", %{conn: conn} do
+    {:ok, mask} = Tripwire.Masks.create_mask(%{name: "Session Corp", kind: "corporation"})
+
+    conn = get(conn, "/auth/session/mask/#{mask.id}")
+
+    assert conn.status == 204
+    assert get_session(conn, "mask_id") == mask.id
+  end
+
+  test "mask session endpoint rejects the demo mask and unknown ids", %{conn: conn} do
+    {:ok, demo} = Tripwire.Masks.ensure_demo_mask()
+
+    conn = get(conn, "/auth/session/mask/#{demo.id}")
+
+    assert conn.status == 404
+    assert get_session(conn, "mask_id") == nil
+
+    conn = get(conn, "/auth/session/mask/999999")
+
+    assert conn.status == 404
+    assert get_session(conn, "mask_id") == nil
+  end
 end

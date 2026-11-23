@@ -296,6 +296,21 @@ defmodule Tripwire.MappingTest do
     assert markdown =~ "**Bold**"
   end
 
+  test "seed_jita_systems/0 fills an empty mask map with Jita and its notes" do
+    {:ok, mask} = Masks.create_mask(%{name: "Empty Corp", kind: "corporation"})
+    {:ok, map} = Mapping.create_map(%{name: "Home", mask_id: mask.id})
+
+    assert Mapping.list_systems(map.id) == []
+
+    Mapping.seed_jita_systems()
+
+    assert [jita] = Mapping.list_systems(map.id)
+    assert jita.name == "Jita"
+    assert [%{body: shortcuts}, %{body: markdown}] = Mapping.list_comments(jita.id)
+    assert shortcuts =~ "# Shortcuts"
+    assert markdown =~ "**Bold**"
+  end
+
   test "character stat counters track signature and comment lifecycles", %{mask: mask} do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 99_001, name: "Stat Tracker"})
     {:ok, map} = Mapping.create_map(%{name: "Stats", mask_id: mask.id})

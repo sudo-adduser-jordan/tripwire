@@ -2790,6 +2790,28 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert markdown =~ "**Bold**"
   end
 
+  test "switching to a mask with an empty map seeds the Jita notes", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, mask} = Masks.create_mask(%{name: "Old Corp", kind: "corporation"})
+    {:ok, _} = Masks.add_membership(mask, character)
+    {:ok, map} = Mapping.create_map(%{name: "Home", mask_id: mask.id})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element(~s|button[phx-click="switch-mask"][phx-value-id="#{mask.id}"]|)
+    |> render_click()
+
+    jita = Enum.find(Mapping.list_systems(map.id), &(&1.name == "Jita"))
+
+    assert jita
+    assert [%{body: shortcuts}, %{body: markdown}] = Mapping.list_comments(jita.id)
+    assert shortcuts =~ "# Shortcuts"
+    assert markdown =~ "**Bold**"
+  end
+
   test "removing the last character of a corporation prunes its mask", %{
     conn: conn,
     character: character
@@ -3144,6 +3166,41 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute has_element?(view, "#character-card-#{character.id}.border-success")
 
     assert_push_event(view, "character-switched", %{eve_id: ^eve_id})
+  end
+
+  test "the selected mask survives a reload", %{conn: conn, character: character} do
+    {:ok, mask} = Masks.create_mask(%{name: "Persisted Corp", kind: "corporation"})
+    {:ok, _} = Masks.add_membership(mask, character)
+
+    session =
+      Plug.Test.init_test_session(conn, %{
+        "current_user" => %{"id" => character.eve_id, "name" => character.name},
+        "mask_id" => mask.id
+      })
+
+    {:ok, view, _html} = live(session, ~p"/dashboard")
+
+    assert view |> element("#topbar-mask") |> render() =~ "Persisted Corp"
+    assert [map] = Mapping.list_maps_for_mask(mask.id)
+    assert Enum.any?(Mapping.list_systems(map.id), &(&1.name == "Jita"))
+  end
+
+  test "switching masks stores the choice in the session", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, mask} = Masks.create_mask(%{name: "Remember Me", kind: "corporation"})
+    {:ok, _} = Masks.add_membership(mask, character)
+    mask_id = mask.id
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element(~s|button[phx-click="switch-mask"][phx-value-id="#{mask.id}"]|)
+    |> render_click()
+
+    assert view |> element("#topbar-mask") |> render() =~ "Remember Me"
+    assert_push_event(view, "mask-switched", %{mask_id: ^mask_id})
   end
 
   test "mask cards switch the active mask when selected", %{conn: conn, character: character} do

@@ -32,7 +32,7 @@ defmodule TripwireWeb.DashboardLive do
       {:ok, character} ->
         {:ok,
          socket
-         |> provision(character)
+         |> provision(character, session)
          |> assign_characters(session)
          |> ensure_character_pollers()}
 
@@ -1294,10 +1294,13 @@ defmodule TripwireWeb.DashboardLive do
         if socket.assigns.character && socket.assigns.character.id == character.id do
           {:noreply, socket}
         else
+          socket = switch_character(socket, character)
+
           {:noreply,
-           socket
-           |> switch_character(character)
-           |> push_event("character-switched", %{eve_id: character.eve_id})}
+           push_event(socket, "character-switched", %{
+             eve_id: character.eve_id,
+             mask_id: socket.assigns.mask.id
+           })}
         end
     end
   end
@@ -1312,14 +1315,11 @@ defmodule TripwireWeb.DashboardLive do
       mask ->
         map =
           case Mapping.list_maps_for_mask(mask.id) do
-            [] ->
-              map = elem(Mapping.create_map(%{name: "Home", mask_id: mask.id}), 1)
-              _ = ensure_jita_system(map, [])
-              map
-
-            [m | _] ->
-              m
+            [] -> elem(Mapping.create_map(%{name: "Home", mask_id: mask.id}), 1)
+            [m | _] -> m
           end
+
+        _ = ensure_jita_system(map, Mapping.list_systems(map.id))
 
         Phoenix.PubSub.unsubscribe(
           Tripwire.PubSub,
@@ -1343,7 +1343,8 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:flares, [])
          |> assign(:system_stat, nil)
          |> refresh_occupants()
-         |> patch_to_preferred(chain_systems(socket, map))}
+         |> patch_to_preferred(chain_systems(socket, map))
+         |> push_event("mask-switched", %{mask_id: mask.id})}
     end
   end
 
@@ -1818,8 +1819,8 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
-  defp provision(socket, character) do
-    mask = ensure_character_masks(character)
+  defp provision(socket, character, session) do
+    mask = character |> ensure_character_masks() |> restore_mask(session)
     map = personal_map(mask)
 
     masks = Masks.list_masks()
@@ -1873,6 +1874,20 @@ defmodule TripwireWeb.DashboardLive do
     |> schedule_topbar_load()
     |> schedule_chart_refresh()
     |> push_map_scale()
+  end
+
+  defp restore_mask(default, session) do
+    case TripwireWeb.SessionUser.mask_id(session) do
+      nil ->
+        default
+
+      id ->
+        case Masks.get_mask(id) do
+          %{kind: "demo"} -> default
+          %{} = mask -> mask
+          nil -> default
+        end
+    end
   end
 
   defp ensure_character_masks(character) do
@@ -2538,13 +2553,7 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp ensure_jita_system(map, []) do
-    case Mapping.add_system_to_map(map, %{
-           solar_system_id: 30_000_142,
-           name: "Jita",
-           security: 0.9,
-           x: 880.0,
-           y: 380.0
-         }) do
+    case Mapping.add_jita_system(map) do
       {:ok, _} -> Mapping.list_systems(map.id)
       _ -> []
     end

@@ -89,6 +89,18 @@ defmodule TripwireWeb.AuthController do
     end
   end
 
+  def mask_session(conn, %{"id" => id}) do
+    case Tripwire.Masks.get_mask(id) do
+      %{id: mask_id, kind: kind} when kind != "demo" ->
+        conn
+        |> SessionUser.put_mask(mask_id)
+        |> send_resp(:no_content, "")
+
+      _ ->
+        send_resp(conn, :not_found, "")
+    end
+  end
+
   defp put_character_session(conn, eve_id) do
     character_ids = SessionUser.ids(get_session(conn))
     current = SessionUser.get(get_session(conn))
