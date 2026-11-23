@@ -33,9 +33,8 @@ defmodule Tripwire.Mapping do
   @welcome_shortcuts """
   # Shortcuts
 
-  - <kbd>Ctrl</kbd> + <kbd>V</kbd> anywhere — paste probe scans
-  - <kbd>Escape</kbd> — close settings
-  - <kbd>Enter</kbd> in Search — jump to a system
+  - <kbd>Escape</kbd> — toggle settings
+  - <kbd>Ctrl</kbd> + <kbd>V</kbd> — paste scans
   """
 
   @welcome_markdown """
@@ -1388,6 +1387,20 @@ defmodule Tripwire.Mapping do
     |> Enum.reject(&(&1 in existing))
     |> Enum.each(fn body ->
       {:ok, _} = create_comment(system, %{body: body, mask_id: mask_id})
+    end)
+
+    :ok
+  end
+
+  def refresh_welcome_shortcuts do
+    from(c in Tripwire.Mapping.Comment, where: like(c.body, "# Shortcuts%"))
+    |> Repo.all()
+    |> Enum.reject(&(&1.body == @welcome_shortcuts))
+    |> Enum.each(fn comment ->
+      {:ok, _} =
+        comment
+        |> Tripwire.Mapping.Comment.changeset(%{body: @welcome_shortcuts})
+        |> Repo.update()
     end)
 
     :ok

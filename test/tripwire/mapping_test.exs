@@ -263,7 +263,9 @@ defmodule Tripwire.MappingTest do
              Mapping.list_comments(jita.id)
 
     assert first_body =~ "# Shortcuts"
-    assert first_body =~ "<kbd>Ctrl</kbd>"
+    assert first_body =~ "<kbd>Escape</kbd> — toggle settings"
+    assert first_body =~ "<kbd>Ctrl</kbd> + <kbd>V</kbd> — paste scans"
+    refute first_body =~ "in Search"
     assert second_body =~ "**Bold**"
     assert third_body =~ "TUV-679"
     assert home.id != jita.id
@@ -294,6 +296,23 @@ defmodule Tripwire.MappingTest do
     assert [%{body: shortcuts}, %{body: markdown}] = Mapping.list_comments(jita.id)
     assert shortcuts =~ "# Shortcuts"
     assert markdown =~ "**Bold**"
+  end
+
+  test "refresh_welcome_shortcuts/0 rewrites stored shortcuts notes once", %{mask: mask} do
+    {:ok, map} = Mapping.create_map(%{name: "Refresh", mask_id: mask.id})
+    {:ok, jita} = Mapping.add_system_to_map(map, %{solar_system_id: 30_000_142, name: "Jita"})
+    [shortcuts | _] = Mapping.list_comments(jita.id)
+    {:ok, _} = Mapping.update_comment(shortcuts, %{body: "# Shortcuts\n\n- stale"})
+
+    Mapping.refresh_welcome_shortcuts()
+
+    assert [%{body: body}, _markdown] = Mapping.list_comments(jita.id)
+    assert body =~ "<kbd>Escape</kbd> — toggle settings"
+    assert body =~ "<kbd>Ctrl</kbd> + <kbd>V</kbd> — paste scans"
+    refute body =~ "stale"
+
+    Mapping.ensure_welcome_notes(jita)
+    assert length(Mapping.list_comments(jita.id)) == 2
   end
 
   test "seed_jita_systems/0 fills an empty mask map with Jita and its notes" do
