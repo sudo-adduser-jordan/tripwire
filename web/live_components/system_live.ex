@@ -198,7 +198,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
     <div class="flex flex-wrap items-center justify-between gap-1 px-2 pt-1">
       <div class="flex min-w-0 flex-row flex-wrap items-center gap-1">
         <button
-          :for={sys <- visible_systems(@systems, @connections, @selected_system_id)}
+          :for={sys <- visible_systems(@systems, @connections, @chart_system)}
           class={
             "btn btn-xs " <>
               (if same_system?(sys, @chart_system), do: "btn-primary", else: "btn-ghost")
@@ -214,9 +214,6 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
           class="mx-1 h-4 w-px shrink-0 bg-base-content/20"
           aria-hidden="true"
         >
-        </span>
-        <span :if={@gate_systems != []} class="px-1 text-[10px] uppercase tracking-wide opacity-50">
-          Gates
         </span>
         <button
           :for={sys <- @gate_systems}
@@ -402,24 +399,25 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
 
   defp favorites(_), do: []
 
-  defp visible_systems(systems, _connections, nil), do: Enum.reject(systems, & &1.unknown)
-
-  defp visible_systems(systems, connections, selected_id) do
+  defp visible_systems(systems, connections, chart_system) do
     known = Enum.reject(systems, & &1.unknown)
+    solar_system_id = solar_system_id(chart_system)
 
-    if Enum.any?(known, &(&1.id == selected_id)) do
-      neighbor_ids =
-        for {_conn, from, to} <- connections,
-            from.id == selected_id or to.id == selected_id,
-            id <- [from.id, to.id],
-            id != selected_id,
-            into: MapSet.new() do
-          id
-        end
+    neighbor_ids =
+      for {_conn, from, to} <- connections,
+          from.solar_system_id == solar_system_id or to.solar_system_id == solar_system_id,
+          id <- [from.solar_system_id, to.solar_system_id],
+          id != solar_system_id,
+          into: MapSet.new() do
+        id
+      end
 
-      Enum.filter(known, &(&1.id == selected_id or MapSet.member?(neighbor_ids, &1.id)))
-    else
-      known
-    end
+    Enum.filter(
+      known,
+      &(&1.solar_system_id == solar_system_id or MapSet.member?(neighbor_ids, &1.solar_system_id))
+    )
   end
+
+  defp solar_system_id(%{solar_system_id: solar_system_id}), do: solar_system_id
+  defp solar_system_id(_), do: nil
 end

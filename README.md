@@ -43,7 +43,7 @@ Wormhole space systems carry their class (`C1`–`C6`, `Thera`, `C13`, `Trig`, `
 
 - `mix tripwire.build_wormhole_systems` rebuilds the dataset from `priv/sde/eve-online-static-data-latest-jsonl.zip` and `priv/data/wormhole_statics.json`; `task setup` runs it after refreshing the SDE.
 
-The System widget's statistics selector also lists the one-jump stargate neighbours of the selected k-space system under a **Gates** label, so activity in the systems around a high-sec or low-sec exit can be checked without adding them to the chain. The adjacency matrix is read from the SDE's `mapStargates.jsonl` at boot, and selecting a gate system only switches the widget's statistics and the `/:system_name` URL; it never creates a map node.
+When the selected system is k-space, the System widget's statistics selector also lists its one-jump stargate neighbours, so activity in the systems around a high-sec or low-sec exit can be checked without adding them to the chain. Only systems connected to the current selection are listed: selecting a gate system replaces the chain buttons with that system's own gate neighbours. The adjacency matrix is read from the SDE's `mapStargates.jsonl` at boot, and selecting a gate system only switches the widget's statistics and the `/:system_name` URL; it never creates a map node.
 - New systems are filled from the dataset when they are added or converted from an unknown placeholder.
 - `mix tripwire.backfill_system_data` fills missing values on existing systems (run by `task migrate`/`task start`); add `--force` to overwrite edited classes, effects and statics.
 

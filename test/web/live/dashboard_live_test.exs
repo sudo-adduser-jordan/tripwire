@@ -1675,7 +1675,7 @@ defmodule TripwireWeb.DashboardLiveTest do
       %{solar_system_id: 30_001_385, name: "Rancer", security: 0.3}
     ])
 
-    seed_gates([{30_000_142, 30_000_144}, {30_000_142, 30_000_145}])
+    seed_gates([{30_000_142, 30_000_144}, {30_000_142, 30_000_145}, {30_000_144, 30_000_145}])
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -1683,7 +1683,6 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert container =~ "Perimeter"
     assert container =~ "Maurasi"
     refute container =~ "Rancer"
-    assert container =~ "Gates"
 
     view
     |> element("#system-container button[title='Select system Perimeter (1 jump from Jita)']")
@@ -1693,13 +1692,9 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     container = view |> element("#system-container") |> render()
     assert container =~ "Perimeter"
-    refute container =~ "Gates"
+    assert container =~ "Maurasi"
+    refute container =~ "Jita"
     assert view |> element("#topbar-system") |> render() =~ "Perimeter"
-
-    jita_button =
-      view |> element("#system-container button[title='Select system Jita']") |> render()
-
-    refute jita_button =~ "btn-primary"
     assert render(view) =~ "Shortcuts"
   end
 
@@ -1753,7 +1748,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     container = view |> element("#system-container") |> render()
     assert container =~ "Jita"
     refute container =~ "Perimeter"
-    refute container =~ "Gates"
+    refute container =~ "1 jump from"
   end
 
   test "default layout arranges the tree from the top", %{conn: conn, character: character} do
