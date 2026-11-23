@@ -570,6 +570,10 @@ html[data-mode="light"] .eve-landing {
 #grid-stack.gs-1 { --gs-column-width: 100%; }
 #grid-stack.gs-2 { --gs-column-width: 50%; }
 
+#grid-stack > #map > .grid-stack-item-content {
+  overflow: hidden;
+}
+
 #grid-stack.grid-stack-loading {
   visibility: hidden;
   min-height: 100vh;

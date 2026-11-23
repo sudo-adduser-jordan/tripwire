@@ -319,7 +319,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
             id="chain-map"
             viewBox={"#{@pan_x} #{@pan_y} #{@view_w} #{@view_h}"}
             preserveAspectRatio="xMidYMid meet"
-            class="relative z-10 block size-full touch-pan-y select-none"
+            class="relative z-10 block size-full touch-none select-none"
             phx-hook="MapDrag"
             data-selected={@selected_system_id}
             data-locked={to_string(@map_locked)}
