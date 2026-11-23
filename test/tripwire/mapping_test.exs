@@ -282,6 +282,20 @@ defmodule Tripwire.MappingTest do
     assert length(Mapping.list_comments(jita.id)) == 2
   end
 
+  test "seed_welcome_notes/0 backfills existing Jita systems", %{mask: mask} do
+    {:ok, map} = Mapping.create_map(%{name: "Backfill", mask_id: mask.id})
+    {:ok, jita} = Mapping.add_system_to_map(map, %{solar_system_id: 30_000_142, name: "Jita"})
+    Enum.each(Mapping.list_comments(jita.id), &Mapping.delete_comment/1)
+
+    assert Mapping.list_comments(jita.id) == []
+
+    Mapping.seed_welcome_notes()
+
+    assert [%{body: shortcuts}, %{body: markdown}] = Mapping.list_comments(jita.id)
+    assert shortcuts =~ "# Shortcuts"
+    assert markdown =~ "**Bold**"
+  end
+
   test "character stat counters track signature and comment lifecycles", %{mask: mask} do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 99_001, name: "Stat Tracker"})
     {:ok, map} = Mapping.create_map(%{name: "Stats", mask_id: mask.id})

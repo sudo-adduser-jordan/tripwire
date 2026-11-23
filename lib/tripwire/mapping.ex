@@ -1372,6 +1372,14 @@ defmodule Tripwire.Mapping do
     :ok
   end
 
+  def seed_welcome_notes do
+    from(s in MapSystem,
+      where: not s.unknown and (s.solar_system_id == ^@jita_solar_system_id or s.name == "Jita")
+    )
+    |> Repo.all()
+    |> Enum.each(&ensure_welcome_notes/1)
+  end
+
   def create_comment(%MapSystem{} = system, attrs, character \\ nil) do
     character_id = if is_struct(character, Character), do: character.id, else: nil
 
