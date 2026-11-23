@@ -150,6 +150,41 @@
 }
 
 @plugin "daisyui/theme" {
+  name: "eve-online";
+  default: false;
+  prefersdark: true;
+  color-scheme: "dark";
+  --color-base-100: oklch(25.62% 0 0);
+  --color-base-200: oklch(20.46% 0 0);
+  --color-base-300: oklch(14.07% 0.009 226.2);
+  --color-base-content: oklch(88.53% 0 0);
+  --color-primary: oklch(68.74% 0.0851 220.03);
+  --color-primary-content: oklch(18.38% 0.0147 220.59);
+  --color-secondary: oklch(56.99% 0.0643 222.75);
+  --color-secondary-content: oklch(97% 0.01 220);
+  --color-accent: oklch(77.2% 0.1738 64.55);
+  --color-accent-content: oklch(22.39% 0.0333 83.07);
+  --color-neutral: oklch(30.12% 0 0);
+  --color-neutral-content: oklch(88.53% 0 0);
+  --color-info: oklch(58% 0.158 241.966);
+  --color-info-content: oklch(97% 0.013 236.62);
+  --color-success: oklch(60% 0.118 184.704);
+  --color-success-content: oklch(98% 0.014 180.72);
+  --color-warning: oklch(66% 0.179 58.318);
+  --color-warning-content: oklch(98% 0.022 95.277);
+  --color-error: oklch(58% 0.253 17.585);
+  --color-error-content: oklch(96% 0.015 12.422);
+  --radius-selector: 0;
+  --radius-field: 0;
+  --radius-box: 0;
+  --size-selector: 0.21875rem;
+  --size-field: 0.21875rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
   name: "amarr";
   default: false;
   prefersdark: false;

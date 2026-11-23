@@ -20,7 +20,7 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
       id: "core",
       label: "Core",
       icon: "hero-cube",
-      themes: ["phoenix", "eve", "carbon"]
+      themes: ["phoenix", "eve", "carbon", "eve-online"]
     },
     %{
       id: "faction",
@@ -49,7 +49,7 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
   defp theme_icon(theme) do
     case Map.get(@faction_theme_ids, theme) do
       nil -> "/images/themes/" <> theme <> ".svg"
-      faction_id -> EveImages.faction_logo(faction_id, 32)
+      faction_id -> EveImages.faction_logo(faction_id, 64)
     end
   end
 
@@ -98,7 +98,7 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
                       src={theme_icon(theme)}
                       alt=""
                       aria-hidden="true"
-                      class="size-3.5 shrink-0 rounded-[3px]"
+                      class="size-6 shrink-0 rounded"
                       loading="lazy"
                       onerror="this.onerror=null;this.src='/images/alliance-default.png'"
                     />
