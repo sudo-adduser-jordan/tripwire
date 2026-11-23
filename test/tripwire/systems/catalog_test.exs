@@ -31,8 +31,17 @@ defmodule Tripwire.Systems.CatalogTest do
     assert Catalog.find("") == nil
   end
 
+  test "get looks a system up by solar id" do
+    Catalog.put_systems([%{solar_system_id: 30_000_142, name: "Jita", security: 0.9}])
+
+    assert %{solar_system_id: 30_000_142, name: "Jita", security: 0.9} = Catalog.get(30_000_142)
+    assert Catalog.get(30_000_144) == nil
+    assert Catalog.get(nil) == nil
+  end
+
   test "an empty catalog returns no matches" do
     assert Catalog.search("jita") == []
     assert Catalog.find("Jita") == nil
+    assert Catalog.get(30_000_142) == nil
   end
 end

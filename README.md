@@ -42,6 +42,8 @@ The signature widget lists every signature with its wormhole Mass state, its Age
 Wormhole space systems carry their class (`C1`–`C6`, `Thera`, `C13`, `Trig`, `Drifter`), system-wide effect (Magnetar, Pulsar, …) and static wormhole codes. The data is built once from the downloaded SDE plus the vendored statics list into `priv/data/wormhole_systems.json` (see `priv/data/README.md`) and stored on each map system.
 
 - `mix tripwire.build_wormhole_systems` rebuilds the dataset from `priv/sde/eve-online-static-data-latest-jsonl.zip` and `priv/data/wormhole_statics.json`; `task setup` runs it after refreshing the SDE.
+
+The System widget's statistics selector also lists the one-jump stargate neighbours of the selected k-space system under a **Gates** label, so activity in the systems around a high-sec or low-sec exit can be checked without adding them to the chain. The adjacency matrix is read from the SDE's `mapStargates.jsonl` at boot, and selecting a gate system only switches the widget's statistics and the `/:system_name` URL; it never creates a map node.
 - New systems are filled from the dataset when they are added or converted from an unknown placeholder.
 - `mix tripwire.backfill_system_data` fills missing values on existing systems (run by `task migrate`/`task start`); add `--force` to overwrite edited classes, effects and statics.
 

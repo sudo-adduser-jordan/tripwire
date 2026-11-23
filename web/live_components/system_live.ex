@@ -17,11 +17,15 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
         Mapping.list_connections_with_endpoints(assigns.map_id)
       end)
 
+    chart_system = Map.get(assigns, :chart_system)
+
     {:ok,
      socket
      |> assign(assigns)
      |> assign(:systems, systems)
      |> assign(:connections, connections)
+     |> assign(:chart_system, chart_system)
+     |> assign(:gate_systems, gate_systems(chart_system, systems))
      |> assign_new(:system_info, fn -> nil end)
      |> assign_new(:chart_range, fn -> "24h" end)
      |> assign_new(:chart_hidden, fn -> MapSet.new() end)
@@ -32,6 +36,11 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
 
   def handle_event("select-system", %{"id" => id}, socket) do
     send(self(), {:select_system, String.to_integer(id)})
+    {:noreply, socket}
+  end
+
+  def handle_event("select-gate-system", %{"solar" => solar}, socket) do
+    send(self(), {:select_gate_system, String.to_integer(solar)})
     {:noreply, socket}
   end
 
@@ -61,12 +70,12 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
               <button
                 id="system-copy"
                 class="group flex min-w-0 cursor-pointer items-center gap-1 rounded px-1 hover:bg-base-200"
-                title={"Copy #{selected_name(@systems, @selected_system_id) || "Jita"}"}
+                title={"Copy #{chart_name(@chart_system)}"}
                 phx-hook="CopyText"
-                data-copy={selected_name(@systems, @selected_system_id) || "Jita"}
+                data-copy={chart_name(@chart_system)}
               >
                 <span class="truncate text-lg font-semibold">
-                  {selected_name(@systems, @selected_system_id) || "Jita"}
+                  {chart_name(@chart_system)}
                 </span>
                 <.icon
                   name="hero-clipboard"
@@ -102,6 +111,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
                 </div>
               </details>
               <button
+                :if={not is_nil(@selected_system_id)}
                 id="system-favorite"
                 class="btn btn-ghost btn-xs p-1"
                 title="Add/remove selected system from favorites"
@@ -124,16 +134,13 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
             </li>
           </ul>
           <div
-            :if={selected_system(@systems, @selected_system_id)}
+            :if={@chart_system}
             class="flex shrink-0 flex-col gap-y-1 px-2 pt-1"
           >
-            <.system_info
-              system={selected_system(@systems, @selected_system_id)}
-              system_info={@system_info}
-            />
+            <.system_info system={@chart_system} system_info={@system_info} />
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
               <a
-                :for={link <- Systems.external_links(selected_system(@systems, @selected_system_id))}
+                :for={link <- Systems.external_links(@chart_system)}
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -148,6 +155,8 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
             systems={@systems}
             connections={@connections}
             selected_system_id={@selected_system_id}
+            chart_system={@chart_system}
+            gate_systems={@gate_systems}
           />
           <div
             id="system-chart"
@@ -181,6 +190,8 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
   attr :systems, :list, default: []
   attr :connections, :list, default: []
   attr :selected_system_id, :any, default: nil
+  attr :chart_system, :any, default: nil
+  attr :gate_systems, :list, default: []
 
   defp chart_range_buttons(assigns) do
     ~H"""
@@ -190,11 +201,32 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
           :for={sys <- visible_systems(@systems, @connections, @selected_system_id)}
           class={
             "btn btn-xs " <>
-              (if sys.id == @selected_system_id, do: "btn-primary", else: "btn-ghost")
+              (if same_system?(sys, @chart_system), do: "btn-primary", else: "btn-ghost")
           }
           title={"Select system #{sys.name}"}
           phx-click="select-system"
           phx-value-id={sys.id}
+        >
+          {sys.name}
+        </button>
+        <span
+          :if={@gate_systems != []}
+          class="mx-1 h-4 w-px shrink-0 bg-base-content/20"
+          aria-hidden="true"
+        >
+        </span>
+        <span :if={@gate_systems != []} class="px-1 text-[10px] uppercase tracking-wide opacity-50">
+          Gates
+        </span>
+        <button
+          :for={sys <- @gate_systems}
+          class={
+            "btn btn-xs " <>
+              (if same_system?(sys, @chart_system), do: "btn-primary", else: "btn-ghost")
+          }
+          title={"Select system #{sys.name} (1 jump from #{chart_name(@chart_system)})"}
+          phx-click="select-gate-system"
+          phx-value-solar={sys.solar_system_id}
         >
           {sys.name}
         </button>
@@ -327,8 +359,27 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
     if Systems.esi_resolvable?(system), do: "Loading region…", else: "W-Space"
   end
 
-  defp selected_system(systems, id) do
-    Enum.find(systems, &(&1.id == id))
+  defp chart_name(%{name: name}) when is_binary(name) and name != "", do: name
+  defp chart_name(_), do: "Jita"
+
+  defp same_system?(%{solar_system_id: id}, %{solar_system_id: id}) when is_integer(id), do: true
+  defp same_system?(_, _), do: false
+
+  defp gate_systems(chart, systems) do
+    with %{solar_system_id: solar} when is_integer(solar) <- chart,
+         true <- solar < 31_000_000,
+         true <- Systems.Gates.loaded?(),
+         true <- Systems.Catalog.loaded?() do
+      chain_ids = MapSet.new(systems, & &1.solar_system_id)
+
+      Systems.Gates.neighbors(solar)
+      |> Enum.reject(&(MapSet.member?(chain_ids, &1) or &1 >= 31_000_000))
+      |> Enum.map(&Systems.Catalog.get/1)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.sort_by(&String.downcase(&1.name || ""))
+    else
+      _ -> []
+    end
   end
 
   defp sov_holder(%{sovereignty: %{name: _name} = holder}), do: holder
@@ -369,15 +420,6 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
       Enum.filter(known, &(&1.id == selected_id or MapSet.member?(neighbor_ids, &1.id)))
     else
       known
-    end
-  end
-
-  defp selected_name(_systems, nil), do: nil
-
-  defp selected_name(systems, id) do
-    case Enum.find(systems, &(&1.id == id)) do
-      %{name: name} -> name
-      nil -> nil
     end
   end
 end

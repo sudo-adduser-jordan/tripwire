@@ -171,6 +171,7 @@ defmodule TripwireWeb.DashboardLive do
     |> apply_tree_layout(settings.map_layout)
     |> assign(:selected_system_id, nil)
     |> assign(:selected_system_name, nil)
+    |> assign(:chart_system, nil)
     |> assign(:system_suggestions, [])
     |> assign(:signatures, [])
     |> assign(:comments, [])
@@ -219,13 +220,7 @@ defmodule TripwireWeb.DashboardLive do
             end
 
           nil ->
-            case preferred_system(systems) do
-              %{id: id, name: name} ->
-                {:noreply, socket |> select_system(id) |> push_patch(to: "/" <> name)}
-
-              nil ->
-                {:noreply, socket}
-            end
+            select_named_offchain(socket, system_name, systems)
         end
 
       systems != [] ->
@@ -253,6 +248,10 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_info({:select_system, system_id}, socket) do
     {:noreply, select_system_and_patch(socket, system_id)}
+  end
+
+  def handle_info({:select_gate_system, solar_system_id}, socket) do
+    {:noreply, select_gate_system(socket, solar_system_id)}
   end
 
   def handle_info({:open_system, system_id}, socket) do
@@ -367,16 +366,17 @@ defmodule TripwireWeb.DashboardLive do
      |> refresh_occupants()}
   end
 
-  def handle_info({:system_info_loaded, system_id, info}, socket) do
-    if socket.assigns.selected_system_id == system_id do
+  def handle_info({:system_info_loaded, solar_system_id, info}, socket) do
+    if chart_solar(socket.assigns[:chart_system]) == solar_system_id do
       {:noreply, assign(socket, :system_info, info_to_assign(info))}
     else
       {:noreply, socket}
     end
   end
 
-  def handle_info({:chart_data_loaded, system_id, range, data}, socket) do
-    if socket.assigns.selected_system_id == system_id and socket.assigns.chart_range == range do
+  def handle_info({:chart_data_loaded, solar_system_id, range, data}, socket) do
+    if chart_solar(socket.assigns[:chart_system]) == solar_system_id and
+         socket.assigns.chart_range == range do
       {:noreply,
        socket
        |> assign(:chart_data, data)
@@ -392,7 +392,7 @@ defmodule TripwireWeb.DashboardLive do
   def handle_info(:refresh_chart, socket) do
     schedule_chart_refresh()
 
-    if connected?(socket) && socket.assigns.selected_system_id do
+    if connected?(socket) && socket.assigns[:chart_system] do
       {:noreply, schedule_chart_reload(socket)}
     else
       {:noreply, socket}
@@ -719,6 +719,13 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("select-system", %{"id" => id}, socket) do
     {:noreply, select_system_and_patch(socket, String.to_integer(id))}
+  end
+
+  def handle_event("select-gate-system", %{"solar" => solar}, socket) do
+    case Integer.parse(to_string(solar)) do
+      {solar_system_id, ""} -> {:noreply, select_gate_system(socket, solar_system_id)}
+      _ -> {:noreply, socket}
+    end
   end
 
   def handle_event("chart-range", %{"range" => range}, socket) when range in @chart_ranges do
@@ -1203,6 +1210,7 @@ defmodule TripwireWeb.DashboardLive do
           |> assign(:connections, Mapping.list_connections_with_endpoints(socket.assigns.map.id))
           |> assign(:selected_system_id, nil)
           |> assign(:selected_system_name, nil)
+          |> assign(:chart_system, nil)
           |> assign(:system_suggestions, [])
           |> assign(:signatures, [])
           |> assign(:comments, [])
@@ -1343,6 +1351,7 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
          |> assign(:selected_system_id, nil)
          |> assign(:selected_system_name, nil)
+         |> assign(:chart_system, nil)
          |> assign(:system_suggestions, [])
          |> assign(:signatures, [])
          |> assign(:comments, [])
@@ -1850,6 +1859,7 @@ defmodule TripwireWeb.DashboardLive do
     |> apply_tree_layout(settings.map_layout)
     |> assign(:selected_system_id, nil)
     |> assign(:selected_system_name, nil)
+    |> assign(:chart_system, nil)
     |> assign(:system_suggestions, [])
     |> assign(:signatures, [])
     |> assign(:comments, [])
@@ -1931,6 +1941,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:connections, Mapping.list_connections_with_endpoints(map.id))
     |> assign(:selected_system_id, nil)
     |> assign(:selected_system_name, nil)
+    |> assign(:chart_system, nil)
     |> assign(:system_suggestions, [])
     |> assign(:signatures, [])
     |> assign(:comments, [])
@@ -2003,6 +2014,7 @@ defmodule TripwireWeb.DashboardLive do
     |> apply_tree_layout_with_home(settings.map_layout, map)
     |> assign(:selected_system_id, nil)
     |> assign(:selected_system_name, nil)
+    |> assign(:chart_system, nil)
     |> assign(:system_suggestions, [])
     |> assign(:signatures, [])
     |> assign(:comments, [])
@@ -2067,10 +2079,14 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp select_system(socket, system_id) do
+    chart_system =
+      Enum.find(socket.assigns.systems, &(&1.id == system_id)) || Mapping.get_system(system_id)
+
     socket =
       socket
       |> assign(:selected_system_id, system_id)
       |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
+      |> assign(:chart_system, chart_system)
       |> assign(:system_search, "")
       |> assign(:system_suggestions, [])
       |> assign(:signatures, Mapping.list_signatures(system_id))
@@ -2085,8 +2101,77 @@ defmodule TripwireWeb.DashboardLive do
       |> assign(:redo, [])
       |> assign(:sys_form, sys_form_for(socket.assigns.systems, system_id))
 
-    schedule_system_detail(socket, system_id)
+    schedule_system_detail(socket, chart_system)
   end
+
+  defp select_gate_system(socket, solar_system_id, opts \\ []) do
+    case Systems.Catalog.get(solar_system_id) do
+      %{name: name} = system ->
+        socket =
+          socket
+          |> assign(:chart_system, system)
+          |> assign(:selected_system_id, nil)
+          |> assign(:selected_system_name, name)
+          |> assign(:system_search, "")
+          |> assign(:system_suggestions, [])
+          |> assign(:signatures, [])
+          |> assign(:comments, [])
+          |> assign(:flares, [])
+          |> assign(:system_stat, nil)
+          |> assign(:system_info, nil)
+          |> assign(:chart_data, empty_chart_data(socket.assigns[:chart_range] || "24h"))
+          |> assign(:stale_ids, [])
+          |> assign(:stale_system_id, nil)
+          |> assign(:undo, [])
+          |> assign(:redo, [])
+          |> assign(:sys_form, %{"alias" => "", "sys_class" => "", "effect" => ""})
+          |> schedule_system_detail(system)
+
+        if Keyword.get(opts, :patch, true) do
+          push_patch(socket, to: "/" <> name)
+        else
+          socket
+        end
+
+      nil ->
+        put_flash(socket, :error, "System not found")
+    end
+  end
+
+  defp select_named_offchain(socket, system_name, systems) do
+    case Systems.Catalog.find(system_name) do
+      %{solar_system_id: solar_system_id} when is_integer(solar_system_id) ->
+        if kspace_solar?(solar_system_id) do
+          if chart_solar(socket.assigns[:chart_system]) == solar_system_id and
+               is_nil(socket.assigns[:selected_system_id]) do
+            {:noreply, socket}
+          else
+            {:noreply, select_gate_system(socket, solar_system_id, patch: false)}
+          end
+        else
+          {:noreply, select_preferred(socket, systems)}
+        end
+
+      _ ->
+        {:noreply, select_preferred(socket, systems)}
+    end
+  end
+
+  defp select_preferred(socket, systems) do
+    case preferred_system(systems) do
+      %{id: id, name: name} ->
+        socket |> select_system(id) |> push_patch(to: "/" <> name)
+
+      nil ->
+        socket
+    end
+  end
+
+  defp chart_solar(%{solar_system_id: solar_system_id}), do: solar_system_id
+  defp chart_solar(_), do: nil
+
+  defp kspace_solar?(solar_system_id),
+    do: is_integer(solar_system_id) and solar_system_id < 31_000_000
 
   defp open_system_modal(socket, system_id) do
     socket
@@ -2595,15 +2680,16 @@ defmodule TripwireWeb.DashboardLive do
   defp autoselect_first_system(%{assigns: %{selected_system_id: nil, systems: systems}} = socket)
        when is_list(systems) and systems != [] do
     case preferred_system(systems) do
-      %{id: id, name: name} ->
+      %{id: id, name: name} = system ->
         socket =
           socket
           |> assign(:selected_system_id, id)
           |> assign(:selected_system_name, name)
+          |> assign(:chart_system, system)
           |> assign(:signatures, Mapping.list_signatures(id))
           |> assign(:comments, Mapping.list_comments(id))
 
-        schedule_system_detail(socket, id)
+        schedule_system_detail(socket, system)
 
       nil ->
         socket
@@ -2868,24 +2954,20 @@ defmodule TripwireWeb.DashboardLive do
 
   defp push_undo(socket, op), do: update(socket, :undo, &[op | &1])
 
-  defp schedule_system_detail(socket, system_id) do
+  defp schedule_system_detail(socket, nil), do: socket
+
+  defp schedule_system_detail(socket, system) do
     if connected?(socket) do
       pid = self()
-      system = Enum.find(socket.assigns.systems, &(&1.id == system_id))
+      solar_system_id = system.solar_system_id
       range = socket.assigns[:chart_range] || "24h"
 
       Task.start(fn ->
-        info =
-          case system do
-            nil -> {:error, :not_found}
-            s -> Tripwire.Systems.fetch_info(s)
-          end
-
-        send(pid, {:system_info_loaded, system_id, info})
+        send(pid, {:system_info_loaded, solar_system_id, Tripwire.Systems.fetch_info(system)})
       end)
 
       Task.start(fn ->
-        send(pid, {:chart_data_loaded, system_id, range, chart_data_for(system, range)})
+        send(pid, {:chart_data_loaded, solar_system_id, range, chart_data_for(system, range)})
       end)
     end
 
@@ -2893,14 +2975,14 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp schedule_chart_reload(socket) do
-    if connected?(socket) do
+    if connected?(socket) and socket.assigns[:chart_system] do
       pid = self()
-      system_id = socket.assigns.selected_system_id
-      system = Enum.find(socket.assigns.systems, &(&1.id == system_id))
+      system = socket.assigns.chart_system
+      solar_system_id = system.solar_system_id
       range = socket.assigns[:chart_range] || "24h"
 
       Task.start(fn ->
-        send(pid, {:chart_data_loaded, system_id, range, chart_data_for(system, range)})
+        send(pid, {:chart_data_loaded, solar_system_id, range, chart_data_for(system, range)})
       end)
     end
 
@@ -2916,8 +2998,6 @@ defmodule TripwireWeb.DashboardLive do
     zeros = List.duplicate(0, length(labels))
     %{labels: labels, jumps: zeros, ship_kills: zeros, pod_kills: zeros, npc_kills: zeros}
   end
-
-  defp chart_data_for(nil, range), do: empty_chart_data(range)
 
   defp chart_data_for(system, range) do
     labels = range_labels(range)

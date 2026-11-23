@@ -8,6 +8,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   alias Tripwire.Repo
   alias Tripwire.Settings
   alias Tripwire.Systems
+  alias Tripwire.Systems.Gates
 
   setup do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 42_000, name: "Kariyo Astrien"})
@@ -857,6 +858,11 @@ defmodule TripwireWeb.DashboardLiveTest do
     on_exit(fn -> Systems.Catalog.clear() end)
   end
 
+  defp seed_gates(links) do
+    Gates.put_stargates(links)
+    on_exit(fn -> Gates.clear() end)
+  end
+
   defp column_keys(html) do
     ~r/data-column="([a-z]+)"/
     |> Regex.scan(html, capture: :all_but_first)
@@ -1649,6 +1655,107 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute container =~ "J150323"
   end
 
+  test "system widget lists gate neighbours of the selected k-space system", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, _hole} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, _jita} =
+      Mapping.add_system_to_map(map, %{
+        solar_system_id: 30_000_142,
+        name: "Jita",
+        security: 0.9
+      })
+
+    seed_catalog([
+      %{solar_system_id: 30_000_142, name: "Jita", security: 0.9},
+      %{solar_system_id: 30_000_144, name: "Perimeter", security: 1.0},
+      %{solar_system_id: 30_000_145, name: "Maurasi", security: 0.9},
+      %{solar_system_id: 30_001_385, name: "Rancer", security: 0.3}
+    ])
+
+    seed_gates([{30_000_142, 30_000_144}, {30_000_142, 30_000_145}])
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    container = view |> element("#system-container") |> render()
+    assert container =~ "Perimeter"
+    assert container =~ "Maurasi"
+    refute container =~ "Rancer"
+    assert container =~ "Gates"
+
+    view
+    |> element("#system-container button[title='Select system Perimeter (1 jump from Jita)']")
+    |> render_click()
+
+    assert_patch(view, "/Perimeter")
+
+    container = view |> element("#system-container") |> render()
+    assert container =~ "Perimeter"
+    refute container =~ "Gates"
+    assert view |> element("#topbar-system") |> render() =~ "Perimeter"
+
+    jita_button =
+      view |> element("#system-container button[title='Select system Jita']") |> render()
+
+    refute jita_button =~ "btn-primary"
+    assert render(view) =~ "Shortcuts"
+  end
+
+  test "an off-chain k-space url opens its statistics without a chain node", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, _hole} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, _jita} =
+      Mapping.add_system_to_map(map, %{
+        solar_system_id: 30_000_142,
+        name: "Jita",
+        security: 0.9
+      })
+
+    seed_catalog([
+      %{solar_system_id: 30_000_142, name: "Jita", security: 0.9},
+      %{solar_system_id: 30_000_144, name: "Perimeter", security: 1.0}
+    ])
+
+    seed_gates([{30_000_142, 30_000_144}])
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/Perimeter")
+
+    assert view |> element("#system-container") |> render() =~ "Perimeter"
+    assert view |> element("#topbar-system") |> render() =~ "Perimeter"
+    assert length(Mapping.list_systems(map.id)) == 2
+  end
+
+  test "system widget lists no gate neighbours without gate data", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, _hole} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, _jita} =
+      Mapping.add_system_to_map(map, %{
+        solar_system_id: 30_000_142,
+        name: "Jita",
+        security: 0.9
+      })
+
+    seed_catalog([
+      %{solar_system_id: 30_000_142, name: "Jita", security: 0.9},
+      %{solar_system_id: 30_000_144, name: "Perimeter", security: 1.0}
+    ])
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    container = view |> element("#system-container") |> render()
+    assert container =~ "Jita"
+    refute container =~ "Perimeter"
+    refute container =~ "Gates"
+  end
+
   test "default layout arranges the tree from the top", %{conn: conn, character: character} do
     {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
 
@@ -1843,12 +1950,14 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     view |> element(~s|nav button[title="Select Rancer"]|) |> render_click()
 
-    assert view |> element("#topbar-system") |> render() =~ "J150321"
+    assert_patch(view, "/Rancer")
+    assert view |> element("#topbar-system") |> render() =~ "Rancer"
+    assert view |> element("#system-container") |> render() =~ "Rancer"
     assert length(Mapping.list_systems(map.id)) == 1
     assert view |> element("#system-search") |> render() =~ ~s|value=""|
   end
 
-  test "submitting an outside system name only patches the url", %{
+  test "submitting an outside k-space system name shows its statistics", %{
     conn: conn,
     character: character
   } do
@@ -1861,7 +1970,9 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element(~s|nav form[phx-submit="system-search-submit"]|)
     |> render_submit(%{search: "Rancer"})
 
-    assert view |> element("#topbar-system") |> render() =~ "J150321"
+    assert_patch(view, "/Rancer")
+    assert view |> element("#topbar-system") |> render() =~ "Rancer"
+    assert view |> element("#system-container") |> render() =~ "Rancer"
     assert length(Mapping.list_systems(map.id)) == 1
   end
 

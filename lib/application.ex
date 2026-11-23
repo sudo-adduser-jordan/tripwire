@@ -9,6 +9,7 @@ defmodule Tripwire.Application do
       Tripwire.Vault,
       Tripwire.ESI.TokenCache,
       Tripwire.Systems.Catalog,
+      Tripwire.Systems.Gates,
       {Phoenix.PubSub, name: Tripwire.PubSub},
       Tripwire.Tracking.PollerSupervisor,
       {Registry, keys: :unique, name: Tripwire.TrackingRegistry},

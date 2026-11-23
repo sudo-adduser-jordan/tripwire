@@ -54,6 +54,20 @@ defmodule Tripwire.Systems.Catalog do
 
   def find(_name), do: nil
 
+  def get(solar_system_id) when is_integer(solar_system_id) do
+    if table?() do
+      case :ets.lookup(@table, solar_system_id) do
+        [{^solar_system_id, name, security}] ->
+          %{solar_system_id: solar_system_id, name: name, security: security}
+
+        [] ->
+          nil
+      end
+    end
+  end
+
+  def get(_solar_system_id), do: nil
+
   def put_systems(entries) when is_list(entries) do
     GenServer.call(__MODULE__, {:put_systems, entries})
   end
