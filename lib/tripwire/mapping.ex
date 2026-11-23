@@ -28,6 +28,26 @@ defmodule Tripwire.Mapping do
 
   @thera_solar_system_id 31_000_005
   @thera_name "Thera"
+  @jita_solar_system_id 30_000_142
+
+  @welcome_shortcuts """
+  # Shortcuts
+
+  - <kbd>Ctrl</kbd> + <kbd>V</kbd> anywhere — paste probe scans
+  - <kbd>Escape</kbd> — close settings
+  - <kbd>Enter</kbd> in Search — jump to a system
+  """
+
+  @welcome_markdown """
+  **Bold**
+  *italic* and _italic_
+  __underline__
+  ~~strike~~
+  `code`
+  # Header 1
+  ## Header 2
+  ### Header 3
+  """
 
   def thera_solar_system_id, do: @thera_solar_system_id
   def thera_name, do: @thera_name
@@ -556,6 +576,21 @@ defmodule Tripwire.Mapping do
     %MapSystem{map_id: map.id}
     |> MapSystem.changeset(attrs)
     |> Repo.insert()
+    |> case do
+      {:ok, system} = ok ->
+        if jita?(system), do: ensure_welcome_notes(system)
+        ok
+
+      error ->
+        error
+    end
+  end
+
+  defp jita?(%MapSystem{unknown: true}), do: false
+
+  defp jita?(%MapSystem{} = system) do
+    system.solar_system_id == @jita_solar_system_id or
+      String.downcase(system.name || "") == "jita"
   end
 
   def add_unknown_system(%Map{} = map, attrs \\ %{}) do
@@ -614,6 +649,14 @@ defmodule Tripwire.Mapping do
     system
     |> MapSystem.changeset(attrs |> put_system_data() |> Elixir.Map.put(:unknown, false))
     |> Repo.update()
+    |> case do
+      {:ok, converted} = ok ->
+        if jita?(converted), do: ensure_welcome_notes(converted)
+        ok
+
+      error ->
+        error
+    end
   end
 
   defp put_system_data(attrs) do
@@ -1314,6 +1357,21 @@ defmodule Tripwire.Mapping do
     )
   end
 
+  def welcome_notes, do: [@welcome_shortcuts, @welcome_markdown]
+
+  def ensure_welcome_notes(%MapSystem{} = system) do
+    mask_id = get_map!(system.map_id).mask_id
+    existing = system.id |> list_comments() |> Enum.map(& &1.body)
+
+    welcome_notes()
+    |> Enum.reject(&(&1 in existing))
+    |> Enum.each(fn body ->
+      {:ok, _} = create_comment(system, %{body: body, mask_id: mask_id})
+    end)
+
+    :ok
+  end
+
   def create_comment(%MapSystem{} = system, attrs, character \\ nil) do
     character_id = if is_struct(character, Character), do: character.id, else: nil
 
@@ -1621,25 +1679,6 @@ defmodule Tripwire.Mapping do
     %{unknown: true, solar_system_id: 0, name: "unknown", x: 780.0, y: 540.0},
     %{unknown: true, solar_system_id: 0, name: "unknown", x: 1_120.0, y: 340.0}
   ]
-
-  @demo_shortcuts """
-  # Shortcuts
-
-  - <kbd>Ctrl</kbd> + <kbd>V</kbd> anywhere — paste probe scans
-  - <kbd>Escape</kbd> — close settings
-  - <kbd>Enter</kbd> in Search — jump to a system
-  """
-
-  @demo_note """
-  **Bold**
-  *italic* and _italic_
-  __underline__
-  ~~strike~~
-  `code`
-  # Header 1
-  ## Header 2
-  ### Header 3
-  """
 
   @demo_paste Enum.join(
                 [
@@ -2169,9 +2208,9 @@ defmodule Tripwire.Mapping do
           set: [map_system_id: system.id]
         )
 
-        if list_comments(system.id) == [] do
-          {:ok, _} = create_comment(system, %{body: @demo_shortcuts, mask_id: mask_id})
-          {:ok, _} = create_comment(system, %{body: @demo_note, mask_id: mask_id})
+        ensure_welcome_notes(system)
+
+        if not Enum.any?(list_comments(system.id), &(&1.body == @demo_paste)) do
           {:ok, _} = create_comment(system, %{body: @demo_paste, mask_id: mask_id})
         end
 

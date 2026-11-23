@@ -1312,8 +1312,13 @@ defmodule TripwireWeb.DashboardLive do
       mask ->
         map =
           case Mapping.list_maps_for_mask(mask.id) do
-            [] -> elem(Mapping.create_map(%{name: "Home", mask_id: mask.id}), 1)
-            [m | _] -> m
+            [] ->
+              map = elem(Mapping.create_map(%{name: "Home", mask_id: mask.id}), 1)
+              _ = ensure_jita_system(map, [])
+              map
+
+            [m | _] ->
+              m
           end
 
         Phoenix.PubSub.unsubscribe(

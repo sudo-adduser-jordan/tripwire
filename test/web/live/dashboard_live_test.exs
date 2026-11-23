@@ -2768,6 +2768,28 @@ defmodule TripwireWeb.DashboardLiveTest do
     refute has_element?(view, "#mask-card-#{demo_mask.id}")
   end
 
+  test "a new mask map starts with a Jita node holding the welcome notes", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, mask} = Masks.create_mask(%{name: "Fresh Corp", kind: "corporation"})
+    {:ok, _} = Masks.add_membership(mask, character)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element(~s|button[phx-click="switch-mask"][phx-value-id="#{mask.id}"]|)
+    |> render_click()
+
+    [map] = Mapping.list_maps_for_mask(mask.id)
+    jita = Enum.find(Mapping.list_systems(map.id), &(&1.name == "Jita"))
+
+    assert jita
+    assert [%{body: shortcuts}, %{body: markdown}] = Mapping.list_comments(jita.id)
+    assert shortcuts =~ "# Shortcuts"
+    assert markdown =~ "**Bold**"
+  end
+
   test "removing the last character of a corporation prunes its mask", %{
     conn: conn,
     character: character

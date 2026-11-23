@@ -269,6 +269,19 @@ defmodule Tripwire.MappingTest do
     assert home.id != jita.id
   end
 
+  test "a Jita system gets the welcome notes once", %{mask: mask} do
+    {:ok, map} = Mapping.create_map(%{name: "Notes", mask_id: mask.id})
+
+    {:ok, jita} = Mapping.add_system_to_map(map, %{solar_system_id: 30_000_142, name: "Jita"})
+
+    assert [%{body: shortcuts}, %{body: markdown}] = Mapping.list_comments(jita.id)
+    assert shortcuts =~ "# Shortcuts"
+    assert markdown =~ "**Bold**"
+
+    Mapping.ensure_welcome_notes(jita)
+    assert length(Mapping.list_comments(jita.id)) == 2
+  end
+
   test "character stat counters track signature and comment lifecycles", %{mask: mask} do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 99_001, name: "Stat Tracker"})
     {:ok, map} = Mapping.create_map(%{name: "Stats", mask_id: mask.id})
