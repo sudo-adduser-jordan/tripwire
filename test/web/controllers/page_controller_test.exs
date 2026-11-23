@@ -44,6 +44,31 @@ defmodule TripwireWeb.PageControllerTest do
     )
   end
 
+  test "GET / redirects a logged-in character to the dashboard", %{conn: conn} do
+    {:ok, character} =
+      Tripwire.Accounts.upsert_character(%{eve_id: 77_100, name: "Landing Pilot"})
+
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{
+        "current_user" => %{"id" => character.eve_id, "name" => character.name}
+      })
+      |> get(~p"/")
+
+    assert redirected_to(conn) == "/dashboard"
+  end
+
+  test "GET / renders the landing page when the session character is gone", %{conn: conn} do
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{"current_user" => %{"id" => 999_999, "name" => "Ghost"}})
+      |> get(~p"/")
+
+    html = html_response(conn, 200)
+    assert html =~ "The modern wormhole mapping tool"
+    assert html =~ ~s|href="/Jita"|
+  end
+
   defp with_env(vars, fun) do
     previous = Map.new(vars, fn {name, _value} -> {name, System.get_env(name)} end)
 
