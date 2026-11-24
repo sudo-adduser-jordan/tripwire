@@ -37,6 +37,9 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   attr :sso_configured?, :boolean, default: false
   attr :presences, :map, default: %{}
   attr :current_user, :map, default: nil
+  attr :demo?, :boolean, default: false
+  attr :mask_members, :map, default: nil
+  attr :stats, :map, default: nil
 
   def settings_live(assigns) do
     ~H"""
@@ -97,12 +100,14 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
           <StatisticsLive.settings_statistics_live
             settings_tab={@settings_tab}
             character={@character}
+            stats={@stats}
           />
           <ThemesLive.settings_themes_live settings_tab={@settings_tab} />
           <AdminLive.settings_admin_live
             settings_tab={@settings_tab}
             character={@character}
             masks={@admin_masks}
+            mask_members={@mask_members}
           />
         </div>
       </div>

@@ -6,9 +6,14 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
   def update(assigns, socket) do
     comments =
       case {Map.get(assigns, :comments), Map.get(assigns, :selected_system_id)} do
-        {comments, _} when is_list(comments) -> comments
-        {_, nil} -> []
-        {_, system_id} -> Mapping.list_comments(system_id)
+        {comments, _} when is_list(comments) ->
+          comments
+
+        {_, nil} ->
+          []
+
+        {_, system_id} ->
+          if Map.get(assigns, :demo?), do: [], else: Mapping.list_comments(system_id)
       end
 
     {:ok,
@@ -26,6 +31,26 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
   def handle_event("comment-compose-toggle", _params, socket) do
     open? = !socket.assigns.composer_open
     {:noreply, socket |> assign(:composer_open, open?) |> assign(:comment_body, "")}
+  end
+
+  def handle_event("comment-submit", params, %{assigns: %{demo?: true}} = socket) do
+    body = params |> Map.get("comment", "") |> to_string() |> String.trim()
+
+    cond do
+      is_nil(socket.assigns.selected_system_id) ->
+        {:noreply, put_flash(socket, :error, "Select a system first")}
+
+      body == "" ->
+        {:noreply, put_flash(socket, :error, "Comment cannot be empty")}
+
+      true ->
+        send(self(), {:demo_comment_create, socket.assigns.selected_system_id, body})
+
+        {:noreply,
+         socket
+         |> assign(:comment_body, "")
+         |> assign(:composer_open, false)}
+    end
   end
 
   def handle_event("comment-submit", params, socket) do
@@ -50,16 +75,41 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
   end
 
   def handle_event("comment-edit", %{"id" => id}, socket) do
-    comment = Mapping.get_comment!(id)
+    case Enum.find(socket.assigns.comments, &(to_string(&1.id) == to_string(id))) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Note not found")}
 
-    {:noreply,
-     socket
-     |> assign(:editing_comment_id, comment.id)
-     |> assign(:edit_body, comment.body)}
+      comment ->
+        {:noreply,
+         socket
+         |> assign(:editing_comment_id, comment.id)
+         |> assign(:edit_body, comment.body)}
+    end
   end
 
   def handle_event("comment-edit-cancel", _params, socket) do
     {:noreply, socket |> assign(:editing_comment_id, nil) |> assign(:edit_body, "")}
+  end
+
+  def handle_event("comment-edit-submit", params, %{assigns: %{demo?: true}} = socket) do
+    body = params |> Map.get("comment", "") |> to_string() |> String.trim()
+
+    case socket.assigns.editing_comment_id do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Select a note to edit")}
+
+      _id when body == "" ->
+        {:noreply,
+         socket |> assign(:edit_body, body) |> put_flash(:error, "Comment cannot be empty")}
+
+      id ->
+        send(self(), {:demo_comment_update, id, body})
+
+        {:noreply,
+         socket
+         |> assign(:editing_comment_id, nil)
+         |> assign(:edit_body, "")}
+    end
   end
 
   def handle_event("comment-edit-submit", params, socket) do
@@ -92,6 +142,25 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
              |> assign(:edit_body, body)
              |> put_flash(:error, changeset_errors(changeset))}
         end
+    end
+  end
+
+  def handle_event("comment-delete", %{"id" => id}, %{assigns: %{demo?: true}} = socket) do
+    case Enum.find(socket.assigns.comments, &(to_string(&1.id) == to_string(id))) do
+      nil ->
+        {:noreply, socket}
+
+      comment ->
+        send(self(), {:demo_comment_delete, comment.id})
+
+        socket =
+          if socket.assigns[:editing_comment_id] == comment.id do
+            socket |> assign(:editing_comment_id, nil) |> assign(:edit_body, "")
+          else
+            socket
+          end
+
+        {:noreply, socket}
     end
   end
 

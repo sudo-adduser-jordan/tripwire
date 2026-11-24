@@ -18,9 +18,14 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   def update(assigns, socket) do
     signatures =
       case {Map.get(assigns, :signatures), Map.get(assigns, :selected_system_id)} do
-        {sigs, _} when is_list(sigs) -> sigs
-        {_, nil} -> []
-        {_, system_id} -> Mapping.list_signatures(system_id)
+        {sigs, _} when is_list(sigs) ->
+          sigs
+
+        {_, nil} ->
+          []
+
+        {_, system_id} ->
+          if Map.get(assigns, :demo?), do: [], else: Mapping.list_signatures(system_id)
       end
 
     previous_system_id = Map.get(socket.assigns, :selected_system_id)
@@ -99,6 +104,11 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
 
   defp dest_name(system), do: system.alias || system.name
 
+  def handle_event("add-signature", %{"sig" => params}, %{assigns: %{demo?: true}} = socket) do
+    send(self(), {:demo_add_signature, socket.assigns.selected_system_id, params})
+    {:noreply, socket}
+  end
+
   def handle_event("add-signature", %{"sig" => params}, socket) do
     with system when not is_nil(system) <- selected_system(socket),
          {:ok, _} <- Mapping.create_signature(system, sig_attrs(params), socket.assigns.character) do
@@ -107,6 +117,17 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
     else
       nil -> {:noreply, put_flash(socket, :error, "Select a system first")}
       {:error, changeset} -> {:noreply, put_flash(socket, :error, changeset_errors(changeset))}
+    end
+  end
+
+  def handle_event("delete-signature", %{"id" => id}, %{assigns: %{demo?: true}} = socket) do
+    case Enum.find(socket.assigns.signatures, &(to_string(&1.id) == to_string(id))) do
+      nil ->
+        {:noreply, socket}
+
+      signature ->
+        send(self(), {:demo_delete_signature, signature.id, signature.map_system_id})
+        {:noreply, assign(socket, :undo, [{:delete, signature} | socket.assigns.undo])}
     end
   end
 
@@ -125,6 +146,25 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
      socket
      |> assign(:undo, undo)
      |> assign(:signatures, Mapping.list_signatures(deleted.map_system_id))}
+  end
+
+  def handle_event("undo", _params, %{assigns: %{demo?: true}} = socket) do
+    case socket.assigns.undo do
+      [] ->
+        {:noreply, socket}
+
+      [{:delete, signature} | rest] ->
+        if is_nil(socket.assigns.selected_system_id) do
+          {:noreply, put_flash(socket, :error, "Select a system before undoing")}
+        else
+          send(self(), {:demo_restore_signature, signature.map_system_id, signature})
+
+          {:noreply,
+           socket
+           |> assign(:undo, rest)
+           |> assign(:redo, [{:delete, signature} | socket.assigns.redo])}
+        end
+    end
   end
 
   def handle_event("undo", _params, socket) do
@@ -160,6 +200,21 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
     end
   end
 
+  def handle_event("redo", _params, %{assigns: %{demo?: true}} = socket) do
+    case socket.assigns.redo do
+      [] ->
+        {:noreply, socket}
+
+      [{:delete, signature} | rest] ->
+        send(self(), {:demo_delete_signature, signature.id, signature.map_system_id})
+
+        {:noreply,
+         socket
+         |> assign(:redo, rest)
+         |> assign(:undo, [{:delete, signature} | socket.assigns.undo])}
+    end
+  end
+
   def handle_event("redo", _params, socket) do
     case socket.assigns.redo do
       [] ->
@@ -181,6 +236,11 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
          |> assign(:undo, undo)
          |> assign(:signatures, Mapping.list_signatures(deleted.map_system_id))}
     end
+  end
+
+  def handle_event("toggle-tracker", _params, %{assigns: %{demo?: true}} = socket) do
+    send(self(), :demo_toggle_tracker)
+    {:noreply, socket}
   end
 
   def handle_event("toggle-tracker", _params, socket) do
@@ -535,15 +595,24 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   defp mass_rank(_mass), do: 3
 
   defp selected_system(%{assigns: %{selected_system_id: nil}}), do: nil
-  defp selected_system(%{assigns: %{selected_system_id: id}}), do: Mapping.get_system(id)
+
+  defp selected_system(%{assigns: %{selected_system_id: id}} = socket) do
+    Enum.find(Map.get(socket.assigns, :systems) || [], &(&1.id == id))
+  end
 
   defp system_label(nil), do: "no system selected"
   defp system_label(_), do: "system selected"
 
   defp tracking?(assigns) do
-    case Map.get(assigns, :character) do
-      %{} = character -> Tripwire.Tracking.tracking?(character)
-      _ -> false
+    case Map.get(assigns, :tracking?) do
+      nil ->
+        case Map.get(assigns, :character) do
+          %{} = character -> Tripwire.Tracking.tracking?(character)
+          _ -> false
+        end
+
+      tracking? ->
+        tracking?
     end
   end
 

@@ -31,7 +31,7 @@ Rebuild it with `mix tripwire.build_wormhole_systems` after downloading the SDE
 - Effect: `mapSecondarySuns.jsonl` → `types.jsonl` (`groupID` 995).
 - Statics: `priv/data/wormhole_statics.json`.
 - Name: the SDE system name, used to refuse the data for synthetic systems that
-  reuse a real solar id (the demo seed).
+  reuse a real solar id (the demo fixture).
 
 EVE's static data export has no statics and does not expose the class for the
 new Redoubt/Vanguard regions except through those class ids, so entries can have

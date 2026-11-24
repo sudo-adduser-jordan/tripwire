@@ -1,6 +1,7 @@
 defmodule TripwireWeb.LiveComponents.MapLive do
   use TripwireWeb, :live_component
 
+  alias Tripwire.Data
   alias Tripwire.EveImages
   alias Tripwire.Mapping
   alias Tripwire.Signatures, as: SigParser
@@ -18,14 +19,15 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
   def update(assigns, socket) do
     map_id = Map.get(assigns, :map_id)
-    systems = Map.get_lazy(assigns, :systems, fn -> Mapping.list_visible_systems(map_id) end)
+    data = Map.get(assigns, :demo_state) || :db
+    systems = Map.get_lazy(assigns, :systems, fn -> Data.list_visible_systems(data, map_id) end)
 
     connections =
       Map.get_lazy(assigns, :connections, fn ->
-        Mapping.list_connections_with_endpoints(map_id)
+        Data.list_connections_with_endpoints(data, map_id)
       end)
 
-    stats = Map.get_lazy(assigns, :stats, fn -> Mapping.list_system_stats(map_id) end)
+    stats = Map.get_lazy(assigns, :stats, fn -> Data.list_system_stats(data, map_id) end)
     occupants = Map.get(assigns, :occupants, [])
     zoom = map_zoom(Map.get(assigns, :map_scale))
     {pan_x, pan_y} = Mapping.home_center(systems, Map.get(assigns, :map), zoom)
@@ -42,7 +44,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign(:node_w, node_w)
      |> assign(:node_h, node_h)
      |> assign(:node_radius, node_radius(Map.get(assigns, :node_roundness), node_h))
-     |> assign(:wh_sigs, wormhole_sigs(map_id))
+     |> assign(:wh_sigs, wormhole_sigs(data, map_id))
      |> assign_new(:pan_x, fn -> pan_x end)
      |> assign_new(:pan_y, fn -> pan_y end)
      |> assign_new(:view_w, fn -> view_w end)
@@ -566,9 +568,9 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     """
   end
 
-  defp wormhole_sigs(nil), do: []
+  defp wormhole_sigs(_data, nil), do: []
 
-  defp wormhole_sigs(map_id), do: Mapping.list_wormhole_signatures(map_id)
+  defp wormhole_sigs(data, map_id), do: Data.list_wormhole_signatures(data, map_id)
 
   defp selected_name(_systems, nil), do: nil
 

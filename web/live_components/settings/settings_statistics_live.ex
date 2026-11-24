@@ -5,9 +5,11 @@ defmodule TripwireWeb.LiveComponents.Settings.StatisticsLive do
 
   attr :settings_tab, :string, default: "account"
   attr :character, :any, default: nil
+  attr :stats, :map, default: nil
 
   def settings_statistics_live(assigns) do
-    assigns = assign(assigns, :stats, Mapping.character_statistics(assigns.character))
+    assigns =
+      assign(assigns, :stats, assigns.stats || Mapping.character_statistics(assigns.character))
 
     ~H"""
     <input

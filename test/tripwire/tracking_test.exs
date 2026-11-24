@@ -243,7 +243,7 @@ defmodule Tripwire.TrackingTest do
       Mapping.add_system_to_map(map, %{solar_system_id: 31_000_001, name: "J150321"})
 
     {:ok, _} =
-      Tracking.DemoPresence.ensure_started(character, map, system,
+      Tracking.TestPresence.ensure_started(character, map, system,
         ship_name: "Cenotaph",
         ship_type_id: 58_716
       )
@@ -272,7 +272,7 @@ defmodule Tripwire.TrackingTest do
     {:ok, system} =
       Mapping.add_system_to_map(map, %{solar_system_id: 31_000_002, name: "J150322"})
 
-    {:ok, _} = Tracking.DemoPresence.ensure_started(character, map, system)
+    {:ok, _} = Tracking.TestPresence.ensure_started(character, map, system)
     {:ok, _} = Accounts.update_character(character, %{character_on_chain: false})
 
     assert [] = Tracking.list_occupants(map.id)
@@ -287,7 +287,7 @@ defmodule Tripwire.TrackingTest do
       Mapping.add_system_to_map(map, %{solar_system_id: 31_000_003, name: "J150323"})
 
     {:ok, _} =
-      Tracking.DemoPresence.ensure_started(character, map, system,
+      Tracking.TestPresence.ensure_started(character, map, system,
         ship_name: "Cenotaph",
         ship_type_id: 58_716
       )

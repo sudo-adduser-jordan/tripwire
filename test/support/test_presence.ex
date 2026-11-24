@@ -1,4 +1,4 @@
-defmodule Tripwire.Tracking.DemoPresence do
+defmodule Tripwire.Tracking.TestPresence do
   use GenServer
 
   def start_link(opts) do

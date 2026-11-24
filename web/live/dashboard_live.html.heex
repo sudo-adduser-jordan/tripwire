@@ -120,6 +120,9 @@
         sso_configured?={@sso_configured?}
         presences={@presences}
         current_user={@current_user}
+        demo?={@demo?}
+        mask_members={demo_mask_members(assigns)}
+        stats={demo_character_stats(assigns)}
       />
       <.live_component
         :if={@widget_system}
@@ -144,6 +147,7 @@
         selected_system_name={@selected_system_name}
         comments={@comments}
         character={@character}
+        demo?={@demo?}
         position={@widget_positions["notes"]}
       />
       <.live_component
@@ -154,7 +158,10 @@
         selected_system_name={@selected_system_name}
         signatures={@signatures}
         connections={@connections}
+        systems={@systems}
         character={@character}
+        demo?={@demo?}
+        tracking?={Map.get(assigns, :tracking?)}
         position={@widget_positions["signatures"]}
       />
       <.live_component
@@ -180,6 +187,7 @@
         map_background={@map_background}
         map_scale={@map_scale}
         map_name={if @map, do: @map.name, else: "Demo"}
+        demo_state={Map.get(assigns, :demo_state)}
         position={@widget_positions["map"]}
       />
     </div>

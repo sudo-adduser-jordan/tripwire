@@ -18,18 +18,6 @@ defmodule Tripwire.Masks do
     end
   end
 
-  def ensure_demo_mask do
-    case Repo.one(from(m in Mask, where: m.kind == "demo")) do
-      %Mask{} = mask ->
-        {:ok, mask}
-
-      nil ->
-        %Mask{}
-        |> Mask.changeset(%{name: "Demo", kind: "demo"})
-        |> Repo.insert()
-    end
-  end
-
   def ensure_corporation_mask(%Character{corporation_id: nil}), do: {:error, :no_corporation}
 
   def ensure_corporation_mask(%Character{corporation_id: corp_id, corporation_name: corp_name}) do

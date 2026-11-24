@@ -6,6 +6,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AdminLive do
   attr :settings_tab, :string, default: "account"
   attr :character, :any, default: nil
   attr :masks, :list, default: []
+  attr :mask_members, :map, default: nil
 
   def settings_admin_live(assigns) do
     ~H"""
@@ -43,7 +44,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AdminLive do
           </div>
           <ul class="mt-1 space-y-1">
             <li
-              :for={member <- Accounts.list_characters_for_mask(mask.id)}
+              :for={member <- members(@mask_members, mask)}
               class="flex items-center gap-2 text-sm"
             >
               <span>{member.name} ({member.eve_id})</span>
@@ -95,4 +96,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AdminLive do
 
   defp admin?(%{is_admin: true}), do: true
   defp admin?(_), do: false
+
+  defp members(nil, mask), do: Accounts.list_characters_for_mask(mask.id)
+  defp members(mask_members, mask), do: Map.get(mask_members, mask.id, [])
 end

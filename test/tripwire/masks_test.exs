@@ -32,7 +32,7 @@ defmodule Tripwire.MasksTest do
     {:ok, corp_z} = Masks.create_mask(%{name: "Zeta Corp", kind: "corporation"})
     {:ok, corp_a} = Masks.create_mask(%{name: "Alpha Corp", kind: "corporation"})
     {:ok, alliance} = Masks.create_mask(%{name: "Big Alliance", kind: "alliance"})
-    {:ok, _demo} = Masks.ensure_demo_mask()
+    _demo = Tripwire.TestFixtures.demo_mask()
 
     masks = Masks.list_masks()
 
@@ -109,7 +109,7 @@ defmodule Tripwire.MasksTest do
     {:ok, alliance} = Masks.ensure_alliance_mask(character)
     {:ok, ownerless} = Masks.create_mask(%{name: "Ownerless Corp", kind: "corporation"})
     {:ok, corp_map} = Mapping.create_map(%{name: "Corp Chain", mask_id: corp.id})
-    {:ok, _} = Masks.ensure_demo_mask()
+    _demo = Tripwire.TestFixtures.demo_mask()
 
     assert Masks.prune_orphan_masks() == []
 

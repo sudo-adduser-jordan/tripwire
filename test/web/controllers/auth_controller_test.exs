@@ -125,7 +125,7 @@ defmodule TripwireWeb.AuthControllerTest do
   end
 
   test "mask session endpoint rejects the demo mask and unknown ids", %{conn: conn} do
-    {:ok, demo} = Tripwire.Masks.ensure_demo_mask()
+    demo = Tripwire.TestFixtures.demo_mask()
 
     conn = get(conn, "/auth/session/mask/#{demo.id}")
 

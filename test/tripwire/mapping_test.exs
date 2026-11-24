@@ -6,8 +6,8 @@ defmodule Tripwire.MappingTest do
   alias Tripwire.Repo
 
   setup do
-    {:ok, mask} = Masks.ensure_demo_mask()
-    {:ok, _map} = Mapping.ensure_demo_map(mask.id)
+    mask = Tripwire.TestFixtures.demo_mask()
+    {:ok, _map} = Tripwire.TestFixtures.seed_demo_map(mask)
     %{mask: mask}
   end
 
@@ -172,117 +172,6 @@ defmodule Tripwire.MappingTest do
     refreshed = Repo.get!(Mapping.MapSystem, overridden.id)
     assert refreshed.sys_class == "C13"
     assert refreshed.effect == "Wolf Rayet"
-  end
-
-  test "reset_demo_maps/1 clears custom content and restores the seed", %{mask: mask} do
-    [map] = Mapping.list_maps_for_mask(mask.id)
-    systems = Mapping.list_systems(map.id)
-    assert length(systems) == 27
-
-    {:ok, extra} =
-      Mapping.add_system_to_map(map, %{solar_system_id: 99, name: "J999999"})
-
-    {:ok, _conn, _new?} =
-      Mapping.upsert_connection(map.id, hd(systems).id, extra.id, %{hole_type: "K162"})
-
-    assert length(Mapping.list_systems(map.id)) == 28
-
-    {:ok, _map} = Mapping.reset_demo_maps(mask.id)
-
-    [fresh] = Mapping.list_maps_for_mask(mask.id)
-    assert length(Mapping.list_systems(fresh.id)) == 27
-
-    links = Mapping.list_connections(fresh.id)
-    assert length(links) == 26
-
-    assert Enum.map(links, & &1.hole_type) |> Enum.sort() == [
-             "A641",
-             "B041",
-             "B274",
-             "B274",
-             "B274",
-             "D364",
-             "E175",
-             "F216",
-             "H900",
-             "K162",
-             "K162",
-             "K329",
-             "M555",
-             "N062",
-             "N062",
-             "N110",
-             "N290",
-             "N766",
-             "N770",
-             "O128",
-             "O477",
-             "Q317",
-             "R081",
-             "V753",
-             "Y683",
-             "Y790"
-           ]
-
-    assert Enum.frequencies(Enum.map(links, & &1.mass_status)) == %{
-             "critical" => 1,
-             "destab" => 2,
-             "stable" => 23
-           }
-
-    assert Enum.frequencies(Enum.map(links, & &1.time_status)) == %{
-             "critical" => 1,
-             "stable" => 25
-           }
-
-    systems = Mapping.list_systems(fresh.id)
-
-    assert Enum.map(systems, &Tripwire.Systems.display_class/1) |> Enum.sort() == [
-             nil,
-             nil,
-             "C1",
-             "C1",
-             "C2",
-             "C2",
-             "C2",
-             "C3",
-             "C3",
-             "C4",
-             "C4",
-             "C4",
-             "C4",
-             "C4",
-             "C5",
-             "C5",
-             "C5",
-             "C5",
-             "C6",
-             "C6",
-             "HS",
-             "HS",
-             "HS",
-             "HS",
-             "LS",
-             "NS",
-             "Trig"
-           ]
-
-    assert hd(systems).alias == "Home"
-
-    [home | _] = Mapping.list_systems(fresh.id)
-
-    jita = Enum.find(Mapping.list_systems(fresh.id), &(&1.name == "Jita"))
-
-    assert [%{body: first_body}, %{body: second_body}, %{body: third_body}] =
-             Mapping.list_comments(jita.id)
-
-    assert first_body =~ "# Shortcuts"
-    assert first_body =~ "<kbd>Escape</kbd> — toggle settings"
-    assert first_body =~ "<kbd>Ctrl</kbd> + <kbd>V</kbd> — paste scans"
-    refute first_body =~ "in Search"
-    assert second_body =~ "**Bold**"
-    assert third_body =~ "TUV-679"
-    assert home.id != jita.id
   end
 
   test "a Jita system gets the welcome notes once", %{mask: mask} do
@@ -643,21 +532,6 @@ defmodule Tripwire.MappingTest do
 
     assert Enum.map(Mapping.list_chain_systems(map, true), & &1.name) |> Enum.sort() ==
              ["J500031", "J500032", "J500033"]
-  end
-
-  test "ensure_demo_map/1 configures the demo home chain root", %{mask: mask} do
-    {:ok, map} = Mapping.ensure_demo_map(mask.id)
-
-    assert map.home_name == "J150321"
-    assert map.home_solar_system_id == 31_000_001
-
-    home =
-      Enum.find(
-        Mapping.list_systems(map.id),
-        &(&1.solar_system_id == map.home_solar_system_id)
-      )
-
-    assert home.alias == "Home"
   end
 
   test "delete_signature/2 removes the paired wormhole signature on the other system", %{

@@ -47,13 +47,23 @@ defmodule Tripwire.Settings do
   def update(attrs) when is_map(attrs), do: update(get(), attrs)
 
   def assigns do
-    settings = get()
+    assigns(get())
+  end
 
+  def assigns(%UserSettings{} = settings) do
     settings
     |> Map.from_struct()
     |> Map.take(@assign_keys)
     |> Map.put(:chart_hidden, MapSet.new(settings.chart_hidden || []))
   end
+
+  def change(%UserSettings{} = settings, attrs) do
+    settings
+    |> UserSettings.changeset(normalize(attrs))
+    |> Ecto.Changeset.apply_action(:update)
+  end
+
+  def change(attrs) when is_map(attrs), do: change(get(), attrs)
 
   defp normalize(%{chart_hidden: %MapSet{} = hidden} = attrs),
     do: Map.put(attrs, :chart_hidden, MapSet.to_list(hidden))
