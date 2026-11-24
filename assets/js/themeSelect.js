@@ -1,7 +1,15 @@
 const ThemeSelect = {
   mounted() {
     this._onTheme = () => this._sync()
+    this._onMode = () => this._sync()
+    this._onClick = (event) => {
+      const input = event.target.closest && event.target.closest("[data-mode-toggle]")
+      if (!input) return
+      input.dataset.phxMode = input.checked ? "light" : "dark"
+    }
     window.addEventListener("phx:set-theme", this._onTheme)
+    window.addEventListener("phx:set-mode", this._onMode)
+    this.el.addEventListener("click", this._onClick)
     this._sync()
   },
 
@@ -11,15 +19,25 @@ const ThemeSelect = {
 
   destroyed() {
     window.removeEventListener("phx:set-theme", this._onTheme)
+    window.removeEventListener("phx:set-mode", this._onMode)
+    this.el.removeEventListener("click", this._onClick)
   },
 
   _sync() {
     const active = localStorage.getItem("phx:theme") || "eve-online"
     const solid = localStorage.getItem("phx:solid") === "true"
     const font = localStorage.getItem("phx:font") || "eve"
+    const mode =
+      localStorage.getItem("phx:mode") ||
+      (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
     const toggle = this.el.querySelector("[data-solid-toggle]")
+    const modeToggle = this.el.querySelector("[data-mode-toggle]")
     const fontSelect = this.el.querySelector("[data-font-select]")
     if (toggle) toggle.checked = solid
+    if (modeToggle) {
+      modeToggle.checked = mode === "light"
+      modeToggle.dataset.phxMode = mode === "light" ? "light" : "dark"
+    }
     if (fontSelect) fontSelect.value = font
     for (const button of this.el.querySelectorAll("[data-phx-theme]")) {
       const selected = button.dataset.phxTheme === active
