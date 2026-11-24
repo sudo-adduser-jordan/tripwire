@@ -162,6 +162,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
             data-ship-kills={Jason.encode!(@chart_data[:ship_kills] || [])}
             data-pod-kills={Jason.encode!(@chart_data[:pod_kills] || [])}
             data-npc-kills={Jason.encode!(@chart_data[:npc_kills] || [])}
+            data-hidden={Jason.encode!(hidden_series(@chart_hidden))}
             phx-update="ignore"
             class="min-h-0 w-full flex-1"
           >
@@ -312,6 +313,11 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
   defp hidden?(%MapSet{} = hidden, series), do: MapSet.member?(hidden, series)
   defp hidden?(hidden, series) when is_list(hidden), do: series in hidden
   defp hidden?(_, _), do: false
+
+  defp hidden_series(nil), do: []
+  defp hidden_series(%MapSet{} = hidden), do: hidden |> MapSet.to_list() |> Enum.sort()
+  defp hidden_series(hidden) when is_list(hidden), do: Enum.sort(hidden)
+  defp hidden_series(_), do: []
 
   attr :system, :map, required: true
   attr :system_info, :any, default: nil

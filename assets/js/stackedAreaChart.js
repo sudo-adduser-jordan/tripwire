@@ -110,72 +110,33 @@ const stackedChartOptions = {
             type: 'value',
         },
     ],
-    series: [
-        {
-            name: 'Ship Kills',
-            type: 'line',
-            stack: 'Total',
-            symbol: 'circle',
-            showSymbol: true,
-            symbolSize: 6,
-            color: '#ee6666',
-            lineStyle: { width: 2, color: '#ee6666' },
-            itemStyle: { color: 'transparent', borderColor: '#ee6666', borderWidth: 2 },
-            areaStyle: { color: '#ee6666', opacity: 0.25 },
-            emphasis: {
-                focus: 'series',
-            },
-            data: [],
+}
+
+const seriesTemplates = [
+    { key: 'ship_kills', name: 'Ship Kills', color: '#ee6666' },
+    { key: 'pod_kills', name: 'Pod Kills', color: '#fac858' },
+    { key: 'jumps', name: 'Jumps', color: '#91cc75' },
+    { key: 'npc_kills', name: 'NPC Kills', color: '#5470c6' },
+]
+
+function seriesOption({ key, name, color }, data) {
+    return {
+        id: key,
+        name,
+        type: 'line',
+        stack: 'Total',
+        symbol: 'circle',
+        showSymbol: true,
+        symbolSize: 6,
+        color,
+        lineStyle: { width: 2, color },
+        itemStyle: { color: 'transparent', borderColor: color, borderWidth: 2 },
+        areaStyle: { color, opacity: 0.25 },
+        emphasis: {
+            focus: 'series',
         },
-        {
-            name: 'Pod Kills',
-            type: 'line',
-            stack: 'Total',
-            symbol: 'circle',
-            showSymbol: true,
-            symbolSize: 6,
-            color: '#fac858',
-            lineStyle: { width: 2, color: '#fac858' },
-            itemStyle: { color: 'transparent', borderColor: '#fac858', borderWidth: 2 },
-            areaStyle: { color: '#fac858', opacity: 0.25 },
-            emphasis: {
-                focus: 'series',
-            },
-            data: [],
-        },
-        {
-            name: 'Jumps',
-            type: 'line',
-            stack: 'Total',
-            symbol: 'circle',
-            showSymbol: true,
-            symbolSize: 6,
-            color: '#91cc75',
-            lineStyle: { width: 2, color: '#91cc75' },
-            itemStyle: { color: 'transparent', borderColor: '#91cc75', borderWidth: 2 },
-            areaStyle: { color: '#91cc75', opacity: 0.25 },
-            emphasis: {
-                focus: 'series',
-            },
-            data: [],
-        },
-        {
-            name: 'NPC Kills',
-            type: 'line',
-            stack: 'Total',
-            symbol: 'circle',
-            showSymbol: true,
-            symbolSize: 6,
-            color: '#5470c6',
-            lineStyle: { width: 2, color: '#5470c6' },
-            itemStyle: { color: 'transparent', borderColor: '#5470c6', borderWidth: 2 },
-            areaStyle: { color: '#5470c6', opacity: 0.25 },
-            emphasis: {
-                focus: 'series',
-            },
-            data: [],
-        },
-    ],
+        data: data || [],
+    }
 }
 
 function readDataset(dom) {
@@ -190,19 +151,30 @@ function readDataset(dom) {
     }
     return {
         labels: parse('labels'),
-        shipKills: parse('shipKills'),
-        podKills: parse('podKills'),
-        jumps: parse('jumps'),
-        npcKills: parse('npcKills'),
+        hidden: parse('hidden'),
+        values: {
+            ship_kills: parse('shipKills'),
+            pod_kills: parse('podKills'),
+            jumps: parse('jumps'),
+            npc_kills: parse('npcKills'),
+        },
     }
 }
 
-function applyData({ labels, shipKills, podKills, jumps, npcKills }) {
+function applyData({ labels, hidden, values }) {
     if (!stackedChart) return
-    stackedChart.setOption({
-        xAxis: [{ data: labels }],
-        series: [{ data: shipKills }, { data: podKills }, { data: jumps }, { data: npcKills }],
-    })
+    const hiddenSet = new Set(hidden || [])
+    const series = seriesTemplates
+        .filter(({ key }) => !hiddenSet.has(key))
+        .map((template) => seriesOption(template, (values || {})[template.key]))
+
+    stackedChart.setOption(
+        {
+            xAxis: [{ data: labels || [] }],
+            series,
+        },
+        { replaceMerge: ['series'] }
+    )
 }
 
 function initSystemChart(dom) {
@@ -225,14 +197,15 @@ function initSystemChart(dom) {
 
 function updateSystemChart(payload) {
     if (!stackedChart || !payload) return
-    const hidden = new Set(payload.hidden || [])
-    const mask = (key, values) => (hidden.has(key) ? (values || []).map(() => 0) : values || [])
     applyData({
         labels: payload.labels || [],
-        shipKills: mask('ship_kills', payload.ship_kills),
-        podKills: mask('pod_kills', payload.pod_kills),
-        jumps: mask('jumps', payload.jumps),
-        npcKills: mask('npc_kills', payload.npc_kills),
+        hidden: payload.hidden || [],
+        values: {
+            ship_kills: payload.ship_kills || [],
+            pod_kills: payload.pod_kills || [],
+            jumps: payload.jumps || [],
+            npc_kills: payload.npc_kills || [],
+        },
     })
 }
 
