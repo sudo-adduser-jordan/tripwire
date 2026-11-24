@@ -4,6 +4,7 @@ defmodule Tripwire.Settings.UserSettings do
 
   @layouts ~w(top bottom left right radial)
   @chart_ranges ~w(24h 48h week)
+  @node_roundness ~w(square rounded oval)
 
   schema "user_settings" do
     field :map_layout, :string, default: "top"
@@ -15,6 +16,7 @@ defmodule Tripwire.Settings.UserSettings do
     field :show_node_badges, :boolean, default: true
     field :line_weight, :integer, default: 2
     field :node_spacing, :integer, default: 100
+    field :node_roundness, :string, default: "oval"
     field :map_scale, :integer, default: 100
     field :map_background, :string
     field :grid_locked, :boolean, default: true
@@ -43,6 +45,7 @@ defmodule Tripwire.Settings.UserSettings do
       :show_node_badges,
       :line_weight,
       :node_spacing,
+      :node_roundness,
       :map_scale,
       :map_background,
       :grid_locked,
@@ -58,6 +61,7 @@ defmodule Tripwire.Settings.UserSettings do
     ])
     |> validate_inclusion(:map_layout, @layouts)
     |> validate_inclusion(:chart_range, @chart_ranges)
+    |> validate_inclusion(:node_roundness, @node_roundness)
     |> validate_number(:line_weight, greater_than_or_equal_to: 1, less_than_or_equal_to: 5)
     |> validate_number(:node_spacing, greater_than_or_equal_to: 50, less_than_or_equal_to: 200)
     |> validate_number(:map_scale, greater_than_or_equal_to: 50, less_than_or_equal_to: 200)

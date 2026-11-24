@@ -1514,9 +1514,9 @@ defmodule TripwireWeb.DashboardLiveTest do
       assert map_html =~ ~r/>\s*#{class}\s*<title>Static /
     end
 
-    assert map_html =~ "translate(4, 80.0)"
-    assert map_html =~ "translate(4, 100.0)"
-    assert map_html =~ "translate(34, 100.0)"
+    assert map_html =~ "translate(20, 80.0)"
+    assert map_html =~ "translate(20, 100.0)"
+    assert map_html =~ "translate(50, 100.0)"
   end
 
   test "system editor saves the wormhole effect and badges it", %{
@@ -1862,6 +1862,32 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert Mapping.get_system!(other.id).y == 380.0
     assert Settings.get().node_spacing == 200
+  end
+
+  test "map settings node corners change the node rounding", %{conn: conn, character: character} do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
+
+    assert html =~ ~s|rx="44.0"|
+
+    view |> element("#settings-button") |> render_click()
+
+    html =
+      view
+      |> element(~s|#settings-widget form[phx-change="node-roundness"]|)
+      |> render_change(%{roundness: "square"})
+
+    assert html =~ ~s|rx="0.0"|
+    assert Settings.get().node_roundness == "square"
+
+    html =
+      view
+      |> element(~s|#settings-widget form[phx-change="node-roundness"]|)
+      |> render_change(%{roundness: "rounded"})
+
+    assert html =~ ~s|rx="22.0"|
+    assert Settings.get().node_roundness == "rounded"
   end
 
   test "map settings scale pushes a zoom event", %{conn: conn, character: character} do

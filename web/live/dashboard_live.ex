@@ -838,6 +838,13 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("node-spacing", _params, socket), do: {:noreply, socket}
 
+  def handle_event("node-roundness", %{"roundness" => roundness}, socket)
+      when roundness in ~w(square rounded oval) do
+    {:noreply, put_setting(socket, :node_roundness, roundness)}
+  end
+
+  def handle_event("node-roundness", _params, socket), do: {:noreply, socket}
+
   def handle_event("map-background", %{"background" => background}, socket) do
     background = background |> to_string() |> String.trim()
 
@@ -2736,6 +2743,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:layout_errors, [])
     |> assign(:line_weight, 2)
     |> assign(:node_spacing, 100)
+    |> assign(:node_roundness, "oval")
     |> assign(:map_scale, 100)
     |> assign(:map_background, nil)
     |> assign(:sso_configured?, false)

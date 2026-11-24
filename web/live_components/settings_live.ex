@@ -18,6 +18,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
   attr :show_node_badges, :boolean, default: true
   attr :line_weight, :integer, default: 2
   attr :node_spacing, :integer, default: 100
+  attr :node_roundness, :string, default: "oval"
   attr :map_scale, :integer, default: 100
   attr :map_background, :string, default: nil
   attr :settings_tab, :string, default: "account"
@@ -78,6 +79,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
             show_node_badges={@show_node_badges}
             line_weight={@line_weight}
             node_spacing={@node_spacing}
+            node_roundness={@node_roundness}
             map_scale={@map_scale}
             map_background={@map_background}
           />

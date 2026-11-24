@@ -11,6 +11,7 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
   attr :show_node_badges, :boolean, default: true
   attr :line_weight, :integer, default: 2
   attr :node_spacing, :integer, default: 100
+  attr :node_roundness, :string, default: "oval"
   attr :map_scale, :integer, default: 100
   attr :map_background, :string, default: nil
 
@@ -37,6 +38,21 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
               <option value="bottom" selected={@map_layout == "bottom"}>Bottom</option>
               <option value="left" selected={@map_layout == "left"}>Left</option>
               <option value="right" selected={@map_layout == "right"}>Right</option>
+            </select>
+          </form>
+        </div>
+
+        <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Node Corners</p>
+          <form phx-change="node-roundness" class="min-w-0">
+            <select
+              id="select-node-roundness"
+              name="roundness"
+              class="select select-sm w-full max-w-48"
+            >
+              <option value="square" selected={@node_roundness == "square"}>Square</option>
+              <option value="rounded" selected={@node_roundness == "rounded"}>Rounded</option>
+              <option value="oval" selected={@node_roundness == "oval"}>Oval</option>
             </select>
           </form>
         </div>

@@ -13,6 +13,7 @@ defmodule Tripwire.Settings do
     :show_node_badges,
     :line_weight,
     :node_spacing,
+    :node_roundness,
     :map_scale,
     :map_background,
     :grid_locked,

@@ -11,6 +11,7 @@ defmodule Tripwire.SettingsTest do
     assert settings.map_layout == "top"
     assert settings.line_weight == 2
     assert settings.node_spacing == 100
+    assert settings.node_roundness == "oval"
     assert settings.map_scale == 100
     assert settings.grid_locked
     assert settings.widget_system
@@ -40,6 +41,7 @@ defmodule Tripwire.SettingsTest do
                map_layout: "radial",
                map_scale: 150,
                node_spacing: 130,
+               node_roundness: "square",
                show_all: true,
                widget_map: false
              })
@@ -48,6 +50,7 @@ defmodule Tripwire.SettingsTest do
     assert settings.map_layout == "radial"
     assert settings.map_scale == 150
     assert settings.node_spacing == 130
+    assert settings.node_roundness == "square"
     assert settings.show_all
     refute settings.widget_map
   end
@@ -73,6 +76,7 @@ defmodule Tripwire.SettingsTest do
     assert {:error, _} = Settings.update(%{map_scale: 10})
     assert {:error, _} = Settings.update(%{line_weight: 9})
     assert {:error, _} = Settings.update(%{node_spacing: 500})
+    assert {:error, _} = Settings.update(%{node_roundness: "pill"})
     assert {:error, _} = Settings.update(%{chart_range: "year"})
 
     settings = Settings.get()

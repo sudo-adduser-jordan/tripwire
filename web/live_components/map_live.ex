@@ -41,6 +41,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign(:occupants, occupants)
      |> assign(:node_w, node_w)
      |> assign(:node_h, node_h)
+     |> assign(:node_radius, node_radius(Map.get(assigns, :node_roundness), node_h))
      |> assign(:wh_sigs, wormhole_sigs(map_id))
      |> assign_new(:pan_x, fn -> pan_x end)
      |> assign_new(:pan_y, fn -> pan_y end)
@@ -54,8 +55,20 @@ defmodule TripwireWeb.LiveComponents.MapLive do
      |> assign_new(:show_line_glow, fn -> true end)
      |> assign_new(:show_node_badges, fn -> true end)
      |> assign_new(:line_weight, fn -> 2 end)
+     |> assign_new(:node_roundness, fn -> "oval" end)
      |> assign_new(:map_background, fn -> nil end)}
   end
+
+  defp node_radius("square", _node_h), do: 0.0
+  defp node_radius("rounded", node_h), do: node_h / 4
+  defp node_radius(_roundness, node_h), do: node_h / 2
+
+  defp node_icon_x(radius), do: 4.0 + Float.round(radius * 0.41, 1)
+  defp node_icon_y(radius), do: 4.0 + Float.round(radius * 0.09, 1)
+
+  defp node_badge_inset(radius), do: max(4, round(radius * 0.45))
+
+  defp node_dot_x(node_w, radius), do: node_w - max(radius, 18.0) - 4.0
 
   defp map_zoom(scale) when is_number(scale), do: Mapping.default_zoom() * scale / 100
   defp map_zoom(_), do: Mapping.default_zoom()
@@ -353,8 +366,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               >
                 <svg
                   :if={effect = node_effect(system)}
-                  x="4"
-                  y="4"
+                  x={node_icon_x(@node_radius)}
+                  y={node_icon_y(@node_radius)}
                   width="16"
                   height="16"
                   viewBox="0 0 24 24"
@@ -372,7 +385,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 <rect
                   width={@node_w}
                   height={@node_h}
-                  rx="8"
+                  rx={@node_radius}
                   stroke-dasharray={if MapSet.member?(@loop_hint_ids, system.id), do: "6 4"}
                   style={"--class-ink: #{node_color(system)}"}
                   class={[
@@ -476,18 +489,18 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 </g>
                 <text
                   x={@node_w / 2}
-                  y="20"
+                  y="18"
                   text-anchor="middle"
                   style={"--class-ink: #{node_color(system)}"}
-                  class="class-ink-fill text-sm font-semibold tracking-wider"
+                  class="class-ink-fill text-base font-semibold tracking-wide"
                 >
                   {node_class(system)}
                 </text>
                 <text
                   x={@node_w / 2}
-                  y="46"
+                  y="41"
                   text-anchor="middle"
-                  class="fill-base-content text-base font-bold cursor-pointer hover:underline"
+                  class="fill-base-content text-lg font-bold cursor-pointer hover:underline"
                   phx-click={unless system.unknown, do: "open-system"}
                   phx-value-id={system.id}
                   phx-target={@myself}
@@ -496,16 +509,16 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 </text>
                 <text
                   x={@node_w / 2}
-                  y="70"
+                  y="61"
                   text-anchor="middle"
-                  class="fill-base-content/60 text-xs"
+                  class="fill-base-content/60 text-sm"
                 >
                   {node_footer(@connections, @wh_sigs, system.id)}
                 </text>
                 <g :if={activity = node_activity(@stats, system.id)}>
                   <circle
                     :if={activity.jumps > 0}
-                    cx={@node_w - 22}
+                    cx={node_dot_x(@node_w, @node_radius)}
                     cy={@node_h}
                     r="4"
                     class="fill-info"
@@ -514,7 +527,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   </circle>
                   <circle
                     :if={activity.kills > 0}
-                    cx={@node_w - 8}
+                    cx={node_dot_x(@node_w, @node_radius) - 14}
                     cy={@node_h}
                     r="4"
                     class="fill-error"
@@ -523,7 +536,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   </circle>
                 </g>
                 <g
-                  :for={{label, tip, x, y, color, text_color} <- node_badges(system)}
+                  :for={{label, tip, x, y, color, text_color} <- node_badges(system, @node_radius)}
                   :if={Map.get(assigns, :show_node_badges, true)}
                   transform={"translate(#{x}, #{y})"}
                   style={"--badge-bg: #{color}; --badge-ink: #{text_color}"}
@@ -633,14 +646,17 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     |> Elixir.MapSet.new()
   end
 
-  defp node_badges(system) do
+  defp node_badges(system, radius) do
     {node_w, node_h} = Mapping.node_size()
+    inset = node_badge_inset(radius)
 
     system
     |> Tripwire.Systems.system_statics()
     |> Enum.map(&static_badge/1)
-    |> Enum.map_reduce({4, 0}, fn {label, tip, width, color, text_color}, {x, row} ->
-      {x, row} = if x > 4 and x + width > node_w - 4, do: {4, row + 1}, else: {x, row}
+    |> Enum.map_reduce({inset, 0}, fn {label, tip, width, color, text_color}, {x, row} ->
+      {x, row} =
+        if x > inset and x + width > node_w - inset, do: {inset, row + 1}, else: {x, row}
+
       y = node_h - 8 + row * 20
       {{label, tip, x, y, color, text_color}, {x + width + 4, row}}
     end)
