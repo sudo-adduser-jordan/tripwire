@@ -81,9 +81,10 @@ const stackedChartOptions = {
     grid: {
         top: '8%',
         bottom: '20%',
-        left: '7%',
-        right: '7%',
-        containLabel: false,
+        left: '4%',
+        right: '4%',
+        outerBoundsMode: 'same',
+        outerBoundsContain: 'axisLabel',
     },
     tooltip: {
         trigger: 'axis',

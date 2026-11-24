@@ -138,7 +138,9 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
             class="flex shrink-0 flex-col gap-y-1 px-2 pt-1"
           >
             <.system_info system={@chart_system} system_info={@system_info} />
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          </div>
+          <div class="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-2 pt-1 text-xs">
+            <div :if={@chart_system} class="flex flex-wrap items-center gap-x-3 gap-y-1">
               <a
                 :for={link <- Systems.external_links(@chart_system)}
                 href={link.url}
@@ -149,15 +151,8 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
                 {link.label}
               </a>
             </div>
+            <.chart_range_buttons chart_range={@chart_range} />
           </div>
-          <.chart_range_buttons
-            chart_range={@chart_range}
-            systems={@systems}
-            connections={@connections}
-            selected_system_id={@selected_system_id}
-            chart_system={@chart_system}
-            gate_systems={@gate_systems}
-          />
           <div
             id="system-chart"
             phx-hook="ChartMount"
@@ -172,6 +167,12 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
           >
           </div>
           <.chart_legend chart_hidden={@chart_hidden} />
+          <.system_selector
+            systems={@systems}
+            connections={@connections}
+            chart_system={@chart_system}
+            gate_systems={@gate_systems}
+          />
         </div>
       </div>
     </div>
@@ -187,62 +188,65 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
   defp range_title(_), do: "Show last 24 hours"
 
   attr :chart_range, :string, default: "24h"
-  attr :systems, :list, default: []
-  attr :connections, :list, default: []
-  attr :selected_system_id, :any, default: nil
-  attr :chart_system, :any, default: nil
-  attr :gate_systems, :list, default: []
 
   defp chart_range_buttons(assigns) do
     ~H"""
-    <div class="flex flex-wrap items-center justify-between gap-1 px-2 pt-1">
-      <div class="flex min-w-0 flex-row flex-wrap items-center gap-1">
-        <button
-          :for={sys <- visible_systems(@systems, @connections, @chart_system)}
-          class={
-            "btn btn-xs " <>
-              (if same_system?(sys, @chart_system), do: "btn-primary", else: "btn-ghost")
-          }
-          title={"Select system #{sys.name}"}
-          phx-click="select-system"
-          phx-value-id={sys.id}
-        >
-          {sys.name}
-        </button>
-        <span
-          :if={@gate_systems != []}
-          class="mx-1 h-4 w-px shrink-0 bg-base-content/20"
-          aria-hidden="true"
-        >
-        </span>
-        <button
-          :for={sys <- @gate_systems}
-          class={
-            "btn btn-xs " <>
-              (if same_system?(sys, @chart_system), do: "btn-primary", else: "btn-ghost")
-          }
-          title={"Select system #{sys.name} (1 jump from #{chart_name(@chart_system)})"}
-          phx-click="select-gate-system"
-          phx-value-solar={sys.solar_system_id}
-        >
-          {sys.name}
-        </button>
-        <span :if={@systems == []} class="p-1 text-sm opacity-50">No systems on map yet</span>
-      </div>
-      <div class="flex shrink-0 items-center gap-1" role="group" aria-label="Chart time range">
-        <button
-          :for={range <- ["week", "48h", "24h"]}
-          phx-click="chart-range"
-          phx-value-range={range}
-          title={range_title(range)}
-          class={
-            "btn btn-xs " <>
-              (if @chart_range == range, do: "btn-primary", else: "btn-ghost")
-          }
-        >
-          {range_label(range)}
-        </button>
-      </div>
+    <div class="ml-auto flex shrink-0 items-center gap-1" role="group" aria-label="Chart time range">
+      <button
+        :for={range <- ["week", "48h", "24h"]}
+        phx-click="chart-range"
+        phx-value-range={range}
+        title={range_title(range)}
+        class={
+          "btn btn-xs " <>
+            (if @chart_range == range, do: "btn-primary", else: "btn-ghost")
+        }
+      >
+        {range_label(range)}
+      </button>
+    </div>
+    """
+  end
+
+  attr :systems, :list, default: []
+  attr :connections, :list, default: []
+  attr :chart_system, :any, default: nil
+  attr :gate_systems, :list, default: []
+
+  defp system_selector(assigns) do
+    ~H"""
+    <div class="flex shrink-0 flex-wrap items-center gap-1 px-2 pt-0.5 pb-2">
+      <button
+        :for={sys <- visible_systems(@systems, @connections, @chart_system)}
+        class={
+          "btn btn-xs " <>
+            (if same_system?(sys, @chart_system), do: "btn-primary", else: "btn-ghost")
+        }
+        title={"Select system #{sys.name}"}
+        phx-click="select-system"
+        phx-value-id={sys.id}
+      >
+        {sys.name}
+      </button>
+      <span
+        :if={@gate_systems != []}
+        class="mx-1 h-4 w-px shrink-0 bg-base-content/20"
+        aria-hidden="true"
+      >
+      </span>
+      <button
+        :for={sys <- @gate_systems}
+        class={
+          "btn btn-xs " <>
+            (if same_system?(sys, @chart_system), do: "btn-primary", else: "btn-ghost")
+        }
+        title={"Select system #{sys.name} (1 jump from #{chart_name(@chart_system)})"}
+        phx-click="select-gate-system"
+        phx-value-solar={sys.solar_system_id}
+      >
+        {sys.name}
+      </button>
+      <span :if={@systems == []} class="p-1 text-sm opacity-50">No systems on map yet</span>
     </div>
     """
   end
@@ -251,7 +255,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
 
   defp chart_legend(assigns) do
     ~H"""
-    <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-2 pt-1 pb-1 text-[11px]">
+    <div class="-mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-2 pt-1 pb-1 text-[11px]">
       <.legend_toggle
         series="jumps"
         label="Jumps"
