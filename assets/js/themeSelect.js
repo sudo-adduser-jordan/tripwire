@@ -16,8 +16,11 @@ const ThemeSelect = {
   _sync() {
     const active = localStorage.getItem("phx:theme") || "eve-online"
     const solid = localStorage.getItem("phx:solid") === "true"
+    const font = localStorage.getItem("phx:font") || "eve"
     const toggle = this.el.querySelector("[data-solid-toggle]")
+    const fontSelect = this.el.querySelector("[data-font-select]")
     if (toggle) toggle.checked = solid
+    if (fontSelect) fontSelect.value = font
     for (const button of this.el.querySelectorAll("[data-phx-theme]")) {
       const selected = button.dataset.phxTheme === active
       button.classList.toggle("border-success", selected)

@@ -77,6 +77,16 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
             phx-click={JS.dispatch("phx:set-solid")}
           />
         </div>
+        <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
+          <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Font</p>
+          <select id="font-select" data-font-select class="select select-sm w-full max-w-48">
+            <option value="eve">EVE Online</option>
+            <option value="sans">Sans</option>
+            <option value="mono">Mono</option>
+            <option value="serif">Serif</option>
+            <option value="theme">Theme default</option>
+          </select>
+        </div>
         <%= for section <- theme_sections() do %>
           <div class="flex min-h-0 w-full max-w-full flex-col gap-2">
             <div class="flex items-center gap-1.5">

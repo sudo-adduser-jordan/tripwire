@@ -18,6 +18,7 @@
       const themeKey = "phx:theme";
       const modeKey = "phx:mode";
       const solidKey = "phx:solid";
+      const fontKey = "phx:font";
       const legacyThemes = {
         eve: ["eve-online", "dark"],
         tripwire: ["eve-online", "dark"],
@@ -52,6 +53,14 @@
         }
       };
 
+      const setFont = (font) => {
+        if (font && font !== "theme") {
+          document.documentElement.setAttribute("data-font", font);
+        } else {
+          document.documentElement.removeAttribute("data-font");
+        }
+      };
+
       const storedTheme = localStorage.getItem(themeKey);
       const legacy = legacyThemes[storedTheme];
 
@@ -63,6 +72,7 @@
       }
 
       setSolid(localStorage.getItem(solidKey) === "true");
+      setFont(localStorage.getItem(fontKey) || "eve");
 
       if (!document.documentElement.hasAttribute("data-mode")) {
         setMode(localStorage.getItem(modeKey) || "system");
@@ -77,6 +87,7 @@
         if (e.key === themeKey) setTheme(e.newValue || "eve-online");
         if (e.key === modeKey) setMode(e.newValue || "system");
         if (e.key === solidKey) setSolid(e.newValue === "true");
+        if (e.key === fontKey) setFont(e.newValue || "eve");
       });
       window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
       window.addEventListener("phx:set-mode", (e) => setMode(e.target.dataset.phxMode));
@@ -84,6 +95,11 @@
         const solid = e.target.checked === true;
         localStorage.setItem(solidKey, solid ? "true" : "false");
         setSolid(solid);
+      });
+      document.addEventListener("change", (e) => {
+        if (!e.target.matches || !e.target.matches("[data-font-select]")) return;
+        localStorage.setItem(fontKey, e.target.value);
+        setFont(e.target.value);
       });
     </script>
     <style>

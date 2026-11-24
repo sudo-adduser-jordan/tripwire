@@ -467,6 +467,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     end
 
     assert has_element?(view, "#toggle-solid-background")
+    assert has_element?(view, "#font-select")
     refute has_element?(view, "#theme-container-mapper")
 
     for theme <- ~w(light dark native native-dark eve tripwire wanderer) do
