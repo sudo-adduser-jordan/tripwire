@@ -10,41 +10,6 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "tripwire";
-  default: false;
-  prefersdark: false;
-  color-scheme: "dark";
-  --color-base-100: oklch(19% 0.023 255);
-  --color-base-200: oklch(16% 0.02 255);
-  --color-base-300: oklch(13% 0.017 256);
-  --color-base-content: oklch(93% 0.01 240);
-  --color-primary: oklch(74% 0.155 68);
-  --color-primary-content: oklch(20% 0.03 60);
-  --color-secondary: oklch(62% 0.07 245);
-  --color-secondary-content: oklch(15% 0.02 250);
-  --color-accent: oklch(72% 0.12 220);
-  --color-accent-content: oklch(18% 0.03 230);
-  --color-neutral: oklch(26% 0.02 252);
-  --color-neutral-content: oklch(92% 0.01 240);
-  --color-info: oklch(58% 0.158 241.966);
-  --color-info-content: oklch(97% 0.013 236.62);
-  --color-success: oklch(60% 0.118 184.704);
-  --color-success-content: oklch(98% 0.014 180.72);
-  --color-warning: oklch(66% 0.179 58.318);
-  --color-warning-content: oklch(98% 0.022 95.277);
-  --color-error: oklch(58% 0.253 17.585);
-  --color-error-content: oklch(96% 0.015 12.422);
-  --radius-selector: 0.25rem;
-  --radius-field: 0.25rem;
-  --radius-box: 0.5rem;
-  --size-selector: 0.21875rem;
-  --size-field: 0.21875rem;
-  --border: 1px;
-  --depth: 1;
-  --noise: 0;
-}
-
-@plugin "daisyui/theme" {
   name: "phoenix";
   default: false;
   prefersdark: false;
@@ -464,47 +429,10 @@
   --noise: 0;
 }
 
-@plugin "daisyui/theme" {
-  name: "wanderer";
-  default: false;
-  prefersdark: false;
-  color-scheme: "dark";
-  --color-base-100: oklch(20.77% 0.04 265.75);
-  --color-base-200: oklch(16.5% 0.04 265);
-  --color-base-300: oklch(12.88% 0.041 264.7);
-  --color-base-content: oklch(92.88% 0.013 255.51);
-  --color-primary: oklch(66.64% 0.22 37.57);
-  --color-primary-content: oklch(20% 0.03 60);
-  --color-secondary: oklch(64.5% 0.215 16.44);
-  --color-secondary-content: oklch(18% 0.03 17);
-  --color-accent: oklch(75.35% 0.139 232.66);
-  --color-accent-content: oklch(18% 0.03 240);
-  --color-neutral: oklch(27.95% 0.037 260.03);
-  --color-neutral-content: oklch(92.88% 0.013 255.51);
-  --color-info: oklch(58% 0.158 241.966);
-  --color-info-content: oklch(97% 0.013 236.62);
-  --color-success: oklch(60% 0.118 184.704);
-  --color-success-content: oklch(98% 0.014 180.72);
-  --color-warning: oklch(66% 0.179 58.318);
-  --color-warning-content: oklch(98% 0.022 95.277);
-  --color-error: oklch(58% 0.253 17.585);
-  --color-error-content: oklch(96% 0.015 12.422);
-  --radius-selector: 0.25rem;
-  --radius-field: 0.25rem;
-  --radius-box: 0.5rem;
-  --size-selector: 0.21875rem;
-  --size-field: 0.21875rem;
-  --border: 1px;
-  --depth: 1;
-  --noise: 0;
-}
 :root {
-  --theme-primary: var(--color-primary);
-  --theme-primary-content: var(--color-primary-content);
-  --theme-secondary: var(--color-secondary);
-  --theme-secondary-content: var(--color-secondary-content);
-  --theme-accent: var(--color-accent);
-  --theme-accent-content: var(--color-accent-content);
+  --theme-base-100: var(--color-base-100);
+  --theme-base-200: var(--color-base-200);
+  --theme-base-300: var(--color-base-300);
   --color-info: oklch(54% 0.19 258);
   --color-info-content: oklch(97% 0.013 236.62);
   --color-success: oklch(50% 0.15 160);
@@ -521,25 +449,16 @@
 
 @custom-variant dark (&:where([data-mode=dark], [data-mode=dark] *));
 
-html[data-mode="light"] {
-  color-scheme: light;
-  --color-base-100: oklch(98% 0 0);
-  --color-base-200: oklch(96% 0.001 286.375);
-  --color-base-300: oklch(92% 0.004 286.32);
-  --color-base-content: oklch(21% 0.006 285.885);
-}
-
-html[data-mode="light"] :is(.input, .select, .textarea, .field-surface) {
-  background-color: var(--color-base-200);
-}
-
 html[data-mode="light"] body {
-  --color-primary: oklch(from var(--theme-primary) clamp(0.36, l, 0.5) c h);
-  --color-primary-content: oklch(from var(--theme-primary) 0.98 0.02 h);
-  --color-secondary: oklch(from var(--theme-secondary) clamp(0.36, l, 0.5) c h);
-  --color-secondary-content: oklch(from var(--theme-secondary) 0.98 0.02 h);
-  --color-accent: oklch(from var(--theme-accent) clamp(0.36, l, 0.5) c h);
-  --color-accent-content: oklch(from var(--theme-accent) 0.98 0.02 h);
+  --color-base-100: oklch(from var(--theme-base-100) l c h / 0.6);
+  --color-base-200: oklch(from var(--theme-base-200) l c h / 0.5);
+  --color-base-300: oklch(from var(--theme-base-300) l c h / 0.4);
+}
+
+html[data-solid] body {
+  --color-base-100: var(--theme-base-100);
+  --color-base-200: var(--theme-base-200);
+  --color-base-300: var(--theme-base-300);
 }
 
 html[data-mode="light"] .eve-landing {
@@ -549,12 +468,6 @@ html[data-mode="light"] .eve-landing {
   --color-base-200: oklch(25.26% 0.014 253.1);
   --color-base-300: oklch(20.15% 0.012 254.09);
   --color-base-content: oklch(97.807% 0.029 256.847);
-  --color-primary: var(--theme-primary);
-  --color-primary-content: var(--theme-primary-content);
-  --color-secondary: var(--theme-secondary);
-  --color-secondary-content: var(--theme-secondary-content);
-  --color-accent: var(--theme-accent);
-  --color-accent-content: var(--theme-accent-content);
 }
 
 [data-phx-session], [data-phx-teleported-src] { display: contents }
@@ -647,12 +560,6 @@ html[data-mode="light"] .eve-landing {
   --radius-box: 0;
   --radius-field: 0;
   --radius-selector: 0;
-}
-
-[data-theme="wanderer"] {
-  --radius-box: 0.75rem;
-  --radius-field: 0.5rem;
-  --radius-selector: 0.5rem;
 }
 
 @layer base {
@@ -793,34 +700,6 @@ html[data-mode="light"] .eve-landing {
   }
 }
 
-html[data-mode="light"] .text-active-accent {
-  color: #b45309;
-}
-
-html[data-mode="light"] .text-site-link {
-  color: #a16207;
-}
-
-html[data-mode="light"] .class-ink {
-  color: color-mix(in oklab, var(--class-ink) 68%, black);
-}
-
-html[data-mode="light"] .class-ink-fill {
-  fill: color-mix(in oklab, var(--class-ink) 68%, black);
-}
-
-html[data-mode="light"] .class-ink-stroke {
-  stroke: color-mix(in oklab, var(--class-ink) 68%, black);
-}
-
-html[data-mode="light"] .class-ink-glow {
-  filter: drop-shadow(0 0 6px color-mix(in oklab, var(--class-ink) 68%, black));
-}
-
-html[data-mode="light"] .badge-swatch {
-  fill: color-mix(in oklab, var(--badge-bg) 78%, black);
-}
-
 @media (max-width: 640px) {
   #settings-widget .tab {
     padding-left: 0.5rem;
@@ -834,21 +713,5 @@ html[data-mode="light"] .badge-swatch {
 }
 
 .sso-black {
-  display: none;
-}
-
-html[data-mode="light"] .sso-white {
-  display: none;
-}
-
-html[data-mode="light"] .sso-black {
-  display: inline;
-}
-
-html[data-mode="light"] .eve-landing .sso-white {
-  display: inline;
-}
-
-html[data-mode="light"] .eve-landing .sso-black {
   display: none;
 }

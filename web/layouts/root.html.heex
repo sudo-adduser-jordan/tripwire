@@ -17,8 +17,11 @@
     <script>
       const themeKey = "phx:theme";
       const modeKey = "phx:mode";
+      const solidKey = "phx:solid";
       const legacyThemes = {
         eve: ["eve-online", "dark"],
+        tripwire: ["eve-online", "dark"],
+        wanderer: ["eve-online", "dark"],
         system: ["phoenix", "system"],
         light: ["phoenix", "light"],
         native: ["phoenix", "light"],
@@ -41,6 +44,14 @@
         document.documentElement.setAttribute("data-mode", mode);
       };
 
+      const setSolid = (solid) => {
+        if (solid) {
+          document.documentElement.setAttribute("data-solid", "true");
+        } else {
+          document.documentElement.removeAttribute("data-solid");
+        }
+      };
+
       const storedTheme = localStorage.getItem(themeKey);
       const legacy = legacyThemes[storedTheme];
 
@@ -50,6 +61,8 @@
       } else {
         setTheme(storedTheme || "eve-online");
       }
+
+      setSolid(localStorage.getItem(solidKey) === "true");
 
       if (!document.documentElement.hasAttribute("data-mode")) {
         setMode(localStorage.getItem(modeKey) || "system");
@@ -63,9 +76,15 @@
       window.addEventListener("storage", (e) => {
         if (e.key === themeKey) setTheme(e.newValue || "eve-online");
         if (e.key === modeKey) setMode(e.newValue || "system");
+        if (e.key === solidKey) setSolid(e.newValue === "true");
       });
       window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
       window.addEventListener("phx:set-mode", (e) => setMode(e.target.dataset.phxMode));
+      window.addEventListener("phx:set-solid", (e) => {
+        const solid = e.target.checked === true;
+        localStorage.setItem(solidKey, solid ? "true" : "false");
+        setSolid(solid);
+      });
     </script>
     <style>
       /* eveonline.com hero art: the Fractured Skies loop over its still frame */
