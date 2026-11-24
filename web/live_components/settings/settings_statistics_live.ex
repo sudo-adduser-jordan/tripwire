@@ -81,7 +81,7 @@ defmodule TripwireWeb.LiveComponents.Settings.StatisticsLive do
             </dl>
           </div>
         </div>
-        <div class="rounded-lg border border-base-300 bg-base-100/50 p-3">
+        <div class="rounded-lg border border-base-300 bg-base-100 p-3">
           <p class="text-xs font-semibold">Activity</p>
           <dl class="mt-1 space-y-0.5 text-xs tabular-nums">
             <div class="flex justify-between gap-2">

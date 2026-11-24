@@ -63,7 +63,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
       tabindex="0"
       phx-hook="GridWidget"
     >
-      <div class="grid-stack-item-content bg-base-100/50 flex flex-col overflow-hidden">
+      <div class="grid-stack-item-content bg-base-100 flex flex-col overflow-hidden">
         <div class="flex min-h-0 size-full flex-col">
           <ul class="list rounded-box shadow-md shrink-0">
             <li class="widget-header">

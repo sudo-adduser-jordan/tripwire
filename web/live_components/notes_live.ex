@@ -124,7 +124,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
       tabindex="0"
       phx-hook="GridWidget"
     >
-      <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
+      <div class="grid-stack-item-content bg-base-100 flex min-h-0 flex-col overflow-hidden">
         <ul class="list rounded-box shadow-md shrink-0">
           <li class="widget-header">
             <button
@@ -181,7 +181,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
         </div>
         <div class="min-h-0 w-full flex-1 overflow-y-auto p-3 text-sm leading-6 sm:p-4">
           <div :if={@selected_system_id == nil} class="space-y-2">
-            <div :for={body <- @welcome_notes} class="rounded bg-base-200/50 p-2">
+            <div :for={body <- @welcome_notes} class="rounded bg-base-200 p-2">
               <div class={markdown_class()}>
                 {Phoenix.HTML.raw(Tripwire.Markdown.to_html(body))}
               </div>
@@ -190,7 +190,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
           <div
             :for={comment <- @comments}
             id={"comment-#{comment.id}"}
-            class="mb-2 rounded bg-base-200/50 p-2"
+            class="mb-2 rounded bg-base-200 p-2"
           >
             <form
               :if={@editing_comment_id == comment.id}

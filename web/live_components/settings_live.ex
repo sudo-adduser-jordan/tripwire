@@ -52,7 +52,7 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
     >
       <div
         id="settings-content"
-        class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden"
+        class="grid-stack-item-content bg-base-100 flex min-h-0 flex-col overflow-hidden"
         phx-hook="ScrollIntoView"
       >
         <div class="tabs tabs-box max-w-full min-h-0 size-full">

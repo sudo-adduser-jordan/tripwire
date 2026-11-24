@@ -226,7 +226,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
       tabindex="0"
       phx-hook="GridWidget"
     >
-      <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
+      <div class="grid-stack-item-content bg-base-100 flex min-h-0 flex-col overflow-hidden">
         <div class="shrink-0">
           <ul class="list rounded-box shadow-md">
             <li class="widget-header">
@@ -301,7 +301,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
               id="signature-columns"
               phx-hook="ColumnReorder"
               phx-target={@myself}
-              class="sticky top-0 z-10 bg-base-200/80 backdrop-blur"
+              class="sticky top-0 z-10 bg-base-200 backdrop-blur"
             >
               <tr>
                 <th

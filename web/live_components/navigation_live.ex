@@ -32,7 +32,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
     <nav
       id="topbar"
       phx-hook="CharacterSwitch"
-      class="sticky top-0 z-30 flex w-full max-w-full flex-wrap items-center gap-x-2 gap-y-1 bg-base-200/75 p-2"
+      class="sticky top-0 z-30 flex w-full max-w-full flex-wrap items-center gap-x-2 gap-y-1 bg-base-200 p-2"
     >
       <a href="/" class="flex w-fit items-center gap-2">
         <img
@@ -118,7 +118,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
           </div>
           <ul
             tabindex="-1"
-            class="menu dropdown-content bg-base-200/75 rounded-box z-1 mt-4 w-64 p-2 shadow-sm"
+            class="menu dropdown-content bg-base-200 rounded-box z-1 mt-4 w-64 p-2 shadow-sm"
           >
             <li :for={character <- @characters}>
               <div class="flex items-center gap-1">
@@ -182,7 +182,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
           </div>
           <ul
             tabindex="-1"
-            class="menu dropdown-content bg-base-200/75 rounded-box z-1 mt-4 w-52 p-2 shadow-sm"
+            class="menu dropdown-content bg-base-200 rounded-box z-1 mt-4 w-52 p-2 shadow-sm"
           >
             <li :for={mask <- @masks}>
               <button phx-click="switch-mask" phx-value-id={mask.id}>

@@ -150,7 +150,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
       tabindex="0"
       phx-hook="GridWidget"
     >
-      <div class="grid-stack-item-content bg-base-100/50 flex min-h-0 flex-col overflow-hidden">
+      <div class="grid-stack-item-content bg-base-100 flex min-h-0 flex-col overflow-hidden">
         <ul class="list rounded-box shadow-md shrink-0">
           <li class="widget-header">
             <span id="chainTabs" class="join widget-header-tabs">
@@ -391,7 +391,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   class={[
                     if(system.id == @selected_system_id,
                       do: "fill-primary/30 stroke-primary",
-                      else: "fill-base-200/75 class-ink-stroke"
+                      else: "fill-base-200 class-ink-stroke"
                     ),
                     if(
                       Map.get(assigns, :show_line_glow, true) and
@@ -439,7 +439,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   >
                     <div
                       xmlns="http://www.w3.org/1999/xhtml"
-                      class="space-y-1 rounded-box border border-base-content/20 bg-base-300/95 p-2 shadow-xl"
+                      class="space-y-1 rounded-box border border-base-content/20 bg-base-300 p-2 shadow-xl"
                     >
                       <div
                         :for={occupant <- tip.members}
