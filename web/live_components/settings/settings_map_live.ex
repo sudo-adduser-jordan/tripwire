@@ -74,7 +74,7 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
             type="checkbox"
             checked={@show_line_glow}
             phx-click="toggle-line-glow"
-            class="toggle toggle-secondary toggle-sm"
+            class="toggle toggle-primary toggle-sm"
           />
         </div>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
@@ -84,7 +84,7 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
             type="checkbox"
             checked={@show_node_badges}
             phx-click="toggle-node-badges"
-            class="toggle toggle-neutral toggle-sm"
+            class="toggle toggle-primary toggle-sm"
           />
         </div>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
@@ -104,7 +104,7 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
             type="checkbox"
             checked={@show_row_counts}
             phx-click="toggle-row-counts"
-            class="toggle toggle-secondary toggle-sm"
+            class="toggle toggle-primary toggle-sm"
           />
         </div>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
@@ -114,7 +114,7 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
             type="checkbox"
             checked={@angled_lines}
             phx-click="toggle-angled-lines"
-            class="toggle toggle-accent toggle-sm"
+            class="toggle toggle-primary toggle-sm"
           />
         </div>
 

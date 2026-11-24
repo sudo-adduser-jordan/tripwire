@@ -41,7 +41,7 @@ defmodule TripwireWeb.LiveComponents.Settings.WidgetsLive do
             checked={@widget_notes}
             phx-click="toggle-widget"
             phx-value-widget="notes"
-            class="toggle toggle-secondary toggle-sm"
+            class="toggle toggle-primary toggle-sm"
           />
         </div>
 
@@ -53,7 +53,7 @@ defmodule TripwireWeb.LiveComponents.Settings.WidgetsLive do
             checked={@widget_signatures}
             phx-click="toggle-widget"
             phx-value-widget="signatures"
-            class="toggle toggle-accent toggle-sm"
+            class="toggle toggle-primary toggle-sm"
           />
         </div>
 
@@ -65,7 +65,7 @@ defmodule TripwireWeb.LiveComponents.Settings.WidgetsLive do
             checked={@widget_map}
             phx-click="toggle-widget"
             phx-value-widget="map"
-            class="toggle toggle-neutral toggle-sm"
+            class="toggle toggle-primary toggle-sm"
           />
         </div>
       </div>
