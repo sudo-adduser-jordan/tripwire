@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme-lock={assigns[:theme_lock] && "true"}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -61,10 +61,14 @@
         }
       };
 
+      const locked = document.documentElement.getAttribute("data-theme-lock") === "true";
       const storedTheme = localStorage.getItem(themeKey);
       const legacy = legacyThemes[storedTheme];
 
-      if (legacy) {
+      if (locked) {
+        document.documentElement.setAttribute("data-theme", "eve-online");
+        document.documentElement.setAttribute("data-mode", "dark");
+      } else if (legacy) {
         setTheme(legacy[0]);
         if (!localStorage.getItem(modeKey)) setMode(legacy[1]);
       } else {
@@ -72,25 +76,29 @@
       }
 
       setSolid(localStorage.getItem(solidKey) === "true");
-      setFont(localStorage.getItem(fontKey) || "eve");
+      setFont(locked ? "eve" : localStorage.getItem(fontKey) || "eve");
 
-      if (!document.documentElement.hasAttribute("data-mode")) {
-        setMode(localStorage.getItem(modeKey) || "system");
-      }
+      if (!locked) {
+        if (!document.documentElement.hasAttribute("data-mode")) {
+          setMode(localStorage.getItem(modeKey) || "system");
+        }
 
-      window
-        .matchMedia("(prefers-color-scheme: dark)")
-        .addEventListener("change", () => {
-          if (!localStorage.getItem(modeKey)) setMode("system");
+        window
+          .matchMedia("(prefers-color-scheme: dark)")
+          .addEventListener("change", () => {
+            if (!localStorage.getItem(modeKey)) setMode("system");
+          });
+        window.addEventListener("storage", (e) => {
+          if (e.key === themeKey) setTheme(e.newValue || "eve-online");
+          if (e.key === modeKey) setMode(e.newValue || "system");
+          if (e.key === solidKey) setSolid(e.newValue === "true");
+          if (e.key === fontKey) setFont(e.newValue || "eve");
         });
-      window.addEventListener("storage", (e) => {
-        if (e.key === themeKey) setTheme(e.newValue || "eve-online");
-        if (e.key === modeKey) setMode(e.newValue || "system");
-        if (e.key === solidKey) setSolid(e.newValue === "true");
-        if (e.key === fontKey) setFont(e.newValue || "eve");
-      });
-      window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
-      window.addEventListener("phx:set-mode", (e) => setMode(e.target.dataset.phxMode));
+        window.addEventListener("phx:set-theme", (e) =>
+          setTheme(e.target.dataset.phxTheme)
+        );
+        window.addEventListener("phx:set-mode", (e) => setMode(e.target.dataset.phxMode));
+      }
       window.addEventListener("phx:set-solid", (e) => {
         const solid = e.target.checked === true;
         localStorage.setItem(solidKey, solid ? "true" : "false");

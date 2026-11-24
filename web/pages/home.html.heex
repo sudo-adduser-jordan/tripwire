@@ -100,53 +100,51 @@
         </a>
       </div>
 
-      <fieldset class="mt-2 flex w-fit max-w-full flex-col gap-2 rounded-box border border-base-300 bg-base-100 p-3">
-        <a
-          :if={!@demo?}
-          class="inline-block h-[30px] w-[195px] overflow-hidden rounded p-0"
-          href={~p"/auth/evesso"}
-          data-autofocus
-        >
-          <img
-            class="h-[30px] w-[195px] object-cover sso-white"
-            src="/images/eve-sso-login-white-small.png"
-            alt="EVE SSO Logo"
-          />
-          <img
-            class="h-[30px] w-[195px] object-cover sso-black"
-            src="/images/eve-sso-login-black-small.png"
-            alt="EVE SSO Logo"
-          />
-        </a>
+      <a
+        :if={!@demo?}
+        class="mt-2 ml-2 inline-block h-[30px] w-[195px] overflow-hidden rounded align-middle"
+        href={~p"/auth/evesso"}
+        data-autofocus
+      >
+        <img
+          class="h-[30px] w-[195px] object-cover sso-white"
+          src="/images/eve-sso-login-white-small.png"
+          alt="EVE SSO Logo"
+        />
+        <img
+          class="h-[30px] w-[195px] object-cover sso-black"
+          src="/images/eve-sso-login-black-small.png"
+          alt="EVE SSO Logo"
+        />
+      </a>
 
-        <button
-          :if={@demo?}
-          class="inline-block h-[30px] w-[195px] cursor-not-allowed overflow-hidden rounded p-0 opacity-60"
-          aria-disabled="true"
-          disabled
-          tabindex="-1"
-          title="EVE SSO is not configured"
-        >
-          <img
-            class="h-[30px] w-[195px] object-cover sso-white"
-            src="/images/eve-sso-login-white-small.png"
-            alt="EVE SSO Logo"
-          />
-          <img
-            class="h-[30px] w-[195px] object-cover sso-black"
-            src="/images/eve-sso-login-black-small.png"
-            alt="EVE SSO Logo"
-          />
-        </button>
+      <button
+        :if={@demo?}
+        class="mt-2 ml-2 inline-block h-[30px] w-[195px] cursor-not-allowed overflow-hidden rounded align-middle opacity-60"
+        aria-disabled="true"
+        disabled
+        tabindex="-1"
+        title="EVE SSO is not configured"
+      >
+        <img
+          class="h-[30px] w-[195px] object-cover sso-white"
+          src="/images/eve-sso-login-white-small.png"
+          alt="EVE SSO Logo"
+        />
+        <img
+          class="h-[30px] w-[195px] object-cover sso-black"
+          src="/images/eve-sso-login-black-small.png"
+          alt="EVE SSO Logo"
+        />
+      </button>
 
-        <a
-          class="btn btn-secondary h-[30px] min-h-[30px] w-[195px] text-sm leading-none"
-          href="/Jita"
-          data-autofocus={@demo?}
-        >
-          Demo
-        </a>
-      </fieldset>
+      <a
+        class="btn btn-secondary mt-2 ml-2 h-[30px] min-h-[30px] w-[195px] text-sm leading-none align-middle"
+        href="/Jita"
+        data-autofocus={@demo?}
+      >
+        Demo
+      </a>
     </div>
   </div>
 </main>

@@ -19,6 +19,7 @@ defmodule TripwireWeb.PageControllerTest do
         assert html =~ "Demo"
         assert html =~ ~r|href="/Jita"[^>]*data-autofocus|
         assert length(Regex.scan(~r/data-autofocus/, html)) == 1
+        assert html =~ ~s|data-theme-lock="true"|
       end
     )
   end
@@ -40,6 +41,7 @@ defmodule TripwireWeb.PageControllerTest do
         assert html =~ "Demo"
         assert html =~ ~r|href="/auth/evesso"[^>]*data-autofocus|
         assert length(Regex.scan(~r/data-autofocus/, html)) == 1
+        assert html =~ ~s|data-theme-lock="true"|
       end
     )
   end
@@ -67,6 +69,7 @@ defmodule TripwireWeb.PageControllerTest do
     html = html_response(conn, 200)
     assert html =~ "The modern wormhole mapping tool"
     assert html =~ ~s|href="/Jita"|
+    assert html =~ ~s|data-theme-lock="true"|
   end
 
   defp with_env(vars, fun) do
