@@ -450,7 +450,7 @@ defmodule TripwireWeb.DashboardLive do
         {:noreply, put_flash(socket, :error, "Layout not found")}
 
       layout ->
-        _ = Layouts.set_active(layout.id)
+        save_arrangement(layout.widgets, layout.id)
 
         socket =
           socket
@@ -484,7 +484,7 @@ defmodule TripwireWeb.DashboardLive do
 
     case Layouts.save_layout(socket.assigns[:layout_name], widgets) do
       {:ok, layout} ->
-        _ = Layouts.set_active("saved:#{layout.id}")
+        save_arrangement(widgets, "saved:#{layout.id}")
 
         socket =
           socket
@@ -508,7 +508,7 @@ defmodule TripwireWeb.DashboardLive do
         socket = assign(socket, :layouts, Layouts.list_layouts())
 
         if socket.assigns[:active_layout] == id do
-          _ = Layouts.clear_active()
+          _ = Layouts.reset_arrangement()
 
           socket =
             socket
@@ -531,8 +531,43 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_event("delete-layout", _params, socket), do: {:noreply, socket}
 
-  def handle_event("layout-changed", _params, socket) do
-    {:noreply, clear_active_layout(socket)}
+  def handle_event("layout-changed", params, socket) do
+    socket = clear_active_layout(socket)
+
+    case params do
+      %{"widgets" => widgets} when is_map(widgets) ->
+        widgets = Layouts.with_visibility(widgets, socket.assigns)
+        save_arrangement(widgets, nil)
+        {:noreply, assign_widget_positions(socket, widgets)}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("reset-layout", _params, socket) do
+    widgets = Layouts.default_widgets()
+    visibility = Map.new(@widgets, fn {_key, assign_key} -> {assign_key, true} end)
+
+    case Settings.update(Map.merge(%{widget_layout: nil, active_layout: nil}, visibility)) do
+      {:ok, _} ->
+        :ok
+
+      {:error, changeset} ->
+        Tripwire.Log.emit(:warning, %{
+          event: "user_layout_update_failed",
+          action: "reset",
+          errors: changeset_errors(changeset)
+        })
+    end
+
+    socket =
+      socket
+      |> assign(:active_layout, nil)
+      |> assign_widget_layout(widgets)
+      |> push_event("layout-apply", %{widgets: widgets})
+
+    {:noreply, put_flash(socket, :info, "Layout reset to Default")}
   end
 
   def handle_event("toggle-map-lock", _params, socket) do
@@ -1783,6 +1818,7 @@ defmodule TripwireWeb.DashboardLive do
         socket
         |> assign(:layouts, layouts)
         |> assign(:active_layout, nil)
+        |> assign_widget_positions(Layouts.arrangement())
 
       layout ->
         socket
@@ -1790,6 +1826,11 @@ defmodule TripwireWeb.DashboardLive do
         |> assign(:active_layout, layout.id)
         |> assign_widget_layout(layout.widgets)
     end
+  end
+
+  defp assign_widget_positions(socket, widgets) do
+    positions = Map.merge(socket.assigns.widget_positions || %{}, widgets)
+    assign(socket, :widget_positions, positions)
   end
 
   defp assign_widget_layout(socket, widgets) do
@@ -1806,6 +1847,21 @@ defmodule TripwireWeb.DashboardLive do
       assign(socket, :active_layout, nil)
     else
       socket
+    end
+  end
+
+  defp save_arrangement(widgets, active_id) do
+    case Layouts.put_arrangement(widgets, active_id) do
+      {:ok, _} ->
+        :ok
+
+      {:error, changeset} ->
+        Tripwire.Log.emit(:warning, %{
+          event: "user_layout_update_failed",
+          action: "save",
+          active_layout: inspect(active_id),
+          errors: changeset_errors(changeset)
+        })
     end
   end
 

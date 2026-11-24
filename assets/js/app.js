@@ -68,11 +68,21 @@ const GridStack = {
         grid.on('change', () => {
             if (this.el._layoutApplying) return
             if (grid.opts && grid.opts.staticGrid) return
-            this.pushEvent('layout-changed', {})
+            this._queueLayoutChange()
         })
     },
 
+    _queueLayoutChange() {
+        if (this._layoutTimer) clearTimeout(this._layoutTimer)
+        this._layoutTimer = setTimeout(() => {
+            this._layoutTimer = null
+            const widgets = window.TripwireGridStack?.snapshot() || {}
+            this.pushEvent('layout-changed', { widgets: widgets })
+        }, 250)
+    },
+
     destroyed() {
+        if (this._layoutTimer) clearTimeout(this._layoutTimer)
         window.TripwireGridStack?.destroy()
     },
 }

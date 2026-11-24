@@ -27,20 +27,34 @@ defmodule TripwireWeb.LiveComponents.Settings.LayoutsLive do
       <div class="flex min-h-0 w-full max-w-full flex-col gap-3 overflow-hidden">
         <p class="text-sm font-semibold">Layouts</p>
 
-        <form id="save-layout-form" phx-submit="save-layout" class="flex min-w-0 flex-wrap gap-2">
-          <input
-            id="layout-name"
-            name="name"
-            value=""
-            placeholder="Layout name"
-            autocomplete="off"
-            maxlength="40"
-            class="input input-bordered input-sm min-w-0 flex-1 sm:max-w-64"
-          />
-          <button id="save-layout" type="submit" class="btn btn-primary btn-sm">
-            Save current layout
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <form id="save-layout-form" phx-submit="save-layout" class="flex min-w-0 flex-wrap gap-2">
+            <input
+              id="layout-name"
+              name="name"
+              value=""
+              placeholder="Layout name"
+              autocomplete="off"
+              maxlength="40"
+              class="input input-bordered input-sm min-w-0 flex-1 sm:max-w-64"
+            />
+            <button id="save-layout" type="submit" class="btn btn-primary btn-sm">
+              Save current layout
+            </button>
+          </form>
+          <button
+            id="reset-layout"
+            type="button"
+            class="btn btn-sm"
+            phx-click="reset-layout"
+            title="Restore the Default positions, sizes and visibility"
+          >
+            Reset layout
           </button>
-        </form>
+        </div>
+        <p class="text-xs opacity-60">
+          Widget positions and sizes are remembered for this account. Reset restores Default.
+        </p>
         <p :if={@layout_errors != []} id="layout-errors" class="alert alert-error py-2 text-sm">
           {Enum.join(@layout_errors, ", ")}
         </p>

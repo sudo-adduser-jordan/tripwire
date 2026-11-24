@@ -641,6 +641,70 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert Layouts.active_layout() == nil
   end
 
+  test "dragging and resizing widgets remembers the arrangement across reloads", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "layouts"})
+    view |> element("#apply-layout-core-map-focus") |> render_click()
+    assert Layouts.active_layout() == "core:map-focus"
+
+    widgets = %{
+      "system" => %{"x" => 0, "y" => 0, "w" => 6, "h" => 5},
+      "notes" => %{"x" => 6, "y" => 0, "w" => 6, "h" => 5},
+      "signatures" => %{"x" => 0, "y" => 5, "w" => 12, "h" => 7},
+      "map" => %{"x" => 0, "y" => 12, "w" => 12}
+    }
+
+    view |> element("#grid-stack") |> render_hook("layout-changed", %{"widgets" => widgets})
+
+    assert Layouts.active_layout() == nil
+    stored = Settings.get().widget_layout
+    assert stored["system"]["x"] == 0
+    assert stored["system"]["h"] == 5
+    assert stored["signatures"]["h"] == 7
+    assert stored["map"]["w"] == 12
+    assert stored["map"]["h"] == Layouts.default_widgets()["map"]["h"]
+
+    {:ok, reloaded, _html} = live(login(conn, character), ~p"/dashboard")
+
+    assert has_element?(reloaded, "#system-container[gs-x='0'][gs-w='6'][gs-h='5']")
+    assert has_element?(reloaded, "#notes[gs-x='6']")
+    assert has_element?(reloaded, "#signatures[gs-y='5']")
+    assert has_element?(reloaded, "#map[gs-y='12']")
+  end
+
+  test "reset layout restores default positions, sizes and visibility", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "layouts"})
+    view |> element("#apply-layout-core-map-focus") |> render_click()
+    refute has_element?(view, "#signatures")
+
+    assert has_element?(view, "#reset-layout")
+    view |> element("#reset-layout") |> render_click()
+
+    assert has_element?(view, "#system-container[gs-x='1'][gs-w='5']")
+    assert has_element?(view, "#signatures[gs-x='1'][gs-y='6']")
+    assert has_element?(view, "#map[gs-y='12']")
+    assert Settings.get().widget_layout == nil
+    assert Layouts.active_layout() == nil
+    assert Settings.get().widget_signatures
+    assert render(view) =~ "Layout reset to Default"
+    refute render(view) =~ "Active"
+  end
+
   test "settings survive switching masks", %{conn: conn, character: character} do
     {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
 

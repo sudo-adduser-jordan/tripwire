@@ -118,11 +118,27 @@ defmodule Tripwire.Layouts do
     get_layout(active_layout())
   end
 
+  def arrangement do
+    case Settings.get().widget_layout do
+      %{} = widgets -> normalize_widgets(widgets)
+      _ -> default_widgets()
+    end
+  end
+
+  def put_arrangement(widgets, active_id \\ nil) do
+    Settings.update(%{widget_layout: merge_arrangement(widgets), active_layout: active_id})
+  end
+
+  def reset_arrangement do
+    Settings.update(%{widget_layout: nil, active_layout: nil})
+  end
+
   def with_visibility(widgets, assigns) do
     positions = Map.get(assigns, :widget_positions) || %{}
 
     Map.new(@widget_ids, fn key ->
-      widget = Map.get(widgets || %{}, key) || Map.get(positions, key) || %{}
+      base = Map.get(positions, key) || %{}
+      widget = Map.merge(base, Map.get(widgets || %{}, key) || %{})
       visible = Map.get(assigns, :"widget_#{key}", true)
       {key, Map.put(widget, "visible", visible)}
     end)
@@ -171,6 +187,20 @@ defmodule Tripwire.Layouts do
   end
 
   def valid_widgets?(_widgets), do: false
+
+  defp merge_arrangement(widgets) when is_map(widgets) do
+    current = arrangement()
+    defaults = default_widgets()
+
+    Map.new(@widget_ids, fn key ->
+      base = Map.get(current, key) || defaults[key]
+      patch = Map.get(widgets, key) || Map.get(widgets, String.to_atom(key)) || %{}
+      {key, Map.merge(base, patch)}
+    end)
+    |> normalize_widgets()
+  end
+
+  defp merge_arrangement(_widgets), do: default_widgets()
 
   defp normalize_layout(%Layout{} = layout) do
     %{

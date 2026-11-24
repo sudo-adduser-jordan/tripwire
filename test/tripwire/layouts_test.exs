@@ -107,4 +107,66 @@ defmodule Tripwire.LayoutsTest do
     assert Map.has_key?(Settings.assigns(), :active_layout)
     assert Map.fetch!(Settings.assigns(), :active_layout) == nil
   end
+
+  test "put_arrangement/2 stores the arrangement and active layout" do
+    widgets =
+      Map.put(Layouts.default_widgets(), "system", %{
+        "x" => 2,
+        "y" => 3,
+        "w" => 4,
+        "h" => 5,
+        "visible" => true
+      })
+
+    assert {:ok, _} = Layouts.put_arrangement(widgets, "core:compact")
+
+    assert Layouts.arrangement()["system"] == %{
+             "x" => 2,
+             "y" => 3,
+             "w" => 4,
+             "h" => 5,
+             "visible" => true
+           }
+
+    assert Layouts.active_layout() == "core:compact"
+
+    assert {:ok, _} = Layouts.reset_arrangement()
+    assert Settings.get().widget_layout == nil
+    assert Layouts.active_layout() == nil
+    assert Layouts.arrangement() == Layouts.default_widgets()
+  end
+
+  test "put_arrangement/2 merges partial snapshots over the stored arrangement" do
+    widgets = %{
+      "system" => %{"x" => 0, "y" => 1, "w" => 6, "h" => 5},
+      "map" => %{"x" => 0, "y" => 10, "w" => 12}
+    }
+
+    assert {:ok, _} = Layouts.put_arrangement(widgets, nil)
+    stored = Layouts.arrangement()
+
+    assert stored["system"]["h"] == 5
+    assert stored["map"]["h"] == Layouts.default_widgets()["map"]["h"]
+    assert stored["notes"]["x"] == Layouts.default_widgets()["notes"]["x"]
+    assert Layouts.valid_widgets?(stored)
+  end
+
+  test "arrangement/0 normalizes a stored arrangement" do
+    {:ok, _} =
+      Settings.update(%{
+        widget_layout: %{"system" => %{"x" => 20, "w" => 20, "visible" => "nope"}}
+      })
+
+    widgets = Layouts.arrangement()
+
+    assert widgets["system"] == %{
+             "x" => 11,
+             "y" => 0,
+             "w" => 1,
+             "h" => 6,
+             "visible" => false
+           }
+
+    assert Layouts.valid_widgets?(widgets)
+  end
 end
