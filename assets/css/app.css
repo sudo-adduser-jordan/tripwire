@@ -675,6 +675,10 @@ html[data-font="serif"] {
     width: 100%;
   }
 
+  #settings-widget .theme-button [data-theme] {
+    background-color: transparent;
+  }
+
   #settings-widget .settings-card {
     border-radius: 0;
     background-color: transparent;
