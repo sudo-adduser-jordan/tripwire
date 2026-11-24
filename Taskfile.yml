@@ -134,3 +134,11 @@ tasks:
       - mix ecto.migrate
       - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}MIX_ENV=dev mix phx.server on http://localhost:${PORT:-4000}{{.RESET}}"
       - MIX_ENV=dev mix phx.server
+  diagram:
+    desc: Generate the database and architecture diagrams
+    cmds:
+      - echo -e "{{.BLUE}}[diagram]{{.RESET}} {{.CYAN}}mkdir -p docs tmp{{.RESET}}"
+      - mkdir -p docs tmp
+      - echo -e "{{.BLUE}}[diagram]{{.RESET}} {{.CYAN}}mix tripwire.diagrams{{.RESET}}"
+      - mix tripwire.diagrams
+      - echo -e "{{.GREEN}}[diagram]{{.RESET}} docs/db-schema.md docs/architecture.md"
