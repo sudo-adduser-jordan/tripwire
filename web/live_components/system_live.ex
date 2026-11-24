@@ -255,7 +255,7 @@ defmodule TripwireWeb.LiveComponents.SystemLive do
 
   defp chart_legend(assigns) do
     ~H"""
-    <div class="-mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-2 pt-1 pb-1 text-[11px]">
+    <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-2 pt-1 pb-3 text-[11px]">
       <.legend_toggle
         series="jumps"
         label="Jumps"

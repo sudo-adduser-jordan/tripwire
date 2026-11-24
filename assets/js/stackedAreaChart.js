@@ -80,7 +80,7 @@ const stackedChartOptions = {
     animationDurationUpdate: 100,
     grid: {
         top: '8%',
-        bottom: '20%',
+        bottom: 28,
         left: '4%',
         right: '4%',
         outerBoundsMode: 'same',
