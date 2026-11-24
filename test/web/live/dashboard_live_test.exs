@@ -476,6 +476,8 @@ defmodule TripwireWeb.DashboardLiveTest do
       assert core =~ ~s|id="theme-button-#{theme}"|
     end
 
+    assert length(Regex.scan(~r/data-theme-swatch/, core)) == 4 * 3
+
     assert has_element?(view, "#toggle-dark-mode")
     assert has_element?(view, "#toggle-solid-background")
     assert has_element?(view, "#font-select")

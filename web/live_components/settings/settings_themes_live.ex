@@ -131,7 +131,13 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
                         onerror="this.onerror=null;this.src='/images/alliance-default.png'"
                       />
                     <% end %>
-                    <div class="truncate text-xs font-semibold">{theme}</div>
+                    <div class="min-w-0 flex-1 truncate text-xs font-semibold">{theme}</div>
+                    <div class="ml-auto flex shrink-0 items-center gap-1" aria-hidden="true">
+                      <span data-theme-swatch class="bg-primary size-2.5" />
+                      <span data-theme-swatch class="bg-secondary size-2.5" />
+                      <span data-theme-swatch class="bg-accent size-2.5" />
+                      <span data-theme-swatch class="bg-neutral size-2.5" />
+                    </div>
                   </div>
                 </button>
               <% end %>
