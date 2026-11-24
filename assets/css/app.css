@@ -659,10 +659,6 @@ html[data-font="serif"] {
     padding: 0.5rem;
   }
 
-  #settings-widget .settings-card-selected {
-    background-color: color-mix(in oklab, var(--color-success) 10%, transparent);
-  }
-
   #settings-widget .settings-empty {
     border-radius: 0;
     background-color: transparent;

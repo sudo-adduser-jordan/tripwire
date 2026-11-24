@@ -26,12 +26,14 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
       id: "faction",
       label: "Faction",
       icon: "hero-flag",
+      logos: true,
       themes: ["amarr", "caldari", "gallente", "minmatar"]
     },
     %{
       id: "pirate",
       label: "Pirate",
       icon: "hero-fire",
+      logos: true,
       themes: ["angel", "blood", "guristas", "sansha", "serpentis"]
     }
   ]
@@ -41,10 +43,9 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
   def theme_sections, do: @theme_sections
 
   defp theme_icon(theme) do
-    case Map.get(@faction_theme_ids, theme) do
-      nil -> "/images/themes/" <> theme <> ".svg"
-      faction_id -> EveImages.faction_logo(faction_id, 64)
-    end
+    @faction_theme_ids
+    |> Map.fetch!(theme)
+    |> EveImages.faction_logo(64)
   end
 
   attr :settings_tab, :string, default: "account"
@@ -108,14 +109,16 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
                     data-theme={theme}
                     class="text-base-content flex w-full min-w-0 cursor-pointer items-center gap-2 font-sans"
                   >
-                    <img
-                      src={theme_icon(theme)}
-                      alt=""
-                      aria-hidden="true"
-                      class="size-6 shrink-0 rounded"
-                      loading="lazy"
-                      onerror="this.onerror=null;this.src='/images/alliance-default.png'"
-                    />
+                    <%= if Map.get(section, :logos, false) do %>
+                      <img
+                        src={theme_icon(theme)}
+                        alt=""
+                        aria-hidden="true"
+                        class="size-6 shrink-0 rounded"
+                        loading="lazy"
+                        onerror="this.onerror=null;this.src='/images/alliance-default.png'"
+                      />
+                    <% end %>
                     <div class="truncate text-xs font-semibold">{theme}</div>
                   </div>
                 </button>

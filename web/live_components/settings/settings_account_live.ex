@@ -86,7 +86,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
             class={[
               "settings-card relative flex min-w-0 items-center gap-2 border transition-colors hover:border-base-content/40 focus-visible:ring-2 focus-visible:ring-success focus-visible:outline-none",
               current_character?(@character, entry) &&
-                "settings-card-selected border-success ring-1 ring-success",
+                "border-success ring-1 ring-success",
               !current_character?(@character, entry) && "border-base-300"
             ]}
           >
@@ -180,8 +180,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
             data-card
             class={[
               "settings-card relative flex min-w-0 items-center gap-2 border transition-colors hover:border-base-content/40 focus-visible:ring-2 focus-visible:ring-success focus-visible:outline-none",
-              current_mask?(@mask, entry) &&
-                "settings-card-selected border-success ring-1 ring-success",
+              current_mask?(@mask, entry) && "border-success ring-1 ring-success",
               !current_mask?(@mask, entry) && "border-base-300"
             ]}
           >
