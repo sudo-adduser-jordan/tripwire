@@ -469,6 +469,12 @@
 
 @custom-variant dark (&:where([data-mode=dark], [data-mode=dark] *));
 
+html[data-mode="dark"]:not([data-solid]) body {
+  --color-base-100: oklch(from var(--theme-base-100) l c h / 0.82);
+  --color-base-200: oklch(from var(--theme-base-200) l c h / 0.78);
+  --color-base-300: oklch(from var(--theme-base-300) l c h / 0.72);
+}
+
 html[data-mode="light"]:not([data-solid]) body {
   --color-base-100: oklch(from var(--theme-base-100) l c h / 0.6);
   --color-base-200: oklch(from var(--theme-base-200) l c h / 0.5);
