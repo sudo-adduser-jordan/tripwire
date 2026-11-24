@@ -463,7 +463,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(conn, ~p"/dashboard")
 
     for mode <- ~w(system light dark) do
-      assert has_element?(view, "button[data-phx-mode='#{mode}']")
+      refute has_element?(view, "button[data-phx-mode='#{mode}']")
     end
 
     view |> element("#settings-button") |> render_click()
