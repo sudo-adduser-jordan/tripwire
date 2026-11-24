@@ -84,9 +84,9 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
             aria-current={current_character?(@character, entry) && "true"}
             data-card
             class={[
-              "relative flex min-w-0 items-center gap-2 rounded-lg border bg-base-100/50 p-2 transition-colors hover:bg-base-200/60 focus-visible:ring-2 focus-visible:ring-success focus-visible:outline-none",
+              "settings-card relative flex min-w-0 items-center gap-2 border transition-colors hover:border-base-content/40 focus-visible:ring-2 focus-visible:ring-success focus-visible:outline-none",
               current_character?(@character, entry) &&
-                "border-success bg-success/10 ring-1 ring-success",
+                "settings-card-selected border-success ring-1 ring-success",
               !current_character?(@character, entry) && "border-base-300"
             ]}
           >
@@ -98,7 +98,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
               data-card-action
               title={"Switch to #{entry.name}"}
               aria-label={"Switch to #{entry.name}"}
-              class="absolute inset-0 z-0 rounded-lg hover:cursor-pointer"
+              class="absolute inset-0 z-0 hover:cursor-pointer"
             >
             </button>
             <div class="pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-2">
@@ -143,7 +143,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
           </div>
           <div
             :if={@characters == []}
-            class="col-span-full rounded-box bg-base-200/50 p-3 text-xs opacity-60"
+            class="settings-empty col-span-full"
           >
             No characters yet. Log in with EVE SSO to add one.
           </div>
@@ -179,8 +179,9 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
             aria-current={current_mask?(@mask, entry) && "true"}
             data-card
             class={[
-              "relative flex min-w-0 items-center gap-2 rounded-lg border bg-base-100/50 p-2 transition-colors hover:bg-base-200/60 focus-visible:ring-2 focus-visible:ring-success focus-visible:outline-none",
-              current_mask?(@mask, entry) && "border-success bg-success/10 ring-1 ring-success",
+              "settings-card relative flex min-w-0 items-center gap-2 border transition-colors hover:border-base-content/40 focus-visible:ring-2 focus-visible:ring-success focus-visible:outline-none",
+              current_mask?(@mask, entry) &&
+                "settings-card-selected border-success ring-1 ring-success",
               !current_mask?(@mask, entry) && "border-base-300"
             ]}
           >
@@ -192,7 +193,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
               data-card-action
               title={"Switch to #{entry.name}"}
               aria-label={"Switch to #{entry.name}"}
-              class="absolute inset-0 z-0 rounded-lg hover:cursor-pointer"
+              class="absolute inset-0 z-0 hover:cursor-pointer"
             >
             </button>
             <div class="pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-2">
@@ -224,7 +225,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
           </div>
           <div
             :if={@masks == []}
-            class="col-span-full rounded-box bg-base-200/50 p-3 text-xs opacity-60"
+            class="settings-empty col-span-full"
           >
             No masks yet. Masks are shared across characters.
           </div>

@@ -46,11 +46,11 @@ defmodule TripwireWeb.LiveComponents.Settings.LayoutsLive do
         </p>
 
         <div class="flex min-h-0 w-full max-w-full flex-col gap-2 overflow-hidden">
-          <p class="text-xs font-semibold uppercase tracking-wider opacity-70">Core Layouts</p>
+          <p class="settings-section-label">Core Layouts</p>
           <div
             :for={layout <- @core}
             id={"layout-" <> dom_id(layout.id)}
-            class="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-base-300 bg-base-100/50 p-2"
+            class="settings-card flex min-w-0 flex-wrap items-center gap-2 border border-base-300"
           >
             <div class="min-w-0 flex-1">
               <p class="text-sm font-medium">{layout.name}</p>
@@ -70,14 +70,14 @@ defmodule TripwireWeb.LiveComponents.Settings.LayoutsLive do
         </div>
 
         <div class="flex min-h-0 w-full max-w-full flex-col gap-2 overflow-hidden">
-          <p class="text-xs font-semibold uppercase tracking-wider opacity-70">Saved Layouts</p>
-          <p :if={@saved == []} id="no-saved-layouts" class="text-xs opacity-60">
+          <p class="settings-section-label">Saved Layouts</p>
+          <p :if={@saved == []} id="no-saved-layouts" class="settings-empty">
             No saved layouts yet. Arrange the widgets, unlock the grid and save the result here.
           </p>
           <div
             :for={layout <- @saved}
             id={"layout-" <> dom_id(layout.id)}
-            class="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-base-300 bg-base-100/50 p-2"
+            class="settings-card flex min-w-0 flex-wrap items-center gap-2 border border-base-300"
           >
             <div class="min-w-0 flex-1">
               <p class="text-sm font-medium">{layout.name}</p>

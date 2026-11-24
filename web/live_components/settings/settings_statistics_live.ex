@@ -29,7 +29,7 @@ defmodule TripwireWeb.LiveComponents.Settings.StatisticsLive do
           Log in with EVE SSO to track personal statistics.
         </p>
         <div class="grid w-full max-w-full grid-cols-1 gap-2 md:grid-cols-3">
-          <div class="rounded-lg border border-base-300 bg-base-100/50 p-3">
+          <div class="settings-card border border-base-300">
             <p class="text-xs font-semibold">Signatures</p>
             <dl class="mt-1 space-y-0.5 text-xs tabular-nums">
               <div class="flex justify-between gap-2">
@@ -46,7 +46,7 @@ defmodule TripwireWeb.LiveComponents.Settings.StatisticsLive do
               </div>
             </dl>
           </div>
-          <div class="rounded-lg border border-base-300 bg-base-100/50 p-3">
+          <div class="settings-card border border-base-300">
             <p class="text-xs font-semibold">Wormholes</p>
             <dl class="mt-1 space-y-0.5 text-xs tabular-nums">
               <div class="flex justify-between gap-2">
@@ -63,7 +63,7 @@ defmodule TripwireWeb.LiveComponents.Settings.StatisticsLive do
               </div>
             </dl>
           </div>
-          <div class="rounded-lg border border-base-300 bg-base-100/50 p-3">
+          <div class="settings-card border border-base-300">
             <p class="text-xs font-semibold">Comments</p>
             <dl class="mt-1 space-y-0.5 text-xs tabular-nums">
               <div class="flex justify-between gap-2">

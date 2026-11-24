@@ -65,7 +65,7 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
       phx-hook="ThemeSelect"
       class="tab-content w-full max-w-full overflow-hidden p-3 sm:p-4"
     >
-      <div class="flex min-h-0 w-full max-w-full flex-col gap-4">
+      <div class="flex min-h-0 w-full max-w-full flex-col gap-3">
         <p class="text-sm font-semibold">Themes</p>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
           <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Solid background</p>
@@ -73,7 +73,7 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
             id="toggle-solid-background"
             data-solid-toggle
             type="checkbox"
-            class="checkbox checkbox-primary checkbox-sm"
+            class="toggle toggle-primary toggle-sm"
             phx-click={JS.dispatch("phx:set-solid")}
           />
         </div>
@@ -91,7 +91,7 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
           <div class="flex min-h-0 w-full max-w-full flex-col gap-2">
             <div class="flex items-center gap-1.5">
               <span class={[section.icon, "size-4 opacity-60"]} />
-              <p class="text-xs font-semibold uppercase tracking-wider opacity-70">{section.label}</p>
+              <p class="settings-section-label">{section.label}</p>
             </div>
             <div
               id={"theme-container-" <> section.id}
@@ -100,13 +100,13 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
               <%= for theme <- section.themes do %>
                 <button
                   id={"theme-button-" <> theme}
-                  class="theme-button border-base-300 hover:border-base-content/40 focus-visible:ring-success min-w-0 overflow-hidden rounded-lg border transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                  class="theme-button settings-card border-base-300 hover:border-base-content/40 focus-visible:ring-success min-w-0 overflow-hidden border transition-colors focus-visible:ring-2 focus-visible:outline-none"
                   phx-click={JS.dispatch("phx:set-theme")}
                   data-phx-theme={theme}
                 >
                   <div
                     data-theme={theme}
-                    class="bg-base-100 text-base-content flex w-full min-w-0 cursor-pointer items-center gap-2 p-2 font-sans"
+                    class="text-base-content flex w-full min-w-0 cursor-pointer items-center gap-2 font-sans"
                   >
                     <img
                       src={theme_icon(theme)}

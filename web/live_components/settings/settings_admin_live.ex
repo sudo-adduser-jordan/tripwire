@@ -28,7 +28,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AdminLive do
         <form phx-submit="create-corp-mask" class="flex flex-wrap items-center gap-2">
           <button type="submit" class="btn btn-primary btn-sm">Create corporate mask</button>
         </form>
-        <div :for={mask <- @masks} class="rounded-lg border border-base-300 bg-base-100/50 p-2">
+        <div :for={mask <- @masks} class="settings-card border border-base-300">
           <div class="flex flex-wrap items-center gap-2">
             <p class="text-sm font-semibold">{mask.name} ({mask.kind})</p>
             <button
@@ -80,7 +80,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AdminLive do
           </form>
         </div>
         <%= if Application.get_env(:tripwire, :dev_routes) do %>
-          <div class="rounded-lg border border-base-300 bg-base-100/50 p-2">
+          <div class="settings-card border border-base-300">
             <p class="text-sm font-semibold">Developer tools</p>
             <p class="mt-1 text-xs opacity-60">Available in dev builds only.</p>
             <div class="mt-2 flex flex-wrap items-center gap-2">

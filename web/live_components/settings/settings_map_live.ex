@@ -26,7 +26,7 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
       phx-value-tab="map"
     />
     <div class="tab-content w-full max-w-full overflow-hidden p-3 sm:p-4">
-      <div class="flex min-h-0 w-full max-w-full flex-col gap-2 overflow-hidden sm:gap-3">
+      <div class="flex min-h-0 w-full max-w-full flex-col gap-3 overflow-hidden">
         <p class="text-sm font-semibold">Map Settings</p>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
           <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Map Layout</p>
