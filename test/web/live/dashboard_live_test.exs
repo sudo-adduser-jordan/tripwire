@@ -1332,6 +1332,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element("#chain-zoom-reset")
     |> render_click()
 
+    render(view)
     assert Settings.get().map_scale == 100
 
     assert_push_event(view, "reset-pan", %{zoom: zoom})
