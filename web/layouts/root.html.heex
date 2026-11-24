@@ -36,13 +36,9 @@
       };
 
       const setMode = (mode) => {
-        if (mode === "system") {
-          localStorage.removeItem(modeKey);
-          mode = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-        } else {
-          localStorage.setItem(modeKey, mode);
-        }
-        document.documentElement.setAttribute("data-mode", mode);
+        const next = mode === "dark" ? "dark" : "light";
+        localStorage.setItem(modeKey, next);
+        document.documentElement.setAttribute("data-mode", next);
       };
 
       const setSolid = (solid) => {
@@ -80,17 +76,12 @@
 
       if (!locked) {
         if (!document.documentElement.hasAttribute("data-mode")) {
-          setMode(localStorage.getItem(modeKey) || "system");
+          setMode(localStorage.getItem(modeKey));
         }
 
-        window
-          .matchMedia("(prefers-color-scheme: dark)")
-          .addEventListener("change", () => {
-            if (!localStorage.getItem(modeKey)) setMode("system");
-          });
         window.addEventListener("storage", (e) => {
           if (e.key === themeKey) setTheme(e.newValue || "eve-online");
-          if (e.key === modeKey) setMode(e.newValue || "system");
+          if (e.key === modeKey) setMode(e.newValue);
           if (e.key === solidKey) setSolid(e.newValue === "true");
           if (e.key === fontKey) setFont(e.newValue || "eve");
         });

@@ -5,7 +5,7 @@ const ThemeSelect = {
     this._onClick = (event) => {
       const input = event.target.closest && event.target.closest("[data-mode-toggle]")
       if (!input) return
-      input.dataset.phxMode = input.checked ? "light" : "dark"
+      input.dataset.phxMode = input.checked ? "dark" : "light"
     }
     window.addEventListener("phx:set-theme", this._onTheme)
     window.addEventListener("phx:set-mode", this._onMode)
@@ -28,15 +28,14 @@ const ThemeSelect = {
     const solid = localStorage.getItem("phx:solid") === "true"
     const font = localStorage.getItem("phx:font") || "eve"
     const mode =
-      localStorage.getItem("phx:mode") ||
-      (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      localStorage.getItem("phx:mode") === "dark" ? "dark" : "light"
     const toggle = this.el.querySelector("[data-solid-toggle]")
     const modeToggle = this.el.querySelector("[data-mode-toggle]")
     const fontSelect = this.el.querySelector("[data-font-select]")
     if (toggle) toggle.checked = solid
     if (modeToggle) {
-      modeToggle.checked = mode === "light"
-      modeToggle.dataset.phxMode = mode === "light" ? "light" : "dark"
+      modeToggle.checked = mode === "dark"
+      modeToggle.dataset.phxMode = mode
     }
     if (fontSelect) fontSelect.value = font
     for (const button of this.el.querySelectorAll("[data-phx-theme]")) {

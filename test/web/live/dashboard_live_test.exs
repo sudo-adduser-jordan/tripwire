@@ -476,7 +476,7 @@ defmodule TripwireWeb.DashboardLiveTest do
       assert core =~ ~s|id="theme-button-#{theme}"|
     end
 
-    assert has_element?(view, "#toggle-light-mode")
+    assert has_element?(view, "#toggle-dark-mode")
     assert has_element?(view, "#toggle-solid-background")
     assert has_element?(view, "#font-select")
     refute has_element?(view, "#theme-container-mapper")

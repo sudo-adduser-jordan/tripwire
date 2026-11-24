@@ -481,10 +481,17 @@ html[data-mode="light"]:not([data-solid]) body {
   --color-base-300: oklch(from var(--theme-base-300) l c h / 0.4);
 }
 
-html[data-solid] body {
+html[data-solid]:not([data-mode]) body,
+html[data-solid][data-mode="light"] body {
   --color-base-100: var(--theme-base-100);
   --color-base-200: var(--theme-base-200);
   --color-base-300: var(--theme-base-300);
+}
+
+html[data-solid][data-mode="dark"] body {
+  --color-base-100: oklch(from var(--theme-base-100) clamp(0.02, calc(l - 0.08), 0.98) c h);
+  --color-base-200: oklch(from var(--theme-base-200) clamp(0.02, calc(l - 0.08), 0.98) c h);
+  --color-base-300: oklch(from var(--theme-base-300) clamp(0.02, calc(l - 0.08), 0.98) c h);
 }
 
 [data-phx-session], [data-phx-teleported-src] { display: contents }

@@ -69,11 +69,11 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
       <div class="flex min-h-0 w-full max-w-full flex-col gap-3">
         <p class="text-sm font-semibold">Themes</p>
         <div class="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-4">
-          <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Light mode</p>
+          <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Dark mode</p>
           <input
-            id="toggle-light-mode"
+            id="toggle-dark-mode"
             data-mode-toggle
-            data-phx-mode="light"
+            data-phx-mode="dark"
             type="checkbox"
             title="Switch between light and dark mode"
             class="toggle toggle-primary toggle-sm"
