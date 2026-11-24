@@ -3,6 +3,8 @@
 </script>
 
 <RootLayout.app flash={@flash} current_user={@current_user}>
+  <div id="settings-shortcut" hidden phx-hook="SettingsShortcut"></div>
+
   <.navigation_live
     character={@character.name}
     characters={@characters}

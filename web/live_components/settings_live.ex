@@ -49,8 +49,6 @@ defmodule TripwireWeb.LiveComponents.SettingsLive do
       gs-y="0"
       tabindex="0"
       phx-hook="GridWidget"
-      phx-window-keydown="toggle-settings"
-      phx-key="Escape"
     >
       <div
         id="settings-content"

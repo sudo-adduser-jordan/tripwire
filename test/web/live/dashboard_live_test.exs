@@ -73,8 +73,12 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert has_element?(view, "#system-chart")
     assert has_element?(view, "#chain-map")
 
+    assert has_element?(view, "#settings-shortcut[phx-hook='SettingsShortcut']")
+    refute has_element?(view, "#settings-widget")
+
     view |> element("#settings-button") |> render_click()
     assert has_element?(view, "#grid-stack #settings-widget")
+    refute has_element?(view, "#settings-widget[phx-window-keydown]")
     assert render(view) =~ "Theme"
     assert render(view) =~ "←"
 
@@ -83,6 +87,12 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     refute has_element?(view, "#settings-widget")
     assert render(view) =~ "→"
+
+    view
+    |> render_keydown("toggle-settings", %{"key" => "Escape"})
+
+    assert has_element?(view, "#settings-widget")
+    assert render(view) =~ "←"
   end
 
   test "row guides label rows by depth and span the chain edges", %{conn: conn} do
