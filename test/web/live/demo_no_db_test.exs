@@ -44,7 +44,7 @@ defmodule TripwireWeb.DemoNoDbTest do
     |> render_click()
 
     view
-    |> element("#sys-modal .modal-backdrop button[phx-click='close-sys-modal']")
+    |> element("#sys-modal button[phx-click='close-sys-modal']")
     |> render_click()
 
     view

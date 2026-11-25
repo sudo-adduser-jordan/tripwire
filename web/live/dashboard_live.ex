@@ -656,6 +656,8 @@ defmodule TripwireWeb.DashboardLive do
       {:noreply,
        socket
        |> assign(:map_modal_open, true)
+       |> assign(:sys_modal_open, false)
+       |> assign(:sig_modal_open, false)
        |> assign(:map_errors, [])
        |> assign(:map_form, %{
          "name" => (map && map.name) || "",
@@ -1213,6 +1215,8 @@ defmodule TripwireWeb.DashboardLive do
         {:noreply,
          socket
          |> assign(:sig_modal_open, true)
+         |> assign(:sys_modal_open, false)
+         |> assign(:map_modal_open, false)
          |> assign(:sig_edit_id, nil)
          |> assign(:sig_errors, [])
          |> assign(:sig_form, SigParser.default_form())}
@@ -1228,6 +1232,8 @@ defmodule TripwireWeb.DashboardLive do
         {:noreply,
          socket
          |> assign(:sig_modal_open, true)
+         |> assign(:sys_modal_open, false)
+         |> assign(:map_modal_open, false)
          |> assign(:sig_edit_id, sig.id)
          |> assign(:sig_errors, [])
          |> assign(:sig_form, SigParser.form_from(sig))}
@@ -2256,6 +2262,8 @@ defmodule TripwireWeb.DashboardLive do
   defp open_system_modal(socket, system_id) do
     socket
     |> assign(:sys_modal_open, true)
+    |> assign(:sig_modal_open, false)
+    |> assign(:map_modal_open, false)
     |> assign(:sys_edit_id, system_id)
     |> assign(:sys_errors, [])
     |> assign(:sys_suggestions, [])

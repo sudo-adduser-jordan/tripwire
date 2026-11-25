@@ -193,7 +193,12 @@
     </div>
   </div>
 
-  <div :if={@sys_modal_open} id="sys-modal" class="modal modal-open">
+  <div
+    :if={@sys_modal_open}
+    id="sys-modal"
+    class="modal modal-open"
+    phx-hook="DraggableModal"
+  >
     <div class="modal-box">
       <h3 class="text-lg font-bold">Edit System</h3>
       <p class="font-mono text-sm opacity-60">
@@ -319,12 +324,9 @@
         </div>
       </form>
     </div>
-    <div class="modal-backdrop">
-      <button type="button" phx-click="close-sys-modal">Close</button>
-    </div>
   </div>
 
-  <div :if={@sig_modal_open} id="sig-modal" class="modal modal-open">
+  <div :if={@sig_modal_open} id="sig-modal" class="modal modal-open" phx-hook="DraggableModal">
     <div class="modal-box">
       <h3 class="text-lg font-bold">
         {if @sig_edit_id, do: "Edit Signature", else: "Add Signature"}
@@ -346,29 +348,27 @@
             class="input input-bordered input-sm w-full font-mono uppercase"
           />
         </label>
-        <div class="grid grid-cols-2 gap-3">
-          <label class="form-control">
-            <span class="label label-text">Group</span>
-            <select name="sig[kind]" class="select select-bordered select-sm w-full">
-              <option value="signature" selected={@sig_form["kind"] == "signature"}>
-                Signature
-              </option>
-              <option value="anomaly" selected={@sig_form["kind"] == "anomaly"}>Anomaly</option>
-            </select>
-          </label>
-          <label class="form-control">
-            <span class="label label-text">Site type</span>
-            <select name="sig[site_type]" class="select select-bordered select-sm w-full">
-              <option
-                :for={opt <- ~w(unknown combat data relic ore gas wormhole)}
-                value={opt}
-                selected={@sig_form["site_type"] == opt}
-              >
-                {opt}
-              </option>
-            </select>
-          </label>
-        </div>
+        <label class="form-control">
+          <span class="label label-text">Group</span>
+          <select name="sig[kind]" class="select select-bordered select-sm w-full">
+            <option value="signature" selected={@sig_form["kind"] == "signature"}>
+              Signature
+            </option>
+            <option value="anomaly" selected={@sig_form["kind"] == "anomaly"}>Anomaly</option>
+          </select>
+        </label>
+        <label class="form-control">
+          <span class="label label-text">Site type</span>
+          <select name="sig[site_type]" class="select select-bordered select-sm w-full">
+            <option
+              :for={opt <- ~w(unknown combat data relic ore gas wormhole)}
+              value={opt}
+              selected={@sig_form["site_type"] == opt}
+            >
+              {opt}
+            </option>
+          </select>
+        </label>
         <label class="form-control">
           <span class="label label-text">Name / wormhole type</span>
           <input
@@ -379,56 +379,52 @@
             class="input input-bordered input-sm w-full"
           />
         </label>
-        <div class="grid grid-cols-2 gap-3">
-          <label class="form-control">
-            <span class="label label-text">Lifetime</span>
-            <select name="sig[life_length]" class="select select-bordered select-sm w-full">
-              <option
-                :for={{label, value} <- life_options()}
-                value={value}
-                selected={to_string(@sig_form["life_length"]) == to_string(value)}
-              >
-                {label}
-              </option>
-            </select>
-          </label>
-          <label class="form-control">
-            <span class="label label-text">Type ID</span>
-            <input
-              name="sig[type_id]"
-              value={@sig_form["type_id"]}
-              type="number"
-              min="1"
-              step="1"
-              placeholder="Optional ESI type"
-              autocomplete="off"
-              class="input input-bordered input-sm w-full"
-            />
-          </label>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <label class="form-control">
-            <span class="label label-text">Scanned at</span>
-            <input
-              name="sig[scanned_at]"
-              value={@sig_form["scanned_at"]}
-              type="datetime-local"
-              autocomplete="off"
-              class="input input-bordered input-sm w-full"
-            />
-            <span class="mt-1 text-xs opacity-60">Blank uses now.</span>
-          </label>
-          <label class="form-control">
-            <span class="label label-text">Bookmark</span>
-            <input
-              name="sig[bookmark]"
-              value={@sig_form["bookmark"]}
-              placeholder="Optional bookmark label"
-              autocomplete="off"
-              class="input input-bordered input-sm w-full"
-            />
-          </label>
-        </div>
+        <label class="form-control">
+          <span class="label label-text">Lifetime</span>
+          <select name="sig[life_length]" class="select select-bordered select-sm w-full">
+            <option
+              :for={{label, value} <- life_options()}
+              value={value}
+              selected={to_string(@sig_form["life_length"]) == to_string(value)}
+            >
+              {label}
+            </option>
+          </select>
+        </label>
+        <label class="form-control">
+          <span class="label label-text">Type ID</span>
+          <input
+            name="sig[type_id]"
+            value={@sig_form["type_id"]}
+            type="number"
+            min="1"
+            step="1"
+            placeholder="Optional ESI type"
+            autocomplete="off"
+            class="input input-bordered input-sm w-full"
+          />
+        </label>
+        <label class="form-control">
+          <span class="label label-text">Scanned at</span>
+          <input
+            name="sig[scanned_at]"
+            value={@sig_form["scanned_at"]}
+            type="datetime-local"
+            autocomplete="off"
+            class="input input-bordered input-sm w-full"
+          />
+          <span class="mt-1 text-xs opacity-60">Blank uses now.</span>
+        </label>
+        <label class="form-control">
+          <span class="label label-text">Bookmark</span>
+          <input
+            name="sig[bookmark]"
+            value={@sig_form["bookmark"]}
+            placeholder="Optional bookmark label"
+            autocomplete="off"
+            class="input input-bordered input-sm w-full"
+          />
+        </label>
         <div class="modal-action">
           <button type="button" class="btn btn-sm" phx-click="close-sig-modal">
             Cancel
@@ -439,12 +435,9 @@
         </div>
       </form>
     </div>
-    <div class="modal-backdrop">
-      <button type="button" phx-click="close-sig-modal">Close</button>
-    </div>
   </div>
 
-  <div :if={@map_modal_open} id="map-modal" class="modal modal-open">
+  <div :if={@map_modal_open} id="map-modal" class="modal modal-open" phx-hook="DraggableModal">
     <div class="modal-box">
       <h3 class="text-lg font-bold">Edit Map</h3>
       <p :if={@map_errors != []} class="alert alert-error mt-2 py-2 text-sm">
@@ -517,9 +510,6 @@
           </div>
         </div>
       </form>
-    </div>
-    <div class="modal-backdrop">
-      <button type="button" phx-click="close-map-modal">Close</button>
     </div>
   </div>
 

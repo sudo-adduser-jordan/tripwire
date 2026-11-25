@@ -16,6 +16,7 @@ import CardGrid from "./cardGrid"
 import CharacterSwitch from "./characterSwitch"
 import ThemeSelect from "./themeSelect"
 import SettingsShortcut from "./settingsShortcut"
+import DraggableModal from "./draggableModal"
 
 const GridStack = {
     mounted() {
@@ -103,6 +104,7 @@ const hooks = {
     CharacterSwitch: CharacterSwitch,
     ThemeSelect: ThemeSelect,
     SettingsShortcut: SettingsShortcut,
+    DraggableModal: DraggableModal,
 }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")

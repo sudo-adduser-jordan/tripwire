@@ -396,6 +396,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert html =~ "No admin is configured"
     assert has_element?(view, "#claim-admin-modal")
+    assert view |> element("#claim-admin-modal") |> render() =~ "modal-backdrop"
     assert has_element?(view, "#claim-admin-banner")
   end
 
@@ -1609,6 +1610,40 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert reloaded.statics == []
     assert reloaded.favorite
     assert_patch(view, "/J150322")
+  end
+
+  test "edit modals are draggable, undimmed and replace each other", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#chain-map text[phx-click='open-system']", "J150321")
+    |> render_click()
+
+    system_modal = view |> element("#sys-modal") |> render()
+    assert system_modal =~ ~s|phx-hook="DraggableModal"|
+    refute system_modal =~ "modal-backdrop"
+
+    view
+    |> element("#signatures button[phx-click='open-add']")
+    |> render_click()
+
+    sig_modal = view |> element("#sig-modal") |> render()
+    assert sig_modal =~ ~s|phx-hook="DraggableModal"|
+    refute sig_modal =~ "modal-backdrop"
+    refute sig_modal =~ "grid-cols-2"
+    refute render(view) =~ "sys-modal"
+
+    view |> element("#map-edit") |> render_click()
+
+    map_modal = view |> element("#map-modal") |> render()
+    assert map_modal =~ ~s|phx-hook="DraggableModal"|
+    refute map_modal =~ "modal-backdrop"
+    refute render(view) =~ "sig-modal"
   end
 
   test "clicking an unknown node opens the system editor for that placeholder", %{
