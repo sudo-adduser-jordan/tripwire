@@ -191,4 +191,23 @@ defmodule Tripwire.DemoTest do
     {{:ok, _}, state} = Demo.update_map(state, map, %{name: "Renamed"})
     assert Demo.get_map(state, map.id).name == "Renamed"
   end
+
+  test "demo converts an unknown node and fills its system data" do
+    state = Demo.fixture()
+    unknown = Enum.find(state.systems, & &1.unknown)
+
+    {{:ok, converted}, state} =
+      Demo.update_system(state, unknown, %{
+        solar_system_id: 31_001_663,
+        name: "J231710",
+        sys_class: nil
+      })
+
+    refute converted.unknown
+    assert Demo.get_system(state, unknown.id).unknown == false
+    assert converted.sys_class == "C4"
+    assert converted.effect == "Magnetar"
+    assert converted.statics == ["C247", "H900"]
+    assert length(Demo.list_systems(state, unknown.map_id)) == 27
+  end
 end

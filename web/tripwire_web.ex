@@ -61,6 +61,7 @@ defmodule TripwireWeb do
 
       import Phoenix.HTML
       import TripwireWeb.CoreComponents
+      import TripwireWeb.EffectIconComponent
       import TripwireWeb.FlashComponent
       import TripwireWeb.InputComponent
       import TripwireWeb.IconComponent

@@ -1,6 +1,6 @@
 const SearchSuggest = {
   mounted() {
-    this.input = this.el.querySelector("#system-search")
+    this.input = this.el.querySelector(this.el.dataset.suggestInput || "#system-search")
     this.active = -1
     if (!this.input) return
 

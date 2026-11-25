@@ -1611,6 +1611,128 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert_patch(view, "/J150322")
   end
 
+  test "clicking an unknown node opens the system editor for that placeholder", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, unknown} = Mapping.add_unknown_system(map)
+
+    {:ok, _connection, _new?} =
+      Mapping.upsert_connection(map.id, system.id, unknown.id, %{hole_type: "K162"})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    refute render(view) =~ "sys-modal"
+
+    view |> element("#node-#{unknown.id}") |> render_click()
+
+    html = render(view)
+    assert html =~ "sys-modal"
+    assert html =~ "Edit System"
+    assert html =~ "Unknown system"
+    assert html =~ ~s|>System</span>|
+    assert html =~ ~s|id="sys-name" name="system[name]" value=""|
+  end
+
+  test "the system field autocompletes from the catalog and converts the placeholder", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "Jita")
+    {:ok, unknown} = Mapping.add_unknown_system(map)
+
+    {:ok, _connection, _new?} =
+      Mapping.upsert_connection(map.id, system.id, unknown.id, %{hole_type: "K162"})
+
+    seed_catalog([%{solar_system_id: 31_001_663, name: "J231710", security: -1.0}])
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+    view |> element("#node-#{unknown.id}") |> render_click()
+
+    html =
+      view
+      |> element("#sys-modal form[phx-submit='update-system']")
+      |> render_change(%{"system" => %{"name" => "J2317"}})
+
+    assert html =~ "J231710"
+    assert html =~ "phx-click=\"sys-name-pick\""
+    assert html =~ ~s|data-effect="Magnetar"|
+
+    view
+    |> element("#sys-modal button[phx-click='sys-name-pick'][phx-value-name='J231710']")
+    |> render_click()
+
+    picked = render(view)
+    assert picked =~ ~s|id="sys-name" name="system[name]" value="J231710"|
+    assert picked =~ "Magnetar"
+    assert picked =~ "C247, H900"
+
+    view
+    |> element("#sys-modal form[phx-submit='update-system']")
+    |> render_submit(%{"system" => %{"name" => "J231710"}})
+
+    refute render(view) =~ "sys-modal"
+
+    reloaded = Mapping.get_system!(unknown.id)
+    refute reloaded.unknown
+    assert reloaded.name == "J231710"
+    assert reloaded.solar_system_id == 31_001_663
+    assert reloaded.sys_class == "C4"
+    assert reloaded.effect == "Magnetar"
+    assert reloaded.statics == ["C247", "H900"]
+    assert_patch(view, "/J231710")
+  end
+
+  test "the system editor rejects a system that is already on the map", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "Jita")
+
+    {:ok, _other} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_001_663, name: "J231710"})
+
+    seed_catalog([%{solar_system_id: 31_001_663, name: "J231710", security: -1.0}])
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#chain-map text[phx-click='open-system']", "Jita")
+    |> render_click()
+
+    html =
+      view
+      |> element("#sys-modal form[phx-submit='update-system']")
+      |> render_submit(%{"system" => %{"name" => "J231710"}})
+
+    assert html =~ "sys-modal"
+    assert html =~ "already on this map"
+    assert Mapping.get_system!(system.id).name == "Jita"
+  end
+
+  test "deleting from a placeholder editor removes that node, not the selection", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "Jita")
+    {:ok, unknown} = Mapping.add_unknown_system(map)
+
+    {:ok, _connection, _new?} =
+      Mapping.upsert_connection(map.id, system.id, unknown.id, %{hole_type: "K162"})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+    view |> element("#node-#{unknown.id}") |> render_click()
+
+    view
+    |> element("#sys-modal button[phx-click='delete-system']")
+    |> render_click()
+
+    refute render(view) =~ "sys-modal"
+    assert Mapping.get_system(unknown.id) == nil
+    assert Mapping.get_system!(system.id).name == "Jita"
+  end
+
   test "j-space nodes show static badges on the bottom edge", %{
     conn: conn,
     character: character

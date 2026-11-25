@@ -641,15 +641,30 @@ defmodule Tripwire.Demo do
     end
   end
 
+  def update_system(%State{} = state, %MapSystem{unknown: true} = system, attrs) do
+    apply_system_update(state, system, fill_system_data(attrs) |> Map.put(:unknown, false))
+  end
+
   def update_system(%State{} = state, %MapSystem{} = system, attrs) do
+    attrs = if solar_changed?(system, attrs), do: fill_system_data(attrs), else: attrs
+    apply_system_update(state, system, attrs)
+  end
+
+  defp apply_system_update(state, system, attrs) do
     case Ecto.Changeset.apply_action(MapSystem.changeset(system, attrs), :update) do
       {:ok, updated} ->
         updated = %{updated | updated_at: now()}
+        {state, updated} = ensure_jita_notes(state, updated)
         {{:ok, updated}, replace_system(state, updated)}
 
       {:error, changeset} ->
         {{:error, changeset}, state}
     end
+  end
+
+  defp solar_changed?(system, attrs) do
+    solar = solar_system_id(attrs)
+    is_integer(solar) and solar > 0 and solar != system.solar_system_id
   end
 
   def update_system_position(%State{} = state, %MapSystem{} = system, x, y) do
@@ -1310,16 +1325,24 @@ defmodule Tripwire.Demo do
 
   defp put_system_data(attrs) do
     name = attrs[:name] || attrs["name"]
-    solar = attrs[:solar_system_id] || attrs["solar_system_id"]
 
-    solar
-    |> Tripwire.WormholeSystems.attrs(name)
+    attrs
+    |> solar_system_id()
+    |> Tripwire.Systems.sde_attrs(name)
     |> Enum.reduce(attrs, fn {key, value}, acc ->
       if Map.has_key?(acc, key) or Map.has_key?(acc, to_string(key)),
         do: acc,
         else: Map.put(acc, key, value)
     end)
   end
+
+  defp fill_system_data(attrs), do: attrs |> drop_empty() |> put_system_data()
+
+  defp drop_empty(attrs) do
+    Elixir.Map.reject(attrs, fn {_key, value} -> is_nil(value) or value == "" or value == [] end)
+  end
+
+  defp solar_system_id(attrs), do: attrs[:solar_system_id] || attrs["solar_system_id"]
 
   defp ensure_jita_notes(state, %MapSystem{unknown: true} = system), do: {state, system}
 

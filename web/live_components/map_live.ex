@@ -90,6 +90,11 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     {:noreply, socket}
   end
 
+  def handle_event("open-unknown-system", %{"id" => id}, socket) do
+    send(self(), {:open_unknown_system, String.to_integer(id)})
+    {:noreply, socket}
+  end
+
   def handle_event("show-favorites", _params, socket) do
     send(self(), :show_favorites)
     {:noreply, socket}
@@ -359,26 +364,19 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 :for={system <- @systems}
                 id={"node-#{system.id}"}
                 transform={"translate(#{system.x}, #{system.y})"}
-                class={if system.unknown, do: "cursor-default", else: "cursor-pointer"}
+                class="cursor-pointer"
                 data-system-id={system.id}
                 data-unknown={to_string(system.unknown)}
-                phx-click={unless system.unknown, do: "select-system"}
+                phx-click={if system.unknown, do: "open-unknown-system", else: "select-system"}
                 phx-value-id={system.id}
                 phx-target={@myself}
               >
-                <svg
+                <.effect_icon
                   :if={effect = node_effect(system)}
+                  effect={effect}
                   x={node_icon_x(@node_radius)}
                   y={node_icon_y(@node_radius)}
-                  width="16"
-                  height="16"
-                  viewBox="0 0 1024 1024"
-                  fill={Tripwire.Systems.effect_color(effect)}
-                  data-effect={effect}
-                >
-                  <title>{"System effect: " <> effect}</title>
-                  {Phoenix.HTML.raw(effect_icon(effect))}
-                </svg>
+                />
                 <rect
                   width={@node_w}
                   height={@node_h}
@@ -687,33 +685,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   defp badge_width(label), do: String.length(label) * 6 + 14
 
   defp node_effect(system), do: Tripwire.Systems.display_effect(system)
-
-  defp effect_icon("Black Hole"),
-    do:
-      ~s|<path d="M512 1024q-104 0-199-40.5t-163.5-109-109-163.5-40.5-199 40.5-199 109-163.5 163.5-109 199-40.5 199 40.5 163.5 109 109 163.5 40.5 199-40.5 199-109 163.5-163.5 109-199 40.5zM299 906q99 54 213 54 122 0 225-61t162-163q-48 46-115 71t-144 25q-150 0-235-85t-85-235q0-68 45-122-81 39-127 111.5t-46 170.5q0 59 28 122.5t79 111.5zM512 640q53 0 90.5-37.5t37.5-90.5-37.5-90.5-90.5-37.5-90.5 37.5-37.5 90.5 37.5 90.5 90.5 37.5zM125 288q48-46 115-71t144-25q150 0 235 85t85 235q0 68-45 122 81-39 127-111.5t46-170.5q0-59-28-122.5t-79-111.5q-99-54-213-54-122 0-225 61t-162 163z"/>|
-
-  defp effect_icon("Cataclysmic Variable"),
-    do:
-      ~s|<path d="M259.544 511.998c0-65.416 53.030-118.446 118.446-118.446s118.446 53.030 118.446 118.446c0 65.416-53.030 118.446-118.446 118.446s-118.446-53.030-118.446-118.446zM512.004 0c-282.774 0-512.004 229.232-512.004 512s229.226 512 512.004 512c282.764 0 511.996-229.23 511.996-512 0-282.768-229.23-512-511.996-512zM379.396 959.282c-153.956-89.574-257.468-256.324-257.468-447.282s103.512-357.708 257.462-447.282c154.010 89.562 257.59 256.288 257.59 447.282 0 190.988-103.58 357.718-257.584 447.282z"/>|
-
-  defp effect_icon("Magnetar"),
-    do:
-      ~s|<path d="M384 512c0 70.692 57.308 128 128 128s128-57.308 128-128c0-70.692-57.308-128-128-128s-128 57.308-128 128zM664.348 230.526c99.852 54.158 167.652 159.898 167.652 281.474s-67.8 227.316-167.652 281.474c44.066-70.126 71.652-170.27 71.652-281.474s-27.586-211.348-71.652-281.474zM288 512c0 111.204 27.584 211.348 71.652 281.474-99.852-54.16-167.652-159.898-167.652-281.474s67.8-227.314 167.652-281.474c-44.068 70.126-71.652 170.27-71.652 281.474zM96 512c0 171.9 54.404 326.184 140.652 431.722-142.302-90.948-236.652-250.314-236.652-431.722s94.35-340.774 236.652-431.722c-86.248 105.538-140.652 259.822-140.652 431.722zM787.352 80.28c142.298 90.946 236.648 250.312 236.648 431.72s-94.35 340.774-236.648 431.72c86.244-105.536 140.648-259.82 140.648-431.72s-54.404-326.184-140.648-431.72z"/>|
-
-  defp effect_icon("Pulsar"),
-    do:
-      ~s|<path d="M980 324q-41 20-109.5 41.5t-166 49.5-144.5 42q27 10 95 32t104.5 34.5 83.5 31.5 76 35q22 13 32.5 38t8.5 49.5-13 42.5q-18 29-58 42t-79-6q-19-11-41-28.5t-38.5-31.5-45-40.5-41.5-39-47-46-42-41.5q-1 11-2.5 50t-2 54.5-2.5 49.5-4 52.5-4.5 44.5-6.5 46.5-8 37.5q-11 40-52.5 68t-76 28-59.5-28-12-68q10-33 32.5-83t40-85 54-106.5 47.5-93.5q-29 20-95.5 69.5t-105 77.5-89.5 61.5-87 52.5q-45 20-79 6.5t-42-42.5q-6-29 15-70t60-61q26-12 57-24.5t76.5-27 70.5-22.5 86.5-26.5 76.5-23.5q-13-3-48-12.5t-51-14-45-12.5-46-13.5-38.5-12.5-36.5-13.5-27-12.5q-17-10-21-27.5t2.5-34 19.5-27.5q20-18 55.5-26.5t64.5 3.5q21 11 53.5 33t53.5 37.5 70.5 53.5 63.5 49q-1-106-1-276 0-31 23-54.5t48.5-32.5 46.5-9q28 0 53.5 17t20.5 41q-6 30-24 73t-57 121-50 102q31-21 112.5-78t132.5-90 88-50q34-13 66-4t45 29q6 14 7 31.5t-11 37-33 30.5z"/>|
-
-  defp effect_icon("Red Giant"),
-    do:
-      ~s|<path d="M512 0q139 0 257 68.5t186.5 186.5 68.5 257-68.5 257-186.5 186.5-257 68.5-257-68.5-186.5-186.5-68.5-257 68.5-257 186.5-186.5 257-68.5z"/>|
-
-  defp effect_icon("Wolf Rayet"),
-    do: ~s|<path d="M512 0l-320 512 320 512 320-512z"/>|
-
-  defp effect_icon("Wolf-Rayet Star"), do: effect_icon("Wolf Rayet")
-
-  defp effect_icon(_), do: ""
 
   defp node_footer(connections, wh_sigs, system_id) do
     case Enum.find(connections, fn {_conn, from, to} ->

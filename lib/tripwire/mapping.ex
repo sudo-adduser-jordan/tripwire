@@ -6,7 +6,7 @@ defmodule Tripwire.Mapping do
   alias Tripwire.Mapping.{Map, MapConnection, MapSystem, Signature}
   alias Tripwire.Repo
   alias Tripwire.Signatures, as: SigParser
-  alias Tripwire.WormholeSystems
+  alias Tripwire.Systems
 
   def get_map!(id), do: Repo.get!(Map, id)
 
@@ -641,7 +641,7 @@ defmodule Tripwire.Mapping do
 
   def convert_unknown_system(%MapSystem{unknown: true} = system, attrs) do
     system
-    |> MapSystem.changeset(attrs |> put_system_data() |> Elixir.Map.put(:unknown, false))
+    |> MapSystem.changeset(attrs |> fill_system_data() |> Elixir.Map.put(:unknown, false))
     |> Repo.update()
     |> case do
       {:ok, converted} = ok ->
@@ -653,12 +653,18 @@ defmodule Tripwire.Mapping do
     end
   end
 
+  defp fill_system_data(attrs), do: attrs |> drop_empty() |> put_system_data()
+
+  defp drop_empty(attrs) do
+    Elixir.Map.reject(attrs, fn {_key, value} -> is_nil(value) or value == "" or value == [] end)
+  end
+
   defp put_system_data(attrs) do
     name = attrs[:name] || attrs["name"]
 
     attrs
     |> solar_system_id()
-    |> WormholeSystems.attrs(name)
+    |> Systems.sde_attrs(name)
     |> Enum.reduce(attrs, fn {key, value}, acc ->
       if Elixir.Map.has_key?(acc, key) or Elixir.Map.has_key?(acc, to_string(key)) do
         acc
@@ -676,10 +682,21 @@ defmodule Tripwire.Mapping do
     |> Repo.update()
   end
 
+  def update_system(%MapSystem{unknown: true} = system, attrs) do
+    convert_unknown_system(system, attrs)
+  end
+
   def update_system(%MapSystem{} = system, attrs) do
+    attrs = if solar_changed?(system, attrs), do: fill_system_data(attrs), else: attrs
+
     system
     |> MapSystem.changeset(attrs)
     |> Repo.update()
+  end
+
+  defp solar_changed?(system, attrs) do
+    solar = solar_system_id(attrs)
+    is_integer(solar) and solar > 0 and solar != system.solar_system_id
   end
 
   def delete_system(%MapSystem{} = system) do

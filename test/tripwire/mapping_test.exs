@@ -155,6 +155,57 @@ defmodule Tripwire.MappingTest do
     assert system.statics == ["C247", "H900"]
   end
 
+  test "update_system/2 converts an unknown row and fills its data", %{mask: mask} do
+    [map | _] = Mapping.list_maps_for_mask(mask.id)
+    {:ok, unknown} = Mapping.add_unknown_system(map)
+
+    {:ok, system} =
+      Mapping.update_system(unknown, %{
+        solar_system_id: 31_001_663,
+        name: "J231710",
+        sys_class: nil,
+        favorite: true
+      })
+
+    refute system.unknown
+    assert system.solar_system_id == 31_001_663
+    assert system.sys_class == "C4"
+    assert system.effect == "Magnetar"
+    assert system.statics == ["C247", "H900"]
+    assert system.favorite
+  end
+
+  test "update_system/2 refills the system data when the solar id changes", %{mask: mask} do
+    [map | _] = Mapping.list_maps_for_mask(mask.id)
+
+    {:ok, system} = Mapping.add_system_to_map(map, %{solar_system_id: 1, name: "Home"})
+
+    {:ok, updated} =
+      Mapping.update_system(system, %{
+        solar_system_id: 31_001_663,
+        name: "J231710",
+        sys_class: nil
+      })
+
+    assert updated.solar_system_id == 31_001_663
+    assert updated.sys_class == "C4"
+    assert updated.effect == "Magnetar"
+    assert updated.statics == ["C247", "H900"]
+  end
+
+  test "update_system/2 keeps the stored system data for a plain rename", %{mask: mask} do
+    [map | _] = Mapping.list_maps_for_mask(mask.id)
+
+    {:ok, system} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_001_663, name: "J231710"})
+
+    {:ok, updated} = Mapping.update_system(system, %{name: "J231711"})
+
+    assert updated.name == "J231711"
+    assert updated.effect == "Magnetar"
+    assert updated.statics == ["C247", "H900"]
+  end
+
   test "SystemData.backfill/1 fills existing rows and keeps explicit values", %{mask: mask} do
     [map | _] = Mapping.list_maps_for_mask(mask.id)
 

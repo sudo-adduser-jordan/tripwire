@@ -197,26 +197,59 @@
     <div class="modal-box">
       <h3 class="text-lg font-bold">Edit System</h3>
       <p class="font-mono text-sm opacity-60">
-        {selected_system_name(@systems, @sys_edit_id)}<span
-          :if={@sys_form["solar_system_id"]}
-          class="opacity-60"
-        >{", " <> to_string(@sys_form["solar_system_id"])}</span>
+        {sys_modal_title(@systems, @sys_edit_id, @sys_form["solar_system_id"])}
       </p>
       <p :if={@sys_errors != []} class="alert alert-error mt-2 py-2 text-sm">
         {Enum.join(@sys_errors, ", ")}
       </p>
-      <form phx-submit="update-system" class="mt-3 flex flex-col gap-3">
-        <label class="form-control">
-          <span class="label label-text">Name</span>
-          <input
-            name="system[name]"
-            value={@sys_form["name"]}
-            placeholder="J150321"
-            required
-            autocomplete="off"
-            class="input input-bordered input-sm w-full font-mono"
-          />
-        </label>
+      <form
+        phx-submit="update-system"
+        phx-change="sys-form-change"
+        phx-debounce="200"
+        class="mt-3 flex flex-col gap-3"
+      >
+        <div
+          id="sys-name-suggest"
+          class="relative"
+          phx-hook="SearchSuggest"
+          data-suggest-input="#sys-name"
+          phx-click-away="sys-suggest-close"
+        >
+          <label class="form-control">
+            <span class="label label-text">System</span>
+            <input
+              id="sys-name"
+              name="system[name]"
+              value={@sys_form["name"]}
+              placeholder="J150321"
+              required
+              autocomplete="off"
+              class="input input-bordered input-sm w-full font-mono"
+            />
+          </label>
+          <div
+            :if={@sys_suggestions != []}
+            class="absolute left-0 top-full z-40 mt-1 max-h-64 w-full overflow-y-auto rounded bg-base-200 p-1 text-xs shadow"
+          >
+            <button
+              :for={sug <- @sys_suggestions}
+              type="button"
+              phx-click="sys-name-pick"
+              phx-value-name={sug.name}
+              title={"Use #{sug.name}"}
+              data-suggest-item
+              class="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-base-300"
+            >
+              <span
+                class="inline-block size-2.5 shrink-0 rounded-full"
+                style={"background-color: #{Tripwire.Systems.color(sug)}"}
+              >
+              </span>
+              <span class="truncate font-mono">{sug.name}</span>
+              <.effect_icon :if={sug.effect} effect={sug.effect} class="size-3.5 shrink-0" />
+            </button>
+          </div>
+        </div>
         <label class="form-control">
           <span class="label label-text">Alias</span>
           <input
@@ -245,7 +278,14 @@
         <div class="rounded-box bg-base-200 px-3 py-2 text-xs">
           <div class="flex items-baseline justify-between gap-3">
             <span class="label-text">Effect</span>
-            <span class="truncate font-mono opacity-60">{@sys_form["effect"] || "None"}</span>
+            <span class="flex min-w-0 items-center gap-1.5 font-mono opacity-60">
+              <.effect_icon
+                :if={@sys_form["effect"]}
+                effect={@sys_form["effect"]}
+                class="size-4 shrink-0"
+              />
+              <span class="truncate">{@sys_form["effect"] || "None"}</span>
+            </span>
           </div>
           <div class="flex items-baseline justify-between gap-3">
             <span class="label-text">Statics</span>

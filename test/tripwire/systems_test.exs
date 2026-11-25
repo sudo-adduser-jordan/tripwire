@@ -129,4 +129,15 @@ defmodule Tripwire.SystemsTest do
              security: 0.9
            }
   end
+
+  test "sde_attrs/2 merges the dataset with the catalog security" do
+    Systems.Catalog.put_systems([%{solar_system_id: 31_001_663, name: "J231710", security: 0.4}])
+    on_exit(fn -> Systems.Catalog.clear() end)
+
+    assert %{sys_class: "C4", effect: "Magnetar", statics: ["C247", "H900"], security: 0.4} =
+             Systems.sde_attrs(31_001_663)
+
+    assert Systems.sde_attrs(31_001_663, "J150321") == %{security: 0.4}
+    assert Systems.sde_attrs(30_000_142) == %{}
+  end
 end

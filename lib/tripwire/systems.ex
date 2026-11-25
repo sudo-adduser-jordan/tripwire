@@ -82,6 +82,18 @@ defmodule Tripwire.Systems do
   def display_effect(%{effect: effect}) when is_binary(effect) and effect != "", do: effect
   def display_effect(_), do: nil
 
+  def sde_attrs(solar_system_id, name \\ nil) do
+    attrs = WormholeSystems.attrs(solar_system_id, name)
+
+    case Tripwire.Systems.Catalog.get(solar_system_id) do
+      %{security: security} when is_number(security) ->
+        Map.put_new(attrs, :security, security)
+
+      _ ->
+        attrs
+    end
+  end
+
   defp security_class(%{solar_system_id: id})
        when is_integer(id) and id >= @w_space_min and id < @w_space_max,
        do: "W"
