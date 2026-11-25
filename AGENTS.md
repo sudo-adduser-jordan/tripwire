@@ -143,7 +143,7 @@ fix:
 
 ## Task Automation
 
-`Taskfile.yml` (Task v3, `silent: true`, `output: group`, `set: [errexit, nounset, pipefail]`, `dotenv: [.env]`). Server lifecycle tasks run inline shell commands and write `tmp/tripwire-prod.pid` plus `logs/prod.log`; other tasks print colored `[name]` prefixes before commands.
+`Taskfile.yml` (Task v3, `silent: true`, `output: group`, `set: [errexit, nounset, pipefail]`, `dotenv: [.env]`). Server lifecycle tasks run inline shell commands; the detached production server logs to `logs/prod.log` and its pid lives only in the launching shell variable, so no pid file is written; other tasks print colored `[name]` prefixes before commands.
 
 | Task | Runs |
 |---|---|
@@ -152,8 +152,8 @@ fix:
 | `task remove` | `rm -rf _build deps assets/node_modules priv/static/assets cover tmp` |
 | `task setup` | `mkdir -p priv/sde logs/test logs/errors`, `curl` official JSONL SDE to `priv/sde/eve-online-static-data-latest-jsonl.zip` with ETag conditional fetch, `mix tripwire.build_wormhole_systems`, `mix deps.get`, `mix ecto.setup`, `mix assets.setup`, `mix assets.build` |
 | `task migrate` | `mix ecto.migrate` + `mix tripwire.backfill_system_data`, `MIX_ENV=test mix ecto.migrate`, `MIX_ENV=prod` variants |
-| `task start` | `task stop`, prod migrations plus `mix tripwire.backfill_system_data`, then launch detached with `DATABASE_PATH` defaulting to `./priv/db/tripwire-prod.db`; block until `logs/prod.log` reports a running endpoint, then print the URL (fails with the log tail if the server dies while booting) |
-| `task stop` | stop the managed production process group recorded in `tmp/tripwire-prod.pid`, then wait for the process and port to be released |
+| `task start` | `task stop`, `mkdir -p logs`, prod migrations plus `mix tripwire.backfill_system_data`, assets, then launch detached with `DATABASE_PATH` defaulting to `./priv/db/tripwire-prod.db` and keep the `$!` pid in the same shell; block until `logs/prod.log` reports a running endpoint, then print the URL (fails with the log tail if the server dies while booting) |
+| `task stop` | `pgrep -f "mi[x] phx\.server"` kills each server process group with `TERM`, waits for it to disappear, sweeps with `pkill`, then waits for the port to be released |
 | `task dev` | `task stop`, `mkdir -p logs/test logs/errors priv/sde`, `mix ecto.migrate`, then `MIX_ENV=dev mix phx.server` attached on port `PORT` (default `4000`) with live reload and the `config/dev.exs` watchers; Ctrl-C stops it |
 | `task diagram` | `mkdir -p docs tmp`, then `mix tripwire.diagrams`, which writes `docs/db-schema.md` and `docs/architecture.md` |
 
