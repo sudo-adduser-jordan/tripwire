@@ -143,7 +143,12 @@ defmodule Tripwire.Masks do
   end
 
   defp unknown_corporations? do
-    Repo.exists?(from c in Character, where: is_nil(c.corporation_id))
+    Repo.exists?(
+      from c in Character,
+        where:
+          is_nil(c.corporation_id) and
+            (not is_nil(c.last_login_at) or not is_nil(c.refresh_token))
+    )
   end
 
   defp kind_rank("personal"), do: 0

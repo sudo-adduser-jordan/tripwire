@@ -161,7 +161,13 @@ defmodule Tripwire.MasksTest do
         corporation_id: 98_000_030
       })
 
-    {:ok, unknown} = Accounts.upsert_character(%{eve_id: 11, name: "Unsynced Pilot"})
+    {:ok, unknown} =
+      Accounts.upsert_character(%{
+        eve_id: 11,
+        name: "Unsynced Pilot",
+        last_login_at: DateTime.utc_now() |> DateTime.truncate(:second)
+      })
+
     {:ok, mask} = Masks.ensure_corporation_mask(known)
 
     {:ok, alliance} =
