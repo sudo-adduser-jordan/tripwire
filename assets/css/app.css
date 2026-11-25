@@ -452,6 +452,9 @@
   --theme-base-100: var(--color-base-100);
   --theme-base-200: var(--color-base-200);
   --theme-base-300: var(--color-base-300);
+  --theme-primary: var(--color-primary);
+  --theme-secondary: var(--color-secondary);
+  --theme-accent: var(--color-accent);
   --color-eve-blue: oklch(68.74% 0.0851 220.03);
   --color-info: oklch(54% 0.19 258);
   --color-info-content: oklch(97% 0.013 236.62);
@@ -468,6 +471,23 @@
 @custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
 
 @custom-variant dark (&:where([data-mode=dark], [data-mode=dark] *));
+
+html[data-mode="light"] {
+  color-scheme: light;
+  --color-base-100: oklch(86% 0.005 255);
+  --color-base-200: oklch(80% 0.006 255);
+  --color-base-300: oklch(72% 0.007 255);
+  --color-base-content: oklch(24% 0.008 255);
+}
+
+html[data-mode="light"] body {
+  --color-primary: oklch(from var(--theme-primary) clamp(0.36, l, 0.5) c h);
+  --color-primary-content: oklch(from var(--theme-primary) 0.98 0.02 h);
+  --color-secondary: oklch(from var(--theme-secondary) clamp(0.36, l, 0.5) c h);
+  --color-secondary-content: oklch(from var(--theme-secondary) 0.98 0.02 h);
+  --color-accent: oklch(from var(--theme-accent) clamp(0.36, l, 0.5) c h);
+  --color-accent-content: oklch(from var(--theme-accent) 0.98 0.02 h);
+}
 
 html[data-mode="dark"]:not([data-solid]) body {
   --color-base-100: oklch(from var(--theme-base-100) l c h / 0.82);
@@ -816,4 +836,44 @@ html[data-font="serif"] {
 
 .sso-black {
   display: none;
+}
+
+html[data-mode="light"] :is(.input, .select, .textarea, .field-surface) {
+  background-color: var(--color-base-200);
+}
+
+html[data-mode="light"] .text-active-accent {
+  color: #b45309;
+}
+
+html[data-mode="light"] .text-site-link {
+  color: #a16207;
+}
+
+html[data-mode="light"] .class-ink {
+  color: color-mix(in oklab, var(--class-ink) 68%, black);
+}
+
+html[data-mode="light"] .class-ink-fill {
+  fill: color-mix(in oklab, var(--class-ink) 68%, black);
+}
+
+html[data-mode="light"] .class-ink-stroke {
+  stroke: color-mix(in oklab, var(--class-ink) 68%, black);
+}
+
+html[data-mode="light"] .class-ink-glow {
+  filter: drop-shadow(0 0 6px color-mix(in oklab, var(--class-ink) 68%, black));
+}
+
+html[data-mode="light"] .badge-swatch {
+  fill: color-mix(in oklab, var(--badge-bg) 78%, black);
+}
+
+html[data-mode="light"] .sso-white {
+  display: none;
+}
+
+html[data-mode="light"] .sso-black {
+  display: inline;
 }
