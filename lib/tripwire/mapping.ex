@@ -159,7 +159,7 @@ defmodule Tripwire.Mapping do
   end
 
   @pan_pad 40
-  @node_w 140.0
+  @node_w 156.0
   @node_h 88.0
   @view_w 1000.0
   @view_h 700.0
@@ -437,7 +437,7 @@ defmodule Tripwire.Mapping do
   end
 
   defp orient_tidy_position(orientation, depth, xi, mid, spacing) do
-    x = 460.0 + (xi - mid) * 170.0 * spacing
+    x = 460.0 + (xi - mid) * 186.0 * spacing
 
     case orientation do
       "up" ->

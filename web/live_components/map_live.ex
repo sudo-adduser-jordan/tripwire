@@ -67,8 +67,11 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   defp node_radius("rounded", node_h), do: node_h / 4
   defp node_radius(_roundness, node_h), do: node_h / 2
 
-  defp node_icon_x(radius), do: 4.0 + Float.round(radius * 0.41, 1)
+  defp node_icon_x(radius), do: 4.0 + Float.round(radius * 0.55, 1)
   defp node_icon_y(radius), do: 4.0 + Float.round(radius * 0.09, 1)
+
+  defp node_text_offset("", node_h), do: node_h / 2 - 25.25
+  defp node_text_offset(_footer, node_h), do: node_h / 2 - 35.25
 
   defp node_badge_inset(radius), do: max(4, round(radius * 0.45))
 
@@ -481,34 +484,38 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                     {occupied_count(@occupants, system.id)}
                   </text>
                 </g>
-                <text
-                  x={@node_w / 2}
-                  y="18"
-                  text-anchor="middle"
-                  style={"--class-ink: #{node_color(system)}"}
-                  class="class-ink-fill text-base font-semibold tracking-wide"
-                >
-                  {node_class(system)}
-                </text>
-                <text
-                  x={@node_w / 2}
-                  y="41"
-                  text-anchor="middle"
-                  class="fill-base-content text-lg font-bold cursor-pointer hover:underline"
-                  phx-click={unless system.unknown, do: "open-system"}
-                  phx-value-id={system.id}
-                  phx-target={@myself}
-                >
-                  {node_label(system)}
-                </text>
-                <text
-                  x={@node_w / 2}
-                  y="61"
-                  text-anchor="middle"
-                  class="fill-base-content/60 text-sm"
-                >
-                  {node_footer(@connections, @wh_sigs, system.id)}
-                </text>
+                <g transform={
+                    "translate(0, #{node_text_offset(node_footer(@connections, @wh_sigs, system.id), @node_h)})"
+                  }>
+                  <text
+                    x={@node_w / 2}
+                    y="18"
+                    text-anchor="middle"
+                    style={"--class-ink: #{node_color(system)}"}
+                    class="class-ink-fill text-base font-semibold tracking-wide"
+                  >
+                    {node_class(system)}
+                  </text>
+                  <text
+                    x={@node_w / 2}
+                    y="41"
+                    text-anchor="middle"
+                    class="fill-base-content text-lg font-bold cursor-pointer hover:underline"
+                    phx-click={unless system.unknown, do: "open-system"}
+                    phx-value-id={system.id}
+                    phx-target={@myself}
+                  >
+                    {node_label(system)}
+                  </text>
+                  <text
+                    x={@node_w / 2}
+                    y="61"
+                    text-anchor="middle"
+                    class="fill-base-content/60 text-sm"
+                  >
+                    {node_footer(@connections, @wh_sigs, system.id)}
+                  </text>
+                </g>
                 <g :if={activity = node_activity(@stats, system.id)}>
                   <circle
                     :if={activity.jumps > 0}

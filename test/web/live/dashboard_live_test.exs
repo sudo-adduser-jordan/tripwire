@@ -1394,9 +1394,10 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> render_click()
 
     [system] = map.id |> Mapping.list_systems()
+    {node_w, _node_h} = Mapping.node_size()
 
     assert_push_event(view, "reset-pan", %{x: x, y: y})
-    assert_in_delta x, system.x + 70.0 - 625.0, 0.001
+    assert_in_delta x, system.x + node_w / 2 - 625.0, 0.001
     assert_in_delta y, system.y - 40.0, 0.001
   end
 

@@ -17,20 +17,20 @@ defmodule Tripwire.MappingTest do
         %Mapping.MapSystem{x: x, y: y}
       end
 
-    assert Mapping.clamp_pan(systems, 0.0, 0.0) == {-55.0, 60.0}
-    assert Mapping.clamp_pan(systems, -10_000.0, -10_000.0) == {-55.0, 60.0}
-    assert Mapping.clamp_pan(systems, 10_000.0, 10_000.0) == {-55.0, 60.0}
+    assert Mapping.clamp_pan(systems, 0.0, 0.0) == {-47.0, 60.0}
+    assert Mapping.clamp_pan(systems, -10_000.0, -10_000.0) == {-47.0, 60.0}
+    assert Mapping.clamp_pan(systems, 10_000.0, 10_000.0) == {-47.0, 60.0}
     assert Mapping.clamp_pan([], 10_000.0, -10_000.0) == {10_000.0, -10_000.0}
 
     small = [%Mapping.MapSystem{x: 100.0, y: 100.0}]
-    assert Mapping.clamp_pan(small, 999.0, 999.0) == {-455.0, 60.0}
+    assert Mapping.clamp_pan(small, 999.0, 999.0) == {-447.0, 60.0}
   end
 
   test "clamp_pan/3 keeps an overflowing chain inside the padded edges" do
     systems = [%Mapping.MapSystem{x: 0.0, y: 0.0}, %Mapping.MapSystem{x: 3000.0, y: 0.0}]
 
     assert Mapping.clamp_pan(systems, -10_000.0, 0.0) == {-40.0, -40.0}
-    assert Mapping.clamp_pan(systems, 10_000.0, 0.0) == {1930.0, -40.0}
+    assert Mapping.clamp_pan(systems, 10_000.0, 0.0) == {1946.0, -40.0}
   end
 
   test "home_center/2 centers the home system horizontally" do
@@ -42,17 +42,17 @@ defmodule Tripwire.MappingTest do
     other = %Mapping.MapSystem{solar_system_id: 2, x: 1000.0, y: 220.0}
     map = %Mapping.Map{home_solar_system_id: 1}
 
-    assert Mapping.home_center([home, other], map) == {175.0, 20.0}
+    assert Mapping.home_center([home, other], map) == {183.0, 20.0}
 
     left = %Mapping.MapSystem{solar_system_id: 3, x: 0.0, y: 60.0}
     right = %Mapping.MapSystem{solar_system_id: 4, x: 1800.0, y: 60.0}
     wide_home = %{home | x: 900.0}
 
-    assert Mapping.home_center([left, wide_home, right], map) == {345.0, 20.0}
+    assert Mapping.home_center([left, wide_home, right], map) == {353.0, 20.0}
     assert Mapping.home_center([left, %{home | x: 0.0}, right], map) == {-40.0, 20.0}
 
     assert Mapping.home_center([home, other], %Mapping.Map{home_solar_system_id: 99}) ==
-             {175.0, 20.0}
+             {183.0, 20.0}
 
     assert Mapping.home_center([], nil) == {0, 0}
   end
@@ -63,11 +63,11 @@ defmodule Tripwire.MappingTest do
     right = %Mapping.MapSystem{solar_system_id: 3, x: 1800.0, y: 300.0}
     map = %Mapping.Map{home_solar_system_id: 1}
 
-    assert Mapping.home_center([left, home, right], map) == {345.0, 20.0}
-    assert Mapping.home_center([left, home, right], map, 1.6) == {657.5, 20.0}
+    assert Mapping.home_center([left, home, right], map) == {353.0, 20.0}
+    assert Mapping.home_center([left, home, right], map, 1.6) == {665.5, 20.0}
 
     assert Mapping.clamp_pan([left, home, right], 10_000.0, 10_000.0, 1.6) ==
-             {1355.0, 20.0}
+             {1371.0, 20.0}
   end
 
   test "add_system_to_map/2 fills wormhole class, effect and statics", %{mask: mask} do
