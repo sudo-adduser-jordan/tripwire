@@ -385,10 +385,7 @@ defmodule TripwireWeb.DashboardLive do
         socket
       end
 
-    {:noreply,
-     socket
-     |> refresh_occupants()
-     |> put_flash(:info, "#{name} jumped into #{system.name}")}
+    {:noreply, refresh_occupants(socket)}
   end
 
   def handle_info(:load_topbar, socket) do
