@@ -46,6 +46,18 @@ defmodule Tripwire.SystemsTest do
     assert Systems.display_effect(%{sys_class: "C1"}) == nil
   end
 
+  test "effect_color/1 mirrors official Tripwire effect colors" do
+    assert Systems.effect_color("Black Hole") == "#f0f0f0"
+    assert Systems.effect_color("Cataclysmic Variable") == "#ffffbb"
+    assert Systems.effect_color("Magnetar") == "#e06fdf"
+    assert Systems.effect_color("Pulsar") == "#428bca"
+    assert Systems.effect_color("Red Giant") == "#ff0000"
+    assert Systems.effect_color("Wolf Rayet") == "#e28a0d"
+    assert Systems.effect_color("Wolf-Rayet Star") == "#e28a0d"
+    assert Systems.effect_color(nil) == nil
+    assert Systems.effect_color("Unknown") == nil
+  end
+
   test "system_statics/1 uses stored statics with a class fallback" do
     assert Systems.system_statics(%{statics: ["C247", "H900"]}) == ["C247", "H900"]
     assert Systems.system_statics(%{sys_class: "C1", statics: []}) == ["HS"]

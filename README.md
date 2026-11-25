@@ -42,6 +42,7 @@ The signature widget lists every signature with its wormhole Mass state, its Age
 Wormhole space systems carry their class (`C1`–`C6`, `Thera`, `C13`, `Trig`, `Drifter`), system-wide effect (Magnetar, Pulsar, …) and static wormhole codes. The data is built once from the downloaded SDE plus the vendored statics list into `priv/data/wormhole_systems.json` (see `priv/data/README.md`) and stored on each map system.
 
 - `mix tripwire.build_wormhole_systems` rebuilds the dataset from `priv/sde/eve-online-static-data-latest-jsonl.zip` and `priv/data/wormhole_statics.json`; `task setup` runs it after refreshing the SDE.
+- Chain-map effect glyphs reuse the icon outlines from the upstream Tripwire project's MIT-licensed icon font (`public/fonts/tripwire.json`); the paths are inlined and tinted with upstream's per-effect colours.
 
 ### SDE tables
 

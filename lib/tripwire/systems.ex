@@ -45,9 +45,21 @@ defmodule Tripwire.Systems do
 
   @unknown_color "#6b7280"
 
+  @effect_colors %{
+    "Black Hole" => "#f0f0f0",
+    "Cataclysmic Variable" => "#ffffbb",
+    "Magnetar" => "#e06fdf",
+    "Pulsar" => "#428bca",
+    "Red Giant" => "#ff0000",
+    "Wolf Rayet" => "#e28a0d"
+  }
+
   def classes, do: @classes
 
   def effects, do: @effects
+
+  def effect_color("Wolf-Rayet Star"), do: effect_color("Wolf Rayet")
+  def effect_color(effect), do: Map.get(@effect_colors, effect)
 
   def statics(class) when is_binary(class), do: Map.get(@statics, class, [])
   def statics(_), do: []
