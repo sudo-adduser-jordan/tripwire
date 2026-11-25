@@ -68,17 +68,6 @@ defmodule Tripwire.Systems do
 
   def system_statics(system), do: statics(display_class(system))
 
-  def parse_statics(value) when is_list(value), do: value |> Enum.join(",") |> parse_statics()
-
-  def parse_statics(value) when is_binary(value) do
-    value
-    |> String.split(~r/[,\s]+/, trim: true)
-    |> Enum.map(&String.upcase/1)
-    |> Enum.uniq()
-  end
-
-  def parse_statics(_), do: []
-
   def display_class(%{sys_class: class}) when is_binary(class) and class != "", do: class
 
   def display_class(%{solar_system_id: id} = system) when is_integer(id) do

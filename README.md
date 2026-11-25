@@ -37,7 +37,7 @@ The chain map hides systems that drop out of the chain. **Edit Map → Known spa
 
 The signature widget lists every signature with its wormhole Mass state, its Age (time since the scan), and its Life state derived from the remaining lifetime: **Stable** above four hours, **EOL** under four hours, **Critical** under one hour, and **Expired** at zero, with the exact countdown kept in the Life tooltip.
 
-Node and signature fields are editable in place. Clicking a node's J-code opens **Edit System**, which writes the name, alias, security, class, static wormhole codes and the favorite flag; the system effect is read-only because it describes the solar system rather than the map. The signature row's pencil opens **Edit Signature**, which covers every signature field — signature ID, group, site type, name/hole type, ESI type ID, lifetime, scan time and bookmark — and the Age, Life and pruning state follow the edited scan time.
+Node and signature fields are editable in place. Clicking a node's J-code opens **Edit System**, which writes the name, alias, class and favorite flag; the system security, effect and static wormhole codes stay read-only because they describe the solar system rather than the map. The signature row's pencil opens **Edit Signature**, which covers every signature field — signature ID, group, site type, name/hole type, ESI type ID, lifetime, scan time and bookmark — and the Age, Life and pruning state follow the edited scan time.
 
 ## System data
 

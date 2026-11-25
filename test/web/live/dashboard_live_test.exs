@@ -1551,6 +1551,8 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     assert render(view) =~ "sys-modal"
     assert render(view) =~ "Edit System"
+    refute render(view) =~ "system[statics]"
+    refute render(view) =~ "system[security]"
 
     view
     |> element("#sys-modal form[phx-submit='update-system']")
@@ -1558,9 +1560,8 @@ defmodule TripwireWeb.DashboardLiveTest do
       "system" => %{
         "name" => "J150322",
         "alias" => "Home",
-        "security" => "-0.25",
+        "security" => "1.5",
         "sys_class" => "C3",
-        "statics" => "c247, H900",
         "favorite" => "true"
       }
     })
@@ -1570,9 +1571,9 @@ defmodule TripwireWeb.DashboardLiveTest do
     reloaded = Mapping.get_system!(system.id)
     assert reloaded.name == "J150322"
     assert reloaded.alias == "Home"
-    assert reloaded.security == -0.25
+    assert reloaded.security == nil
     assert reloaded.sys_class == "C3"
-    assert reloaded.statics == ["C247", "H900"]
+    assert reloaded.statics == []
     assert reloaded.favorite
     assert_patch(view, "/J150322")
   end
@@ -1635,12 +1636,12 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert map_html =~ "translate(50, 100.0)"
   end
 
-  test "system editor shows the system effect read-only and never changes it", %{
+  test "system editor shows the effect and statics read-only and never changes them", %{
     conn: conn,
     character: character
   } do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
-    {:ok, _} = Mapping.update_system(system, %{effect: "Pulsar"})
+    {:ok, _} = Mapping.update_system(system, %{effect: "Pulsar", statics: ["C247", "H900"]})
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -1651,8 +1652,10 @@ defmodule TripwireWeb.DashboardLiveTest do
     html = render(view)
     assert html =~ "sys-modal"
     assert html =~ "Pulsar"
+    assert html =~ "C247, H900"
     assert html =~ "Set by the system"
     refute html =~ "system[effect]"
+    refute html =~ "system[statics]"
 
     view
     |> element("#sys-modal form[phx-submit='update-system']")
@@ -1661,7 +1664,8 @@ defmodule TripwireWeb.DashboardLiveTest do
         "name" => "J150321",
         "alias" => "",
         "sys_class" => "C2",
-        "effect" => "Bogus"
+        "effect" => "Bogus",
+        "statics" => "XYZ"
       }
     })
 
@@ -1669,31 +1673,10 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     reloaded = Mapping.get_system!(system.id)
     assert reloaded.effect == "Pulsar"
+    assert reloaded.statics == ["C247", "H900"]
     assert reloaded.sys_class == "C2"
     assert render(view) =~ "data-effect=\"Pulsar\""
     assert render(view) =~ "System effect: Pulsar"
-  end
-
-  test "system editor rejects an out-of-range security and keeps the modal open", %{
-    conn: conn,
-    character: character
-  } do
-    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
-
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
-
-    view
-    |> element("#chain-map text[phx-click='open-system']", "J150321")
-    |> render_click()
-
-    html =
-      view
-      |> element("#sys-modal form[phx-submit='update-system']")
-      |> render_submit(%{"system" => %{"name" => "J150321", "security" => "1.5"}})
-
-    assert html =~ "sys-modal"
-    assert html =~ "security"
-    assert Mapping.get_system!(system.id).security == nil
   end
 
   test "system editor rejects an unknown class and keeps the modal open", %{

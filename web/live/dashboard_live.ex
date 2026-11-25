@@ -1301,25 +1301,22 @@ defmodule TripwireWeb.DashboardLive do
         attrs = %{
           name: present(params["name"]),
           alias: present(params["alias"]),
-          security: present(params["security"]),
           sys_class: present(params["sys_class"]),
-          statics: Systems.parse_statics(params["statics"]),
           favorite: params["favorite"] == "true"
         }
 
         case Data.update_system(data(socket), system, attrs) do
           {{:ok, updated}, data} ->
-            socket =
-              socket
-              |> put_data(data)
-              |> assign(:systems, chain_systems(socket))
-              |> assign(:sys_modal_open, false)
-              |> assign(:sys_edit_id, nil)
-              |> assign(:sys_errors, [])
-              |> refresh_edited_system(updated)
-              |> put_flash(:info, "System updated")
+            socket = put_data(socket, data)
 
-            {:noreply, socket}
+            {:noreply,
+             socket
+             |> assign(:systems, chain_systems(socket))
+             |> assign(:sys_modal_open, false)
+             |> assign(:sys_edit_id, nil)
+             |> assign(:sys_errors, [])
+             |> refresh_edited_system(updated)
+             |> put_flash(:info, "System updated")}
 
           {{:error, changeset}, data} ->
             {:noreply,
@@ -2556,7 +2553,6 @@ defmodule TripwireWeb.DashboardLive do
         %{
           "name" => system.name || "",
           "alias" => system.alias || "",
-          "security" => format_security(system.security),
           "sys_class" => system.sys_class || "",
           "statics" => Enum.join(system.statics || [], ", "),
           "favorite" => system.favorite == true,
@@ -2570,7 +2566,6 @@ defmodule TripwireWeb.DashboardLive do
     %{
       "name" => "",
       "alias" => "",
-      "security" => "",
       "sys_class" => "",
       "statics" => "",
       "favorite" => false,
@@ -2578,10 +2573,6 @@ defmodule TripwireWeb.DashboardLive do
       "solar_system_id" => nil
     }
   end
-
-  defp format_security(security) when is_float(security), do: Float.to_string(security)
-  defp format_security(security) when is_integer(security), do: Integer.to_string(security)
-  defp format_security(_), do: ""
 
   defp refresh_edited_system(socket, system) do
     if socket.assigns.selected_system_id == system.id do
