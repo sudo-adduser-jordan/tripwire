@@ -32,8 +32,4 @@ defmodule TripwireWeb.CoreComponents do
       Gettext.dgettext(TripwireWeb.Gettext, "errors", msg, opts)
     end
   end
-
-  def translate_errors(errors, field) when is_list(errors) do
-    for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
-  end
 end

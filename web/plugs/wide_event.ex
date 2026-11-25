@@ -21,11 +21,6 @@ defmodule TripwireWeb.Plugs.WideEvent do
     |> register_before_send(&finish/1)
   end
 
-  def enrich(conn, fields) when is_map(fields) do
-    current = conn.private[:wide_event] || Tripwire.Log.new()
-    put_private(conn, :wide_event, Tripwire.Log.merge(current, fields))
-  end
-
   defp finish(conn) do
     start = conn.private[:wide_event_start] || System.monotonic_time(:millisecond)
     duration = System.monotonic_time(:millisecond) - start

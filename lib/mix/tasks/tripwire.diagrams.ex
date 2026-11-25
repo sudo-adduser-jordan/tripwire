@@ -18,7 +18,6 @@ defmodule Mix.Tasks.Tripwire.Diagrams do
        "lib/mailer.ex",
        "lib/tripwire/esi.ex",
        "lib/tripwire/esi/",
-       "lib/tripwire/notifier.ex",
        "lib/tripwire/sso.ex",
        "lib/tripwire/systems/catalog.ex",
        "lib/tripwire/systems/gates.ex",
@@ -74,16 +73,15 @@ defmodule Mix.Tasks.Tripwire.Diagrams do
     {"Tripwire.Vault", ["Cloak vault", "field encryption at rest"], "#f3f0ff"},
     {"Tripwire.ESI.TokenCache", ["GenServer · public ETS", "access + rotated refresh tokens"],
      "#d3f9d8"},
-    {"Tripwire.Systems.Catalog", ["GenServer · ETS", "mapSolarSystems from priv/sde"],
-     "#d3f9d8"},
+    {"Tripwire.Systems.Catalog", ["GenServer · ETS", "mapSolarSystems from priv/sde"], "#d3f9d8"},
     {"Tripwire.Systems.Gates", ["GenServer · bag ETS", "mapStargates in both directions"],
      "#d3f9d8"},
     {"Phoenix.PubSub", ["name: Tripwire.PubSub", "map_updated topics"], "#e7f5ff"},
     {"Tracking.PollerSupervisor", ["DynamicSupervisor, :one_for_one", "one poller per character"],
      "#e7f5ff"},
     {"Registry", ["name: Tripwire.TrackingRegistry", "keys: :unique"], "#e7f5ff"},
-    {"Tripwire.SyncServer", ["GenServer · corp sync every 3 min", "prune_orphan_masks · hourly zKill"],
-     "#e7f5ff"},
+    {"Tripwire.SyncServer",
+     ["GenServer · corp sync every 3 min", "prune_orphan_masks · hourly zKill"], "#e7f5ff"},
     {"DNSCluster", ["query from :dns_cluster_query", ":ignore when unset"], "#f1f3f5"},
     {"TripwireWeb.Endpoint", ["Phoenix endpoint · Bandit", "LiveView · port 4000"], "#e7f5ff"}
   ]
@@ -111,7 +109,6 @@ defmodule Mix.Tasks.Tripwire.Diagrams do
     {"zKillboard", "`Tripwire.ZKill` system activity statistics"},
     {"SDE archive",
      "`priv/sde` JSONL zip read into `Systems.Catalog` / `Systems.Gates` ETS tables"},
-    {"Discord webhook", "`Tripwire.Notifier`"},
     {"SMTP", "`Tripwire.Mailer` through Swoosh"},
     {"EVE image CDN", "`Tripwire.EveImages` portrait, render and logo URLs"}
   ]
@@ -375,7 +372,9 @@ defmodule Mix.Tasks.Tripwire.Diagrams do
       Enum.map(@grandchildren, fn {_parent, title, lines, fill} -> node(title, lines, fill) end)
 
     supervision_edges =
-      Enum.map(@children, fn {title, _lines, _fill} -> "  #{node_id(root)} --> #{node_id(title)}" end) ++
+      Enum.map(@children, fn {title, _lines, _fill} ->
+        "  #{node_id(root)} --> #{node_id(title)}"
+      end) ++
         Enum.map(@grandchildren, fn {parent, title, _lines, _fill} ->
           "  #{node_id(parent)} --> #{node_id(title)}"
         end)
@@ -414,7 +413,12 @@ defmodule Mix.Tasks.Tripwire.Diagrams do
     nodes =
       Enum.map(@stack, fn name ->
         count = Map.get(files, name) || 0
-        node(name, ["#{count} #{if count == 1, do: "file", else: "files"}"], Map.get(@fills, name))
+
+        node(
+          name,
+          ["#{count} #{if count == 1, do: "file", else: "files"}"],
+          Map.get(@fills, name)
+        )
       end)
 
     index = Map.new(Enum.with_index(@stack))

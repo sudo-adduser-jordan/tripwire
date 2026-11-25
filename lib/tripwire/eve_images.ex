@@ -53,6 +53,4 @@ defmodule Tripwire.EveImages do
     do: "#{@base}/types/#{type_id}/render?size=#{size}"
 
   def faction_name(faction_id), do: Map.get(@faction_names, faction_id, "Faction #{faction_id}")
-
-  def faction_ids, do: Map.keys(@faction_names)
 end

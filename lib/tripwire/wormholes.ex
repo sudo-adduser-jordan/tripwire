@@ -38,8 +38,6 @@ defmodule Tripwire.Wormholes do
   def get(code) when is_binary(code), do: Map.get(@wormholes, String.upcase(code))
   def get(_), do: nil
 
-  def life(code), do: field(code, "life")
-
   def from(code), do: get(code) |> ends("from")
 
   def leads_to(code), do: get(code) |> ends("leadsTo")

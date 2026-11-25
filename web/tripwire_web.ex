@@ -5,7 +5,6 @@ defmodule TripwireWeb do
   images
   favicon.ico
   robots.txt
-  data.json
   )
 
   def router do
@@ -15,12 +14,6 @@ defmodule TripwireWeb do
       import Plug.Conn
       import Phoenix.Controller
       import Phoenix.LiveView.Router
-    end
-  end
-
-  def channel do
-    quote do
-      use Phoenix.Channel
     end
   end
 
@@ -69,8 +62,6 @@ defmodule TripwireWeb do
       import Phoenix.HTML
       import TripwireWeb.CoreComponents
       import TripwireWeb.FlashComponent
-      import TripwireWeb.TableComponent
-      import TripwireWeb.ListComponent
       import TripwireWeb.InputComponent
       import TripwireWeb.IconComponent
 

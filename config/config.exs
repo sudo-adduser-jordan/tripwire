@@ -7,7 +7,7 @@ config :ueberauth, Ueberauth,
        [
          uid_field: :character_id,
          default_scope:
-           ~w(esi-location.read_location.v1 esi-location.read_ship_type.v1 esi-ui.open_window.v1 esi-ui.write_waypoint.v1 esi-characters.read_corporation_roles.v1 esi-location.read_online.v1 esi-characters.read_titles.v1 esi-search.search_structures.v1)
+           ~w(esi-location.read_location.v1 esi-location.read_ship_type.v1 esi-characters.read_corporation_roles.v1 esi-location.read_online.v1 esi-characters.read_titles.v1)
            |> Enum.join(" ")
        ]}
   ]

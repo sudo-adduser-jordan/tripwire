@@ -62,8 +62,6 @@ defmodule Tripwire.Masks do
 
   def get_mask(id), do: Repo.get(Mask, id)
 
-  def delete_mask(%Mask{} = mask), do: Repo.delete(mask)
-
   def delete_mask_full(%Mask{id: mask_id} = mask) do
     mask_id
     |> Mapping.list_maps_for_mask()

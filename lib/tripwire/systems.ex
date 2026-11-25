@@ -121,11 +121,6 @@ defmodule Tripwire.Systems do
   def security_label(%{security: security}) when is_number(security), do: "Null-Sec"
   def security_label(_), do: "W-Space"
 
-  def format_security(%{security: security}) when is_number(security),
-    do: :erlang.float_to_binary(security * 1.0, decimals: 1)
-
-  def format_security(_), do: ""
-
   def esi_resolvable?(%{solar_system_id: id}) when is_integer(id), do: id < @w_space_min
   def esi_resolvable?(_), do: false
 

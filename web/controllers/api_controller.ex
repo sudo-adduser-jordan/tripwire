@@ -2,15 +2,12 @@ defmodule TripwireWeb.ApiController do
   use TripwireWeb, :controller
 
   alias Tripwire.Mapping
-  alias Tripwire.Repo
-  import Ecto.Query
 
   plug :require_api_token
 
   def signatures(conn, %{"mask_id" => mask_id}) do
     with {mask_id, ""} <- Integer.parse(mask_id),
-         [%{id: map_id} | _] = maps <- Mapping.list_maps_for_mask(mask_id) do
-      _ = maps
+         [%{id: map_id} | _] <- Mapping.list_maps_for_mask(mask_id) do
       systems = Mapping.list_systems(map_id)
 
       data =
@@ -118,7 +115,4 @@ defmodule TripwireWeb.ApiController do
       by: comment.character && comment.character.name
     }
   end
-
-  def _repo_unused, do: Repo
-  def _query_unused, do: from(x in "dummy", select: x)
 end

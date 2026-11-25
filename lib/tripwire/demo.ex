@@ -4,7 +4,7 @@ defmodule Tripwire.Demo do
   alias Tripwire.Layouts
   alias Tripwire.Layouts.Layout
   alias Tripwire.Mapping
-  alias Tripwire.Mapping.{Comment, Flare, MapConnection, MapSystem, Signature, SystemStat}
+  alias Tripwire.Mapping.{Comment, Flare, MapConnection, MapSystem, Signature}
   alias Tripwire.Mapping.Links
   alias Tripwire.Mapping.Map, as: ChainMap
   alias Tripwire.Settings
@@ -200,8 +200,6 @@ defmodule Tripwire.Demo do
       last_login: character.last_login_at
     }
   end
-
-  def welcome_notes, do: Mapping.welcome_notes()
 
   def list_favorite_candidates(%State{} = state, mask_id, exclude_map_id) do
     map_ids =
@@ -925,32 +923,6 @@ defmodule Tripwire.Demo do
 
   def log_connection_jump(%State{} = state, _conn, _name, _to_system_id, _ship) do
     {{:ok, state}, state}
-  end
-
-  def record_visit(%State{} = state, %MapSystem{} = system) do
-    now = now()
-
-    case get_system_stat(state, system.id) do
-      nil ->
-        {id, state} = State.take_id(state)
-
-        stat = %SystemStat{
-          id: id,
-          map_system_id: system.id,
-          visits: 1,
-          recorded_at: now,
-          inserted_at: now,
-          updated_at: now
-        }
-
-        {{:ok, stat}, %{state | stats: state.stats ++ [stat]}}
-
-      stat ->
-        updated = %{stat | visits: (stat.visits || 0) + 1, recorded_at: now, updated_at: now}
-
-        {{:ok, updated},
-         %{state | stats: Enum.map(state.stats, &if(&1.id == stat.id, do: updated, else: &1))}}
-    end
   end
 
   defp build_signature(state, attrs, character) do

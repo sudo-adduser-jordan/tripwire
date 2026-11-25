@@ -501,12 +501,6 @@ defmodule Tripwire.Demo.Fixture do
 
   def paste, do: @paste
 
-  def systems, do: @systems
-
-  def links, do: @links
-
-  def signatures, do: @signatures
-
   def build do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 

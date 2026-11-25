@@ -1,2 +1,0 @@
-defmodule Tripwire do
-end

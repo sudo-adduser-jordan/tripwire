@@ -1832,21 +1832,6 @@ defmodule TripwireWeb.DashboardLive do
      )}
   end
 
-  def handle_event("ping", %{"message" => message}, socket) do
-    system_name = socket.assigns.selected_system_name || "Unknown"
-
-    case Tripwire.Notifier.ping(system_name, message) do
-      :ok ->
-        {:noreply, put_flash(socket, :info, "Ping sent")}
-
-      {:error, :no_webhook} ->
-        {:noreply, put_flash(socket, :error, "Discord webhook not configured")}
-
-      {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Ping failed: #{inspect(reason)}")}
-    end
-  end
-
   def handle_event("move-comment", %{"id" => id}, socket) do
     case {Data.get_comment!(data(socket), String.to_integer(id)), selected_system(socket)} do
       {_comment, nil} ->

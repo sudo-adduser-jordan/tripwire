@@ -63,32 +63,6 @@ defmodule Tripwire.Mapping do
     )
   end
 
-  def recorded_wormhole_link?(mask_id, candidate_solar_id, chain_solar_ids) do
-    chain_set = Elixir.MapSet.new(chain_solar_ids)
-
-    if Elixir.MapSet.member?(chain_set, candidate_solar_id) do
-      false
-    else
-      map_ids = from(m in Map, where: m.mask_id == ^mask_id, select: m.id)
-
-      links =
-        Repo.all(
-          from(c in MapConnection,
-            where: c.map_id in subquery(map_ids),
-            preload: [:from_system, :to_system]
-          )
-        )
-
-      Enum.any?(links, fn conn ->
-        from_solar = conn.from_system && conn.from_system.solar_system_id
-        to_solar = conn.to_system && conn.to_system.solar_system_id
-
-        (from_solar == candidate_solar_id and Elixir.MapSet.member?(chain_set, to_solar)) or
-          (to_solar == candidate_solar_id and Elixir.MapSet.member?(chain_set, from_solar))
-      end)
-    end
-  end
-
   def wormhole_link_target(mask_id, candidate_solar_id, chain_systems) do
     by_solar = Elixir.Map.new(chain_systems, &{&1.solar_system_id, &1})
     chain_set = Elixir.MapSet.new(Elixir.Map.keys(by_solar))

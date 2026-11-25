@@ -9,9 +9,6 @@ defmodule Tripwire.Data do
   def list_maps_for_mask(:db, mask_id), do: Mapping.list_maps_for_mask(mask_id)
   def list_maps_for_mask(%State{} = state, mask_id), do: Demo.list_maps_for_mask(state, mask_id)
 
-  def get_map(:db, id), do: Tripwire.Repo.get(Tripwire.Mapping.Map, id)
-  def get_map(%State{} = state, id), do: Demo.get_map(state, id)
-
   def get_map!(:db, id), do: Mapping.get_map!(id)
   def get_map!(%State{} = state, id), do: Demo.get_map!(state, id)
 
@@ -73,9 +70,6 @@ defmodule Tripwire.Data do
   def list_system_stats(:db, map_id), do: Mapping.list_system_stats(map_id)
   def list_system_stats(%State{} = state, map_id), do: Demo.list_system_stats(state, map_id)
 
-  def character_statistics(:db, character), do: Mapping.character_statistics(character)
-  def character_statistics(%State{} = state, _character), do: Demo.character_statistics(state)
-
   def list_favorite_candidates(:db, mask_id, exclude_map_id),
     do: Mapping.list_favorite_candidates(mask_id, exclude_map_id)
 
@@ -88,10 +82,7 @@ defmodule Tripwire.Data do
   def wormhole_link_target(%State{} = state, mask_id, solar, chain),
     do: Demo.wormhole_link_target(state, mask_id, solar, chain)
 
-  def welcome_notes, do: Mapping.welcome_notes()
-
   def occupants(:db, map_id, mask), do: db_occupants(map_id, mask)
-
   def occupants(%State{} = state, _map_id, _mask), do: Demo.occupants(state)
 
   defp db_occupants(map_id, mask) do
@@ -110,9 +101,6 @@ defmodule Tripwire.Data do
       end
     end)
   end
-
-  def settings_assigns(:db), do: Settings.assigns()
-  def settings_assigns(%State{} = state), do: Demo.settings_assigns(state)
 
   def put_setting(:db, key, value), do: {Settings.update(%{key => value}), :db}
 
@@ -186,8 +174,6 @@ defmodule Tripwire.Data do
 
   def delete_map_full(:db, map), do: {Mapping.delete_map_full(map), :db}
   def delete_map_full(%State{} = state, map), do: Demo.delete_map_full(state, map)
-
-  def reset_map(%State{} = state), do: Demo.reset_map(state)
 
   def add_system_to_map(data, map, attrs, opts \\ [])
 

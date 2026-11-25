@@ -138,7 +138,7 @@ fix:
 - `Tripwire.Log.emit/2` accepts `:debug | :info | :warning | :error` with a map or binary message, appends one JSON object per line to `logs/test/YYYY-MM-DD.jsonl` (debug, info) or `logs/errors/YYYY-MM-DD.jsonl` (warning, error), then pretty prints a colored line to stdout.
 - `Tripwire.Log.keep?/2` always keeps errors, warnings, events carrying an `error` field, and events with `duration_ms > 2000`; the rest sample at the configured `sample_rate`.
 - Config (`config/config.exs`, `config :tripwire, Tripwire.Log`): `service`, `sample_rate`, `test_path`, `error_path`.
-- `TripwireWeb.Plugs.WideEvent` (`web/plugs/wide_event.ex`) runs after `Plug.RequestId` in `TripwireWeb.Endpoint`, seeds the event (request_id, method, path, remote_ip, user_agent), and emits status, `duration_ms`, and outcome on `register_before_send`. Use `enrich/2` in controllers or LiveViews to add business context.
+- `TripwireWeb.Plugs.WideEvent` (`web/plugs/wide_event.ex`) runs after `Plug.RequestId` in `TripwireWeb.Endpoint`, seeds the event (request_id, method, path, remote_ip, user_agent), and emits status, `duration_ms`, and outcome on `register_before_send`.
 - Tests: `test/tripwire/log_test.exs` redirects paths to a tmp dir via `Application.put_env(:tripwire, Tripwire.Log, ...)` and restores afterwards.
 
 ## Task Automation

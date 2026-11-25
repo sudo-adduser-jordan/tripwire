@@ -5,7 +5,6 @@ import { hooks as colocatedHooks } from "phoenix-colocated/tripwire"
 import topbar from "../vendor/topbar"
 import mapDrag, { ChartMount } from "./mapDrag"
 import AutoDismiss from "./autoDismiss"
-import LockToggle from "./lockToggle"
 import GridWidget from "./gridWidget"
 import ScrollIntoView from "./scrollIntoView"
 import NotesComposer from "./notesComposer"
@@ -91,7 +90,6 @@ const hooks = {
     ...colocatedHooks,
     AutoDismiss: AutoDismiss,
     MapDrag: mapDrag,
-    LockToggle: LockToggle,
     ChartMount: ChartMount,
     GridStack: GridStack,
     GridWidget: GridWidget,
