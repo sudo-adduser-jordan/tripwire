@@ -98,6 +98,25 @@ defmodule Tripwire.MappingTest do
     assert system.statics == ["ABC"]
   end
 
+  test "update_system/2 bounds security and leaves the effect alone", %{mask: mask} do
+    [map | _] = Mapping.list_maps_for_mask(mask.id)
+
+    {:ok, system} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_001_663, name: "J231710"})
+
+    assert system.effect == "Magnetar"
+
+    assert {:error, changeset} = Mapping.update_system(system, %{security: 1.5})
+    assert changeset.errors[:security]
+
+    assert {:error, changeset} = Mapping.update_system(system, %{security: -1.5})
+    assert changeset.errors[:security]
+
+    {:ok, updated} = Mapping.update_system(system, %{security: -0.25})
+    assert updated.security == -0.25
+    assert updated.effect == "Magnetar"
+  end
+
   test "add_system_to_map/2 leaves catalog systems untouched when asked", %{mask: mask} do
     [map | _] = Mapping.list_maps_for_mask(mask.id)
 

@@ -45,6 +45,7 @@ defmodule Tripwire.Mapping.MapSystem do
     ])
     |> validate_required([:map_id])
     |> require_known_fields()
+    |> validate_number(:security, greater_than_or_equal_to: -1.0, less_than_or_equal_to: 1.0)
     |> validate_inclusion(:sys_class, Tripwire.Systems.classes() ++ [nil])
     |> validate_inclusion(:effect, Tripwire.Systems.effects() ++ [nil])
   end

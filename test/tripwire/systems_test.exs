@@ -64,6 +64,14 @@ defmodule Tripwire.SystemsTest do
     assert Systems.system_statics(%{sys_class: "C4", statics: []}) == []
   end
 
+  test "parse_statics/1 normalizes free-form hole codes" do
+    assert Systems.parse_statics("c247, H900") == ["C247", "H900"]
+    assert Systems.parse_statics("c247 h900  c247") == ["C247", "H900"]
+    assert Systems.parse_statics("") == []
+    assert Systems.parse_statics(nil) == []
+    assert Systems.parse_statics(["c247", "H900"]) == ["C247", "H900"]
+  end
+
   test "display_class/1 keeps an explicit class on wormhole systems" do
     assert Systems.display_class(%{sys_class: "C5", solar_system_id: 31_001_663}) == "C5"
   end

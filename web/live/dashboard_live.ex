@@ -1299,22 +1299,27 @@ defmodule TripwireWeb.DashboardLive do
 
       system ->
         attrs = %{
+          name: present(params["name"]),
           alias: present(params["alias"]),
+          security: present(params["security"]),
           sys_class: present(params["sys_class"]),
-          effect: present(params["effect"])
+          statics: Systems.parse_statics(params["statics"]),
+          favorite: params["favorite"] == "true"
         }
 
         case Data.update_system(data(socket), system, attrs) do
-          {{:ok, _}, data} ->
-            socket = put_data(socket, data)
+          {{:ok, updated}, data} ->
+            socket =
+              socket
+              |> put_data(data)
+              |> assign(:systems, chain_systems(socket))
+              |> assign(:sys_modal_open, false)
+              |> assign(:sys_edit_id, nil)
+              |> assign(:sys_errors, [])
+              |> refresh_edited_system(updated)
+              |> put_flash(:info, "System updated")
 
-            {:noreply,
-             socket
-             |> assign(:systems, chain_systems(socket))
-             |> assign(:sys_modal_open, false)
-             |> assign(:sys_edit_id, nil)
-             |> assign(:sys_errors, [])
-             |> put_flash(:info, "System updated")}
+            {:noreply, socket}
 
           {{:error, changeset}, data} ->
             {:noreply,
@@ -2032,7 +2037,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:stale_ids, [])
     |> assign(:stale_system_id, nil)
     |> assign(:presences, %{})
-    |> assign(:sys_form, %{"alias" => "", "sys_class" => "", "effect" => ""})
+    |> assign(:sys_form, default_sys_form())
     |> assign_claim_admin(character)
     |> assign(:claim_admin_modal?, claim_admin_modal?)
     |> ensure_character_pollers()
@@ -2080,7 +2085,7 @@ defmodule TripwireWeb.DashboardLive do
           |> assign(:chart_system, system)
           |> assign(:selected_system_id, nil)
           |> assign(:selected_system_name, name)
-          |> assign(:sys_form, %{"alias" => "", "sys_class" => "", "effect" => ""})
+          |> assign(:sys_form, default_sys_form())
           |> schedule_system_detail(system)
 
         if Keyword.get(opts, :patch, true) do
@@ -2544,11 +2549,48 @@ defmodule TripwireWeb.DashboardLive do
 
   defp sys_form_for(systems, id) do
     case Enum.find(systems, &(&1.id == id)) do
-      %{alias: alias_, sys_class: sys_class, effect: effect} ->
-        %{"alias" => alias_ || "", "sys_class" => sys_class || "", "effect" => effect || ""}
+      nil ->
+        default_sys_form()
 
-      _ ->
-        %{"alias" => "", "sys_class" => "", "effect" => ""}
+      system ->
+        %{
+          "name" => system.name || "",
+          "alias" => system.alias || "",
+          "security" => format_security(system.security),
+          "sys_class" => system.sys_class || "",
+          "statics" => Enum.join(system.statics || [], ", "),
+          "favorite" => system.favorite == true,
+          "effect" => Systems.display_effect(system) || "",
+          "solar_system_id" => system.solar_system_id
+        }
+    end
+  end
+
+  defp default_sys_form do
+    %{
+      "name" => "",
+      "alias" => "",
+      "security" => "",
+      "sys_class" => "",
+      "statics" => "",
+      "favorite" => false,
+      "effect" => "",
+      "solar_system_id" => nil
+    }
+  end
+
+  defp format_security(security) when is_float(security), do: Float.to_string(security)
+  defp format_security(security) when is_integer(security), do: Integer.to_string(security)
+  defp format_security(_), do: ""
+
+  defp refresh_edited_system(socket, system) do
+    if socket.assigns.selected_system_id == system.id do
+      socket
+      |> assign(:selected_system_name, system.name)
+      |> assign(:chart_system, system)
+      |> push_patch(to: "/" <> system.name)
+    else
+      socket
     end
   end
 
@@ -2724,7 +2766,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:map_scale, 100)
     |> assign(:map_background, nil)
     |> assign(:sso_configured?, false)
-    |> assign(:sys_form, %{"alias" => "", "sys_class" => "", "effect" => ""})
+    |> assign(:sys_form, default_sys_form())
     |> assign(:sys_modal_open, false)
     |> assign(:sys_edit_id, nil)
     |> assign(:sys_errors, [])

@@ -983,6 +983,55 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert [%Mapping.Signature{sig_id: "QWE-123"}] = Mapping.list_signatures(system.id)
   end
 
+  test "signature editor edits the type id and scan time", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, sig} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "ABC-123", site_type: "wormhole", type_name: "Unstable Wormhole (K162)"},
+        character
+      )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    view
+    |> element("#signature-#{sig.id} button.btn-ghost[title='Edit signature']")
+    |> render_click()
+
+    assert render(view) =~ "Edit Signature"
+
+    view
+    |> element("#sig-modal form[phx-submit='save-signature']")
+    |> render_submit(%{
+      "sig" => %{
+        "sig_id" => "ABC-123",
+        "kind" => "signature",
+        "site_type" => "wormhole",
+        "type_name" => "Unstable Wormhole (K162)",
+        "type_id" => "30744",
+        "life_length" => "259200",
+        "scanned_at" => "2026-01-01T08:00",
+        "bookmark" => "Two"
+      }
+    })
+
+    refute render(view) =~ "sig-modal"
+
+    reloaded = Mapping.get_signature!(sig.id)
+    assert reloaded.type_id == 30_744
+    assert reloaded.bookmark == "Two"
+    assert NaiveDateTime.to_iso8601(reloaded.inserted_at) == "2026-01-01T08:00:00"
+    assert NaiveDateTime.diff(reloaded.expires_at, reloaded.inserted_at) == 259_200
+  end
+
   test "global paste imports signatures for a selected system", %{
     conn: conn,
     character: character
@@ -1506,14 +1555,26 @@ defmodule TripwireWeb.DashboardLiveTest do
     view
     |> element("#sys-modal form[phx-submit='update-system']")
     |> render_submit(%{
-      "system" => %{"alias" => "Home", "sys_class" => "C3"}
+      "system" => %{
+        "name" => "J150322",
+        "alias" => "Home",
+        "security" => "-0.25",
+        "sys_class" => "C3",
+        "statics" => "c247, H900",
+        "favorite" => "true"
+      }
     })
 
     refute render(view) =~ "sys-modal"
 
     reloaded = Mapping.get_system!(system.id)
+    assert reloaded.name == "J150322"
     assert reloaded.alias == "Home"
+    assert reloaded.security == -0.25
     assert reloaded.sys_class == "C3"
+    assert reloaded.statics == ["C247", "H900"]
+    assert reloaded.favorite
+    assert_patch(view, "/J150322")
   end
 
   test "j-space nodes show static badges on the bottom edge", %{
@@ -1574,11 +1635,12 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert map_html =~ "translate(50, 100.0)"
   end
 
-  test "system editor saves the wormhole effect and badges it", %{
+  test "system editor shows the system effect read-only and never changes it", %{
     conn: conn,
     character: character
   } do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, _} = Mapping.update_system(system, %{effect: "Pulsar"})
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -1586,23 +1648,33 @@ defmodule TripwireWeb.DashboardLiveTest do
     |> element("#chain-map text[phx-click='open-system']", "J150321")
     |> render_click()
 
-    assert render(view) =~ "sys-modal"
+    html = render(view)
+    assert html =~ "sys-modal"
+    assert html =~ "Pulsar"
+    assert html =~ "Set by the system"
+    refute html =~ "system[effect]"
 
     view
     |> element("#sys-modal form[phx-submit='update-system']")
     |> render_submit(%{
-      "system" => %{"alias" => "", "sys_class" => "C2", "effect" => "Pulsar"}
+      "system" => %{
+        "name" => "J150321",
+        "alias" => "",
+        "sys_class" => "C2",
+        "effect" => "Bogus"
+      }
     })
 
     refute render(view) =~ "sys-modal"
 
     reloaded = Mapping.get_system!(system.id)
     assert reloaded.effect == "Pulsar"
+    assert reloaded.sys_class == "C2"
     assert render(view) =~ "data-effect=\"Pulsar\""
     assert render(view) =~ "System effect: Pulsar"
   end
 
-  test "system editor rejects an unknown effect and keeps the modal open", %{
+  test "system editor rejects an out-of-range security and keeps the modal open", %{
     conn: conn,
     character: character
   } do
@@ -1617,11 +1689,11 @@ defmodule TripwireWeb.DashboardLiveTest do
     html =
       view
       |> element("#sys-modal form[phx-submit='update-system']")
-      |> render_submit(%{"system" => %{"alias" => "", "sys_class" => "C2", "effect" => "Bogus"}})
+      |> render_submit(%{"system" => %{"name" => "J150321", "security" => "1.5"}})
 
     assert html =~ "sys-modal"
-    assert html =~ "effect"
-    assert Mapping.get_system!(system.id).effect == nil
+    assert html =~ "security"
+    assert Mapping.get_system!(system.id).security == nil
   end
 
   test "system editor rejects an unknown class and keeps the modal open", %{
@@ -1639,7 +1711,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     html =
       view
       |> element("#sys-modal form[phx-submit='update-system']")
-      |> render_submit(%{"system" => %{"alias" => "", "sys_class" => "C9"}})
+      |> render_submit(%{"system" => %{"name" => "J150321", "sys_class" => "C9"}})
 
     assert html =~ "sys-modal"
     assert html =~ "sys_class"

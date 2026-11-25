@@ -37,6 +37,7 @@ defmodule Tripwire.Mapping.Signature do
       :bookmark,
       :life_length,
       :expires_at,
+      :inserted_at,
       :created_by_id,
       :updated_by_id
     ])

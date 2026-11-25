@@ -791,7 +791,7 @@ defmodule Tripwire.Demo do
           | id: id,
             created_by: character,
             updated_by: character,
-            inserted_at: now,
+            inserted_at: signature.inserted_at || now,
             updated_at: now
         }
 
@@ -1230,9 +1230,13 @@ defmodule Tripwire.Demo do
         life_length
       end
 
+    scanned_at =
+      attrs[:inserted_at] || attrs["inserted_at"] || (existing && existing.inserted_at) ||
+        DateTime.utc_now() |> DateTime.to_naive() |> NaiveDateTime.truncate(:second)
+
     expires_at =
       attrs[:expires_at] || attrs["expires_at"] ||
-        DateTime.add(DateTime.utc_now(), life_length, :second) |> DateTime.truncate(:second)
+        NaiveDateTime.add(scanned_at, life_length, :second)
 
     attrs |> Map.put(:life_length, life_length) |> Map.put(:expires_at, expires_at)
   end

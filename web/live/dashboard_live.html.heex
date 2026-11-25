@@ -196,11 +196,27 @@
   <div :if={@sys_modal_open} id="sys-modal" class="modal modal-open">
     <div class="modal-box">
       <h3 class="text-lg font-bold">Edit System</h3>
-      <p class="font-mono text-sm opacity-60">{selected_system_name(@systems, @sys_edit_id)}</p>
+      <p class="font-mono text-sm opacity-60">
+        {selected_system_name(@systems, @sys_edit_id)}<span
+          :if={@sys_form["solar_system_id"]}
+          class="opacity-60"
+        >{", " <> to_string(@sys_form["solar_system_id"])}</span>
+      </p>
       <p :if={@sys_errors != []} class="alert alert-error mt-2 py-2 text-sm">
         {Enum.join(@sys_errors, ", ")}
       </p>
       <form phx-submit="update-system" class="mt-3 flex flex-col gap-3">
+        <label class="form-control">
+          <span class="label label-text">Name</span>
+          <input
+            name="system[name]"
+            value={@sys_form["name"]}
+            placeholder="J150321"
+            required
+            autocomplete="off"
+            class="input input-bordered input-sm w-full font-mono"
+          />
+        </label>
         <label class="form-control">
           <span class="label label-text">Alias</span>
           <input
@@ -211,35 +227,66 @@
             class="input input-bordered input-sm w-full"
           />
         </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="form-control">
+            <span class="label label-text">Security</span>
+            <input
+              name="system[security]"
+              value={@sys_form["security"]}
+              type="number"
+              step="any"
+              min="-1"
+              max="1"
+              placeholder="Unknown"
+              autocomplete="off"
+              class="input input-bordered input-sm w-full"
+            />
+          </label>
+          <label class="form-control">
+            <span class="label label-text">Class</span>
+            <select name="system[sys_class]" class="select select-bordered select-sm w-full">
+              <option value="" selected={@sys_form["sys_class"] in [nil, ""]}>
+                Auto (from security)
+              </option>
+              <option
+                :for={opt <- Tripwire.Systems.classes()}
+                value={opt}
+                selected={@sys_form["sys_class"] == opt}
+              >
+                {opt}
+              </option>
+            </select>
+          </label>
+        </div>
         <label class="form-control">
-          <span class="label label-text">Class</span>
-          <select name="system[sys_class]" class="select select-bordered select-sm w-full">
-            <option value="" selected={@sys_form["sys_class"] in [nil, ""]}>
-              Auto (from security)
-            </option>
-            <option
-              :for={opt <- Tripwire.Systems.classes()}
-              value={opt}
-              selected={@sys_form["sys_class"] == opt}
-            >
-              {opt}
-            </option>
-          </select>
+          <span class="label label-text">Statics</span>
+          <input
+            name="system[statics]"
+            value={@sys_form["statics"]}
+            placeholder="C247, H900"
+            autocomplete="off"
+            class="input input-bordered input-sm w-full font-mono uppercase"
+          />
+          <span class="mt-1 text-xs opacity-60">
+            Comma separated hole codes. Blank uses the class default.
+          </span>
         </label>
-        <label class="form-control">
-          <span class="label label-text">Effect</span>
-          <select name="system[effect]" class="select select-bordered select-sm w-full">
-            <option value="" selected={@sys_form["effect"] in [nil, ""]}>
-              None
-            </option>
-            <option
-              :for={opt <- Tripwire.Systems.effects()}
-              value={opt}
-              selected={@sys_form["effect"] == opt}
-            >
-              {opt}
-            </option>
-          </select>
+        <div class="flex items-center justify-between gap-3 rounded-box bg-base-200 px-3 py-2">
+          <div class="min-w-0">
+            <p class="label-text">Effect</p>
+            <p class="truncate font-mono text-xs opacity-60">{@sys_form["effect"] || "None"}</p>
+          </div>
+          <span class="shrink-0 text-xs opacity-50">Set by the system</span>
+        </div>
+        <label class="label cursor-pointer justify-start gap-2">
+          <input
+            type="checkbox"
+            name="system[favorite]"
+            value="true"
+            checked={@sys_form["favorite"]}
+            class="toggle toggle-primary toggle-sm"
+          />
+          <span class="label-text">Favorite</span>
         </label>
         <div class="modal-action justify-between">
           <button
@@ -329,6 +376,32 @@
                 {label}
               </option>
             </select>
+          </label>
+          <label class="form-control">
+            <span class="label label-text">Type ID</span>
+            <input
+              name="sig[type_id]"
+              value={@sig_form["type_id"]}
+              type="number"
+              min="1"
+              step="1"
+              placeholder="Optional ESI type"
+              autocomplete="off"
+              class="input input-bordered input-sm w-full"
+            />
+          </label>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="form-control">
+            <span class="label label-text">Scanned at</span>
+            <input
+              name="sig[scanned_at]"
+              value={@sig_form["scanned_at"]}
+              type="datetime-local"
+              autocomplete="off"
+              class="input input-bordered input-sm w-full"
+            />
+            <span class="mt-1 text-xs opacity-60">Blank uses now.</span>
           </label>
           <label class="form-control">
             <span class="label label-text">Bookmark</span>

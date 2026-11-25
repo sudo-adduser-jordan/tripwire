@@ -84,6 +84,42 @@ defmodule Tripwire.SignaturesTest do
     end
   end
 
+  describe "form_from/1 and attrs_from_params/1" do
+    test "round-trips the type id and scan time" do
+      signature = %Tripwire.Mapping.Signature{
+        sig_id: "ABC-123",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (K162)",
+        type_id: 30_744,
+        life_length: 259_200,
+        bookmark: "Two",
+        inserted_at: ~N[2026-01-01 08:00:00]
+      }
+
+      form = Signatures.form_from(signature)
+      assert form["type_id"] == "30744"
+      assert form["scanned_at"] == "2026-01-01T08:00"
+
+      attrs = Signatures.attrs_from_params(form)
+      assert attrs.type_id == 30_744
+      assert attrs.inserted_at == ~N[2026-01-01 08:00:00]
+      assert attrs.bookmark == "Two"
+    end
+
+    test "keeps a blank scan time out of the attrs so inserts keep the current time" do
+      attrs = Signatures.attrs_from_params(Signatures.default_form())
+      refute Map.has_key?(attrs, :inserted_at)
+      assert attrs.type_id == nil
+    end
+
+    test "ignores an invalid scan time and type id" do
+      attrs = Signatures.attrs_from_params(%{"scanned_at" => "nope", "type_id" => "abc"})
+      refute Map.has_key?(attrs, :inserted_at)
+      assert attrs.type_id == nil
+    end
+  end
+
   describe "external_link/1" do
     test "returns an eve-survival URL for a known site" do
       assert Signatures.external_link("Core Garrison") ==

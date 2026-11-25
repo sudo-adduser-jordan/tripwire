@@ -1151,9 +1151,13 @@ defmodule Tripwire.Mapping do
            end),
         else: life_length
 
+    scanned_at =
+      attrs[:inserted_at] || attrs["inserted_at"] || (existing && existing.inserted_at) ||
+        DateTime.utc_now() |> DateTime.to_naive() |> NaiveDateTime.truncate(:second)
+
     expires_at =
       attrs[:expires_at] || attrs["expires_at"] ||
-        DateTime.add(DateTime.utc_now(), life_length, :second) |> DateTime.truncate(:second)
+        NaiveDateTime.add(scanned_at, life_length, :second)
 
     attrs |> Elixir.Map.put(:life_length, life_length) |> Elixir.Map.put(:expires_at, expires_at)
   end

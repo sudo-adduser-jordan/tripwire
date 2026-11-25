@@ -155,7 +155,9 @@ defmodule Tripwire.Signatures do
       "kind" => "signature",
       "site_type" => "unknown",
       "type_name" => "",
+      "type_id" => "",
       "life_length" => "259200",
+      "scanned_at" => "",
       "bookmark" => ""
     }
   end
@@ -166,7 +168,9 @@ defmodule Tripwire.Signatures do
       "kind" => signature.kind || "signature",
       "site_type" => signature.site_type || "unknown",
       "type_name" => signature.type_name || "",
+      "type_id" => format_type_id(signature.type_id),
       "life_length" => to_string(signature.life_length || 259_200),
+      "scanned_at" => format_scanned_at(signature.inserted_at),
       "bookmark" => signature.bookmark || ""
     }
   end
@@ -179,10 +183,53 @@ defmodule Tripwire.Signatures do
       kind: params["kind"] || "signature",
       site_type: infer_site_type(params["site_type"] || "unknown", type_name),
       type_name: type_name,
+      type_id: parse_type_id(params["type_id"]),
       bookmark: trim_or_nil(params["bookmark"]),
       life_length: parse_life_length(params["life_length"])
     }
+    |> put_scanned_at(params["scanned_at"])
   end
+
+  def parse_scanned_at(value) when is_binary(value) do
+    value = String.trim(value)
+    value = if byte_size(value) == 16, do: value <> ":00", else: value
+
+    case NaiveDateTime.from_iso8601(value) do
+      {:ok, naive} -> NaiveDateTime.truncate(naive, :second)
+      _ -> nil
+    end
+  end
+
+  def parse_scanned_at(_value), do: nil
+
+  defp put_scanned_at(attrs, value) do
+    case parse_scanned_at(value) do
+      nil -> attrs
+      scanned_at -> Elixir.Map.put(attrs, :inserted_at, scanned_at)
+    end
+  end
+
+  defp format_type_id(type_id) when is_integer(type_id) and type_id > 0,
+    do: Integer.to_string(type_id)
+
+  defp format_type_id(_type_id), do: ""
+
+  defp format_scanned_at(%NaiveDateTime{} = scanned_at) do
+    Calendar.strftime(scanned_at, "%Y-%m-%dT%H:%M")
+  end
+
+  defp format_scanned_at(_scanned_at), do: ""
+
+  defp parse_type_id(value) when is_integer(value) and value > 0, do: value
+
+  defp parse_type_id(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {type_id, ""} when type_id > 0 -> type_id
+      _ -> nil
+    end
+  end
+
+  defp parse_type_id(_value), do: nil
 
   defp trim_or_nil(value) when is_binary(value) do
     case String.trim(value) do
