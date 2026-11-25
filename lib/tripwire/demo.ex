@@ -15,6 +15,91 @@ defmodule Tripwire.Demo do
   @ship_name "Cenotaph"
   @ship_type_id 85_086
   @home_alias "Home"
+  @mate_corporation_id 98_500_001
+  @mate_alliance_id 99_000_001
+
+  @mates [
+    %{
+      name: "Vexa Dural",
+      eve_id: 9_500_001,
+      system_alias: "Home",
+      ship_name: "Hollow Point",
+      ship_type_name: "Loki",
+      ship_type_id: 29_990
+    },
+    %{
+      name: "Korrin Vale",
+      eve_id: 9_500_002,
+      system_alias: "Home",
+      ship_name: "Pale Horizon",
+      ship_type_name: "Tengu",
+      ship_type_id: 29_984
+    },
+    %{
+      name: "Nyx Ardent",
+      eve_id: 9_500_003,
+      system_alias: "Home",
+      ship_name: "Quiet Hand",
+      ship_type_name: "Astero",
+      ship_type_id: 33_468
+    },
+    %{
+      name: "Sable Fenn",
+      eve_id: 9_500_004,
+      system_name: "Jita",
+      ship_name: "Long Odds",
+      ship_type_name: "Stratios",
+      ship_type_id: 33_470
+    },
+    %{
+      name: "Orm Kestrel",
+      eve_id: 9_500_005,
+      system_name: "Jita",
+      ship_name: "No Wake",
+      ship_type_name: "Buzzard",
+      ship_type_id: 11_196
+    },
+    %{
+      name: "Rhea Talvan",
+      eve_id: 9_500_006,
+      system_name: "Amarr",
+      ship_name: "Cold Iron",
+      ship_type_name: "Legion",
+      ship_type_id: 29_986
+    },
+    %{
+      name: "Jax Corvane",
+      eve_id: 9_500_007,
+      system_name: "Dodixie",
+      ship_name: "Dust Chaser",
+      ship_type_name: "Proteus",
+      ship_type_id: 29_988
+    },
+    %{
+      name: "Ilya Stroud",
+      eve_id: 9_500_008,
+      system_name: "Rens",
+      ship_name: "Short Fuse",
+      ship_type_name: "Manticore",
+      ship_type_id: 12_032
+    },
+    %{
+      name: "Pell Mercer",
+      eve_id: 9_500_009,
+      system_name: "J150323",
+      ship_name: "Hard Lesson",
+      ship_type_name: "Sabre",
+      ship_type_id: 22_456
+    },
+    %{
+      name: "Wren Sato",
+      eve_id: 9_500_010,
+      system_name: "J150334",
+      ship_name: "Good Company",
+      ship_type_name: "Porpoise",
+      ship_type_id: 42_244
+    }
+  ]
 
   def character_eve_id, do: @character_eve_id
 
@@ -214,29 +299,96 @@ defmodule Tripwire.Demo do
     end)
   end
 
-  def occupants(%State{} = state) do
-    character = state.character
-    home = Enum.find(state.systems, &(&1.alias == @home_alias))
-
-    if character && character.character_on_chain && state.tracking? && home do
-      ship? = character.ship_on_chain
-
-      [
-        %{
-          character_name: character.name,
-          eve_id: character.eve_id,
-          corporation_id: character.corporation_id,
-          alliance_id: character.alliance_id,
-          solar_system_id: home.solar_system_id,
-          system_id: home.id,
-          system_name: home.name,
-          ship_name: if(ship?, do: @ship_name),
-          ship_type_id: if(ship?, do: @ship_type_id)
-        }
-      ]
+  def occupants(%State{} = state, map_id) do
+    if state.tracking? do
+      demo_occupant(state, map_id) ++ Enum.flat_map(@mates, &mate_occupant(state, map_id, &1))
     else
       []
     end
+  end
+
+  defp demo_occupant(%State{character: %Character{} = character} = state, map_id) do
+    case character.character_on_chain && system_by_alias(state, map_id, @home_alias) do
+      %MapSystem{} = home ->
+        ship? = character.ship_on_chain
+
+        [
+          presence(
+            character.name,
+            character.eve_id,
+            character.corporation_id,
+            character.alliance_id,
+            home,
+            if(ship?, do: @ship_name),
+            nil,
+            if(ship?, do: @ship_type_id)
+          )
+        ]
+
+      _ ->
+        []
+    end
+  end
+
+  defp demo_occupant(%State{}, _map_id), do: []
+
+  defp mate_occupant(state, map_id, mate) do
+    case mate_system(state, map_id, mate) do
+      %MapSystem{} = system ->
+        [
+          presence(
+            mate.name,
+            mate.eve_id,
+            @mate_corporation_id,
+            @mate_alliance_id,
+            system,
+            mate.ship_name,
+            mate.ship_type_name,
+            mate.ship_type_id
+          )
+        ]
+
+      nil ->
+        []
+    end
+  end
+
+  defp mate_system(state, map_id, %{system_alias: alias_name}),
+    do: system_by_alias(state, map_id, alias_name)
+
+  defp mate_system(state, map_id, %{system_name: name}),
+    do: system_by_name(state, map_id, name)
+
+  defp presence(
+         name,
+         eve_id,
+         corporation_id,
+         alliance_id,
+         system,
+         ship_name,
+         ship_type_name,
+         ship_type_id
+       ) do
+    %{
+      character_name: name,
+      eve_id: eve_id,
+      corporation_id: corporation_id,
+      alliance_id: alliance_id,
+      solar_system_id: system.solar_system_id,
+      system_id: system.id,
+      system_name: system.name,
+      ship_name: ship_name,
+      ship_type_name: ship_type_name,
+      ship_type_id: ship_type_id
+    }
+  end
+
+  defp system_by_alias(%State{} = state, map_id, alias_name) do
+    Enum.find(state.systems, &(&1.map_id == map_id and &1.alias == alias_name))
+  end
+
+  defp system_by_name(%State{} = state, map_id, name) do
+    Enum.find(state.systems, &(&1.map_id == map_id and &1.name == name))
   end
 
   def set_tracking(%State{} = state, tracking?),

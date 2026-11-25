@@ -92,7 +92,8 @@ defmodule Tripwire.Demo.Fixture do
     {19, 23, "K162", "stable", "stable"},
     {21, 24, "K162", "stable", "stable"},
     {23, 25, "N062", "stable", "stable"},
-    {24, 26, "B274", "stable", "stable"}
+    {24, 26, "B274", "stable", "stable"},
+    {4, 15, "B520", "stable", "stable"}
   ]
 
   @signatures %{
@@ -222,6 +223,12 @@ defmodule Tripwire.Demo.Fixture do
         kind: "signature",
         site_type: "wormhole",
         type_name: "Unstable Wormhole (F216)"
+      },
+      %{
+        sig_id: "LPQ-701",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (B520)"
       },
       %{sig_id: "HIJ-456", kind: "signature", site_type: "data", type_name: "Central Data Site"},
       %{
@@ -398,6 +405,12 @@ defmodule Tripwire.Demo.Fixture do
         kind: "signature",
         site_type: "wormhole",
         type_name: "Unstable Wormhole (B041)"
+      },
+      %{
+        sig_id: "LPQ-702",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (B520)"
       }
     ],
     16 => [

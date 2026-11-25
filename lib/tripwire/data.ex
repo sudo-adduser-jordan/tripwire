@@ -71,7 +71,7 @@ defmodule Tripwire.Data do
     do: Demo.wormhole_link_target(state, mask_id, solar, chain)
 
   def occupants(:db, map_id, mask), do: db_occupants(map_id, mask)
-  def occupants(%State{} = state, _map_id, _mask), do: Demo.occupants(state)
+  def occupants(%State{} = state, map_id, _mask), do: Demo.occupants(state, map_id)
 
   defp db_occupants(map_id, mask) do
     map_id

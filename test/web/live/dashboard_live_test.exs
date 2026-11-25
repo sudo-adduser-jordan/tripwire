@@ -2,6 +2,7 @@ defmodule TripwireWeb.DashboardLiveTest do
   use TripwireWeb.ConnCase, async: false
 
   alias Tripwire.Accounts
+  alias Tripwire.Demo
   alias Tripwire.Layouts
   alias Tripwire.Mapping
   alias Tripwire.Masks
@@ -130,6 +131,38 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert map_html =~ "https://images.evetech.net/types/85086/render?size=64"
     refute map_html =~ "<title>Demo User"
     assert has_element?(view, "#chain-map foreignobject", "Demo User - Cenotaph")
+  end
+
+  test "the demo map stacks corp mates at home and the trade hubs", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    assert has_element?(view, "#chain-map foreignobject", "Demo User - Cenotaph")
+    assert has_element?(view, "#chain-map foreignobject", "Vexa Dural - Loki")
+    assert has_element?(view, "#chain-map foreignobject", "Korrin Vale - Tengu")
+    assert has_element?(view, "#chain-map foreignobject", "Nyx Ardent - Astero")
+    assert has_element?(view, "#chain-map foreignobject", "Sable Fenn - Stratios")
+    assert has_element?(view, "#chain-map foreignobject", "Orm Kestrel - Buzzard")
+    assert has_element?(view, "#chain-map foreignobject", "Rhea Talvan - Legion")
+    assert has_element?(view, "#chain-map foreignobject", "Jax Corvane - Proteus")
+    assert has_element?(view, "#chain-map foreignobject", "Ilya Stroud - Manticore")
+    assert has_element?(view, "#chain-map foreignobject", "Pell Mercer - Sabre")
+    assert has_element?(view, "#chain-map foreignobject", "Wren Sato - Porpoise")
+  end
+
+  test "the demo map hints the closing loop edge without drawing it", %{conn: conn} do
+    state = Demo.fixture()
+    map = hd(state.maps)
+    connections = Demo.list_connections_with_endpoints(state, map.id)
+    cycle = Mapping.cycle_connection_ids(connections)
+
+    {closing, from, to} =
+      Enum.find(connections, fn {conn, _from, _to} -> MapSet.member?(cycle, conn.id) end)
+
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    refute has_element?(view, "#connection-#{closing.id}")
+    assert has_element?(view, "#node-#{from.id} rect[stroke-dasharray='6 4']")
+    assert has_element?(view, "#node-#{to.id} rect[stroke-dasharray='6 4']")
   end
 
   test "several characters in one system share the default badge and list both in the tooltip", %{
