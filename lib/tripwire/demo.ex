@@ -127,7 +127,9 @@ defmodule Tripwire.Demo do
     |> Enum.sort_by(& &1.sig_id)
   end
 
-  def get_signature(%State{} = state, id), do: Enum.find(state.signatures, &(&1.id == id))
+  def get_signature(%State{} = state, id) do
+    Enum.find(state.signatures, &(to_string(&1.id) == to_string(id)))
+  end
 
   def get_signature!(%State{} = state, id) do
     get_signature(state, id) || raise ArgumentError, "signature not found"

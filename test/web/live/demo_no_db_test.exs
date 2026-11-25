@@ -39,6 +39,48 @@ defmodule TripwireWeb.DemoNoDbTest do
 
     render_click(view, "toggle-favorite", %{})
 
+    view
+    |> element("#chain-map text[phx-click='open-system']", "Home")
+    |> render_click()
+
+    view
+    |> element("#sys-modal .modal-backdrop button[phx-click='close-sys-modal']")
+    |> render_click()
+
+    view
+    |> element("#signatures button.font-mono[title='Edit signature']", "ABC-123")
+    |> render_click()
+
+    assert render(view) =~ "Edit Signature"
+
+    view
+    |> element("#sig-modal form[phx-submit='save-signature']")
+    |> render_submit(%{
+      "sig" => %{
+        "sig_id" => "ABC-123",
+        "kind" => "signature",
+        "site_type" => "wormhole",
+        "type_name" => "Unstable Wormhole (O477)",
+        "type_id" => "30744",
+        "life_length" => "259200",
+        "scanned_at" => "2026-01-01T08:00",
+        "bookmark" => "Demo"
+      }
+    })
+
+    refute render(view) =~ "sig-modal"
+
+    view
+    |> element("#chain-map text[phx-click='open-system']", "Home")
+    |> render_click()
+
+    view
+    |> element("#sys-modal form[phx-submit='update-system']")
+    |> render_submit(%{"system" => %{"name" => "J150321", "alias" => "Home Base"}})
+
+    refute render(view) =~ "sys-modal"
+    assert render(view) =~ "Home Base"
+
     view |> element("#newTab") |> render_click()
     view |> element("#map-edit") |> render_click()
     view |> element("#map-modal #delete-map") |> render_click()
