@@ -3023,6 +3023,12 @@ defmodule TripwireWeb.DashboardLiveTest do
     conn: conn,
     character: character
   } do
+    {:ok, character} =
+      Accounts.update_character(character, %{
+        corporation_id: 98_000_045,
+        corporation_name: "Staying Corp"
+      })
+
     {:ok, other} =
       Accounts.upsert_character(%{
         eve_id: 43_500,

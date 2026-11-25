@@ -153,6 +153,30 @@ defmodule Tripwire.MasksTest do
     assert id == mask.id
   end
 
+  test "prune_orphan_masks/0 skips while any character corporation is unknown" do
+    {:ok, known} =
+      Accounts.upsert_character(%{
+        eve_id: 10,
+        name: "Known Corp Pilot",
+        corporation_id: 98_000_030
+      })
+
+    {:ok, unknown} = Accounts.upsert_character(%{eve_id: 11, name: "Unsynced Pilot"})
+    {:ok, mask} = Masks.ensure_corporation_mask(known)
+
+    {:ok, alliance} =
+      Masks.create_mask(%{name: "Orphan Alliance", kind: "alliance", eve_owner_id: 99_000_030})
+
+    assert Masks.prune_orphan_masks() == []
+    assert Enum.any?(Masks.list_masks(), &(&1.id == mask.id))
+    assert Enum.any?(Masks.list_masks(), &(&1.id == alliance.id))
+
+    {:ok, _} = Accounts.update_character(unknown, %{corporation_id: 98_000_031})
+
+    assert Enum.map(Masks.prune_orphan_masks(), & &1.id) == [alliance.id]
+    assert Enum.any?(Masks.list_masks(), &(&1.id == mask.id))
+  end
+
   defp signature_changeset(system, attrs) do
     Mapping.Signature.changeset(
       %Mapping.Signature{},
