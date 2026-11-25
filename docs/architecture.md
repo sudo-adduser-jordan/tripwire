@@ -70,25 +70,24 @@ flowchart LR
 ```mermaid
 %%{init: {"theme": "base", "flowchart": {"curve": "basis", "nodeSpacing": 60, "rankSpacing": 100, "wrappingWidth": 200}, "themeVariables": {"fontFamily": "sans-serif", "lineColor": "#1e1e1e", "primaryTextColor": "#1e1e1e"}}}%%
 flowchart TD
-  presentation["<b>Presentation</b><br/>38 files"]:::blue
+  presentation["<b>Presentation</b><br/>36 files"]:::blue
   tooling["<b>Tooling</b><br/>3 files"]:::gray
   data_access["<b>Data Access</b><br/>1 file"]:::rose
   demo["<b>Demo</b><br/>3 files"]:::violet
   background["<b>Background</b><br/>4 files"]:::orange
-  contexts["<b>Contexts</b><br/>17 files"]:::cyan
+  contexts["<b>Contexts</b><br/>16 files"]:::cyan
   persistence["<b>Persistence</b><br/>15 files"]:::yellow
-  integrations["<b>Integrations</b><br/>9 files"]:::green
+  integrations["<b>Integrations</b><br/>8 files"]:::green
   presentation -->|2| data_access
   presentation -->|2| demo
   presentation -->|36| contexts
-  presentation -->|4| persistence
-  presentation -->|10| integrations
+  presentation -->|3| persistence
+  presentation -->|9| integrations
   tooling -->|1| contexts
   data_access -->|2| demo
   data_access -->|5| contexts
-  data_access -->|3| persistence
   demo -->|7| contexts
-  demo -->|17| persistence
+  demo -->|15| persistence
   background -.->|2| presentation
   background -->|6| contexts
   background -->|3| persistence
@@ -112,14 +111,14 @@ flowchart TD
 
 | Layer | Files | Paths |
 |---|---|---|
-| Presentation | 38 | `web/` |
+| Presentation | 36 | `web/` |
 | Tooling | 3 | `lib/mix/` |
 | Data Access | 1 | `lib/tripwire/data.ex` |
 | Demo | 3 | `lib/tripwire/demo.ex`, `lib/tripwire/demo/` |
 | Background | 4 | `lib/application.ex`, `lib/tripwire/sync_server.ex`, `lib/tripwire/tracking/poller.ex`, `lib/tripwire/tracking/poller_supervisor.ex` |
-| Contexts | 17 | `lib/` |
+| Contexts | 16 | `lib/` |
 | Persistence | 15 | `lib/repo.ex`, `lib/tripwire/ecto_types/` |
-| Integrations | 9 | `lib/mailer.ex`, `lib/tripwire/esi.ex`, `lib/tripwire/esi/`, `lib/tripwire/notifier.ex`, `lib/tripwire/sso.ex`, `lib/tripwire/systems/catalog.ex`, `lib/tripwire/systems/gates.ex`, `lib/tripwire/vault.ex`, `lib/tripwire/zkill.ex` |
+| Integrations | 8 | `lib/mailer.ex`, `lib/tripwire/esi.ex`, `lib/tripwire/esi/`, `lib/tripwire/sso.ex`, `lib/tripwire/systems/catalog.ex`, `lib/tripwire/systems/gates.ex`, `lib/tripwire/vault.ex`, `lib/tripwire/zkill.ex` |
 
 ## External services
 
@@ -127,7 +126,6 @@ flowchart TD
 - **EVE ESI**: `Tripwire.ESI` location, ship, online, corporation and alliance endpoints
 - **zKillboard**: `Tripwire.ZKill` system activity statistics
 - **SDE archive**: `priv/sde` JSONL zip read into `Systems.Catalog` / `Systems.Gates` ETS tables
-- **Discord webhook**: `Tripwire.Notifier`
 - **SMTP**: `Tripwire.Mailer` through Swoosh
 - **EVE image CDN**: `Tripwire.EveImages` portrait, render and logo URLs
 

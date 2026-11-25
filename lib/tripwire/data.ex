@@ -35,9 +35,6 @@ defmodule Tripwire.Data do
   def list_connections_with_endpoints(%State{} = state, map_id),
     do: Demo.list_connections_with_endpoints(state, map_id)
 
-  def get_connection(:db, id), do: Mapping.get_connection(id)
-  def get_connection(%State{} = state, id), do: Demo.get_connection(state, id)
-
   def list_signatures(:db, system_id), do: Mapping.list_signatures(system_id)
   def list_signatures(%State{} = state, system_id), do: Demo.list_signatures(state, system_id)
 
@@ -57,15 +54,6 @@ defmodule Tripwire.Data do
 
   def get_comment!(:db, id), do: Mapping.get_comment!(id)
   def get_comment!(%State{} = state, id), do: Demo.get_comment!(state, id)
-
-  def list_flares(:db, system_id), do: Mapping.list_flares(system_id)
-  def list_flares(%State{} = state, system_id), do: Demo.list_flares(state, system_id)
-
-  def get_flare(:db, id), do: Tripwire.Repo.get(Tripwire.Mapping.Flare, id)
-  def get_flare(%State{} = state, id), do: Demo.get_flare(state, id)
-
-  def get_system_stat(:db, system_id), do: Mapping.get_system_stat(system_id)
-  def get_system_stat(%State{} = state, system_id), do: Demo.get_system_stat(state, system_id)
 
   def list_system_stats(:db, map_id), do: Mapping.list_system_stats(map_id)
   def list_system_stats(%State{} = state, map_id), do: Demo.list_system_stats(state, map_id)
@@ -215,19 +203,6 @@ defmodule Tripwire.Data do
   def upsert_connection(%State{} = state, map_id, a, b, attrs),
     do: Demo.upsert_connection(state, map_id, a, b, attrs)
 
-  def update_connection(:db, conn, attrs), do: {Mapping.update_connection(conn, attrs), :db}
-
-  def update_connection(%State{} = state, conn, attrs),
-    do: Demo.update_connection(state, conn, attrs)
-
-  def delete_connection(:db, conn), do: {Mapping.delete_connection(conn), :db}
-  def delete_connection(%State{} = state, conn), do: Demo.delete_connection(state, conn)
-
-  def sync_connection_life(:db, conn), do: {Mapping.sync_connection_life(conn), :db}
-
-  def sync_connection_life(%State{} = state, conn),
-    do: Demo.sync_connection_life(state, conn)
-
   def sync_signature_to_connections(:db, map, system, old_code, new_code),
     do: {Mapping.sync_signature_to_connections(map, system, old_code, new_code), :db}
 
@@ -281,25 +256,4 @@ defmodule Tripwire.Data do
 
   def delete_comment(%State{} = state, comment, character),
     do: Demo.delete_comment(state, comment, character)
-
-  def move_comment(:db, comment, to_system_id, character),
-    do: {Mapping.move_comment(comment, to_system_id, character), :db}
-
-  def move_comment(%State{} = state, comment, to_system_id, character),
-    do: Demo.move_comment(state, comment, to_system_id, character)
-
-  def create_flare(:db, system, attrs, character, mask_id),
-    do: {Mapping.create_flare(system, attrs, character, mask_id), :db}
-
-  def create_flare(%State{} = state, system, attrs, character, mask_id),
-    do: Demo.create_flare(state, system, attrs, character, mask_id)
-
-  def delete_flare(:db, flare), do: {Mapping.delete_flare(flare), :db}
-  def delete_flare(%State{} = state, flare), do: Demo.delete_flare(state, flare)
-
-  def log_connection_jump(:db, conn, name, to_system_id, ship),
-    do: {Mapping.log_connection_jump(conn, name, to_system_id, ship), :db}
-
-  def log_connection_jump(%State{} = state, conn, name, to_system_id, ship),
-    do: Demo.log_connection_jump(state, conn, name, to_system_id, ship)
 end

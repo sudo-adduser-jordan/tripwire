@@ -92,8 +92,6 @@ defmodule TripwireWeb.ApiController do
   end
 
   defp wormhole_json(conn, from, to) do
-    jumps = Mapping.list_connection_jumps(conn.id)
-
     %{
       id: conn.id,
       from: from.name,
@@ -101,9 +99,7 @@ defmodule TripwireWeb.ApiController do
       type: conn.hole_type,
       mass: conn.mass_status,
       time: conn.time_status,
-      ship_size: conn.ship_size,
-      jumps:
-        Enum.map(jumps, &%{character: &1.character_name, ship: &1.ship_type, at: &1.inserted_at})
+      ship_size: conn.ship_size
     }
   end
 

@@ -100,11 +100,6 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     {:noreply, socket}
   end
 
-  def handle_event("open-connection", %{"id" => id}, socket) do
-    send(self(), {:open_connection, String.to_integer(id)})
-    {:noreply, socket}
-  end
-
   def handle_event("new-map", _params, socket) do
     send(self(), {:new_map})
     {:noreply, socket}

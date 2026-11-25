@@ -1415,41 +1415,6 @@ defmodule Tripwire.Mapping do
     end
   end
 
-  def list_flares(system_id) do
-    Repo.all(
-      from(f in Tripwire.Mapping.Flare,
-        where: f.map_system_id == ^system_id,
-        order_by: [desc: f.id],
-        preload: [:created_by]
-      )
-    )
-  end
-
-  def create_flare(%MapSystem{} = system, attrs, character \\ nil, mask_id \\ nil) do
-    character_id = if is_struct(character, Character), do: character.id, else: nil
-    life_length = attrs[:life_length] || attrs["life_length"] || 3600
-
-    attrs =
-      attrs
-      |> Elixir.Map.put(:life_length, life_length)
-      |> Elixir.Map.put(
-        :expires_at,
-        DateTime.add(DateTime.utc_now(), life_length, :second) |> DateTime.truncate(:second)
-      )
-
-    %Tripwire.Mapping.Flare{}
-    |> Tripwire.Mapping.Flare.changeset(
-      merge_attrs(attrs, %{
-        map_system_id: system.id,
-        created_by_id: character_id,
-        mask_id: mask_id
-      })
-    )
-    |> Repo.insert()
-  end
-
-  def delete_flare(%Tripwire.Mapping.Flare{} = flare), do: Repo.delete(flare)
-
   def prune_expired_flares(now \\ DateTime.utc_now()) do
     {count, _} =
       Repo.delete_all(
@@ -1499,32 +1464,6 @@ defmodule Tripwire.Mapping do
           recorded_at: DateTime.utc_now() |> DateTime.truncate(:second)
         })
     end
-  end
-
-  def log_connection_jump(
-        %MapConnection{} = connection,
-        character_name,
-        to_system_id \\ nil,
-        ship_type \\ nil
-      ) do
-    %Tripwire.Mapping.ConnectionJump{}
-    |> Tripwire.Mapping.ConnectionJump.changeset(%{
-      map_connection_id: connection.id,
-      character_name: character_name,
-      to_system_id: to_system_id,
-      ship_type: ship_type
-    })
-    |> Repo.insert()
-  end
-
-  def list_connection_jumps(connection_id) do
-    Repo.all(
-      from(j in Tripwire.Mapping.ConnectionJump,
-        where: j.map_connection_id == ^connection_id,
-        order_by: [desc: j.id],
-        limit: 50
-      )
-    )
   end
 
   def map_statistics(map_id) do

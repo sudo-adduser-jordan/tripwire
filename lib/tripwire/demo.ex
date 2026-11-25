@@ -4,7 +4,7 @@ defmodule Tripwire.Demo do
   alias Tripwire.Layouts
   alias Tripwire.Layouts.Layout
   alias Tripwire.Mapping
-  alias Tripwire.Mapping.{Comment, Flare, MapConnection, MapSystem, Signature}
+  alias Tripwire.Mapping.{Comment, MapConnection, MapSystem, Signature}
   alias Tripwire.Mapping.Links
   alias Tripwire.Mapping.Map, as: ChainMap
   alias Tripwire.Settings
@@ -104,20 +104,6 @@ defmodule Tripwire.Demo do
     end)
   end
 
-  def get_connection(%State{} = state, id) do
-    case Enum.find(state.connections, &(&1.id == id)) do
-      nil ->
-        nil
-
-      conn ->
-        %{
-          conn
-          | from_system: get_system(state, conn.from_system_id),
-            to_system: get_system(state, conn.to_system_id)
-        }
-    end
-  end
-
   def connection_between(%State{} = state, map_id, from_id, to_id) do
     Enum.find(state.connections, fn conn ->
       conn.map_id == map_id and
@@ -157,18 +143,6 @@ defmodule Tripwire.Demo do
 
   def get_comment!(%State{} = state, id) do
     get_comment(state, id) || raise ArgumentError, "comment not found"
-  end
-
-  def list_flares(%State{} = state, system_id) do
-    state.flares
-    |> Enum.filter(&(&1.map_system_id == system_id))
-    |> Enum.sort_by(& &1.id, :desc)
-  end
-
-  def get_flare(%State{} = state, id), do: Enum.find(state.flares, &(&1.id == id))
-
-  def get_system_stat(%State{} = state, system_id) do
-    Enum.find(state.stats, &(&1.map_system_id == system_id))
   end
 
   def list_system_stats(%State{} = state, map_id) do
@@ -467,7 +441,6 @@ defmodule Tripwire.Demo do
         connections: Enum.reject(state.connections, &MapSet.member?(connection_ids, &1.id)),
         signatures: Enum.reject(state.signatures, &MapSet.member?(system_ids, &1.map_system_id)),
         comments: Enum.reject(state.comments, &MapSet.member?(system_ids, &1.map_system_id)),
-        flares: Enum.reject(state.flares, &MapSet.member?(system_ids, &1.map_system_id)),
         stats: Enum.reject(state.stats, &MapSet.member?(system_ids, &1.map_system_id))
     }
     |> then(&{{:ok, map}, &1})
@@ -557,7 +530,6 @@ defmodule Tripwire.Demo do
           ),
         signatures: Enum.reject(state.signatures, &(&1.map_system_id == system.id)),
         comments: Enum.reject(state.comments, &(&1.map_system_id == system.id)),
-        flares: Enum.reject(state.flares, &(&1.map_system_id == system.id)),
         stats: Enum.reject(state.stats, &(&1.map_system_id == system.id))
     }
 
@@ -610,62 +582,6 @@ defmodule Tripwire.Demo do
           {:error, changeset} ->
             {{:error, changeset}, state}
         end
-    end
-  end
-
-  def update_connection(%State{} = state, %MapConnection{} = conn, attrs) do
-    case Ecto.Changeset.apply_action(MapConnection.changeset(conn, attrs), :update) do
-      {:ok, updated} ->
-        updated = %{updated | updated_at: now()}
-
-        updated = %{
-          updated
-          | from_system: get_system(state, updated.from_system_id),
-            to_system: get_system(state, updated.to_system_id)
-        }
-
-        {{:ok, updated}, replace_connection(state, updated)}
-
-      {:error, changeset} ->
-        {{:error, changeset}, state}
-    end
-  end
-
-  def delete_connection(%State{} = state, %MapConnection{} = conn) do
-    {{:ok, conn}, %{state | connections: Enum.reject(state.connections, &(&1.id == conn.id))}}
-  end
-
-  def sync_connection_life(%State{} = state, %MapConnection{} = conn) do
-    with code when is_binary(code) and code != "" <- conn.hole_type,
-         :update <- time_status_action(conn.time_status) do
-      ids = MapSet.new([conn.from_system_id, conn.to_system_id])
-      now = now()
-
-      signatures =
-        Enum.map(state.signatures, fn signature ->
-          if MapSet.member?(ids, signature.map_system_id) and signature.site_type == "wormhole" and
-               SigParser.wormhole_code(signature.type_name) == code do
-            expires_at =
-              case conn.time_status do
-                "critical" ->
-                  DateTime.add(now, 4 * 3600, :second)
-
-                "<1h" ->
-                  DateTime.add(now, 3600, :second)
-
-                _ ->
-                  DateTime.add(signature.inserted_at, signature.life_length || 259_200, :second)
-              end
-
-            %{signature | expires_at: expires_at, updated_at: now}
-          else
-            signature
-          end
-        end)
-
-      {{:ok, state}, %{state | signatures: signatures}}
-    else
-      _ -> {{:ok, state}, state}
     end
   end
 
@@ -860,69 +776,6 @@ defmodule Tripwire.Demo do
 
   def delete_comment(%State{} = state, %Comment{} = comment, _character \\ nil) do
     {{:ok, comment}, %{state | comments: Enum.reject(state.comments, &(&1.id == comment.id))}}
-  end
-
-  def move_comment(%State{} = state, %Comment{} = comment, to_system_id, _character \\ nil) do
-    case Ecto.Changeset.apply_action(
-           Comment.changeset(comment, %{map_system_id: to_system_id}),
-           :update
-         ) do
-      {:ok, updated} ->
-        updated = %{updated | updated_at: now()}
-        {{:ok, updated}, replace_comment(state, updated)}
-
-      {:error, changeset} ->
-        {{:error, changeset}, state}
-    end
-  end
-
-  def create_flare(
-        %State{} = state,
-        %MapSystem{} = system,
-        attrs,
-        character \\ nil,
-        mask_id \\ nil
-      ) do
-    character_id = if is_struct(character, Character), do: character.id, else: nil
-    life_length = attrs[:life_length] || attrs["life_length"] || 3600
-    now = now()
-
-    attrs =
-      attrs
-      |> normalize_attrs()
-      |> Map.merge(%{
-        life_length: life_length,
-        expires_at: DateTime.add(now, life_length, :second),
-        map_system_id: system.id,
-        created_by_id: character_id,
-        mask_id: mask_id || state.mask.id
-      })
-
-    case Ecto.Changeset.apply_action(Flare.changeset(%Flare{}, attrs), :insert) do
-      {:ok, flare} ->
-        {id, state} = State.take_id(state)
-
-        flare = %{
-          flare
-          | id: id,
-            created_by: if(is_struct(character, Character), do: character),
-            inserted_at: now,
-            updated_at: now
-        }
-
-        {{:ok, flare}, %{state | flares: state.flares ++ [flare]}}
-
-      {:error, changeset} ->
-        {{:error, changeset}, state}
-    end
-  end
-
-  def delete_flare(%State{} = state, %Flare{} = flare) do
-    {{:ok, flare}, %{state | flares: Enum.reject(state.flares, &(&1.id == flare.id))}}
-  end
-
-  def log_connection_jump(%State{} = state, _conn, _name, _to_system_id, _ship) do
-    {{:ok, state}, state}
   end
 
   defp build_signature(state, attrs, character) do
@@ -1362,11 +1215,6 @@ defmodule Tripwire.Demo do
       widgets: Layouts.normalize_widgets(layout.widgets)
     }
   end
-
-  defp time_status_action("<1h"), do: :update
-  defp time_status_action("critical"), do: :update
-  defp time_status_action("stable"), do: :update
-  defp time_status_action(_), do: :noop
 
   defp with_expires_at(attrs, existing \\ nil) do
     life_length =

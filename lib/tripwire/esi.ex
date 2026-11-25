@@ -40,26 +40,6 @@ defmodule Tripwire.ESI do
   def get_character_ship(character_id, access_token),
     do: authorized_get("/characters/#{character_id}/ship/", access_token)
 
-  def set_waypoint(solar_system_id, access_token, opts \\ []) do
-    clear = Keyword.get(opts, :clear, true)
-    first = Keyword.get(opts, :first, false)
-    query = "?add_to_beginning=#{first}&clear_other_waypoints=#{clear}"
-    authorized_post("/ui/autopilot/waypoint/#{query}", solar_system_id, access_token)
-  end
-
-  def open_window(target_id, access_token) do
-    authorized_post("/ui/openwindow/information/?target_id=#{target_id}", %{}, access_token)
-  end
-
-  def search_structures(query, access_token, opts \\ []) do
-    categories = Keyword.get(opts, :categories, "structure")
-
-    authorized_get(
-      "/search/?categories=#{categories}&search=#{URI.encode_www_form(query)}",
-      access_token
-    )
-  end
-
   def get_system_jumps, do: public_get("/universe/system_jumps/")
 
   def get_system_kills, do: public_get("/universe/system_kills/")
@@ -204,17 +184,6 @@ defmodule Tripwire.ESI do
       {:ok, %{status: 200} = response} -> {:ok, response.body}
       {:ok, %{status: 201} = response} -> {:ok, response.body}
       {:ok, %{status: 204}} -> {:ok, %{}}
-      {:ok, %{status: status, body: body}} -> {:error, {status, body}}
-      error -> error
-    end
-  end
-
-  defp authorized_post(path, body, access_token) do
-    case req(:post, @esi_base <> path,
-           headers: [{"authorization", "Bearer #{access_token}"}],
-           json: body
-         ) do
-      {:ok, %{status: status} = response} when status in [200, 201, 204] -> {:ok, response.body}
       {:ok, %{status: status, body: body}} -> {:error, {status, body}}
       error -> error
     end

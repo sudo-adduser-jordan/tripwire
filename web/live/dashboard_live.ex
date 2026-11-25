@@ -140,7 +140,6 @@ defmodule TripwireWeb.DashboardLive do
     socket
     |> assign(:current_system_name, presence.system_name)
     |> assign(:character_online, presence.online)
-    |> assign(:ship_type_id, presence.ship_type_id)
     |> assign(:presences, presences)
   end
 
@@ -160,7 +159,6 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:mask, mask)
     |> assign(:masks, [mask])
     |> assign(:admin_masks, [mask])
-    |> assign(:mask_members, %{mask.id => Demo.members(state, mask.id)})
     |> assign(:map, map)
     |> assign(:maps, Demo.list_maps_for_mask(state, mask.id))
     |> assign_topbar_defaults()
@@ -181,8 +179,6 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:stale_system_id, nil)
     |> assign(:settings_open, false)
     |> assign(:settings_tab, "account")
-    |> assign(:undo, [])
-    |> assign(:redo, [])
     |> assign(:claim_admin?, false)
     |> assign(:claim_admin_modal?, false)
     |> assign(:branding, nil)
@@ -270,30 +266,6 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply, toggle_favorite(socket)}
   end
 
-  def handle_info({:open_connection, conn_id}, socket) do
-    if socket.assigns[:map_locked] do
-      {:noreply, put_flash(socket, :error, "Map is locked")}
-    else
-      case Data.get_connection(data(socket), conn_id) do
-        nil ->
-          {:noreply, socket}
-
-        conn ->
-          {:noreply,
-           socket
-           |> assign(:conn_modal_open, true)
-           |> assign(:conn_edit_id, conn.id)
-           |> assign(:conn_errors, [])
-           |> assign(:conn_form, %{
-             "hole_type" => conn.hole_type || "",
-             "mass_status" => conn.mass_status || "stable",
-             "time_status" => conn.time_status || "stable",
-             "ship_size" => conn.ship_size || ""
-           })}
-      end
-    end
-  end
-
   def handle_info({:signatures_updated, system_id}, socket) do
     socket =
       if socket.assigns.selected_system_id == system_id do
@@ -322,31 +294,6 @@ defmodule TripwireWeb.DashboardLive do
       end
 
     {:noreply, socket}
-  end
-
-  def handle_info({:demo_add_signature, system_id, params}, socket) do
-    case Data.get_system(data(socket), system_id) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "Select a system first")}
-
-      system ->
-        case Data.create_signature(
-               data(socket),
-               system,
-               sig_attrs(params),
-               socket.assigns.character
-             ) do
-          {{:ok, _}, data} ->
-            {:noreply,
-             socket
-             |> put_data(data)
-             |> reload_signatures()
-             |> put_flash(:info, "Signature added")}
-
-          {{:error, changeset}, data} ->
-            {:noreply, socket |> put_data(data) |> flash_changeset_errors(changeset)}
-        end
-    end
   end
 
   def handle_info({:demo_delete_signature, id, _system_id}, socket) do
@@ -483,7 +430,6 @@ defmodule TripwireWeb.DashboardLive do
        data.current_system_name || socket.assigns.current_system_name
      )
      |> assign(:character_online, data.character_online)
-     |> assign(:ship_type_id, data.ship_type_id)
      |> assign(:presences, data.presences)
      |> assign(:topbar_now, data.now)
      |> refresh_occupants()}
@@ -1066,7 +1012,6 @@ defmodule TripwireWeb.DashboardLive do
       {:noreply,
        socket
        |> put_data(state)
-       |> assign(:mask_members, %{mask.id => Demo.members(state, mask.id)})
        |> put_flash(:info, "Added #{member.name} to #{mask.name}")}
     else
       false ->
@@ -1117,7 +1062,6 @@ defmodule TripwireWeb.DashboardLive do
       {:noreply,
        socket
        |> put_data(state)
-       |> assign(:mask_members, %{mask.id => Demo.members(state, mask.id)})
        |> put_flash(:info, "Removed #{member.name} from #{mask.name}")}
     else
       false ->
@@ -1274,31 +1218,6 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply, socket |> assign(:stale_ids, []) |> assign(:stale_system_id, nil)}
   end
 
-  def handle_event("add-signature", %{"sig" => params}, socket) do
-    case selected_system(socket) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "Select a system first")}
-
-      system ->
-        case Data.create_signature(
-               data(socket),
-               system,
-               sig_attrs(params),
-               socket.assigns.character
-             ) do
-          {{:ok, _sig}, data} ->
-            {:noreply,
-             socket
-             |> put_data(data)
-             |> reload_signatures()
-             |> put_flash(:info, "Signature added")}
-
-          {{:error, changeset}, data} ->
-            {:noreply, socket |> put_data(data) |> flash_changeset_errors(changeset)}
-        end
-    end
-  end
-
   def handle_event("open-add", _params, socket) do
     case selected_system(socket) do
       nil ->
@@ -1401,40 +1320,6 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
-  def handle_event("delete-signature", %{"id" => id}, socket) do
-    signature = Data.get_signature!(data(socket), id)
-
-    {{:ok, deleted}, data} =
-      Data.delete_signature(data(socket), signature, socket.assigns.character)
-
-    {:noreply,
-     socket
-     |> put_data(data)
-     |> reload_signatures()
-     |> push_undo({:delete, deleted})}
-  end
-
-  def handle_event("undo", _params, socket) do
-    case pop_undo(socket) do
-      {nil, socket} ->
-        {:noreply, socket}
-
-      {{op, inverse}, socket} ->
-        apply_inverse(op, inverse, socket)
-    end
-  end
-
-  def handle_event("redo", _params, socket) do
-    case redo_op(socket) do
-      {nil, socket} ->
-        {:noreply, socket}
-
-      {redo_item, socket} ->
-        socket = apply_redo(redo_item, socket)
-        {:noreply, socket}
-    end
-  end
-
   def handle_event("close-sys-modal", _params, socket) do
     {:noreply,
      socket
@@ -1506,89 +1391,6 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
-  def handle_event("open-connection", %{"id" => id}, socket) do
-    case Data.get_connection(data(socket), id) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "Connection not found")}
-
-      conn ->
-        {:noreply,
-         socket
-         |> assign(:conn_modal_open, true)
-         |> assign(:conn_edit_id, conn.id)
-         |> assign(:conn_errors, [])
-         |> assign(:conn_form, %{
-           "hole_type" => conn.hole_type || "",
-           "mass_status" => conn.mass_status || "stable",
-           "time_status" => conn.time_status || "stable",
-           "ship_size" => conn.ship_size || ""
-         })}
-    end
-  end
-
-  def handle_event("close-conn-modal", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:conn_modal_open, false)
-     |> assign(:conn_edit_id, nil)
-     |> assign(:conn_errors, [])}
-  end
-
-  def handle_event("save-connection", %{"conn" => params}, socket) do
-    case socket.assigns.conn_edit_id &&
-           Data.get_connection(data(socket), socket.assigns.conn_edit_id) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "No connection selected")}
-
-      conn ->
-        attrs = %{
-          hole_type: present(params["hole_type"]),
-          mass_status: params["mass_status"] || "stable",
-          time_status: params["time_status"] || "stable",
-          ship_size: present(params["ship_size"])
-        }
-
-        case Data.update_connection(data(socket), conn, attrs) do
-          {{:ok, updated}, data} ->
-            {_result, data} = Data.sync_connection_life(data, updated)
-            socket = put_data(socket, data)
-
-            {:noreply,
-             socket
-             |> assign(:conn_modal_open, false)
-             |> assign(:conn_edit_id, nil)
-             |> assign(
-               :connections,
-               Data.list_connections_with_endpoints(data(socket), socket.assigns.map.id)
-             )
-             |> put_flash(:info, "Connection updated")}
-
-          {{:error, changeset}, data} ->
-            {:noreply,
-             socket |> put_data(data) |> assign(:conn_errors, changeset_errors(changeset))}
-        end
-    end
-  end
-
-  def handle_event("delete-connection", %{"id" => id}, socket) do
-    case Data.get_connection(data(socket), id) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "Connection not found")}
-
-      conn ->
-        {{:ok, _}, data} = Data.delete_connection(data(socket), conn)
-        socket = put_data(socket, data)
-
-        {:noreply,
-         socket
-         |> assign(
-           :connections,
-           Data.list_connections_with_endpoints(data(socket), socket.assigns.map.id)
-         )
-         |> put_flash(:info, "Connection removed")}
-    end
-  end
-
   def handle_event("switch-character", %{"id" => id}, socket) do
     case Enum.find(socket.assigns.characters, &(to_string(&1.id) == to_string(id))) do
       nil ->
@@ -1644,8 +1446,6 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:system_suggestions, [])
          |> assign(:signatures, [])
          |> assign(:comments, [])
-         |> assign(:flares, [])
-         |> assign(:system_stat, nil)
          |> refresh_occupants()
          |> patch_to_preferred(chain_systems(socket, map))
          |> push_event("mask-switched", %{mask_id: mask.id})}
@@ -1766,115 +1566,8 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
-  def handle_event("set-waypoint", _params, socket) do
-    with %{solar_system_id: esi_id} <- selected_system_esi(socket),
-         {:ok, token} <- ESI.valid_access_token(socket.assigns.character) do
-      case ESI.set_waypoint(esi_id, token) do
-        {:ok, _} ->
-          {:noreply, put_flash(socket, :info, "Waypoint set")}
-
-        {:error, reason} ->
-          {:noreply, put_flash(socket, :error, "Waypoint failed: #{inspect(reason)}")}
-      end
-    else
-      nil -> {:noreply, put_flash(socket, :error, "Select a system first")}
-      {:error, _} -> {:noreply, put_flash(socket, :error, "ESI not available")}
-    end
-  end
-
   def handle_event("refresh-occupants", _params, socket) do
     {:noreply, refresh_occupants(socket)}
-  end
-
-  def handle_event("create-flare", %{"flare" => params}, socket) do
-    case selected_system(socket) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "Select a system first")}
-
-      system ->
-        attrs = %{
-          color: params["color"] || "red",
-          reason: present(params["reason"]),
-          life_length: parse_life_length(params["life_length"])
-        }
-
-        case Data.create_flare(
-               data(socket),
-               system,
-               attrs,
-               socket.assigns.character,
-               socket.assigns.mask && socket.assigns.mask.id
-             ) do
-          {{:ok, _}, data} ->
-            {:noreply,
-             socket
-             |> put_data(data)
-             |> assign(:flares, Data.list_flares(data(socket), system.id))
-             |> put_flash(:info, "Flare set")}
-
-          {{:error, changeset}, data} ->
-            {:noreply, socket |> put_data(data) |> flash_changeset_errors(changeset)}
-        end
-    end
-  end
-
-  def handle_event("delete-flare", %{"id" => id}, socket) do
-    flare = Data.get_flare(data(socket), String.to_integer(id))
-    {{:ok, _}, data} = Data.delete_flare(data(socket), flare)
-    system_id = socket.assigns.selected_system_id
-    socket = put_data(socket, data)
-
-    {:noreply,
-     assign(
-       socket,
-       :flares,
-       if(system_id, do: Data.list_flares(data(socket), system_id), else: [])
-     )}
-  end
-
-  def handle_event("move-comment", %{"id" => id}, socket) do
-    case {Data.get_comment!(data(socket), String.to_integer(id)), selected_system(socket)} do
-      {_comment, nil} ->
-        {:noreply, put_flash(socket, :error, "Select a destination system first")}
-
-      {comment, system} ->
-        case Data.move_comment(data(socket), comment, system.id, socket.assigns.character) do
-          {{:ok, _}, data} ->
-            {:noreply,
-             socket
-             |> put_data(data)
-             |> assign(:comments, Data.list_comments(data(socket), system.id))
-             |> put_flash(:info, "Note moved")}
-
-          {{:error, changeset}, data} ->
-            {:noreply, socket |> put_data(data) |> flash_changeset_errors(changeset)}
-        end
-    end
-  end
-
-  def handle_event("log-jump", %{"connection_id" => conn_id, "ship" => ship}, socket) do
-    case Data.get_connection(data(socket), conn_id) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "Connection not found")}
-
-      conn ->
-        name =
-          (socket.assigns.character && socket.assigns.character.name) ||
-            "Unknown"
-
-        {{:ok, _}, data} =
-          Data.log_connection_jump(
-            data(socket),
-            conn,
-            name,
-            socket.assigns.selected_system_id,
-            present(ship)
-          )
-
-        socket = put_data(socket, data)
-
-        {:noreply, put_flash(socket, :info, "Jump logged")}
-    end
   end
 
   defp admin?(%{assigns: %{character: %{is_admin: true}}}), do: true
@@ -2205,8 +1898,6 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:stale_system_id, nil)
     |> assign(:settings_open, false)
     |> assign(:settings_tab, "account")
-    |> assign(:undo, [])
-    |> assign(:redo, [])
     |> assign(:demo?, false)
     |> assign_claim_admin(character)
     |> assign(:branding, Accounts.branding())
@@ -2293,8 +1984,6 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:system_suggestions, [])
     |> assign(:signatures, [])
     |> assign(:comments, [])
-    |> assign(:flares, [])
-    |> assign(:system_stat, nil)
     |> patch_to_preferred(systems)
     |> refresh_occupants()
   end
@@ -2364,14 +2053,10 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:system_suggestions, [])
     |> assign(:signatures, [])
     |> assign(:comments, [])
-    |> assign(:flares, [])
-    |> assign(:system_stat, nil)
     |> assign(:system_info, nil)
     |> assign(:chart_data, empty_chart_data(settings[:chart_range] || "24h"))
     |> assign(:stale_ids, [])
     |> assign(:stale_system_id, nil)
-    |> assign(:undo, [])
-    |> assign(:redo, [])
     |> assign(:presences, %{})
     |> assign(:sys_form, %{"alias" => "", "sys_class" => "", "effect" => ""})
     |> assign_claim_admin(character)
@@ -2381,45 +2066,11 @@ defmodule TripwireWeb.DashboardLive do
     |> patch_to_preferred(chain_systems(socket, map))
   end
 
-  defp apply_inverse(:delete, signature, socket) do
-    case selected_system(socket) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "Select a system before undoing")}
-
-      system ->
-        {{:ok, restored}, data} =
-          Data.create_signature(
-            data(socket),
-            system,
-            %{
-              sig_id: signature.sig_id,
-              kind: signature.kind,
-              site_type: signature.site_type,
-              type_name: signature.type_name,
-              bookmark: signature.bookmark,
-              life_length: signature.life_length
-            },
-            socket.assigns.character
-          )
-
-        {:noreply,
-         socket
-         |> put_data(data)
-         |> reload_signatures()
-         |> push_redo({:delete, restored})}
-    end
-  end
-
   defp selected_system(%{assigns: %{selected_system_id: nil}}), do: nil
 
   defp selected_system(%{assigns: %{selected_system_id: id}} = socket) do
     Data.get_system(data(socket), id)
   end
-
-  defp selected_system_esi(%{assigns: %{selected_system_id: nil}}), do: nil
-
-  defp selected_system_esi(%{assigns: %{selected_system_id: id}} = socket),
-    do: Data.get_system(data(socket), id)
 
   defp selected_system_name(systems, id) do
     case Enum.find(systems, &(&1.id == id)) do
@@ -2442,14 +2093,10 @@ defmodule TripwireWeb.DashboardLive do
       |> assign(:system_suggestions, [])
       |> assign(:signatures, Data.list_signatures(data(socket), system_id))
       |> assign(:comments, Data.list_comments(data(socket), system_id))
-      |> assign(:flares, Data.list_flares(data(socket), system_id))
-      |> assign(:system_stat, Data.get_system_stat(data(socket), system_id))
       |> assign(:system_info, nil)
       |> assign(:chart_data, empty_chart_data(socket.assigns[:chart_range] || "24h"))
       |> assign(:stale_ids, [])
       |> assign(:stale_system_id, nil)
-      |> assign(:undo, [])
-      |> assign(:redo, [])
       |> assign(:sys_form, sys_form_for(socket.assigns.systems, system_id))
 
     schedule_system_detail(socket, chart_system)
@@ -2467,14 +2114,10 @@ defmodule TripwireWeb.DashboardLive do
           |> assign(:system_suggestions, [])
           |> assign(:signatures, [])
           |> assign(:comments, [])
-          |> assign(:flares, [])
-          |> assign(:system_stat, nil)
           |> assign(:system_info, nil)
           |> assign(:chart_data, empty_chart_data(socket.assigns[:chart_range] || "24h"))
           |> assign(:stale_ids, [])
           |> assign(:stale_system_id, nil)
-          |> assign(:undo, [])
-          |> assign(:redo, [])
           |> assign(:sys_form, %{"alias" => "", "sys_class" => "", "effect" => ""})
           |> schedule_system_detail(system)
 
@@ -3093,7 +2736,6 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:tq_players, nil)
     |> assign(:current_system_name, nil)
     |> assign(:character_online, nil)
-    |> assign(:ship_type_id, nil)
     |> assign(:presences, %{})
     |> assign(:topbar_now, DateTime.utc_now())
     |> assign(:grid_locked, true)
@@ -3120,22 +2762,11 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:map_scale, 100)
     |> assign(:map_background, nil)
     |> assign(:sso_configured?, false)
-    |> assign(:conn_modal_open, false)
-    |> assign(:conn_edit_id, nil)
-    |> assign(:conn_form, %{
-      "hole_type" => "",
-      "mass_status" => "stable",
-      "time_status" => "stable",
-      "ship_size" => ""
-    })
-    |> assign(:conn_errors, [])
     |> assign(:sys_form, %{"alias" => "", "sys_class" => "", "effect" => ""})
     |> assign(:sys_modal_open, false)
     |> assign(:sys_edit_id, nil)
     |> assign(:sys_errors, [])
     |> assign(:occupants, [])
-    |> assign(:flares, [])
-    |> assign(:system_stat, nil)
     |> assign(:system_info, nil)
     |> assign(:chart_range, "24h")
     |> assign(:chart_hidden, MapSet.new())
@@ -3339,8 +2970,6 @@ defmodule TripwireWeb.DashboardLive do
     end
   end
 
-  defp push_undo(socket, op), do: update(socket, :undo, &[op | &1])
-
   defp schedule_system_detail(socket, nil), do: socket
 
   defp schedule_system_detail(socket, system) do
@@ -3440,31 +3069,6 @@ defmodule TripwireWeb.DashboardLive do
       "npc_kills" => data.npc_kills,
       "hidden" => MapSet.to_list(hidden)
     }
-  end
-
-  defp pop_undo(socket) do
-    case socket.assigns.undo do
-      [top | rest] -> {top, assign(socket, :undo, rest)}
-      [] -> {nil, socket}
-    end
-  end
-
-  defp push_redo(socket, op), do: update(socket, :redo, &[op | &1])
-
-  defp redo_op(socket) do
-    case socket.assigns.redo do
-      [top | rest] -> {top, assign(socket, :redo, rest)}
-      [] -> {nil, socket}
-    end
-  end
-
-  defp apply_redo({:delete, signature}, socket) do
-    {{:ok, _}, data} = Data.delete_signature(data(socket), signature, socket.assigns.character)
-
-    socket
-    |> put_data(data)
-    |> reload_signatures()
-    |> update(:undo, &[{:delete, signature} | &1])
   end
 
   defp flash_changeset_errors(socket, changeset) do

@@ -6,7 +6,6 @@ defmodule Tripwire.Demo.State do
             connections: [],
             signatures: [],
             comments: [],
-            flares: [],
             stats: [],
             members: %{},
             settings: nil,

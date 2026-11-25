@@ -104,22 +104,6 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
 
   defp dest_name(system), do: system.alias || system.name
 
-  def handle_event("add-signature", %{"sig" => params}, %{assigns: %{demo?: true}} = socket) do
-    send(self(), {:demo_add_signature, socket.assigns.selected_system_id, params})
-    {:noreply, socket}
-  end
-
-  def handle_event("add-signature", %{"sig" => params}, socket) do
-    with system when not is_nil(system) <- selected_system(socket),
-         {:ok, _} <- Mapping.create_signature(system, sig_attrs(params), socket.assigns.character) do
-      send(self(), {:signatures_updated, system.id})
-      {:noreply, socket |> assign(:signatures, Mapping.list_signatures(system.id))}
-    else
-      nil -> {:noreply, put_flash(socket, :error, "Select a system first")}
-      {:error, changeset} -> {:noreply, put_flash(socket, :error, changeset_errors(changeset))}
-    end
-  end
-
   def handle_event("delete-signature", %{"id" => id}, %{assigns: %{demo?: true}} = socket) do
     case Enum.find(socket.assigns.signatures, &(to_string(&1.id) == to_string(id))) do
       nil ->
@@ -729,41 +713,5 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
     if dropped + linked + hidden > 0 do
       send(self(), {:systems_updated, system.map_id})
     end
-  end
-
-  defp sig_attrs(params) do
-    type_name = present(params["type_name"])
-
-    %{
-      sig_id: params["sig_id"],
-      kind: params["kind"] || "signature",
-      site_type: SigParser.infer_site_type(params["site_type"] || "unknown", type_name),
-      type_name: type_name,
-      bookmark: present(params["bookmark"]),
-      life_length: parse_life_length(params["life_length"])
-    }
-  end
-
-  defp parse_life_length(nil), do: 259_200
-  defp parse_life_length(""), do: 259_200
-  defp parse_life_length(value) when is_integer(value), do: value
-
-  defp parse_life_length(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {number, ""} -> number
-      _ -> 259_200
-    end
-  end
-
-  defp present(nil), do: nil
-  defp present(""), do: nil
-  defp present(value) when is_binary(value), do: String.trim(value) |> nullify()
-  defp present(value), do: value
-
-  defp nullify(""), do: nil
-  defp nullify(value), do: value
-
-  defp changeset_errors(changeset) do
-    changeset.errors |> Enum.map(fn {f, {m, _}} -> "#{f} #{m}" end) |> Enum.join(", ")
   end
 end
