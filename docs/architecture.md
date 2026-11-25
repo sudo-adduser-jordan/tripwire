@@ -71,19 +71,19 @@ flowchart LR
 %%{init: {"theme": "base", "flowchart": {"curve": "basis", "nodeSpacing": 60, "rankSpacing": 100, "wrappingWidth": 200}, "themeVariables": {"fontFamily": "sans-serif", "lineColor": "#1e1e1e", "primaryTextColor": "#1e1e1e"}}}%%
 flowchart TD
   presentation["<b>Presentation</b><br/>38 files"]:::blue
-  tooling["<b>Tooling</b><br/>3 files"]:::gray
+  tooling["<b>Tooling</b><br/>4 files"]:::gray
   data_access["<b>Data Access</b><br/>1 file"]:::rose
   demo["<b>Demo</b><br/>3 files"]:::violet
   background["<b>Background</b><br/>4 files"]:::orange
-  contexts["<b>Contexts</b><br/>16 files"]:::cyan
-  persistence["<b>Persistence</b><br/>15 files"]:::yellow
+  contexts["<b>Contexts</b><br/>17 files"]:::cyan
+  persistence["<b>Persistence</b><br/>23 files"]:::yellow
   integrations["<b>Integrations</b><br/>8 files"]:::green
   presentation -->|2| data_access
   presentation -->|2| demo
   presentation -->|36| contexts
   presentation -->|3| persistence
   presentation -->|9| integrations
-  tooling -->|1| contexts
+  tooling -->|2| contexts
   data_access -->|2| demo
   data_access -->|5| contexts
   demo -->|7| contexts
@@ -94,7 +94,7 @@ flowchart TD
   background -->|6| integrations
   contexts -.->|1| demo
   contexts -.->|2| background
-  contexts -->|26| persistence
+  contexts -->|35| persistence
   contexts -->|3| integrations
   persistence -.->|2| contexts
   persistence -->|1| integrations
@@ -112,12 +112,12 @@ flowchart TD
 | Layer | Files | Paths |
 |---|---|---|
 | Presentation | 38 | `web/` |
-| Tooling | 3 | `lib/mix/` |
+| Tooling | 4 | `lib/mix/` |
 | Data Access | 1 | `lib/tripwire/data.ex` |
 | Demo | 3 | `lib/tripwire/demo.ex`, `lib/tripwire/demo/` |
 | Background | 4 | `lib/application.ex`, `lib/tripwire/sync_server.ex`, `lib/tripwire/tracking/poller.ex`, `lib/tripwire/tracking/poller_supervisor.ex` |
-| Contexts | 16 | `lib/` |
-| Persistence | 15 | `lib/repo.ex`, `lib/tripwire/ecto_types/` |
+| Contexts | 17 | `lib/` |
+| Persistence | 23 | `lib/repo.ex`, `lib/tripwire/ecto_types/` |
 | Integrations | 8 | `lib/mailer.ex`, `lib/tripwire/esi.ex`, `lib/tripwire/esi/`, `lib/tripwire/sso.ex`, `lib/tripwire/systems/catalog.ex`, `lib/tripwire/systems/gates.ex`, `lib/tripwire/vault.ex`, `lib/tripwire/zkill.ex` |
 
 ## External services

@@ -21,9 +21,9 @@ Automation uses `Taskfile.yml` (Task v3); server lifecycle tasks run inline shel
 | `task install` | Install Elixir, Node, and asset dependencies |
 | `task update` | Update Elixir and Node dependencies |
 | `task remove` | Remove build artifacts and installed dependencies |
-| `task setup` | First-time setup of database, assets, SDE, and log directories; downloads the official JSONL SDE to `priv/sde/` and rebuilds `priv/data/wormhole_systems.json`; safe to run while the server is up |
-| `task migrate` | Run database migrations for dev and test, then backfill missing system class/effect/statics |
-| `task start` | Restart the production server in the background (`DATABASE_PATH` defaults to `./priv/db/tripwire-prod.db`) and wait until it answers before printing the URL |
+| `task setup` | First-time setup of database, assets, SDE, and log directories; downloads the official JSONL SDE to `priv/sde/`, rebuilds `priv/data/wormhole_systems.json`, then syncs the `sde_*` tables; safe to run while the server is up |
+| `task migrate` | Run database migrations for dev and test, backfill missing system class/effect/statics, then sync the `sde_*` tables |
+| `task start` | Restart the production server in the background (`DATABASE_PATH` defaults to `./priv/db/tripwire-prod.db`), sync the `sde_*` tables, and wait until it answers before printing the URL |
 | `task stop` | Stop the background production server |
 | `task dev` | Stop the production server, run dev migrations, then boot `MIX_ENV=dev mix phx.server` attached on port `4000` with live reload; Ctrl-C stops it |
 
@@ -42,6 +42,14 @@ The signature widget lists every signature with its wormhole Mass state, its Age
 Wormhole space systems carry their class (`C1`–`C6`, `Thera`, `C13`, `Trig`, `Drifter`), system-wide effect (Magnetar, Pulsar, …) and static wormhole codes. The data is built once from the downloaded SDE plus the vendored statics list into `priv/data/wormhole_systems.json` (see `priv/data/README.md`) and stored on each map system.
 
 - `mix tripwire.build_wormhole_systems` rebuilds the dataset from `priv/sde/eve-online-static-data-latest-jsonl.zip` and `priv/data/wormhole_statics.json`; `task setup` runs it after refreshing the SDE.
+
+### SDE tables
+
+`mix tripwire.sync_sde` loads the static data export into the read-only `sde_*` tables: `sde_systems` (name, security, region/constellation ids, star class/temperature/luminosity/radius, planet/moon/belt/station counts and map flags), `sde_regions`, `sde_constellations`, `sde_gates` (both directions), `sde_stations` (owner, operation, type and services), `sde_types` (ships, structures and every type the stations reference), `sde_factions`, and `sde_version` with the archive's build number.
+
+- It skips the sync when `sde_version.build_number` already matches the archive; pass `--force` to reload, or `--sde path` to read another archive.
+- `task setup`, `task migrate` and `task start` run it after migrations; the web application never reads the SDE archive itself.
+- The tables are reference data only. A map system keeps its own `sys_class`, `effect` and `statics` for mapper edits.
 
 When the selected system is k-space, the System widget's statistics selector also lists its one-jump stargate neighbours, so activity in the systems around a high-sec or low-sec exit can be checked without adding them to the chain. Only systems connected to the current selection are listed: selecting a gate system replaces the chain buttons with that system's own gate neighbours. The adjacency matrix is read from the SDE's `mapStargates.jsonl` at boot, and selecting a gate system only switches the widget's statistics and the `/:system_name` URL; it never creates a map node.
 - New systems are filled from the dataset when they are added or converted from an unknown placeholder.

@@ -48,6 +48,8 @@ tasks:
       - mix tripwire.build_wormhole_systems
       - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix ecto.setup{{.RESET}}"
       - mix ecto.setup
+      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix tripwire.sync_sde{{.RESET}}"
+      - mix tripwire.sync_sde
       - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix assets.setup{{.RESET}}"
       - mix assets.setup
       - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix assets.build{{.RESET}}"
@@ -60,12 +62,16 @@ tasks:
       - mix ecto.migrate
       - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}mix tripwire.backfill_system_data{{.RESET}}"
       - mix tripwire.backfill_system_data
+      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}mix tripwire.sync_sde{{.RESET}}"
+      - mix tripwire.sync_sde
       - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=test mix ecto.migrate{{.RESET}}"
       - MIX_ENV=test mix ecto.migrate
       - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix ecto.migrate{{.RESET}}"
       - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix ecto.migrate
       - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix tripwire.backfill_system_data{{.RESET}}"
       - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix tripwire.backfill_system_data
+      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix tripwire.sync_sde{{.RESET}}"
+      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix tripwire.sync_sde
       - echo -e "{{.GREEN}}[migrate]{{.RESET}} migrations complete"
   start:
     desc: Restart the production server in the background
@@ -76,6 +82,8 @@ tasks:
       - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix ecto.migrate
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}system data backfill{{.RESET}}"
       - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix tripwire.backfill_system_data
+      - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}SDE sync{{.RESET}}"
+      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix tripwire.sync_sde
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix tailwind tripwire --minify{{.RESET}}"
       - MIX_ENV=prod mix tailwind tripwire --minify
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix esbuild tripwire --minify{{.RESET}}"
