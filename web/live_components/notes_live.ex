@@ -3,6 +3,8 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
 
   alias Tripwire.Mapping
 
+  import TripwireWeb.FormHelpers, only: [changeset_message: 1]
+
   def update(assigns, socket) do
     comments =
       case {Map.get(assigns, :comments), Map.get(assigns, :selected_system_id)} do
@@ -70,7 +72,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
     else
       nil -> {:noreply, put_flash(socket, :error, "Select a system first")}
       false -> {:noreply, put_flash(socket, :error, "Comment cannot be empty")}
-      {:error, changeset} -> {:noreply, put_flash(socket, :error, changeset_errors(changeset))}
+      {:error, changeset} -> {:noreply, put_flash(socket, :error, changeset_message(changeset))}
     end
   end
 
@@ -140,7 +142,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
             {:noreply,
              socket
              |> assign(:edit_body, body)
-             |> put_flash(:error, changeset_errors(changeset))}
+             |> put_flash(:error, changeset_message(changeset))}
         end
     end
   end
@@ -153,12 +155,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
       comment ->
         send(self(), {:demo_comment_delete, comment.id})
 
-        socket =
-          if socket.assigns[:editing_comment_id] == comment.id do
-            socket |> assign(:editing_comment_id, nil) |> assign(:edit_body, "")
-          else
-            socket
-          end
+        socket = close_editor(socket, comment)
 
         {:noreply, socket}
     end
@@ -169,12 +166,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
     {:ok, _} = Mapping.delete_comment(comment, socket.assigns.character)
     send(self(), {:comments_updated, comment.map_system_id})
 
-    socket =
-      if socket.assigns[:editing_comment_id] == comment.id do
-        socket |> assign(:editing_comment_id, nil) |> assign(:edit_body, "")
-      else
-        socket
-      end
+    socket = close_editor(socket, comment)
 
     {:noreply, assign(socket, :comments, Mapping.list_comments(comment.map_system_id))}
   end
@@ -348,6 +340,14 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
     "markdown space-y-1 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/40 [&_blockquote]:pl-2 [&_blockquote]:opacity-70 [&_code]:rounded [&_code]:bg-base-content/10 [&_code]:px-1 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h3]:text-sm [&_h3]:font-bold [&_h4]:font-bold [&_h5]:font-bold [&_h6]:font-bold [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-base-content/10 [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-5"
   end
 
+  defp close_editor(socket, comment) do
+    if socket.assigns[:editing_comment_id] == comment.id do
+      socket |> assign(:editing_comment_id, nil) |> assign(:edit_body, "")
+    else
+      socket
+    end
+  end
+
   defp drop_stale_edit(socket, comments) do
     case socket.assigns[:editing_comment_id] do
       nil ->
@@ -360,9 +360,5 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
           socket |> assign(:editing_comment_id, nil) |> assign(:edit_body, "")
         end
     end
-  end
-
-  defp changeset_errors(changeset) do
-    changeset.errors |> Enum.map(fn {f, {m, _}} -> "#{f} #{m}" end) |> Enum.join(", ")
   end
 end

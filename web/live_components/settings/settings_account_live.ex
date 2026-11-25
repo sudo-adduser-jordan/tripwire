@@ -2,6 +2,8 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
   use Phoenix.Component
 
   import TripwireWeb.CharacterVisibilityComponents
+  import TripwireWeb.FormHelpers, only: [present: 1]
+  import TripwireWeb.PresenceHelpers, only: [presence_field: 3]
   import TripwireWeb.MaskAvatarComponents
 
   attr :settings_tab, :string, default: "account"
@@ -243,11 +245,6 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
   defp current_mask?(%{id: id}, %{id: other_id}), do: id == other_id
   defp current_mask?(_, _), do: false
 
-  defp presence(%{eve_id: eve_id}, presences), do: Map.get(presences || %{}, eve_id, %{})
-
-  defp presence_field(presences, character, key),
-    do: Map.get(presence(character, presences), key)
-
   defp presence_line(presences, character) do
     ship = ship_label(presences, character)
     system = present(presence_field(presences, character, :system_name))
@@ -271,9 +268,6 @@ defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
       other -> other
     end
   end
-
-  defp present(value) when is_binary(value) and value != "", do: value
-  defp present(_), do: nil
 
   defp corporation(%{corporation_name: name}) when is_binary(name) and name != "",
     do: name

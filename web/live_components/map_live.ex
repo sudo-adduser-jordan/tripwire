@@ -7,6 +7,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   alias Tripwire.Signatures, as: SigParser
   alias Tripwire.Wormholes
 
+  import TripwireWeb.FormHelpers, only: [present: 1]
+
   @occupant_tip_w 280
   @occupant_tip_max_w 560
   @occupant_char_w 7.0
@@ -853,24 +855,15 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   defp ship_fallback(_type_id), do: nil
 
   defp ship_label(occupant) do
-    present_name(occupant[:ship_type_name]) || custom_ship_name(occupant[:ship_name])
+    present(occupant[:ship_type_name]) || custom_ship_name(occupant[:ship_name])
   end
 
   defp custom_ship_name(name) do
-    case present_name(name) do
+    case present(name) do
       "/" -> nil
       name -> name
     end
   end
-
-  defp present_name(name) when is_binary(name) do
-    case String.trim(name) do
-      "" -> nil
-      name -> name
-    end
-  end
-
-  defp present_name(_name), do: nil
 
   defp node_activity(stats, system_id) do
     case Map.get(stats, system_id) do

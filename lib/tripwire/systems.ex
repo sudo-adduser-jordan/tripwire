@@ -32,25 +32,6 @@ defmodule Tripwire.Systems do
     "C5" => "#A855F7",
     "C6" => "#EC4899",
     "C13" => "#6b7280",
-    "Thera" => "#FF4747",
-    "Drifter" => "#8B5CF6",
-    "HS" => "#50D25A",
-    "LS" => "#F5B544",
-    "NS" => "#FF4747",
-    "Trig" => "#FF4747",
-    "W" => "#6b7280"
-  }
-
-  @unknown_color "#6b7280"
-
-  @badge_colors %{
-    "C1" => "#4399F0",
-    "C2" => "#4399F0",
-    "C3" => "#4399F0",
-    "C4" => "#A855F7",
-    "C5" => "#A855F7",
-    "C6" => "#EC4899",
-    "C13" => "#6b7280",
     "Drifter" => "#8B5CF6",
     "HS" => "#50D25A",
     "LS" => "#F5B544",
@@ -61,6 +42,8 @@ defmodule Tripwire.Systems do
     "K" => "#6b7280",
     "W" => "#6b7280"
   }
+
+  @unknown_color "#6b7280"
 
   def classes, do: @classes
 
@@ -102,24 +85,18 @@ defmodule Tripwire.Systems do
 
   def color(system), do: Map.get(@colors, display_class(system), @unknown_color)
 
-  def badge_color(label) when is_binary(label), do: Map.get(@badge_colors, label, @unknown_color)
+  def badge_color(label) when is_binary(label), do: Map.get(@colors, label, @unknown_color)
   def badge_color(_), do: @unknown_color
 
   def badge_text_color(label) when label in ["HS", "LS"], do: "#111111"
   def badge_text_color(_), do: "#ffffff"
 
-  def security_label(%{solar_system_id: id})
-      when is_integer(id) and id >= @w_space_min and id < @w_space_max,
-      do: "W-Space"
+  def security_label(system), do: label_for(security_class(system))
 
-  def security_label(%{security: security}) when is_number(security) and security >= 0.45,
-    do: "High-Sec"
-
-  def security_label(%{security: security}) when is_number(security) and security > 0.0,
-    do: "Low-Sec"
-
-  def security_label(%{security: security}) when is_number(security), do: "Null-Sec"
-  def security_label(_), do: "W-Space"
+  defp label_for("HS"), do: "High-Sec"
+  defp label_for("LS"), do: "Low-Sec"
+  defp label_for("NS"), do: "Null-Sec"
+  defp label_for(_), do: "W-Space"
 
   def esi_resolvable?(%{solar_system_id: id}) when is_integer(id), do: id < @w_space_min
   def esi_resolvable?(_), do: false

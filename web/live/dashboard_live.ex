@@ -13,6 +13,8 @@ defmodule TripwireWeb.DashboardLive do
   alias Tripwire.Systems
   alias Tripwire.Tracking
 
+  import TripwireWeb.FormHelpers, only: [present: 1, changeset_errors: 1, changeset_message: 1]
+
   @demo_character_eve_id Tripwire.Demo.character_eve_id()
   @demo_ship_name Tripwire.Demo.ship_name()
   @demo_ship_type_id Tripwire.Demo.ship_type_id()
@@ -168,31 +170,10 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:connections, Demo.list_connections_with_endpoints(state, map.id))
     |> refresh_occupants()
     |> apply_tree_layout(settings.map_layout)
-    |> assign(:selected_system_id, nil)
-    |> assign(:selected_system_name, nil)
-    |> assign(:chart_system, nil)
-    |> assign(:system_suggestions, [])
-    |> assign(:signatures, [])
-    |> assign(:comments, [])
-    |> autoselect_first_system()
-    |> assign(:stale_ids, [])
-    |> assign(:stale_system_id, nil)
-    |> assign(:settings_open, false)
-    |> assign(:settings_tab, "account")
+    |> assign_blank_view()
     |> assign(:claim_admin?, false)
     |> assign(:claim_admin_modal?, false)
     |> assign(:branding, nil)
-    |> assign(:sig_modal_open, false)
-    |> assign(:sig_edit_id, nil)
-    |> assign(:sig_form, %{
-      "sig_id" => "",
-      "kind" => "signature",
-      "site_type" => "unknown",
-      "type_name" => "",
-      "life_length" => "259200",
-      "bookmark" => ""
-    })
-    |> assign(:sig_errors, [])
     |> assign(:tracking?, true)
     |> assign_demo_presence()
     |> assign(:sso_configured?, Tripwire.SSO.configured?())
@@ -1229,14 +1210,7 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:sig_modal_open, true)
          |> assign(:sig_edit_id, nil)
          |> assign(:sig_errors, [])
-         |> assign(:sig_form, %{
-           "sig_id" => "",
-           "kind" => "signature",
-           "site_type" => "unknown",
-           "type_name" => "",
-           "life_length" => "259200",
-           "bookmark" => ""
-         })}
+         |> assign(:sig_form, SigParser.default_form())}
     end
   end
 
@@ -1251,14 +1225,7 @@ defmodule TripwireWeb.DashboardLive do
          |> assign(:sig_modal_open, true)
          |> assign(:sig_edit_id, sig.id)
          |> assign(:sig_errors, [])
-         |> assign(:sig_form, %{
-           "sig_id" => sig.sig_id || "",
-           "kind" => sig.kind || "signature",
-           "site_type" => sig.site_type || "unknown",
-           "type_name" => sig.type_name || "",
-           "life_length" => to_string(sig.life_length || 259_200),
-           "bookmark" => sig.bookmark || ""
-         })}
+         |> assign(:sig_form, SigParser.form_from(sig))}
     end
   end
 
@@ -1276,7 +1243,7 @@ defmodule TripwireWeb.DashboardLive do
         {:noreply, put_flash(socket, :error, "Select a system first")}
 
       system ->
-        attrs = sig_attrs(params)
+        attrs = SigParser.attrs_from_params(params)
 
         case socket.assigns.sig_edit_id do
           nil ->
@@ -1887,6 +1854,18 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:systems, Data.list_chain_systems(data(socket), map, settings.show_all))
     |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.id))
     |> apply_tree_layout(settings.map_layout)
+    |> assign_blank_view()
+    |> assign(:demo?, false)
+    |> assign_claim_admin(character)
+    |> assign(:branding, Accounts.branding())
+    |> assign(:sso_configured?, Tripwire.SSO.configured?())
+    |> subscribe_to_map(map.id)
+    |> schedule_topbar_load()
+    |> schedule_chart_refresh()
+  end
+
+  defp assign_blank_view(socket) do
+    socket
     |> assign(:selected_system_id, nil)
     |> assign(:selected_system_name, nil)
     |> assign(:chart_system, nil)
@@ -1898,24 +1877,22 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:stale_system_id, nil)
     |> assign(:settings_open, false)
     |> assign(:settings_tab, "account")
-    |> assign(:demo?, false)
-    |> assign_claim_admin(character)
-    |> assign(:branding, Accounts.branding())
     |> assign(:sig_modal_open, false)
     |> assign(:sig_edit_id, nil)
-    |> assign(:sig_form, %{
-      "sig_id" => "",
-      "kind" => "signature",
-      "site_type" => "unknown",
-      "type_name" => "",
-      "life_length" => "259200",
-      "bookmark" => ""
-    })
+    |> assign(:sig_form, SigParser.default_form())
     |> assign(:sig_errors, [])
-    |> assign(:sso_configured?, Tripwire.SSO.configured?())
-    |> subscribe_to_map(map.id)
-    |> schedule_topbar_load()
-    |> schedule_chart_refresh()
+  end
+
+  defp assign_selection_reset(socket) do
+    socket
+    |> assign(:system_search, "")
+    |> assign(:system_suggestions, [])
+    |> assign(:signatures, [])
+    |> assign(:comments, [])
+    |> assign(:system_info, nil)
+    |> assign(:chart_data, empty_chart_data(socket.assigns[:chart_range] || "24h"))
+    |> assign(:stale_ids, [])
+    |> assign(:stale_system_id, nil)
   end
 
   defp restore_mask(default, session) do
@@ -2086,17 +2063,12 @@ defmodule TripwireWeb.DashboardLive do
 
     socket =
       socket
+      |> assign_selection_reset()
       |> assign(:selected_system_id, system_id)
       |> assign(:selected_system_name, selected_system_name(socket.assigns.systems, system_id))
       |> assign(:chart_system, chart_system)
-      |> assign(:system_search, "")
-      |> assign(:system_suggestions, [])
       |> assign(:signatures, Data.list_signatures(data(socket), system_id))
       |> assign(:comments, Data.list_comments(data(socket), system_id))
-      |> assign(:system_info, nil)
-      |> assign(:chart_data, empty_chart_data(socket.assigns[:chart_range] || "24h"))
-      |> assign(:stale_ids, [])
-      |> assign(:stale_system_id, nil)
       |> assign(:sys_form, sys_form_for(socket.assigns.systems, system_id))
 
     schedule_system_detail(socket, chart_system)
@@ -2107,17 +2079,10 @@ defmodule TripwireWeb.DashboardLive do
       %{name: name} = system ->
         socket =
           socket
+          |> assign_selection_reset()
           |> assign(:chart_system, system)
           |> assign(:selected_system_id, nil)
           |> assign(:selected_system_name, name)
-          |> assign(:system_search, "")
-          |> assign(:system_suggestions, [])
-          |> assign(:signatures, [])
-          |> assign(:comments, [])
-          |> assign(:system_info, nil)
-          |> assign(:chart_data, empty_chart_data(socket.assigns[:chart_range] || "24h"))
-          |> assign(:stale_ids, [])
-          |> assign(:stale_system_id, nil)
           |> assign(:sys_form, %{"alias" => "", "sys_class" => "", "effect" => ""})
           |> schedule_system_detail(system)
 
@@ -3072,16 +3037,7 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp flash_changeset_errors(socket, changeset) do
-    message =
-      changeset.errors
-      |> Enum.map(fn {field, {msg, _}} -> "#{field} #{msg}" end)
-      |> Enum.join(", ")
-
-    put_flash(socket, :error, message)
-  end
-
-  defp changeset_errors(changeset) do
-    Enum.map(changeset.errors, fn {field, {message, _}} -> "#{field} #{message}" end)
+    put_flash(socket, :error, changeset_message(changeset))
   end
 
   defp life_options do
@@ -3092,40 +3048,4 @@ defmodule TripwireWeb.DashboardLive do
       {"7 days", 604_800}
     ]
   end
-
-  defp sig_attrs(params) do
-    type_name = present(params["type_name"])
-
-    %{
-      sig_id: params["sig_id"],
-      kind: params["kind"] || "signature",
-      site_type: SigParser.infer_site_type(params["site_type"] || "unknown", type_name),
-      type_name: type_name,
-      bookmark: present(params["bookmark"]),
-      life_length: parse_life_length(params["life_length"])
-    }
-  end
-
-  defp parse_life_length(nil), do: 259_200
-  defp parse_life_length(""), do: 259_200
-  defp parse_life_length(value) when is_integer(value), do: value
-
-  defp parse_life_length(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {number, ""} -> number
-      _ -> 259_200
-    end
-  end
-
-  defp present(nil), do: nil
-  defp present(""), do: nil
-
-  defp present(value) when is_binary(value) do
-    case String.trim(value) do
-      "" -> nil
-      trimmed -> trimmed
-    end
-  end
-
-  defp present(value), do: value
 end

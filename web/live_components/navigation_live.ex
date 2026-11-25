@@ -4,6 +4,7 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
   import TripwireWeb.IconComponent
   import TripwireWeb.CharacterVisibilityComponents
   import TripwireWeb.MaskAvatarComponents
+  import TripwireWeb.PresenceHelpers, only: [presence_field: 3]
 
   alias Tripwire.Systems
 
@@ -284,10 +285,8 @@ defmodule TripwireWeb.LiveComponents.NavigationLive do
 
   defp current_character(_, _), do: nil
 
-  defp presence(%{eve_id: eve_id}, presences), do: Map.get(presences || %{}, eve_id, %{})
-
   defp presence_ship_type_id(presences, character),
-    do: Map.get(presence(character, presences), :ship_type_id)
+    do: presence_field(presences, character, :ship_type_id)
 
-  defp presence_online(presences, character), do: Map.get(presence(character, presences), :online)
+  defp presence_online(presences, character), do: presence_field(presences, character, :online)
 end

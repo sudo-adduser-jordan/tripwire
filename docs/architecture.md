@@ -70,7 +70,7 @@ flowchart LR
 ```mermaid
 %%{init: {"theme": "base", "flowchart": {"curve": "basis", "nodeSpacing": 60, "rankSpacing": 100, "wrappingWidth": 200}, "themeVariables": {"fontFamily": "sans-serif", "lineColor": "#1e1e1e", "primaryTextColor": "#1e1e1e"}}}%%
 flowchart TD
-  presentation["<b>Presentation</b><br/>36 files"]:::blue
+  presentation["<b>Presentation</b><br/>38 files"]:::blue
   tooling["<b>Tooling</b><br/>3 files"]:::gray
   data_access["<b>Data Access</b><br/>1 file"]:::rose
   demo["<b>Demo</b><br/>3 files"]:::violet
@@ -111,7 +111,7 @@ flowchart TD
 
 | Layer | Files | Paths |
 |---|---|---|
-| Presentation | 36 | `web/` |
+| Presentation | 38 | `web/` |
 | Tooling | 3 | `lib/mix/` |
 | Data Access | 1 | `lib/tripwire/data.ex` |
 | Demo | 3 | `lib/tripwire/demo.ex`, `lib/tripwire/demo/` |

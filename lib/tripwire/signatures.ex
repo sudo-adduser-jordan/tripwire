@@ -149,6 +149,61 @@ defmodule Tripwire.Signatures do
   def infer_site_type(type, _name) when is_binary(type) and type != "", do: type
   def infer_site_type(_, _), do: "unknown"
 
+  def default_form do
+    %{
+      "sig_id" => "",
+      "kind" => "signature",
+      "site_type" => "unknown",
+      "type_name" => "",
+      "life_length" => "259200",
+      "bookmark" => ""
+    }
+  end
+
+  def form_from(signature) do
+    %{
+      "sig_id" => signature.sig_id || "",
+      "kind" => signature.kind || "signature",
+      "site_type" => signature.site_type || "unknown",
+      "type_name" => signature.type_name || "",
+      "life_length" => to_string(signature.life_length || 259_200),
+      "bookmark" => signature.bookmark || ""
+    }
+  end
+
+  def attrs_from_params(params) do
+    type_name = trim_or_nil(params["type_name"])
+
+    %{
+      sig_id: params["sig_id"],
+      kind: params["kind"] || "signature",
+      site_type: infer_site_type(params["site_type"] || "unknown", type_name),
+      type_name: type_name,
+      bookmark: trim_or_nil(params["bookmark"]),
+      life_length: parse_life_length(params["life_length"])
+    }
+  end
+
+  defp trim_or_nil(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp trim_or_nil(_value), do: nil
+
+  defp parse_life_length(nil), do: 259_200
+  defp parse_life_length(""), do: 259_200
+  defp parse_life_length(value) when is_integer(value), do: value
+
+  defp parse_life_length(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {number, ""} -> number
+      _ -> 259_200
+    end
+  end
+
   @spec wormhole_code(String.t() | nil) :: String.t() | nil
   def wormhole_code(name) when is_binary(name) do
     case Regex.run(@wormhole_code_regex, String.upcase(name)) do
