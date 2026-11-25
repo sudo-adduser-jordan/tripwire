@@ -578,6 +578,10 @@ html[data-font="serif"] {
   --font-sans: var(--font-pirate);
 }
 
+#theme-settings .theme-button [data-theme] {
+  --font-sans: inherit;
+}
+
 [data-theme="amarr"],
 [data-theme="caldari"],
 [data-theme="gallente"],

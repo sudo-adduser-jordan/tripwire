@@ -108,12 +108,12 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
             </div>
             <div
               id={"theme-container-" <> section.id}
-              class="grid w-full max-w-full grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-4"
+              class="flex w-full max-w-full flex-wrap gap-2"
             >
               <%= for theme <- section.themes do %>
                 <button
                   id={"theme-button-" <> theme}
-                  class="theme-button settings-card border-base-300 hover:border-base-content/40 focus-visible:ring-success min-w-0 overflow-hidden border transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                  class="theme-button settings-card border-base-300 hover:border-base-content/40 focus-visible:ring-success w-44 min-w-0 overflow-hidden border transition-colors focus-visible:ring-2 focus-visible:outline-none"
                   phx-click={JS.dispatch("phx:set-theme")}
                   data-phx-theme={theme}
                 >
@@ -131,7 +131,7 @@ defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
                         onerror="this.onerror=null;this.src='/images/alliance-default.png'"
                       />
                     <% end %>
-                    <div class="min-w-0 flex-1 truncate text-xs font-semibold">{theme}</div>
+                    <div class="min-w-0 flex-1 truncate text-left text-xs font-semibold">{theme}</div>
                     <div class="ml-auto flex shrink-0 items-center gap-1" aria-hidden="true">
                       <span data-theme-swatch class="bg-primary size-2.5" />
                       <span data-theme-swatch class="bg-secondary size-2.5" />
