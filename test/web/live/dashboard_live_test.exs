@@ -165,6 +165,105 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert has_element?(view, "#node-#{to.id} rect[stroke-dasharray='6 4']")
   end
 
+  test "collapsing a loop system rolls up its branch", %{conn: conn} do
+    state = Demo.fixture()
+    map = hd(state.maps)
+    systems = Demo.list_chain_systems(state, map, false)
+    c6 = Enum.find(systems, &(&1.name == "J150325"))
+    child = Enum.find(systems, &(&1.name == "J150326"))
+    loop_peer = Enum.find(systems, &(&1.name == "Amarr"))
+
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    view |> render_click("toggle-collapse", %{id: c6.id})
+
+    assert has_element?(view, "#node-#{c6.id}[data-collapsed='true']")
+    refute has_element?(view, "#node-#{child.id}")
+    assert has_element?(view, "#node-#{loop_peer.id}")
+  end
+
+  test "double-clicking a node collapses its branch until it is expanded", %{conn: conn} do
+    state = Demo.fixture()
+    map = hd(state.maps)
+    systems = Demo.list_chain_systems(state, map, false)
+    home_id = Mapping.chain_home_id(systems, map)
+    hidden = Enum.find(systems, &(&1.id != home_id))
+    total = length(systems)
+
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    assert has_element?(view, "#node-#{home_id}[data-collapsed='false']")
+
+    view |> render_click("toggle-collapse", %{id: home_id})
+
+    refute has_element?(view, "#node-#{hidden.id}")
+    assert has_element?(view, "#node-#{home_id}[data-collapsed='true']")
+    assert has_element?(view, "#expand-all")
+    assert render(view) =~ "1 / #{total} systems"
+
+    assert has_element?(
+             view,
+             "#node-#{home_id} title",
+             "#{total - 1} systems hidden - double-click to expand"
+           )
+
+    view |> element("#expand-all") |> render_click()
+
+    assert has_element?(view, "#node-#{hidden.id}")
+    refute has_element?(view, "#expand-all")
+    assert render(view) =~ "#{total} systems"
+  end
+
+  test "collapsing works on a locked map", %{conn: conn} do
+    state = Demo.fixture()
+    map = hd(state.maps)
+    systems = Demo.list_chain_systems(state, map, false)
+    home_id = Mapping.chain_home_id(systems, map)
+
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    view |> element("#toggle-lock") |> render_click()
+    view |> render_click("toggle-collapse", %{id: home_id})
+
+    assert has_element?(view, "#node-#{home_id}[data-collapsed='true']")
+  end
+
+  test "selecting a hidden system expands the chain", %{conn: conn} do
+    state = Demo.fixture()
+    map = hd(state.maps)
+    systems = Demo.list_chain_systems(state, map, false)
+    home_id = Mapping.chain_home_id(systems, map)
+    hidden = Enum.find(systems, &(&1.id != home_id))
+
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    view |> render_click("toggle-collapse", %{id: home_id})
+    assert has_element?(view, "#node-#{home_id}[data-collapsed='true']")
+
+    view |> render_click("system-search-submit", %{search: hidden.name})
+
+    assert has_element?(view, "#node-#{hidden.id}")
+    refute has_element?(view, "#node-#{home_id}[data-collapsed='true']")
+  end
+
+  test "a collapse is remembered per map while the dashboard session lasts", %{conn: conn} do
+    state = Demo.fixture()
+    map = hd(state.maps)
+    systems = Demo.list_chain_systems(state, map, false)
+    home_id = Mapping.chain_home_id(systems, map)
+
+    {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+    view |> render_click("toggle-collapse", %{id: home_id})
+    view |> element("#newTab") |> render_click()
+
+    view
+    |> element("button[phx-click='switch-map'][phx-value-id='#{map.id}']")
+    |> render_click()
+
+    assert has_element?(view, "#node-#{home_id}[data-collapsed='true']")
+  end
+
   test "several characters in one system share the default badge and list both in the tooltip", %{
     conn: conn,
     character: character

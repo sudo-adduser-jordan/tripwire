@@ -27,6 +27,9 @@ defmodule TripwireWeb.DemoNoDbTest do
     view |> element("#toggle-row-guides") |> render_click()
     view |> element("#lock-button") |> render_click()
 
+    render_click(view, "toggle-collapse", %{"id" => "10"})
+    render_click(view, "expand-all", %{})
+
     render_click(view, "global-paste", %{
       "text" => "NEW-001\tCosmic Signature\tUnstable Wormhole (K162)\t100.00%\t1.00 AU"
     })

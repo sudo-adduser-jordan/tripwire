@@ -190,6 +190,8 @@ defmodule TripwireWeb.DashboardLive do
       system_name && systems != [] ->
         case Enum.find(systems, &(String.downcase(&1.name) == String.downcase(system_name))) do
           %{id: id} ->
+            socket = expand_hidden_selection(socket, id)
+
             if socket.assigns[:selected_system_id] == id do
               {:noreply, socket}
             else
@@ -225,6 +227,14 @@ defmodule TripwireWeb.DashboardLive do
 
   def handle_info({:select_system, system_id}, socket) do
     {:noreply, select_system_and_patch(socket, system_id)}
+  end
+
+  def handle_info({:toggle_collapse, system_id}, socket) do
+    {:noreply, toggle_collapse(socket, system_id)}
+  end
+
+  def handle_info(:expand_all, socket) do
+    {:noreply, put_collapsed_ids(socket, Elixir.MapSet.new())}
   end
 
   def handle_info({:select_gate_system, solar_system_id}, socket) do
@@ -640,6 +650,17 @@ defmodule TripwireWeb.DashboardLive do
     {:noreply, update(socket, :map_locked, &(!&1))}
   end
 
+  def handle_event("toggle-collapse", %{"id" => id}, socket) do
+    case Integer.parse(to_string(id)) do
+      {system_id, ""} -> {:noreply, toggle_collapse(socket, system_id)}
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("expand-all", _params, socket) do
+    {:noreply, put_collapsed_ids(socket, Elixir.MapSet.new())}
+  end
+
   def handle_event("open-map-modal", _params, socket) do
     if socket.assigns[:map_locked] do
       {:noreply, put_flash(socket, :error, "Map is locked")}
@@ -697,6 +718,7 @@ defmodule TripwireWeb.DashboardLive do
       %{id: id, name: name} ->
         {:noreply,
          socket
+         |> expand_hidden_selection(id)
          |> select_system(id)
          |> push_patch(to: "/" <> name)}
 
@@ -1527,7 +1549,11 @@ defmodule TripwireWeb.DashboardLive do
         primary? = List.first(maps) == target
 
         {{:ok, _deleted}, data} = Data.delete_map_full(data(socket), target)
-        socket = put_data(socket, data) |> assign(:map_modal_open, false)
+
+        socket =
+          put_data(socket, data)
+          |> assign(:map_modal_open, false)
+          |> drop_collapsed_map(target.id)
 
         socket =
           if current? do
@@ -2178,6 +2204,67 @@ defmodule TripwireWeb.DashboardLive do
     case Enum.find(systems, &(&1.id == id)) do
       %{name: name} -> name
       nil -> nil
+    end
+  end
+
+  defp collapsed_ids(socket) do
+    map_id = socket.assigns[:map] && socket.assigns.map.id
+
+    Elixir.Map.get(socket.assigns[:collapsed_by_map] || %{}, map_id, Elixir.MapSet.new())
+  end
+
+  defp put_collapsed_ids(socket, ids) do
+    case socket.assigns[:map] do
+      nil ->
+        socket
+
+      map ->
+        assign(
+          socket,
+          :collapsed_by_map,
+          Elixir.Map.put(socket.assigns[:collapsed_by_map] || %{}, map.id, ids)
+        )
+    end
+  end
+
+  defp drop_collapsed_map(socket, map_id) do
+    assign(
+      socket,
+      :collapsed_by_map,
+      Elixir.Map.delete(socket.assigns[:collapsed_by_map] || %{}, map_id)
+    )
+  end
+
+  defp hidden_system_ids(socket) do
+    systems = socket.assigns[:systems] || []
+    connections = socket.assigns[:connections] || []
+    root_id = Mapping.chain_home_id(systems, socket.assigns[:map])
+
+    Mapping.collapse_hidden_ids(systems, connections, collapsed_ids(socket), root_id: root_id)
+  end
+
+  defp expand_hidden_selection(socket, system_id) do
+    if Elixir.MapSet.member?(hidden_system_ids(socket), system_id) do
+      put_collapsed_ids(socket, Elixir.MapSet.new())
+    else
+      socket
+    end
+  end
+
+  defp toggle_collapse(socket, system_id) do
+    if Enum.any?(socket.assigns[:systems] || [], &(&1.id == system_id)) do
+      collapsed = collapsed_ids(socket)
+
+      collapsed =
+        if Elixir.MapSet.member?(collapsed, system_id) do
+          Elixir.MapSet.delete(collapsed, system_id)
+        else
+          Elixir.MapSet.put(collapsed, system_id)
+        end
+
+      put_collapsed_ids(socket, collapsed)
+    else
+      socket
     end
   end
 
@@ -2926,7 +3013,10 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp patch_to_preferred(socket, systems) do
-    case preferred_system(systems) do
+    hidden = hidden_system_ids(socket)
+    visible = Enum.reject(systems, &Elixir.MapSet.member?(hidden, &1.id))
+
+    case preferred_system(visible) do
       %{id: id, name: name} ->
         socket |> select_system(id) |> push_patch(to: "/" <> name)
 
@@ -3008,6 +3098,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:chart_hidden, MapSet.new())
     |> assign(:chart_data, %{labels: [], jumps: [], ship_kills: [], pod_kills: [], npc_kills: []})
     |> assign(:map_locked, false)
+    |> assign(:collapsed_by_map, %{})
     |> assign(:map_modal_open, false)
     |> assign(:map_form, %{
       "name" => "",

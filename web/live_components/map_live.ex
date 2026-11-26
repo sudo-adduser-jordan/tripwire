@@ -29,17 +29,27 @@ defmodule TripwireWeb.LiveComponents.MapLive do
         Data.list_connections_with_endpoints(data, map_id)
       end)
 
+    collapsed = collapse_set(assigns, systems)
+    root_id = Mapping.chain_home_id(systems, Map.get(assigns, :map))
+    hidden = Mapping.collapse_hidden_ids(systems, connections, collapsed, root_id: root_id)
+    counts = Mapping.collapse_hidden_counts(systems, connections, collapsed, root_id: root_id)
+    visible = Enum.reject(systems, &Elixir.MapSet.member?(hidden, &1.id))
+
     stats = Map.get_lazy(assigns, :stats, fn -> Data.list_system_stats(data, map_id) end)
     occupants = Map.get(assigns, :occupants, [])
     zoom = map_zoom(Map.get(assigns, :map_scale))
-    {pan_x, pan_y} = Mapping.home_center(systems, Map.get(assigns, :map), zoom)
+    {pan_x, pan_y} = Mapping.home_center(visible, Map.get(assigns, :map), zoom)
     {view_w, view_h} = Mapping.view_size(zoom)
     {node_w, node_h} = Mapping.node_size()
 
     {:ok,
      socket
      |> assign(assigns)
-     |> assign(:systems, systems)
+     |> assign(:chain_systems, systems)
+     |> assign(:systems, visible)
+     |> assign(:collapsed_ids, collapsed)
+     |> assign(:hidden_counts, counts)
+     |> assign(:hidden_count, Elixir.MapSet.size(hidden))
      |> assign(:connections, connections)
      |> assign(:stats, stats)
      |> assign(:occupants, occupants)
@@ -79,6 +89,39 @@ defmodule TripwireWeb.LiveComponents.MapLive do
 
   defp map_zoom(scale) when is_number(scale), do: Mapping.default_zoom() * scale / 100
   defp map_zoom(_), do: Mapping.default_zoom()
+
+  defp collapse_set(assigns, systems) do
+    collapsed = Map.get(assigns, :collapsed_system_ids) || Elixir.MapSet.new()
+    Elixir.MapSet.intersection(Elixir.MapSet.new(collapsed), Elixir.MapSet.new(systems, & &1.id))
+  end
+
+  defp collapsed_badge(system_id, assigns) do
+    case Elixir.Map.get(Map.get(assigns, :hidden_counts) || %{}, system_id, 0) do
+      0 ->
+        nil
+
+      count ->
+        label = Integer.to_string(count)
+        %{count: count, label: label, width: 21 + String.length(label) * 6}
+    end
+  end
+
+  defp node_hint(count) do
+    "#{count} #{if count == 1, do: "system", else: "systems"} hidden - double-click to expand"
+  end
+
+  defp system_count(visible, chain) do
+    if length(visible) == length(chain) do
+      "#{length(chain)} systems"
+    else
+      "#{length(visible)} / #{length(chain)} systems"
+    end
+  end
+
+  def handle_event("toggle-collapse", %{"id" => id}, socket) do
+    send(self(), {:toggle_collapse, String.to_integer(id)})
+    {:noreply, socket}
+  end
 
   def handle_event("select-system", %{"id" => id}, socket) do
     send(self(), {:select_system, String.to_integer(id)})
@@ -257,8 +300,18 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               </div>
             </details>
             <span class="ml-auto text-xs tabular-nums opacity-60">
-              {length(@systems)} systems
+              {system_count(@systems, @chain_systems)}
             </span>
+            <button
+              :if={@hidden_count > 0}
+              id="expand-all"
+              type="button"
+              class="btn btn-ghost btn-xs"
+              title="Expand every collapsed system"
+              phx-click="expand-all"
+            >
+              <.icon name="hero-arrows-pointing-out" class="size-4" />
+            </button>
             <button
               id="chain-zoom-out"
               type="button"
@@ -367,10 +420,30 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                 class="cursor-pointer"
                 data-system-id={system.id}
                 data-unknown={to_string(system.unknown)}
+                data-collapsed={to_string(Elixir.MapSet.member?(@collapsed_ids, system.id))}
                 phx-click={if system.unknown, do: "open-unknown-system", else: "select-system"}
                 phx-value-id={system.id}
                 phx-target={@myself}
               >
+                <g :if={badge = collapsed_badge(system.id, assigns)} transform="translate(4, -20)">
+                  <rect
+                    width={badge.width}
+                    height="16"
+                    rx="8"
+                    stroke-width="1"
+                    class="fill-base-300 stroke-base-content/40"
+                  />
+                  <path
+                    d="M 6 4 L 10 8 L 6 12"
+                    fill="none"
+                    stroke-width="1.5"
+                    class="stroke-base-content/70"
+                  />
+                  <text x="15" y="11.5" class="fill-base-content text-[10px] font-semibold">
+                    {badge.label}
+                  </text>
+                  <title>{node_hint(badge.count)}</title>
+                </g>
                 <.effect_icon
                   :if={effect = node_effect(system)}
                   effect={effect}

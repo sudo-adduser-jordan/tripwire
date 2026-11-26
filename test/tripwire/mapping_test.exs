@@ -856,6 +856,95 @@ defmodule Tripwire.MappingTest do
     assert Mapping.cycle_connection_ids(Enum.take(connections, 2), 10) == MapSet.new()
   end
 
+  test "collapse_hidden_ids/4 hides the branch beyond a collapsed system" do
+    systems = Enum.map(1..5, &%Mapping.MapSystem{id: &1})
+    connections = collapse_chain()
+
+    assert Mapping.collapse_hidden_ids(systems, connections, MapSet.new(), root_id: 1) ==
+             MapSet.new()
+
+    assert Mapping.collapse_hidden_ids(systems, connections, MapSet.new([2]), root_id: 1) ==
+             MapSet.new([3, 4, 5])
+
+    assert Mapping.collapse_hidden_ids(systems, connections, MapSet.new([1]), root_id: 1) ==
+             MapSet.new([2, 3, 4, 5])
+
+    assert Mapping.collapse_hidden_ids(systems, connections, MapSet.new([4]), root_id: 1) ==
+             MapSet.new([5])
+  end
+
+  test "collapse_hidden_ids/4 rolls up a branch even when a loop reconnects it" do
+    systems = Enum.map(1..6, &%Mapping.MapSystem{id: &1})
+
+    connections = [
+      {nil, %Mapping.MapSystem{id: 1}, %Mapping.MapSystem{id: 2}},
+      {nil, %Mapping.MapSystem{id: 2}, %Mapping.MapSystem{id: 3}},
+      {nil, %Mapping.MapSystem{id: 3}, %Mapping.MapSystem{id: 4}},
+      {nil, %Mapping.MapSystem{id: 1}, %Mapping.MapSystem{id: 5}},
+      {nil, %Mapping.MapSystem{id: 5}, %Mapping.MapSystem{id: 6}},
+      {nil, %Mapping.MapSystem{id: 4}, %Mapping.MapSystem{id: 6}}
+    ]
+
+    assert Mapping.collapse_hidden_ids(systems, connections, MapSet.new([2]), root_id: 1) ==
+             MapSet.new([3, 4])
+  end
+
+  test "collapse_hidden_ids/4 nests collapses and roots detached components" do
+    systems = Enum.map(1..6, &%Mapping.MapSystem{id: &1})
+
+    connections = [
+      {nil, %Mapping.MapSystem{id: 1}, %Mapping.MapSystem{id: 2}},
+      {nil, %Mapping.MapSystem{id: 2}, %Mapping.MapSystem{id: 3}},
+      {nil, %Mapping.MapSystem{id: 3}, %Mapping.MapSystem{id: 4}}
+    ]
+
+    assert Mapping.collapse_hidden_ids(systems, connections, MapSet.new([2, 3]), root_id: 1) ==
+             MapSet.new([3, 4])
+
+    detached = [%Mapping.MapSystem{id: 5}, %Mapping.MapSystem{id: 6}]
+
+    detached_connections = [
+      {nil, %Mapping.MapSystem{id: 5}, %Mapping.MapSystem{id: 6}}
+    ]
+
+    assert Mapping.collapse_hidden_ids(detached, detached_connections, MapSet.new([5]),
+             root_id: 1
+           ) ==
+             MapSet.new([6])
+  end
+
+  test "collapse_hidden_counts/4 counts what expanding a node alone would reveal" do
+    systems = Enum.map(1..5, &%Mapping.MapSystem{id: &1})
+    connections = collapse_chain()
+
+    assert Mapping.collapse_hidden_counts(systems, connections, MapSet.new([2]), root_id: 1) ==
+             %{2 => 3}
+
+    counts = Mapping.collapse_hidden_counts(systems, connections, MapSet.new([2, 4]), root_id: 1)
+    assert counts[2] == 2
+    assert counts[4] == 0
+  end
+
+  test "chain_home_id/2 resolves the stored home solar system" do
+    systems = [
+      %Mapping.MapSystem{id: 7, solar_system_id: 30_000_142},
+      %Mapping.MapSystem{id: 8, solar_system_id: 30_000_143}
+    ]
+
+    assert Mapping.chain_home_id(systems, %Mapping.Map{home_solar_system_id: 30_000_142}) == 7
+    assert Mapping.chain_home_id(systems, %Mapping.Map{home_solar_system_id: 31_000_001}) == nil
+    assert Mapping.chain_home_id(systems, %Mapping.Map{home_solar_system_id: nil}) == nil
+  end
+
+  defp collapse_chain do
+    [
+      {nil, %Mapping.MapSystem{id: 1}, %Mapping.MapSystem{id: 2}},
+      {nil, %Mapping.MapSystem{id: 2}, %Mapping.MapSystem{id: 3}},
+      {nil, %Mapping.MapSystem{id: 2}, %Mapping.MapSystem{id: 4}},
+      {nil, %Mapping.MapSystem{id: 4}, %Mapping.MapSystem{id: 5}}
+    ]
+  end
+
   test "upsert_connection/4 unhides systems that regain a connection", %{mask: mask} do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 99_104, name: "Reveal"})
     {:ok, map} = Mapping.create_map(%{name: "Reveal", mask_id: mask.id})

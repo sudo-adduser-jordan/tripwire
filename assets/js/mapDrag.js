@@ -129,6 +129,15 @@ const MapDrag = {
     }
 
     this.onDblClick = (ev) => {
+      const node = ev.target.closest && ev.target.closest("g[data-system-id]")
+      if (node) {
+        ev.preventDefault()
+        ev.stopPropagation()
+        if (!ev.target.closest("text[phx-click]")) {
+          this.pushEvent("toggle-collapse", { id: node.dataset.systemId })
+        }
+        return
+      }
       if (this.isLocked()) return
       ev.preventDefault()
       const rect = this.svg.getBoundingClientRect()

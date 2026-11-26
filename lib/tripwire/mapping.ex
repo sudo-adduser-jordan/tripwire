@@ -295,6 +295,92 @@ defmodule Tripwire.Mapping do
     end
   end
 
+  def collapse_hidden_ids(systems, connections, collapsed_ids, opts \\ []) do
+    ids = Enum.map(systems, & &1.id)
+
+    if ids == [] do
+      Elixir.MapSet.new()
+    else
+      adj = undirected_adj(ids, connections)
+      roots = layout_roots(ids, connections, opts)
+
+      collapsed =
+        Elixir.MapSet.intersection(Elixir.MapSet.new(collapsed_ids), Elixir.MapSet.new(ids))
+
+      {_parent, children, _depths, _roots} = spanning_tree(adj, roots, ids)
+
+      Enum.reduce(collapsed, Elixir.MapSet.new(), fn id, hidden ->
+        Elixir.MapSet.union(hidden, descendant_ids(children, id))
+      end)
+    end
+  end
+
+  def collapse_hidden_counts(systems, connections, collapsed_ids, opts \\ []) do
+    collapsed =
+      Elixir.MapSet.intersection(
+        Elixir.MapSet.new(collapsed_ids),
+        Elixir.MapSet.new(systems, & &1.id)
+      )
+
+    hidden = collapse_hidden_ids(systems, connections, collapsed, opts)
+
+    Elixir.Map.new(collapsed, fn id ->
+      revealed =
+        collapse_hidden_ids(systems, connections, Elixir.MapSet.delete(collapsed, id), opts)
+
+      {id, Elixir.MapSet.size(Elixir.MapSet.difference(hidden, revealed))}
+    end)
+  end
+
+  def chain_home_id(systems, %Map{home_solar_system_id: solar}) when is_integer(solar) do
+    case Enum.find(systems, &(&1.solar_system_id == solar)) do
+      %MapSystem{id: id} -> id
+      nil -> nil
+    end
+  end
+
+  def chain_home_id(_systems, _map), do: nil
+
+  defp layout_roots(ids, connections, opts) do
+    adj = undirected_adj(ids, connections)
+    seeds = tree_roots(ids, connections, opts)
+    seen = bfs_reachable(:queue.from_list(seeds), adj, Elixir.MapSet.new(seeds))
+
+    Enum.reduce(Enum.sort(ids), {seeds, seen}, fn id, {roots, seen} ->
+      if Elixir.MapSet.member?(seen, id) do
+        {roots, seen}
+      else
+        component = bfs_reachable(:queue.from_list([id]), adj, Elixir.MapSet.new([id]))
+        {roots ++ [id], Elixir.MapSet.union(seen, component)}
+      end
+    end)
+    |> elem(0)
+  end
+
+  defp descendant_ids(children, id) do
+    collect_descendants(
+      :queue.from_list(Elixir.Map.get(children, id, [])),
+      children,
+      Elixir.MapSet.new()
+    )
+  end
+
+  defp collect_descendants(queue, children, seen) do
+    case :queue.out(queue) do
+      {:empty, _} ->
+        seen
+
+      {{:value, id}, rest} ->
+        if Elixir.MapSet.member?(seen, id) do
+          collect_descendants(rest, children, seen)
+        else
+          seen = Elixir.MapSet.put(seen, id)
+          kids = :queue.from_list(Elixir.Map.get(children, id, []))
+          collect_descendants(:queue.join(rest, kids), children, seen)
+        end
+    end
+  end
+
   defp undirected_adj(ids, connections) do
     base =
       Enum.reduce(connections, %{}, fn {_conn, from, to}, acc ->
