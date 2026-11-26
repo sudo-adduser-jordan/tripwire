@@ -1,7 +1,7 @@
-defmodule TripwireWeb.EffectIconComponent do
+defmodule ZtripwireWeb.EffectIconComponent do
   use Phoenix.Component
 
-  alias Tripwire.Systems
+  alias Ztripwire.Systems
 
   attr :effect, :string, required: true
   attr :size, :any, default: 16

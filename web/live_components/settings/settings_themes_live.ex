@@ -1,7 +1,7 @@
-defmodule TripwireWeb.LiveComponents.Settings.ThemesLive do
+defmodule ZtripwireWeb.LiveComponents.Settings.ThemesLive do
   use Phoenix.Component
   alias Phoenix.LiveView.JS
-  alias Tripwire.EveImages
+  alias Ztripwire.EveImages
 
   @faction_theme_ids %{
     "amarr" => 500_003,

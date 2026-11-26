@@ -1,13 +1,13 @@
-defmodule TripwireWeb.LiveComponents.MapLive do
-  use TripwireWeb, :live_component
+defmodule ZtripwireWeb.LiveComponents.MapLive do
+  use ZtripwireWeb, :live_component
 
-  alias Tripwire.Data
-  alias Tripwire.EveImages
-  alias Tripwire.Mapping
-  alias Tripwire.Signatures, as: SigParser
-  alias Tripwire.Wormholes
+  alias Ztripwire.Data
+  alias Ztripwire.EveImages
+  alias Ztripwire.Mapping
+  alias Ztripwire.Signatures, as: SigParser
+  alias Ztripwire.Wormholes
 
-  import TripwireWeb.FormHelpers, only: [present: 1]
+  import ZtripwireWeb.FormHelpers, only: [present: 1]
 
   @occupant_tip_w 280
   @occupant_tip_max_w 560
@@ -289,10 +289,10 @@ defmodule TripwireWeb.LiveComponents.MapLive do
                   Badges show each static's destination class, e.g. C5; hover for the hole type.
                 </p>
                 <p class="mt-1 font-semibold">System class</p>
-                <p :for={cls <- Tripwire.Systems.classes()} class="flex items-center gap-1">
+                <p :for={cls <- Ztripwire.Systems.classes()} class="flex items-center gap-1">
                   <span
                     class="inline-block size-2.5 rounded-sm"
-                    style={"background-color: #{Tripwire.Systems.color(%{sys_class: cls})}"}
+                    style={"background-color: #{Ztripwire.Systems.color(%{sys_class: cls})}"}
                   >
                   </span>
                   {cls}
@@ -317,7 +317,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               type="button"
               class="btn btn-ghost btn-xs"
               title="Zoom out"
-              phx-click={JS.dispatch("tripwire:zoom-out", to: "#chain-map")}
+              phx-click={JS.dispatch("ztripwire:zoom-out", to: "#chain-map")}
               disabled={@map_locked}
             >
               <.icon name="hero-magnifying-glass-minus" class="size-4" />
@@ -330,7 +330,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
               type="button"
               class="btn btn-ghost btn-xs"
               title="Zoom in"
-              phx-click={JS.dispatch("tripwire:zoom-in", to: "#chain-map")}
+              phx-click={JS.dispatch("ztripwire:zoom-in", to: "#chain-map")}
               disabled={@map_locked}
             >
               <.icon name="hero-magnifying-glass-plus" class="size-4" />
@@ -695,12 +695,12 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     |> Enum.with_index(fn {cy, _members}, level -> {cy, level} end)
   end
 
-  defp node_class(system), do: Tripwire.Systems.display_class(system)
+  defp node_class(system), do: Ztripwire.Systems.display_class(system)
 
   defp node_label(%{unknown: true}), do: ""
   defp node_label(system), do: system.alias || system.name
 
-  defp node_color(system), do: Tripwire.Systems.color(system)
+  defp node_color(system), do: Ztripwire.Systems.color(system)
 
   defp visible_connections(assigns) do
     connections = Map.get(assigns, :connections, [])
@@ -723,7 +723,7 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     inset = node_badge_inset(radius)
 
     system
-    |> Tripwire.Systems.system_statics()
+    |> Ztripwire.Systems.system_statics()
     |> Enum.map(&static_badge/1)
     |> Enum.map_reduce({inset, 0}, fn {label, tip, width, color, text_color}, {x, row} ->
       {x, row} =
@@ -741,23 +741,23 @@ defmodule TripwireWeb.LiveComponents.MapLive do
     case Wormholes.leads_to(code) do
       [class] ->
         {class, "Static #{code} to #{class}", badge_width(class),
-         Tripwire.Systems.badge_color(class), Tripwire.Systems.badge_text_color(class)}
+         Ztripwire.Systems.badge_color(class), Ztripwire.Systems.badge_text_color(class)}
 
       [_ | _] = classes ->
         label = Enum.join(classes, "/")
 
         {label, "Static #{code} to #{label}", badge_width(label),
-         Tripwire.Systems.badge_color(nil), "#ffffff"}
+         Ztripwire.Systems.badge_color(nil), "#ffffff"}
 
       [] ->
-        {code, "Static wormhole: #{code}", badge_width(code), Tripwire.Systems.badge_color(code),
-         Tripwire.Systems.badge_text_color(code)}
+        {code, "Static wormhole: #{code}", badge_width(code), Ztripwire.Systems.badge_color(code),
+         Ztripwire.Systems.badge_text_color(code)}
     end
   end
 
   defp badge_width(label), do: String.length(label) * 6 + 14
 
-  defp node_effect(system), do: Tripwire.Systems.display_effect(system)
+  defp node_effect(system), do: Ztripwire.Systems.display_effect(system)
 
   defp node_footer(connections, wh_sigs, system_id) do
     case Enum.find(connections, fn {_conn, from, to} ->
@@ -791,8 +791,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   defp jump_for(_conn, from, to), do: likely_jump(from, to)
 
   defp likely_jump(from, to) do
-    class1 = Tripwire.Systems.display_class(from)
-    class2 = Tripwire.Systems.display_class(to)
+    class1 = Ztripwire.Systems.display_class(from)
+    class2 = Ztripwire.Systems.display_class(to)
 
     Wormholes.dummy(Wormholes.likely_wormhole(class1, class2)) |> Map.get("jump")
   end
@@ -811,8 +811,8 @@ defmodule TripwireWeb.LiveComponents.MapLive do
   end
 
   defp likely_title(from, to) do
-    class1 = Tripwire.Systems.display_class(from)
-    class2 = Tripwire.Systems.display_class(to)
+    class1 = Ztripwire.Systems.display_class(from)
+    class2 = Ztripwire.Systems.display_class(to)
     size = Wormholes.likely_wormhole(class1, class2)
 
     "Likely #{size} wormhole (#{class1 || "?"} ➔ #{class2 || "?"})"

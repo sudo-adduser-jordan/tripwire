@@ -1,6 +1,6 @@
-defmodule TripwireWeb.CoreComponents do
+defmodule ZtripwireWeb.CoreComponents do
   use Phoenix.Component
-  use Gettext, backend: TripwireWeb.Gettext
+  use Gettext, backend: ZtripwireWeb.Gettext
 
   alias Phoenix.LiveView.JS
 
@@ -27,9 +27,9 @@ defmodule TripwireWeb.CoreComponents do
 
   def translate_error({msg, opts}) do
     if count = opts[:count] do
-      Gettext.dngettext(TripwireWeb.Gettext, "errors", msg, msg, count, opts)
+      Gettext.dngettext(ZtripwireWeb.Gettext, "errors", msg, msg, count, opts)
     else
-      Gettext.dgettext(TripwireWeb.Gettext, "errors", msg, opts)
+      Gettext.dgettext(ZtripwireWeb.Gettext, "errors", msg, opts)
     end
   end
 end

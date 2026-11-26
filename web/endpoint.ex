@@ -1,9 +1,9 @@
-defmodule TripwireWeb.Endpoint do
-  use Phoenix.Endpoint, otp_app: :tripwire
+defmodule ZtripwireWeb.Endpoint do
+  use Phoenix.Endpoint, otp_app: :ztripwire
 
   @session_options [
     store: :cookie,
-    key: "_tripwire_key",
+    key: "_ztripwire_key",
     signing_salt: "QM3KL2rn",
     same_site: "Lax"
   ]
@@ -14,16 +14,16 @@ defmodule TripwireWeb.Endpoint do
 
   plug Plug.Static,
     at: "/",
-    from: :tripwire,
+    from: :ztripwire,
     gzip: not code_reloading?,
-    only: TripwireWeb.static_paths(),
+    only: ZtripwireWeb.static_paths(),
     raise_on_missing_only: code_reloading?
 
   if code_reloading? do
     socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
     plug Phoenix.LiveReloader
     plug Phoenix.CodeReloader
-    plug Phoenix.Ecto.CheckRepoStatus, otp_app: :tripwire
+    plug Phoenix.Ecto.CheckRepoStatus, otp_app: :ztripwire
   end
 
   plug Phoenix.LiveDashboard.RequestLogger,
@@ -31,7 +31,7 @@ defmodule TripwireWeb.Endpoint do
     cookie_key: "request_logger"
 
   plug Plug.RequestId
-  plug TripwireWeb.Plugs.WideEvent
+  plug ZtripwireWeb.Plugs.WideEvent
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
   plug Plug.Parsers,
@@ -42,5 +42,5 @@ defmodule TripwireWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
-  plug TripwireWeb.Router
+  plug ZtripwireWeb.Router
 end

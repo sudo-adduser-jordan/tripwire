@@ -1,5 +1,5 @@
-defmodule Tripwire.Repo do
+defmodule Ztripwire.Repo do
   use Ecto.Repo,
-    otp_app: :tripwire,
+    otp_app: :ztripwire,
     adapter: Ecto.Adapters.SQLite3
 end

@@ -1,4 +1,4 @@
-defmodule Tripwire.Tracking.TestPresence do
+defmodule Ztripwire.Tracking.TestPresence do
   use GenServer
 
   def start_link(opts) do
@@ -17,7 +17,7 @@ defmodule Tripwire.Tracking.TestPresence do
         ship_name: ship_name,
         ship_type_id: ship_type_id
       },
-      name: {:via, Registry, {Tripwire.TrackingRegistry, character.eve_id}}
+      name: {:via, Registry, {Ztripwire.TrackingRegistry, character.eve_id}}
     )
   end
 
@@ -25,7 +25,7 @@ defmodule Tripwire.Tracking.TestPresence do
     ship_name = Keyword.get(opts, :ship_name)
     ship_type_id = Keyword.get(opts, :ship_type_id)
 
-    case Registry.lookup(Tripwire.TrackingRegistry, character.eve_id) do
+    case Registry.lookup(Ztripwire.TrackingRegistry, character.eve_id) do
       [{pid, _}] ->
         GenServer.call(pid, {:set_state, map, system, ship_name, ship_type_id})
         {:ok, pid}
@@ -39,7 +39,7 @@ defmodule Tripwire.Tracking.TestPresence do
            ship_name: ship_name,
            ship_type_id: ship_type_id}
 
-        case DynamicSupervisor.start_child(Tripwire.Tracking.PollerSupervisor, child) do
+        case DynamicSupervisor.start_child(Ztripwire.Tracking.PollerSupervisor, child) do
           {:ok, pid} ->
             {:ok, pid}
 

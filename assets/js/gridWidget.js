@@ -17,7 +17,7 @@ const GridWidget = {
 
     _register() {
         const container = this.el.closest ? this.el.closest('.grid-stack') : null
-        const grid = (container && container.gridstack) || window.TripwireGrid
+        const grid = (container && container.gridstack) || window.ZtripwireGrid
         if (!grid) {
             if (this._tries < 20) {
                 this._tries += 1
@@ -29,7 +29,7 @@ const GridWidget = {
 
         grid.makeWidget(this.el)
 
-        if (container && window.TripwireGridStack) window.TripwireGridStack.refresh(container)
+        if (container && window.ZtripwireGridStack) window.ZtripwireGridStack.refresh(container)
     },
 
     _focusInitial() {
@@ -39,12 +39,12 @@ const GridWidget = {
 
     updated() {
         const container = this.el.closest ? this.el.closest('.grid-stack') : null
-        if (container && window.TripwireGridStack) window.TripwireGridStack.refresh(container)
+        if (container && window.ZtripwireGridStack) window.ZtripwireGridStack.refresh(container)
     },
 
     destroyed() {
         if (this._onPointerDown) this.el.removeEventListener('pointerdown', this._onPointerDown)
-        const grid = window.TripwireGrid
+        const grid = window.ZtripwireGrid
         if (grid && this.el.gridstackNode) grid.removeWidget(this.el, false)
     },
 }

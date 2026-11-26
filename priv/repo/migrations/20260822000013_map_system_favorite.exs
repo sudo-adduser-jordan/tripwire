@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.MapSystemFavorite do
+defmodule Ztripwire.Repo.Migrations.MapSystemFavorite do
   use Ecto.Migration
 
   def change do

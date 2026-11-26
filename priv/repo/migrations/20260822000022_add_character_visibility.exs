@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.AddCharacterVisibility do
+defmodule Ztripwire.Repo.Migrations.AddCharacterVisibility do
   use Ecto.Migration
 
   def change do

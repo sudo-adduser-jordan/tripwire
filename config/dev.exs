@@ -1,9 +1,9 @@
 import Config
 
-config :tripwire, Tripwire.Repo,
+config :ztripwire, Ztripwire.Repo,
   database:
     (case System.get_env("DATABASE_PATH") do
-       path when path in [nil, ""] -> Path.expand("../priv/db/tripwire-dev.db", __DIR__)
+       path when path in [nil, ""] -> Path.expand("../priv/db/ztripwire-dev.db", __DIR__)
        path -> path
      end),
   pool_size: 5,
@@ -12,18 +12,18 @@ config :tripwire, Tripwire.Repo,
   journal_mode: :wal,
   busy_timeout: 5000
 
-config :tripwire, TripwireWeb.Endpoint,
+config :ztripwire, ZtripwireWeb.Endpoint,
   http: [ip: {0, 0, 0, 0}],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
   secret_key_base: "vMF19d7PFCEnoNpB3YLYvvB6tdFNlj/Hp7UgubbvgYsmhmztIDM/GtMMscbKlBds",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:tripwire, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:tripwire, ~w(--watch)]}
+    esbuild: {Esbuild, :install_and_run, [:ztripwire, ~w(--sourcemap=inline --watch)]},
+    tailwind: {Tailwind, :install_and_run, [:ztripwire, ~w(--watch)]}
   ]
 
-config :tripwire, TripwireWeb.Endpoint,
+config :ztripwire, ZtripwireWeb.Endpoint,
   live_reload: [
     web_console_logger: true,
     patterns: [
@@ -35,7 +35,7 @@ config :tripwire, TripwireWeb.Endpoint,
 
 config :swoosh, :api_client, false
 
-config :tripwire, dev_routes: true
+config :ztripwire, dev_routes: true
 
 config :logger, :default_formatter, format: "[$level] $message\n"
 

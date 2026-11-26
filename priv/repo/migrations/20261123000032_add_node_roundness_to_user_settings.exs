@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.AddNodeRoundnessToUserSettings do
+defmodule Ztripwire.Repo.Migrations.AddNodeRoundnessToUserSettings do
   use Ecto.Migration
 
   def change do

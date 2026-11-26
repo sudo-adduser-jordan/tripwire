@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.AddMapSystemHiddenAt do
+defmodule Ztripwire.Repo.Migrations.AddMapSystemHiddenAt do
   use Ecto.Migration
 
   def change do

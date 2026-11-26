@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.MapSystemClass do
+defmodule Ztripwire.Repo.Migrations.MapSystemClass do
   use Ecto.Migration
 
   def change do

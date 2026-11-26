@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.CreateMapPermissions do
+defmodule Ztripwire.Repo.Migrations.CreateMapPermissions do
   use Ecto.Migration
 
   def change do

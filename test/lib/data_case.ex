@@ -1,24 +1,24 @@
-defmodule Tripwire.DataCase do
+defmodule Ztripwire.DataCase do
   use ExUnit.CaseTemplate
 
   using do
     quote do
-      alias Tripwire.Repo
+      alias Ztripwire.Repo
 
       import Ecto
       import Ecto.Changeset
       import Ecto.Query
-      import Tripwire.DataCase
+      import Ztripwire.DataCase
     end
   end
 
   setup tags do
-    Tripwire.DataCase.setup_sandbox(tags)
+    Ztripwire.DataCase.setup_sandbox(tags)
     :ok
   end
 
   def setup_sandbox(tags) do
-    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Tripwire.Repo, shared: not tags[:async])
+    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Ztripwire.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
   end
 

@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.CreateMapConnections do
+defmodule Ztripwire.Repo.Migrations.CreateMapConnections do
   use Ecto.Migration
 
   def change do

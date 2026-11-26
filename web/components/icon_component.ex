@@ -1,4 +1,4 @@
-defmodule TripwireWeb.IconComponent do
+defmodule ZtripwireWeb.IconComponent do
   use Phoenix.Component
 
   attr :name, :string, required: true

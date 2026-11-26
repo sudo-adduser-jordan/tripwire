@@ -1,7 +1,7 @@
-defmodule TripwireWeb.LiveComponents.Settings.StatisticsLive do
+defmodule ZtripwireWeb.LiveComponents.Settings.StatisticsLive do
   use Phoenix.Component
 
-  alias Tripwire.Mapping
+  alias Ztripwire.Mapping
 
   attr :settings_tab, :string, default: "account"
   attr :character, :any, default: nil

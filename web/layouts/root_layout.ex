@@ -1,5 +1,5 @@
-defmodule TripwireWeb.RootLayout do
-  use TripwireWeb, :html
+defmodule ZtripwireWeb.RootLayout do
+  use ZtripwireWeb, :html
 
   embed_templates "/*"
 

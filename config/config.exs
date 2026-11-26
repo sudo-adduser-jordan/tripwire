@@ -16,13 +16,13 @@ config :ueberauth, Ueberauth.Strategy.EVESSO.OAuth,
   client_id: {:system, "EVESSO_CLIENT_ID"},
   client_secret: {:system, "EVESSO_SECRET_KEY"}
 
-config :tripwire, Tripwire.Mailer, adapter: Swoosh.Adapters.Local
+config :ztripwire, Ztripwire.Mailer, adapter: Swoosh.Adapters.Local
 
-config :tripwire,
-  ecto_repos: [Tripwire.Repo],
+config :ztripwire,
+  ecto_repos: [Ztripwire.Repo],
   generators: [timestamp_type: :utc_datetime]
 
-config :tripwire, Tripwire.Vault,
+config :ztripwire, Ztripwire.Vault,
   ciphers: [
     default: {
       Cloak.Ciphers.AES.GCM,
@@ -30,19 +30,19 @@ config :tripwire, Tripwire.Vault,
     }
   ]
 
-config :tripwire, TripwireWeb.Endpoint,
+config :ztripwire, ZtripwireWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: TripwireWeb.ErrorHTML, json: TripwireWeb.ErrorJSON],
+    formats: [html: ZtripwireWeb.ErrorHTML, json: ZtripwireWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: Tripwire.PubSub,
+  pubsub_server: Ztripwire.PubSub,
   live_view: [signing_salt: "2qoLjCJq"]
 
 config :esbuild,
   version: "0.25.4",
-  tripwire: [
+  ztripwire: [
     args: ~w(
       app=js/app.js
       dashboard=js/dashboard
@@ -59,7 +59,7 @@ config :esbuild,
 
 config :tailwind,
   version: "4.1.12",
-  tripwire: [
+  ztripwire: [
     args: ~w(
       --input=assets/css/app.css
       --output=priv/static/assets/css/app.css
@@ -67,14 +67,14 @@ config :tailwind,
     cd: Path.expand("..", __DIR__)
   ]
 
-config :tripwire, Tripwire.Systems.Catalog,
+config :ztripwire, Ztripwire.Systems.Catalog,
   path: Path.expand("../priv/sde/eve-online-static-data-latest-jsonl.zip", __DIR__)
 
-config :tripwire, Tripwire.Systems.Gates,
+config :ztripwire, Ztripwire.Systems.Gates,
   path: Path.expand("../priv/sde/eve-online-static-data-latest-jsonl.zip", __DIR__)
 
-config :tripwire, Tripwire.Log,
-  service: "tripwire",
+config :ztripwire, Ztripwire.Log,
+  service: "ztripwire",
   sample_rate: 1.0,
   test_path: "logs/test",
   error_path: "logs/errors"

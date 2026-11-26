@@ -1,9 +1,9 @@
-defmodule Tripwire.MixProject do
+defmodule Ztripwire.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :tripwire,
+      app: :ztripwire,
       version: "0.0.1",
       elixir: "~> 1.19",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -17,7 +17,7 @@ defmodule Tripwire.MixProject do
 
   def application do
     [
-      mod: {Tripwire.Application, []},
+      mod: {Ztripwire.Application, []},
       extra_applications: [:logger, :runtime_tools] ++ os_mon(Mix.env())
     ]
   end
@@ -96,13 +96,13 @@ defmodule Tripwire.MixProject do
       "assets.build": [
         "cmd --cd assets npm ci",
         "compile",
-        "tailwind tripwire",
-        "esbuild tripwire"
+        "tailwind ztripwire",
+        "esbuild ztripwire"
       ],
       "assets.deploy": [
         "cmd --cd assets npm ci",
-        "tailwind tripwire --minify",
-        "esbuild tripwire --minify",
+        "tailwind ztripwire --minify",
+        "esbuild ztripwire --minify",
         "phx.digest"
       ],
       precommit: [

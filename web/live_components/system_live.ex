@@ -1,9 +1,9 @@
-defmodule TripwireWeb.LiveComponents.SystemLive do
-  use TripwireWeb, :live_component
+defmodule ZtripwireWeb.LiveComponents.SystemLive do
+  use ZtripwireWeb, :live_component
 
-  alias Tripwire.EveImages
-  alias Tripwire.Mapping
-  alias Tripwire.Systems
+  alias Ztripwire.EveImages
+  alias Ztripwire.Mapping
+  alias Ztripwire.Systems
 
   def update(assigns, socket) do
     systems =

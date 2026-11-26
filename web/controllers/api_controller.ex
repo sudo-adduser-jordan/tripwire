@@ -1,7 +1,7 @@
-defmodule TripwireWeb.ApiController do
-  use TripwireWeb, :controller
+defmodule ZtripwireWeb.ApiController do
+  use ZtripwireWeb, :controller
 
-  alias Tripwire.Mapping
+  alias Ztripwire.Mapping
 
   plug :require_api_token
 
@@ -61,7 +61,7 @@ defmodule TripwireWeb.ApiController do
   end
 
   defp require_api_token(conn, _opts) do
-    expected = System.get_env("TRIPWIRE_API", Application.get_env(:tripwire, :api_token, ""))
+    expected = System.get_env("TRIPWIRE_API", Application.get_env(:ztripwire, :api_token, ""))
 
     token =
       conn

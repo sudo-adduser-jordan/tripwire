@@ -1,5 +1,5 @@
-defmodule TripwireWeb.DemoNoDbTest do
-  use TripwireWeb.ConnCase, async: false
+defmodule ZtripwireWeb.DemoNoDbTest do
+  use ZtripwireWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
 
@@ -9,7 +9,7 @@ defmodule TripwireWeb.DemoNoDbTest do
 
     :telemetry.attach(
       handler,
-      [:tripwire, :repo, :query],
+      [:ztripwire, :repo, :query],
       fn _event, _measurements, metadata, _config ->
         send(parent, {:repo_query, metadata[:source], metadata[:query]})
       end,

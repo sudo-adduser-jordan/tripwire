@@ -1,8 +1,8 @@
-defmodule Tripwire.TestFixtures do
-  alias Tripwire.Mapping
-  alias Tripwire.Mapping.{Comment, Signature}
-  alias Tripwire.Masks
-  alias Tripwire.Repo
+defmodule Ztripwire.TestFixtures do
+  alias Ztripwire.Mapping
+  alias Ztripwire.Mapping.{Comment, Signature}
+  alias Ztripwire.Masks
+  alias Ztripwire.Repo
 
   def demo_mask do
     {:ok, mask} = Masks.create_mask(%{name: "Demo", kind: "demo"})
@@ -10,7 +10,7 @@ defmodule Tripwire.TestFixtures do
   end
 
   def seed_demo_map(mask) do
-    state = Tripwire.Demo.fixture()
+    state = Ztripwire.Demo.fixture()
 
     {:ok, map} =
       Mapping.create_map(%{

@@ -1,12 +1,12 @@
-defmodule TripwireWeb.LiveComponents.NavigationLive do
+defmodule ZtripwireWeb.LiveComponents.NavigationLive do
   use Phoenix.Component
 
-  import TripwireWeb.IconComponent
-  import TripwireWeb.CharacterVisibilityComponents
-  import TripwireWeb.MaskAvatarComponents
-  import TripwireWeb.PresenceHelpers, only: [presence_field: 3]
+  import ZtripwireWeb.IconComponent
+  import ZtripwireWeb.CharacterVisibilityComponents
+  import ZtripwireWeb.MaskAvatarComponents
+  import ZtripwireWeb.PresenceHelpers, only: [presence_field: 3]
 
-  alias Tripwire.Systems
+  alias Ztripwire.Systems
 
   attr :character, :string, required: true
   attr :characters, :list, default: []

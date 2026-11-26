@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.CharacterStatCounters do
+defmodule Ztripwire.Repo.Migrations.CharacterStatCounters do
   use Ecto.Migration
 
   def up do

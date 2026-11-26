@@ -126,7 +126,7 @@
       />
       <.live_component
         :if={@widget_system}
-        module={TripwireWeb.LiveComponents.SystemLive}
+        module={ZtripwireWeb.LiveComponents.SystemLive}
         id="system-live"
         map_id={@map && @map.id}
         systems={@systems}
@@ -141,7 +141,7 @@
       />
       <.live_component
         :if={@widget_notes}
-        module={TripwireWeb.LiveComponents.NotesLive}
+        module={ZtripwireWeb.LiveComponents.NotesLive}
         id="notes-live"
         selected_system_id={@selected_system_id}
         selected_system_name={@selected_system_name}
@@ -152,7 +152,7 @@
       />
       <.live_component
         :if={@widget_signatures}
-        module={TripwireWeb.LiveComponents.SignaturesLive}
+        module={ZtripwireWeb.LiveComponents.SignaturesLive}
         id="signatures"
         selected_system_id={@selected_system_id}
         selected_system_name={@selected_system_name}
@@ -166,7 +166,7 @@
       />
       <.live_component
         :if={@widget_map}
-        module={TripwireWeb.LiveComponents.MapLive}
+        module={ZtripwireWeb.LiveComponents.MapLive}
         id="map-live"
         map_id={@map && @map.id}
         map={@map}
@@ -248,7 +248,7 @@
             >
               <span
                 class="inline-block size-2.5 shrink-0 rounded-full"
-                style={"background-color: #{Tripwire.Systems.color(sug)}"}
+                style={"background-color: #{Ztripwire.Systems.color(sug)}"}
               >
               </span>
               <span class="truncate font-mono">{sug.name}</span>
@@ -273,7 +273,7 @@
               Auto (from security)
             </option>
             <option
-              :for={opt <- Tripwire.Systems.classes()}
+              :for={opt <- Ztripwire.Systems.classes()}
               value={opt}
               selected={@sys_form["sys_class"] == opt}
             >

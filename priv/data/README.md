@@ -2,14 +2,14 @@
 
 ## `wormholes.json`
 
-Wormhole type database: mass, life, jump limits and destination classes per hole code, used by `Tripwire.Wormholes`.
+Wormhole type database: mass, life, jump limits and destination classes per hole code, used by `Ztripwire.Wormholes`.
 
 ## `wormhole_statics.json`
 
 Static wormholes for 2605 Anoikis systems, keyed by system name (`J231710` → `["H900","C247"]`).
 
 Source: `tools/statics.json` from the upstream Tripwire repository
-(<https://github.com/astriania/tripwire>, MIT licence, earlier home
+(<https://github.com/astriania/ztripwire>, MIT licence, earlier home
 <https://bitbucket.org/daimian/tripwire>). Statics are player-collected data; the
 SDE has no official source for them.
 
@@ -22,7 +22,7 @@ solar system id:
 {"31001663":{"class":"C4","effect":"Magnetar","name":"J231710","statics":["C247","H900"]}}
 ```
 
-Rebuild it with `mix tripwire.build_wormhole_systems` after downloading the SDE
+Rebuild it with `mix ztripwire.build_wormhole_systems` after downloading the SDE
 (`task setup` keeps `priv/sde/eve-online-static-data-latest-jsonl.zip` current).
 
 - Class: `wormholeClassID` from the SDE `mapConstellations.jsonl`

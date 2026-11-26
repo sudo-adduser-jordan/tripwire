@@ -1,10 +1,10 @@
-defmodule TripwireWeb.LiveComponents.Settings.AccountLive do
+defmodule ZtripwireWeb.LiveComponents.Settings.AccountLive do
   use Phoenix.Component
 
-  import TripwireWeb.CharacterVisibilityComponents
-  import TripwireWeb.FormHelpers, only: [present: 1]
-  import TripwireWeb.PresenceHelpers, only: [presence_field: 3]
-  import TripwireWeb.MaskAvatarComponents
+  import ZtripwireWeb.CharacterVisibilityComponents
+  import ZtripwireWeb.FormHelpers, only: [present: 1]
+  import ZtripwireWeb.PresenceHelpers, only: [presence_field: 3]
+  import ZtripwireWeb.MaskAvatarComponents
 
   attr :settings_tab, :string, default: "account"
   attr :characters, :list, default: []

@@ -1,5 +1,5 @@
-defmodule TripwireWeb.PageControllerTest do
-  use TripwireWeb.ConnCase, async: false
+defmodule ZtripwireWeb.PageControllerTest do
+  use ZtripwireWeb.ConnCase, async: false
 
   test "GET / shows the landing page in demo mode with a disabled SSO button", %{conn: conn} do
     with_env(
@@ -48,7 +48,7 @@ defmodule TripwireWeb.PageControllerTest do
 
   test "GET / redirects a logged-in character to the dashboard", %{conn: conn} do
     {:ok, character} =
-      Tripwire.Accounts.upsert_character(%{eve_id: 77_100, name: "Landing Pilot"})
+      Ztripwire.Accounts.upsert_character(%{eve_id: 77_100, name: "Landing Pilot"})
 
     conn =
       conn

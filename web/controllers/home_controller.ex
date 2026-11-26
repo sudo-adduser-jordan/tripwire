@@ -1,8 +1,8 @@
-defmodule TripwireWeb.HomeController do
-  use TripwireWeb, :controller
+defmodule ZtripwireWeb.HomeController do
+  use ZtripwireWeb, :controller
 
-  alias Tripwire.Accounts
-  alias Tripwire.SSO
+  alias Ztripwire.Accounts
+  alias Ztripwire.SSO
 
   def home(%{assigns: %{current_user: %{}}} = conn, _params) do
     redirect(conn, to: "/dashboard")

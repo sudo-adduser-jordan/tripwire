@@ -1,4 +1,4 @@
-defmodule TripwireWeb.ButtonComponents do
+defmodule ZtripwireWeb.ButtonComponents do
   use Phoenix.Component
 
   attr :rest, :global, include: ~w(href navigate patch method download name value disabled)

@@ -1,4 +1,4 @@
-defmodule TripwireWeb.Plugs.WideEvent do
+defmodule ZtripwireWeb.Plugs.WideEvent do
   import Plug.Conn
 
   def init(opts), do: opts
@@ -7,7 +7,7 @@ defmodule TripwireWeb.Plugs.WideEvent do
     start = System.monotonic_time(:millisecond)
 
     event =
-      Tripwire.Log.new(%{
+      Ztripwire.Log.new(%{
         request_id: request_id(conn),
         method: conn.method,
         path: conn.request_path,
@@ -24,17 +24,17 @@ defmodule TripwireWeb.Plugs.WideEvent do
   defp finish(conn) do
     start = conn.private[:wide_event_start] || System.monotonic_time(:millisecond)
     duration = System.monotonic_time(:millisecond) - start
-    base = conn.private[:wide_event] || Tripwire.Log.new()
+    base = conn.private[:wide_event] || Ztripwire.Log.new()
 
     event =
-      Tripwire.Log.merge(base, %{
+      Ztripwire.Log.merge(base, %{
         status: conn.status || 0,
         duration_ms: duration,
         outcome: outcome(conn.status)
       })
 
     level = if (conn.status || 0) >= 500, do: :error, else: :info
-    Tripwire.Log.emit(level, event)
+    Ztripwire.Log.emit(level, event)
     conn
   end
 

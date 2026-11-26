@@ -1,9 +1,9 @@
-defmodule TripwireWeb.LiveComponents.NotesLive do
-  use TripwireWeb, :live_component
+defmodule ZtripwireWeb.LiveComponents.NotesLive do
+  use ZtripwireWeb, :live_component
 
-  alias Tripwire.Mapping
+  alias Ztripwire.Mapping
 
-  import TripwireWeb.FormHelpers, only: [changeset_message: 1]
+  import ZtripwireWeb.FormHelpers, only: [changeset_message: 1]
 
   def update(assigns, socket) do
     comments =
@@ -244,7 +244,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
           <div :if={@selected_system_id == nil} class="space-y-2">
             <div :for={body <- @welcome_notes} class="rounded bg-base-200 p-2">
               <div class={markdown_class()}>
-                {Phoenix.HTML.raw(Tripwire.Markdown.to_html(body))}
+                {Phoenix.HTML.raw(Ztripwire.Markdown.to_html(body))}
               </div>
             </div>
           </div>
@@ -288,7 +288,7 @@ defmodule TripwireWeb.LiveComponents.NotesLive do
             </form>
             <div :if={@editing_comment_id != comment.id}>
               <div class={markdown_class()}>
-                {Phoenix.HTML.raw(Tripwire.Markdown.to_html(comment.body))}
+                {Phoenix.HTML.raw(Ztripwire.Markdown.to_html(comment.body))}
               </div>
               <div class="mt-1 flex items-center justify-between text-xs opacity-60">
                 <span>{comment.character && comment.character.name}</span>

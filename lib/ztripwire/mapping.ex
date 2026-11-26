@@ -1,0 +1,1584 @@
+defmodule Ztripwire.Mapping do
+  import Ecto.Query
+
+  alias Ztripwire.Accounts
+  alias Ztripwire.Accounts.Character
+  alias Ztripwire.Mapping.{Map, MapConnection, MapSystem, Signature}
+  alias Ztripwire.Repo
+  alias Ztripwire.Signatures, as: SigParser
+  alias Ztripwire.Systems
+
+  def get_map!(id), do: Repo.get!(Map, id)
+
+  def list_maps_for_mask(mask_id) do
+    Repo.all(from(m in Map, where: m.mask_id == ^mask_id))
+  end
+
+  def create_map(attrs) do
+    %Map{}
+    |> Map.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def update_map(%Map{} = map, attrs) do
+    map
+    |> Map.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @thera_solar_system_id 31_000_005
+  @thera_name "Thera"
+  @jita_solar_system_id 30_000_142
+
+  @welcome_shortcuts """
+  # Shortcuts
+
+  - <kbd>Escape</kbd> — toggle settings
+  - <kbd>Ctrl</kbd> + <kbd>V</kbd> — paste scans
+  """
+
+  @welcome_markdown """
+  **Bold**
+  *italic* and _italic_
+  __underline__
+  ~~strike~~
+  `code`
+  # Header 1
+  ## Header 2
+  ### Header 3
+  """
+
+  def thera_solar_system_id, do: @thera_solar_system_id
+  def thera_name, do: @thera_name
+
+  def list_favorite_candidates(mask_id, exclude_map_id) do
+    map_ids =
+      from(m in Map, where: m.mask_id == ^mask_id and m.id != ^exclude_map_id, select: m.id)
+
+    Repo.all(
+      from(s in MapSystem,
+        where: s.map_id in subquery(map_ids) and s.favorite == true,
+        order_by: [asc: s.id]
+      )
+    )
+  end
+
+  def wormhole_link_target(mask_id, candidate_solar_id, chain_systems) do
+    by_solar = Elixir.Map.new(chain_systems, &{&1.solar_system_id, &1})
+    chain_set = Elixir.MapSet.new(Elixir.Map.keys(by_solar))
+    map_ids = from(m in Map, where: m.mask_id == ^mask_id, select: m.id)
+
+    links =
+      Repo.all(
+        from(c in MapConnection,
+          where: c.map_id in subquery(map_ids),
+          preload: [:from_system, :to_system]
+        )
+      )
+
+    Enum.find_value(links, fn conn ->
+      from_solar = conn.from_system && conn.from_system.solar_system_id
+      to_solar = conn.to_system && conn.to_system.solar_system_id
+
+      cond do
+        from_solar == candidate_solar_id and Elixir.MapSet.member?(chain_set, to_solar) ->
+          {by_solar[to_solar], conn.hole_type}
+
+        to_solar == candidate_solar_id and Elixir.MapSet.member?(chain_set, from_solar) ->
+          {by_solar[from_solar], conn.hole_type}
+
+        true ->
+          nil
+      end
+    end)
+  end
+
+  def ensure_chain_system(%Map{} = map, attrs) do
+    solar_id = attrs[:solar_system_id] || attrs["solar_system_id"]
+
+    case Repo.get_by(MapSystem, map_id: map.id, solar_system_id: solar_id) do
+      %MapSystem{} = system ->
+        {:ok, system, false}
+
+      nil ->
+        position = %{x: 460.0, y: 300.0}
+
+        case add_system_to_map(map, Elixir.Map.merge(%{x: position.x, y: position.y}, attrs)) do
+          {:ok, system} -> {:ok, system, true}
+          error -> error
+        end
+    end
+  end
+
+  def list_systems(map_id) do
+    Repo.all(from(s in MapSystem, where: s.map_id == ^map_id, order_by: [asc: s.id]))
+  end
+
+  def list_visible_systems(map_id) do
+    Repo.all(
+      from(s in MapSystem,
+        where: s.map_id == ^map_id and is_nil(s.hidden_at),
+        order_by: [asc: s.id]
+      )
+    )
+  end
+
+  def list_chain_systems(%Map{} = map, true), do: list_systems(map.id)
+
+  def list_chain_systems(%Map{} = map, _show_all) do
+    systems = list_visible_systems(map.id)
+
+    case home_system_id(map) do
+      nil ->
+        systems
+
+      home_id ->
+        reachable = reachable_system_ids(map.id, home_id)
+        Enum.filter(systems, &Elixir.MapSet.member?(reachable, &1.id))
+    end
+  end
+
+  def get_system!(id), do: Repo.get!(MapSystem, id)
+
+  def get_system(id), do: Repo.get(MapSystem, id)
+
+  def list_connections(map_id) do
+    Repo.all(
+      from(c in MapConnection,
+        where: c.map_id == ^map_id,
+        preload: [:from_system, :to_system],
+        order_by: [asc: c.id]
+      )
+    )
+  end
+
+  def list_connections_with_endpoints(map_id) do
+    map_id
+    |> list_connections()
+    |> Enum.map(fn conn -> {conn, conn.from_system, conn.to_system} end)
+  end
+
+  @pan_pad 40
+  @node_w 156.0
+  @node_h 88.0
+  @view_w 1000.0
+  @view_h 700.0
+  @default_zoom 0.8
+
+  def node_size, do: {@node_w, @node_h}
+
+  def default_zoom, do: @default_zoom
+
+  def view_size(zoom \\ @default_zoom), do: {@view_w / zoom, @view_h / zoom}
+
+  def clamp_pan(systems, x, y, zoom \\ @default_zoom) do
+    {view_w, view_h} = view_size(zoom)
+
+    case system_bounds(systems) do
+      nil ->
+        {x, y}
+
+      {min_x, min_y, max_x, max_y} ->
+        {clamp_axis(x, min_x, max_x, view_w, :center),
+         clamp_axis(y, min_y, max_y, view_h, :start)}
+    end
+  end
+
+  def home_center(systems, map, zoom \\ @default_zoom) do
+    with solar when is_integer(solar) <- map && map.home_solar_system_id,
+         home when not is_nil(home) <- Enum.find(systems, &(&1.solar_system_id == solar)) do
+      {view_w, _view_h} = view_size(zoom)
+      clamp_pan(systems, home.x + @node_w / 2 - view_w / 2, top_pan(systems), zoom)
+    else
+      _ -> clamp_pan(systems, 0, 0, zoom)
+    end
+  end
+
+  defp top_pan([]), do: 0
+
+  defp top_pan(systems) do
+    systems |> Enum.map(&(&1.y - @pan_pad)) |> Enum.min()
+  end
+
+  defp system_bounds([]), do: nil
+
+  defp system_bounds(systems) do
+    Enum.reduce(systems, nil, fn system, acc ->
+      {min_x, min_y, max_x, max_y} = acc || {system.x, system.y, system.x, system.y}
+
+      {min(min_x, system.x), min(min_y, system.y), max(max_x, system.x + @node_w),
+       max(max_y, system.y + @node_h)}
+    end)
+  end
+
+  defp clamp_axis(value, first, last, size, align) do
+    low = first - @pan_pad
+    high = last + @pan_pad - size
+
+    if low <= high do
+      value |> max(low) |> min(high)
+    else
+      case align do
+        :start -> low
+        :center -> (first + last - size) / 2
+      end
+    end
+  end
+
+  def tree_layout(systems, connections, orientation \\ "down", spacing \\ 1.0, opts \\ []) do
+    ids = Enum.map(systems, & &1.id)
+
+    if ids == [] do
+      %{}
+    else
+      adj = undirected_adj(ids, connections)
+      roots = tree_roots(ids, connections, opts)
+      {parent, children, depths, roots} = spanning_tree(adj, roots, ids)
+      _ = parent
+      x_index = assign_x_index(roots, children)
+
+      leaf_count =
+        case Elixir.Map.values(x_index) do
+          [] -> 1
+          values -> values |> Enum.max() |> Kernel.+(1)
+        end
+
+      mid = (leaf_count - 1) / 2
+
+      Elixir.Map.new(ids, fn id ->
+        xi = Elixir.Map.get(x_index, id, mid)
+        depth = Elixir.Map.get(depths, id, 0)
+        {x, y} = orient_tidy_position(orientation, depth, xi, mid, spacing)
+        {id, %{x: x, y: y}}
+      end)
+    end
+  end
+
+  def collapse_hidden_ids(systems, connections, collapsed_ids, opts \\ []) do
+    ids = Enum.map(systems, & &1.id)
+
+    if ids == [] do
+      Elixir.MapSet.new()
+    else
+      adj = undirected_adj(ids, connections)
+      roots = layout_roots(ids, connections, opts)
+
+      collapsed =
+        Elixir.MapSet.intersection(Elixir.MapSet.new(collapsed_ids), Elixir.MapSet.new(ids))
+
+      {_parent, children, _depths, _roots} = spanning_tree(adj, roots, ids)
+
+      Enum.reduce(collapsed, Elixir.MapSet.new(), fn id, hidden ->
+        Elixir.MapSet.union(hidden, descendant_ids(children, id))
+      end)
+    end
+  end
+
+  def collapse_hidden_counts(systems, connections, collapsed_ids, opts \\ []) do
+    collapsed =
+      Elixir.MapSet.intersection(
+        Elixir.MapSet.new(collapsed_ids),
+        Elixir.MapSet.new(systems, & &1.id)
+      )
+
+    hidden = collapse_hidden_ids(systems, connections, collapsed, opts)
+
+    Elixir.Map.new(collapsed, fn id ->
+      revealed =
+        collapse_hidden_ids(systems, connections, Elixir.MapSet.delete(collapsed, id), opts)
+
+      {id, Elixir.MapSet.size(Elixir.MapSet.difference(hidden, revealed))}
+    end)
+  end
+
+  def chain_home_id(systems, %Map{home_solar_system_id: solar}) when is_integer(solar) do
+    case Enum.find(systems, &(&1.solar_system_id == solar)) do
+      %MapSystem{id: id} -> id
+      nil -> nil
+    end
+  end
+
+  def chain_home_id(_systems, _map), do: nil
+
+  defp layout_roots(ids, connections, opts) do
+    adj = undirected_adj(ids, connections)
+    seeds = tree_roots(ids, connections, opts)
+    seen = bfs_reachable(:queue.from_list(seeds), adj, Elixir.MapSet.new(seeds))
+
+    Enum.reduce(Enum.sort(ids), {seeds, seen}, fn id, {roots, seen} ->
+      if Elixir.MapSet.member?(seen, id) do
+        {roots, seen}
+      else
+        component = bfs_reachable(:queue.from_list([id]), adj, Elixir.MapSet.new([id]))
+        {roots ++ [id], Elixir.MapSet.union(seen, component)}
+      end
+    end)
+    |> elem(0)
+  end
+
+  defp descendant_ids(children, id) do
+    collect_descendants(
+      :queue.from_list(Elixir.Map.get(children, id, [])),
+      children,
+      Elixir.MapSet.new()
+    )
+  end
+
+  defp collect_descendants(queue, children, seen) do
+    case :queue.out(queue) do
+      {:empty, _} ->
+        seen
+
+      {{:value, id}, rest} ->
+        if Elixir.MapSet.member?(seen, id) do
+          collect_descendants(rest, children, seen)
+        else
+          seen = Elixir.MapSet.put(seen, id)
+          kids = :queue.from_list(Elixir.Map.get(children, id, []))
+          collect_descendants(:queue.join(rest, kids), children, seen)
+        end
+    end
+  end
+
+  defp undirected_adj(ids, connections) do
+    base =
+      Enum.reduce(connections, %{}, fn {_conn, from, to}, acc ->
+        if from.id == to.id do
+          Elixir.Map.put_new(acc, from.id, [])
+        else
+          acc
+          |> Elixir.Map.update(from.id, [to.id], &[to.id | &1])
+          |> Elixir.Map.update(to.id, [from.id], &[from.id | &1])
+        end
+      end)
+
+    Enum.reduce(ids, base, fn id, acc ->
+      acc
+      |> Elixir.Map.put_new(id, [])
+      |> Elixir.Map.update!(id, &(&1 |> Enum.uniq() |> Enum.sort()))
+    end)
+  end
+
+  defp tree_roots(ids, connections, opts) do
+    case Keyword.get(opts, :root_id) do
+      nil ->
+        component_roots(ids, connections)
+
+      root_id ->
+        if root_id in ids, do: [root_id], else: [ids |> Enum.sort() |> hd()]
+    end
+  end
+
+  defp component_roots(ids, connections) do
+    adj = undirected_adj(ids, connections)
+
+    incoming =
+      Enum.reduce(connections, Elixir.MapSet.new(), fn {_conn, _from, to}, acc ->
+        Elixir.MapSet.put(acc, to.id)
+      end)
+
+    ids
+    |> Enum.sort()
+    |> Enum.reduce({[], Elixir.MapSet.new()}, fn id, {roots, seen} ->
+      if Elixir.MapSet.member?(seen, id) do
+        {roots, seen}
+      else
+        component = bfs_reachable(:queue.from_list([id]), adj, Elixir.MapSet.new([id]))
+
+        root =
+          component
+          |> Enum.sort()
+          |> Enum.find(id, &(!Elixir.MapSet.member?(incoming, &1)))
+
+        {roots ++ [root], Elixir.MapSet.union(seen, component)}
+      end
+    end)
+    |> elem(0)
+  end
+
+  defp spanning_tree(adj, roots, ids) do
+    depths = Elixir.Map.new(roots, &{&1, 0})
+    parent = Elixir.Map.new(roots, &{&1, nil})
+    children = Elixir.Map.new(ids, &{&1, []})
+    queue = :queue.from_list(roots)
+    visited = Elixir.MapSet.new(roots)
+
+    {depths, parent, children, visited} =
+      bfs_fill(queue, adj, visited, depths, parent, children)
+
+    {depths, parent, children, _visited, roots} =
+      Enum.reduce(Enum.sort(ids), {depths, parent, children, visited, roots}, fn
+        id, {dep, par, ch, vis, roots} ->
+          if Elixir.MapSet.member?(vis, id) do
+            {dep, par, ch, vis, roots}
+          else
+            dep = Elixir.Map.put(dep, id, 0)
+            par = Elixir.Map.put(par, id, nil)
+            vis = Elixir.MapSet.put(vis, id)
+
+            {dep, par, ch, vis} = bfs_fill(:queue.from_list([id]), adj, vis, dep, par, ch)
+
+            {dep, par, ch, vis, roots ++ [id]}
+          end
+      end)
+
+    {parent, children, depths, roots}
+  end
+
+  defp bfs_fill(queue, adj, visited, depths, parent, children) do
+    case :queue.out(queue) do
+      {:empty, _} ->
+        {depths, parent, children, visited}
+
+      {{:value, id}, rest} ->
+        depth = Elixir.Map.fetch!(depths, id)
+
+        {queue, visited, depths, parent, children} =
+          Enum.reduce(Elixir.Map.get(adj, id, []), {rest, visited, depths, parent, children}, fn
+            neighbor, {q, vis, dep, par, ch} ->
+              if Elixir.MapSet.member?(vis, neighbor) do
+                {q, vis, dep, par, ch}
+              else
+                vis = Elixir.MapSet.put(vis, neighbor)
+                dep = Elixir.Map.put(dep, neighbor, depth + 1)
+                par = Elixir.Map.put(par, neighbor, id)
+                ch = Elixir.Map.update!(ch, id, &(&1 ++ [neighbor]))
+                {:queue.in(neighbor, q), vis, dep, par, ch}
+              end
+          end)
+
+        bfs_fill(queue, adj, visited, depths, parent, children)
+    end
+  end
+
+  defp assign_x_index(roots, children) do
+    {positions, _} =
+      Enum.reduce(roots, {%{}, 0}, fn root, {pos, counter} ->
+        assign_subtree(root, children, pos, counter)
+      end)
+
+    positions
+  end
+
+  defp assign_subtree(id, children, positions, counter) do
+    case Elixir.Map.get(children, id, []) do
+      [] ->
+        {Elixir.Map.put(positions, id, counter * 1.0), counter + 1}
+
+      kids ->
+        {positions, counter} =
+          Enum.reduce(kids, {positions, counter}, fn kid, {pos, c} ->
+            assign_subtree(kid, children, pos, c)
+          end)
+
+        mean =
+          kids
+          |> Enum.map(&Elixir.Map.fetch!(positions, &1))
+          |> Enum.sum()
+          |> Kernel./(length(kids))
+
+        {Elixir.Map.put(positions, id, mean), counter}
+    end
+  end
+
+  defp orient_tidy_position(orientation, depth, xi, mid, spacing) do
+    x = 460.0 + (xi - mid) * 186.0 * spacing
+
+    case orientation do
+      "up" ->
+        {x, 590.0 - depth * 160.0 * spacing}
+
+      "left" ->
+        {860.0 - depth * 190.0 * spacing, 325.0 + (xi - mid) * 120.0 * spacing}
+
+      "right" ->
+        {60.0 + depth * 190.0 * spacing, 325.0 + (xi - mid) * 120.0 * spacing}
+
+      _ ->
+        {x, 60.0 + depth * 160.0 * spacing}
+    end
+  end
+
+  def upsert_connection(map_id, system_a_id, system_b_id, attrs \\ %{}) do
+    case do_upsert_connection(map_id, system_a_id, system_b_id, attrs) do
+      {:ok, _, _} = ok ->
+        unhide_systems([system_a_id, system_b_id])
+        ok
+
+      error ->
+        error
+    end
+  end
+
+  defp do_upsert_connection(map_id, system_a_id, system_b_id, attrs) do
+    connection =
+      Repo.one(
+        from(c in MapConnection,
+          where:
+            c.map_id == ^map_id and
+              ((c.from_system_id == ^system_a_id and c.to_system_id == ^system_b_id) or
+                 (c.from_system_id == ^system_b_id and c.to_system_id == ^system_a_id))
+        )
+      )
+
+    case connection do
+      %MapConnection{} = conn ->
+        {:ok, conn} =
+          conn
+          |> MapConnection.changeset(merge_attrs(attrs, %{map_id: conn.map_id}))
+          |> Repo.update()
+
+        {:ok, conn, false}
+
+      nil ->
+        changeset =
+          %MapConnection{}
+          |> MapConnection.changeset(
+            merge_attrs(attrs, %{
+              map_id: map_id,
+              from_system_id: system_a_id,
+              to_system_id: system_b_id
+            })
+          )
+
+        case Repo.insert(changeset) do
+          {:ok, conn} -> {:ok, Repo.preload(conn, [:from_system, :to_system]), true}
+          error -> error
+        end
+    end
+  end
+
+  def connection_between(map_id, system_a_id, system_b_id) do
+    Repo.one(
+      from(c in MapConnection,
+        where:
+          c.map_id == ^map_id and
+            ((c.from_system_id == ^system_a_id and c.to_system_id == ^system_b_id) or
+               (c.from_system_id == ^system_b_id and c.to_system_id == ^system_a_id))
+      )
+    )
+  end
+
+  def unhide_systems(system_ids) do
+    Repo.update_all(from(s in MapSystem, where: s.id in ^system_ids), set: [hidden_at: nil])
+    :ok
+  end
+
+  def add_system_to_map(%Map{} = map, attrs, opts \\ []) do
+    attrs = if Keyword.get(opts, :fill?, true), do: put_system_data(attrs), else: attrs
+
+    %MapSystem{map_id: map.id}
+    |> MapSystem.changeset(attrs)
+    |> Repo.insert()
+    |> case do
+      {:ok, system} = ok ->
+        if jita?(system), do: ensure_welcome_notes(system)
+        ok
+
+      error ->
+        error
+    end
+  end
+
+  defp jita?(%MapSystem{unknown: true}), do: false
+
+  defp jita?(%MapSystem{} = system) do
+    system.solar_system_id == @jita_solar_system_id or
+      String.downcase(system.name || "") == "jita"
+  end
+
+  def add_jita_system(%Map{} = map) do
+    add_system_to_map(map, %{
+      solar_system_id: @jita_solar_system_id,
+      name: "Jita",
+      security: 0.9,
+      x: 880.0,
+      y: 380.0
+    })
+  end
+
+  def seed_jita_systems do
+    from(m in Map, order_by: [asc: m.id])
+    |> Repo.all()
+    |> Enum.uniq_by(& &1.mask_id)
+    |> Enum.each(fn map ->
+      if list_systems(map.id) == [] do
+        {:ok, _} = add_jita_system(map)
+      end
+    end)
+  end
+
+  def add_unknown_system(%Map{} = map, attrs \\ %{}) do
+    add_system_to_map(
+      map,
+      Elixir.Map.merge(%{unknown: true, solar_system_id: 0, name: "unknown"}, attrs)
+    )
+  end
+
+  def ensure_unknown_nodes(%MapSystem{} = system) do
+    linked = connection_codes(system)
+    map = get_map!(system.map_id)
+
+    system.id
+    |> list_signatures()
+    |> Enum.filter(&(&1.site_type == "wormhole"))
+    |> Enum.map(&SigParser.wormhole_code(&1.type_name))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.reject(&Elixir.MapSet.member?(linked, &1))
+    |> Enum.reduce(0, fn code, count ->
+      case add_unknown_system(map) do
+        {:ok, placeholder} ->
+          case upsert_connection(map.id, system.id, placeholder.id, %{hole_type: code}) do
+            {:ok, _conn, _created?} -> count + 1
+            _error -> count
+          end
+
+        _error ->
+          count
+      end
+    end)
+  end
+
+  defp connection_codes(%MapSystem{} = system) do
+    system.map_id
+    |> list_connections()
+    |> Enum.filter(&(&1.from_system_id == system.id or &1.to_system_id == system.id))
+    |> Enum.map(&(&1.hole_type || ""))
+    |> Elixir.MapSet.new()
+  end
+
+  def delete_unlinked_unknowns(map_id) do
+    Repo.delete_all(
+      from(s in MapSystem,
+        where:
+          s.map_id == ^map_id and s.unknown and
+            s.id not in ^connected_system_ids(map_id)
+      )
+    )
+
+    :ok
+  end
+
+  def convert_unknown_system(%MapSystem{unknown: true} = system, attrs) do
+    system
+    |> MapSystem.changeset(attrs |> fill_system_data() |> Elixir.Map.put(:unknown, false))
+    |> Repo.update()
+    |> case do
+      {:ok, converted} = ok ->
+        if jita?(converted), do: ensure_welcome_notes(converted)
+        ok
+
+      error ->
+        error
+    end
+  end
+
+  defp fill_system_data(attrs), do: attrs |> drop_empty() |> put_system_data()
+
+  defp drop_empty(attrs) do
+    Elixir.Map.reject(attrs, fn {_key, value} -> is_nil(value) or value == "" or value == [] end)
+  end
+
+  defp put_system_data(attrs) do
+    name = attrs[:name] || attrs["name"]
+
+    attrs
+    |> solar_system_id()
+    |> Systems.sde_attrs(name)
+    |> Enum.reduce(attrs, fn {key, value}, acc ->
+      if Elixir.Map.has_key?(acc, key) or Elixir.Map.has_key?(acc, to_string(key)) do
+        acc
+      else
+        Elixir.Map.put(acc, key, value)
+      end
+    end)
+  end
+
+  defp solar_system_id(attrs), do: attrs[:solar_system_id] || attrs["solar_system_id"]
+
+  def update_system_position(%MapSystem{} = system, x, y) do
+    system
+    |> Ecto.Changeset.change(x: x, y: y)
+    |> Repo.update()
+  end
+
+  def update_system(%MapSystem{unknown: true} = system, attrs) do
+    convert_unknown_system(system, attrs)
+  end
+
+  def update_system(%MapSystem{} = system, attrs) do
+    attrs = if solar_changed?(system, attrs), do: fill_system_data(attrs), else: attrs
+
+    system
+    |> MapSystem.changeset(attrs)
+    |> Repo.update()
+  end
+
+  defp solar_changed?(system, attrs) do
+    solar = solar_system_id(attrs)
+    is_integer(solar) and solar > 0 and solar != system.solar_system_id
+  end
+
+  def delete_system(%MapSystem{} = system) do
+    Repo.delete_all(
+      from(c in MapConnection,
+        where: c.from_system_id == ^system.id or c.to_system_id == ^system.id
+      )
+    )
+
+    Repo.delete(system)
+  end
+
+  def delete_map_full(%Map{id: map_id} = map) do
+    system_ids = from(s in MapSystem, where: s.map_id == ^map_id, select: s.id)
+
+    connection_ids =
+      from(c in MapConnection, where: c.map_id == ^map_id, select: c.id)
+
+    Repo.delete_all(
+      from(j in Ztripwire.Mapping.ConnectionJump,
+        where: j.map_connection_id in subquery(connection_ids)
+      )
+    )
+
+    Repo.delete_all(from(s in Signature, where: s.map_system_id in subquery(system_ids)))
+
+    Repo.delete_all(
+      from(c in Ztripwire.Mapping.Comment, where: c.map_system_id in subquery(system_ids))
+    )
+
+    Repo.delete_all(
+      from(f in Ztripwire.Mapping.Flare, where: f.map_system_id in subquery(system_ids))
+    )
+
+    Repo.delete_all(
+      from(s in Ztripwire.Mapping.SystemStat, where: s.map_system_id in subquery(system_ids))
+    )
+
+    Repo.delete_all(from(c in MapConnection, where: c.map_id == ^map_id))
+    Repo.delete_all(from(s in MapSystem, where: s.map_id == ^map_id))
+    Repo.delete(map)
+  end
+
+  def get_connection!(id),
+    do: Repo.get!(MapConnection, id) |> Repo.preload([:from_system, :to_system])
+
+  def get_connection(id),
+    do:
+      (case Repo.get(MapConnection, id) do
+         nil -> nil
+         conn -> Repo.preload(conn, [:from_system, :to_system])
+       end)
+
+  def update_connection(%MapConnection{} = connection, attrs) do
+    connection
+    |> MapConnection.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_connection(%MapConnection{} = connection), do: Repo.delete(connection)
+
+  def sync_map_after_signature_change(%MapSystem{} = system, deleted_signatures)
+      when is_list(deleted_signatures) do
+    dropped = drop_connections_for_signatures(system, deleted_signatures)
+
+    linked = auto_link_wormholes(system, dropped_pair_keys(dropped))
+
+    _ = ensure_unknown_nodes(system)
+    delete_unlinked_unknowns(system.map_id)
+
+    candidates =
+      (dropped |> Enum.flat_map(fn {conn, _, _} -> [conn.from_system_id, conn.to_system_id] end)) ++
+        (linked |> Enum.flat_map(fn conn -> [conn.from_system_id, conn.to_system_id] end))
+
+    orphans = hide_orphan_systems(system.map_id, Enum.uniq(candidates))
+    hidden = orphans + hide_detached_systems(system.map_id)
+
+    {length(dropped), length(linked), hidden}
+  end
+
+  def drop_connections_for_signatures(%MapSystem{} = system, deleted_signatures) do
+    codes = deleted_codes(deleted_signatures)
+
+    if Elixir.MapSet.size(codes) == 0 do
+      []
+    else
+      system.map_id
+      |> list_connections_with_endpoints()
+      |> Enum.filter(fn {conn, from, to} ->
+        (from.id == system.id or to.id == system.id) and
+          Elixir.MapSet.member?(codes, String.upcase(to_string(conn.hole_type || "")))
+      end)
+      |> tap(fn dropping -> Enum.each(dropping, fn {conn, _, _} -> Repo.delete(conn) end) end)
+    end
+  end
+
+  def auto_link_wormholes(%MapSystem{} = system, excluded_pairs \\ Elixir.MapSet.new()) do
+    others =
+      system.map_id
+      |> list_wormhole_signatures()
+      |> Enum.reject(&(&1.map_system_id == system.id))
+
+    system.id
+    |> list_signatures()
+    |> Enum.filter(&(&1.site_type == "wormhole"))
+    |> Enum.flat_map(&link_targets(&1, others))
+    |> Enum.uniq_by(& &1.map_system_id)
+    |> Enum.reject(fn target ->
+      Elixir.MapSet.member?(
+        excluded_pairs,
+        pair_key(system.id, target.map_system_id, SigParser.wormhole_code(target.type_name))
+      )
+    end)
+    |> Enum.filter(fn target ->
+      case connection_between(system.map_id, system.id, target.map_system_id) do
+        nil -> true
+        conn -> conn.hole_type in [nil, ""]
+      end
+    end)
+    |> Enum.map(fn target ->
+      code = SigParser.wormhole_code(target.type_name)
+
+      cond do
+        connection_between(system.map_id, system.id, target.map_system_id) != nil ->
+          {:ok, conn, _created?} =
+            upsert_connection(system.map_id, system.id, target.map_system_id, %{hole_type: code})
+
+          conn
+
+        placeholder = placeholder_connection(system, code) ->
+          {:ok, conn} = repoint_placeholder(placeholder, system, target)
+          conn
+
+        true ->
+          {:ok, conn, _created?} =
+            upsert_connection(system.map_id, system.id, target.map_system_id, %{hole_type: code})
+
+          conn
+      end
+    end)
+  end
+
+  defp placeholder_connection(%MapSystem{} = system, code) when is_binary(code) do
+    system.map_id
+    |> list_connections()
+    |> Enum.find(fn conn ->
+      conn.hole_type == code and
+        (conn.from_system_id == system.id or conn.to_system_id == system.id) and
+        placeholder_endpoint?(conn, system.id)
+    end)
+  end
+
+  defp placeholder_connection(_system, _code), do: nil
+
+  defp placeholder_endpoint?(conn, system_id) do
+    peer_id =
+      if conn.from_system_id == system_id, do: conn.to_system_id, else: conn.from_system_id
+
+    case get_system(peer_id) do
+      %MapSystem{unknown: true} -> true
+      _ -> false
+    end
+  end
+
+  defp repoint_placeholder(conn, system, target) do
+    conn
+    |> MapConnection.changeset(%{from_system_id: system.id, to_system_id: target.map_system_id})
+    |> Repo.update()
+  end
+
+  defp dropped_pair_keys(dropped) do
+    Elixir.MapSet.new(dropped, fn {conn, _, _} ->
+      pair_key(conn.from_system_id, conn.to_system_id, conn.hole_type)
+    end)
+  end
+
+  defp pair_key(system_a_id, system_b_id, code) do
+    Ztripwire.Mapping.Links.pair_key(system_a_id, system_b_id, code)
+  end
+
+  def hide_orphan_systems(map_id, candidate_ids) do
+    query =
+      from(s in MapSystem,
+        where:
+          s.map_id == ^map_id and is_nil(s.hidden_at) and
+            s.id in ^candidate_ids and
+            s.id not in ^connected_system_ids(map_id)
+      )
+
+    query =
+      case home_system_id(get_map!(map_id)) do
+        nil -> query
+        home_id -> from(s in query, where: s.id != ^home_id)
+      end
+
+    {count, _} =
+      Repo.update_all(query, set: [hidden_at: DateTime.utc_now() |> DateTime.truncate(:second)])
+
+    count
+  end
+
+  defp connected_system_ids(map_id) do
+    from_ids =
+      Repo.all(from(c in MapConnection, where: c.map_id == ^map_id, select: c.from_system_id))
+
+    to_ids =
+      Repo.all(from(c in MapConnection, where: c.map_id == ^map_id, select: c.to_system_id))
+
+    Elixir.MapSet.new(from_ids ++ to_ids) |> Elixir.MapSet.to_list()
+  end
+
+  def hide_detached_systems(map_id) do
+    map = get_map!(map_id)
+
+    case home_system_id(map) do
+      nil ->
+        0
+
+      home_id ->
+        reachable = reachable_system_ids(map.id, home_id)
+
+        {count, _} =
+          Repo.update_all(
+            from(s in MapSystem,
+              where:
+                s.map_id == ^map.id and is_nil(s.hidden_at) and
+                  s.id not in ^Elixir.MapSet.to_list(reachable)
+            ),
+            set: [hidden_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+          )
+
+        count
+    end
+  end
+
+  defp home_system_id(%Map{home_solar_system_id: nil}), do: nil
+
+  defp home_system_id(%Map{home_solar_system_id: solar} = map) do
+    case Repo.one(
+           from(s in MapSystem, where: s.map_id == ^map.id and s.solar_system_id == ^solar)
+         ) do
+      %MapSystem{id: id} -> id
+      nil -> nil
+    end
+  end
+
+  defp reachable_system_ids(map_id, home_id) do
+    adj =
+      Repo.all(
+        from(c in MapConnection,
+          where: c.map_id == ^map_id,
+          select: {c.from_system_id, c.to_system_id}
+        )
+      )
+      |> Enum.reduce(%{}, fn {from_id, to_id}, acc ->
+        acc
+        |> Elixir.Map.update(from_id, [to_id], &[to_id | &1])
+        |> Elixir.Map.update(to_id, [from_id], &[from_id | &1])
+      end)
+
+    bfs_reachable(:queue.from_list([home_id]), adj, Elixir.MapSet.new([home_id]))
+  end
+
+  defp bfs_reachable(queue, adj, seen) do
+    case :queue.out(queue) do
+      {:empty, _} ->
+        seen
+
+      {{:value, id}, rest} ->
+        {queue, seen} =
+          Enum.reduce(Elixir.Map.get(adj, id, []), {rest, seen}, fn neighbor, {q, s} ->
+            if Elixir.MapSet.member?(s, neighbor) do
+              {q, s}
+            else
+              {:queue.in(neighbor, q), Elixir.MapSet.put(s, neighbor)}
+            end
+          end)
+
+        bfs_reachable(queue, adj, seen)
+    end
+  end
+
+  def cycle_connection_ids(connections, _root_id \\ nil) do
+    connections
+    |> Enum.sort_by(fn {conn, _from, _to} -> conn.id end)
+    |> Enum.reduce({%{}, Elixir.MapSet.new()}, fn {conn, from, to}, {parents, cycle} ->
+      parents =
+        parents
+        |> Elixir.Map.put_new(from.id, from.id)
+        |> Elixir.Map.put_new(to.id, to.id)
+
+      if from.id == to.id or root_of(parents, from.id) == root_of(parents, to.id) do
+        {parents, Elixir.MapSet.put(cycle, conn.id)}
+      else
+        {union(parents, from.id, to.id), cycle}
+      end
+    end)
+    |> elem(1)
+  end
+
+  defp root_of(parents, id) do
+    case Elixir.Map.get(parents, id, id) do
+      ^id -> id
+      parent -> root_of(parents, parent)
+    end
+  end
+
+  defp union(parents, a, b) do
+    root_a = root_of(parents, a)
+    root_b = root_of(parents, b)
+    Elixir.Map.put(parents, root_b, root_a)
+  end
+
+  defp deleted_codes(signatures) do
+    Ztripwire.Mapping.Links.deleted_codes(signatures)
+  end
+
+  defp link_targets(signature, others) do
+    Ztripwire.Mapping.Links.link_targets(signature, others)
+  end
+
+  def prune_expired_signatures(now \\ DateTime.utc_now()) do
+    expired =
+      Repo.all(from(s in Signature, where: not is_nil(s.expires_at) and s.expires_at < ^now))
+
+    {count, _} =
+      Repo.delete_all(
+        from(s in Signature, where: not is_nil(s.expires_at) and s.expires_at < ^now)
+      )
+
+    expired
+    |> Enum.filter(&(&1.site_type == "wormhole"))
+    |> Enum.group_by(& &1.map_system_id)
+    |> Enum.each(fn {system_id, signatures} ->
+      system = get_system!(system_id)
+      dropped = drop_connections_for_signatures(system, signatures)
+
+      candidates =
+        dropped
+        |> Enum.flat_map(fn {conn, _, _} -> [conn.from_system_id, conn.to_system_id] end)
+        |> Enum.uniq()
+
+      hide_orphan_systems(system.map_id, candidates)
+      hide_detached_systems(system.map_id)
+      broadcast_map_update(system.map_id)
+    end)
+
+    {:ok, count}
+  end
+
+  defp broadcast_map_update(map_id) do
+    Phoenix.PubSub.broadcast(
+      Ztripwire.PubSub,
+      Ztripwire.Tracking.map_topic(map_id),
+      {:map_updated, map_id}
+    )
+  end
+
+  def list_signatures(system_id) do
+    Repo.all(
+      from(s in Signature,
+        where: s.map_system_id == ^system_id,
+        order_by: [asc: s.sig_id]
+      )
+    )
+  end
+
+  def upsert_signatures(%MapSystem{} = system, entries, %Character{id: character_id})
+      when is_list(entries) do
+    {added, updated, counts} =
+      Enum.reduce(entries, {0, 0, %{}}, fn entry, {added, updated, counts} ->
+        life_length = 259_200
+
+        attrs = %{
+          map_system_id: system.id,
+          sig_id: entry.sig_id,
+          kind: to_string(entry.kind),
+          type_name: entry.name || entry.wormhole_type,
+          site_type: to_string(entry.category || :unknown),
+          life_length: life_length,
+          expires_at:
+            DateTime.add(DateTime.utc_now(), life_length, :second) |> DateTime.truncate(:second),
+          updated_by_id: character_id
+        }
+
+        existing = Repo.get_by(Signature, map_system_id: system.id, sig_id: entry.sig_id)
+
+        result =
+          case existing do
+            %Signature{} = signature ->
+              signature
+              |> Signature.changeset(
+                merge_attrs(attrs, %{created_by_id: signature.created_by_id})
+              )
+              |> Repo.update()
+
+            nil ->
+              %Signature{}
+              |> Signature.changeset(merge_attrs(attrs, %{created_by_id: character_id}))
+              |> Repo.insert()
+          end
+
+        wormhole? = to_string(entry.category || :unknown) == "wormhole"
+
+        case {result, existing} do
+          {{:ok, _}, nil} ->
+            {added + 1, updated,
+             bump_counts(counts, :signatures_added, :wormholes_added, wormhole?)}
+
+          {{:ok, _}, _signature} ->
+            {added, updated + 1,
+             bump_counts(counts, :signatures_updated, :wormholes_updated, wormhole?)}
+
+          {{:error, _}, _} ->
+            {added, updated, counts}
+        end
+      end)
+
+    Accounts.bump_stats(character_id, Elixir.Map.to_list(counts))
+    {added, updated}
+  end
+
+  def create_signature(%MapSystem{} = system, attrs, %Character{id: character_id}) do
+    attrs = with_expires_at(attrs)
+
+    case %Signature{}
+         |> Signature.changeset(
+           merge_attrs(attrs, %{
+             map_system_id: system.id,
+             created_by_id: character_id,
+             updated_by_id: character_id
+           })
+         )
+         |> Repo.insert() do
+      {:ok, signature} = ok ->
+        Accounts.bump_stats(character_id, signature_added_stats(signature.site_type))
+        ok
+
+      error ->
+        error
+    end
+  end
+
+  def update_signature(%Signature{} = signature, attrs, %Character{id: character_id}) do
+    attrs = with_expires_at(attrs, signature)
+
+    case signature
+         |> Signature.changeset(merge_attrs(attrs, %{updated_by_id: character_id}))
+         |> Repo.update() do
+      {:ok, updated} = ok ->
+        Accounts.bump_stats(character_id, signature_updated_stats(updated.site_type))
+        ok
+
+      error ->
+        error
+    end
+  end
+
+  defp with_expires_at(attrs, existing \\ nil) do
+    life_length =
+      attrs[:life_length] || attrs["life_length"] || (existing && existing.life_length) || 259_200
+
+    life_length =
+      if is_binary(life_length),
+        do:
+          (case Integer.parse(life_length) do
+             {n, ""} -> n
+             _ -> 259_200
+           end),
+        else: life_length
+
+    scanned_at =
+      attrs[:inserted_at] || attrs["inserted_at"] || (existing && existing.inserted_at) ||
+        DateTime.utc_now() |> DateTime.to_naive() |> NaiveDateTime.truncate(:second)
+
+    expires_at =
+      attrs[:expires_at] || attrs["expires_at"] ||
+        NaiveDateTime.add(scanned_at, life_length, :second)
+
+    attrs |> Elixir.Map.put(:life_length, life_length) |> Elixir.Map.put(:expires_at, expires_at)
+  end
+
+  def delete_signature(%Signature{} = signature, character \\ nil) do
+    signature
+    |> paired_signatures()
+    |> Enum.each(&delete_signature_row(&1, character))
+
+    delete_signature_row(signature, character)
+  end
+
+  defp delete_signature_row(signature, character) do
+    result = Repo.delete(signature)
+
+    if match?({:ok, _}, result) and is_struct(character, Character) do
+      Accounts.bump_stats(character.id, signature_deleted_stats(signature.site_type))
+    end
+
+    result
+  end
+
+  defp paired_signatures(%Signature{site_type: "wormhole"} = signature) do
+    with code when not is_nil(code) <- SigParser.wormhole_code(signature.type_name),
+         %MapSystem{} = system <- get_system(signature.map_system_id),
+         %MapConnection{} = connection <- connection_for_code(system, code) do
+      peer_id =
+        if connection.from_system_id == system.id,
+          do: connection.to_system_id,
+          else: connection.from_system_id
+
+      peer_id
+      |> list_signatures()
+      |> Enum.filter(
+        &(&1.site_type == "wormhole" and SigParser.wormhole_code(&1.type_name) == code)
+      )
+    else
+      _ -> []
+    end
+  end
+
+  defp paired_signatures(_signature), do: []
+
+  defp connection_for_code(system, code) do
+    Repo.one(
+      from(c in MapConnection,
+        where:
+          c.map_id == ^system.map_id and c.hole_type == ^code and
+            (c.from_system_id == ^system.id or c.to_system_id == ^system.id)
+      )
+    )
+  end
+
+  defp signature_added_stats("wormhole"), do: [signatures_added: 1, wormholes_added: 1]
+  defp signature_added_stats(_), do: [signatures_added: 1]
+
+  defp signature_updated_stats("wormhole"), do: [signatures_updated: 1, wormholes_updated: 1]
+  defp signature_updated_stats(_), do: [signatures_updated: 1]
+
+  defp signature_deleted_stats("wormhole"), do: [signatures_deleted: 1, wormholes_deleted: 1]
+  defp signature_deleted_stats(_), do: [signatures_deleted: 1]
+
+  defp bump_counts(counts, key, _wormhole_key, false) do
+    Elixir.Map.update(counts, key, 1, &(&1 + 1))
+  end
+
+  defp bump_counts(counts, key, wormhole_key, true) do
+    counts
+    |> Elixir.Map.update(key, 1, &(&1 + 1))
+    |> Elixir.Map.update(wormhole_key, 1, &(&1 + 1))
+  end
+
+  def get_signature!(id), do: Repo.get!(Signature, id)
+
+  def get_signature(id), do: Repo.get(Signature, id)
+
+  def list_wormhole_signatures(map_id) do
+    system_ids = from(s in MapSystem, where: s.map_id == ^map_id, select: s.id)
+
+    Repo.all(
+      from(sig in Signature,
+        where: sig.map_system_id in subquery(system_ids) and sig.site_type == "wormhole",
+        order_by: [asc: sig.sig_id]
+      )
+    )
+  end
+
+  def sync_connection_life(%MapConnection{} = connection) do
+    with code when is_binary(code) and code != "" <- connection.hole_type,
+         :update <- time_status_action(connection.time_status) do
+      connection
+      |> matching_wormhole_signatures(code)
+      |> Enum.each(fn signature -> apply_time_status(signature, connection.time_status) end)
+    else
+      _ -> :ok
+    end
+
+    :ok
+  end
+
+  defp time_status_action("<1h"), do: :update
+  defp time_status_action("critical"), do: :update
+  defp time_status_action("stable"), do: :update
+  defp time_status_action(_), do: :noop
+
+  defp apply_time_status(%Signature{} = signature, time_status) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    expires_at =
+      case time_status do
+        "critical" -> DateTime.add(now, 4 * 3600, :second)
+        "<1h" -> DateTime.add(now, 3600, :second)
+        _stable -> DateTime.add(signature.inserted_at, signature.life_length || 259_200, :second)
+      end
+
+    signature
+    |> Signature.changeset(%{expires_at: expires_at})
+    |> Repo.update()
+  end
+
+  defp matching_wormhole_signatures(%MapConnection{} = connection, code) do
+    ids = [connection.from_system_id, connection.to_system_id]
+
+    Repo.all(
+      from(s in Signature,
+        where: s.map_system_id in ^ids and s.site_type == "wormhole"
+      )
+    )
+    |> Enum.filter(&(Ztripwire.Signatures.wormhole_code(&1.type_name) == code))
+  end
+
+  def sync_signature_to_connections(%Map{} = map, %MapSystem{} = system, old_code, new_code)
+      when is_binary(new_code) do
+    map.id
+    |> list_connections_with_endpoints()
+    |> Enum.filter(fn {conn, from, to} ->
+      (from.id == system.id or to.id == system.id) and
+        (conn.hole_type in [nil, ""] or (not is_nil(old_code) and conn.hole_type == old_code))
+    end)
+    |> Enum.each(fn {conn, _, _} -> update_connection(conn, %{hole_type: new_code}) end)
+
+    :ok
+  end
+
+  def sync_signature_to_connections(_map, _system, _old_code, _new_code), do: :ok
+
+  def list_comments(system_id) do
+    Repo.all(
+      from(c in Ztripwire.Mapping.Comment,
+        where: c.map_system_id == ^system_id,
+        order_by: [asc: c.id],
+        preload: [:character]
+      )
+    )
+  end
+
+  def welcome_notes, do: [@welcome_shortcuts, @welcome_markdown]
+
+  def ensure_welcome_notes(%MapSystem{} = system) do
+    mask_id = get_map!(system.map_id).mask_id
+    existing = system.id |> list_comments() |> Enum.map(& &1.body)
+
+    welcome_notes()
+    |> Enum.reject(&(&1 in existing))
+    |> Enum.each(fn body ->
+      {:ok, _} = create_comment(system, %{body: body, mask_id: mask_id})
+    end)
+
+    :ok
+  end
+
+  def refresh_welcome_shortcuts do
+    from(c in Ztripwire.Mapping.Comment, where: like(c.body, "# Shortcuts%"))
+    |> Repo.all()
+    |> Enum.reject(&(&1.body == @welcome_shortcuts))
+    |> Enum.each(fn comment ->
+      {:ok, _} =
+        comment
+        |> Ztripwire.Mapping.Comment.changeset(%{body: @welcome_shortcuts})
+        |> Repo.update()
+    end)
+
+    :ok
+  end
+
+  def seed_welcome_notes do
+    from(s in MapSystem,
+      where: not s.unknown and (s.solar_system_id == ^@jita_solar_system_id or s.name == "Jita")
+    )
+    |> Repo.all()
+    |> Enum.each(&ensure_welcome_notes/1)
+  end
+
+  def create_comment(%MapSystem{} = system, attrs, character \\ nil) do
+    character_id = if is_struct(character, Character), do: character.id, else: nil
+
+    case %Ztripwire.Mapping.Comment{}
+         |> Ztripwire.Mapping.Comment.changeset(
+           merge_attrs(attrs, %{map_system_id: system.id, character_id: character_id})
+         )
+         |> Repo.insert() do
+      {:ok, _} = ok ->
+        if is_struct(character, Character) do
+          Accounts.bump_stats(character.id, comments_added: 1)
+        end
+
+        ok
+
+      error ->
+        error
+    end
+  end
+
+  def delete_comment(%Ztripwire.Mapping.Comment{} = comment, character \\ nil) do
+    case Repo.delete(comment) do
+      {:ok, _} = ok ->
+        if is_struct(character, Character) do
+          Accounts.bump_stats(character.id, comments_deleted: 1)
+        end
+
+        ok
+
+      error ->
+        error
+    end
+  end
+
+  def get_comment!(id), do: Repo.get!(Ztripwire.Mapping.Comment, id)
+
+  def update_comment(%Ztripwire.Mapping.Comment{} = comment, attrs, character \\ nil) do
+    case comment
+         |> Ztripwire.Mapping.Comment.changeset(attrs)
+         |> Repo.update() do
+      {:ok, _} = ok ->
+        if is_struct(character, Character) do
+          Accounts.bump_stats(character.id, comments_updated: 1)
+        end
+
+        ok
+
+      error ->
+        error
+    end
+  end
+
+  def move_comment(%Ztripwire.Mapping.Comment{} = comment, to_system_id, character \\ nil) do
+    case comment
+         |> Ztripwire.Mapping.Comment.changeset(%{map_system_id: to_system_id})
+         |> Repo.update() do
+      {:ok, _} = ok ->
+        if is_struct(character, Character) do
+          Accounts.bump_stats(character.id, comments_updated: 1)
+        end
+
+        ok
+
+      error ->
+        error
+    end
+  end
+
+  def prune_expired_flares(now \\ DateTime.utc_now()) do
+    {count, _} =
+      Repo.delete_all(
+        from(f in Ztripwire.Mapping.Flare,
+          where: not is_nil(f.expires_at) and f.expires_at < ^now
+        )
+      )
+
+    {:ok, count}
+  end
+
+  def upsert_system_stat(%MapSystem{} = system, attrs) do
+    case Repo.get_by(Ztripwire.Mapping.SystemStat, map_system_id: system.id) do
+      nil ->
+        %Ztripwire.Mapping.SystemStat{}
+        |> Ztripwire.Mapping.SystemStat.changeset(
+          Elixir.Map.put(attrs, :map_system_id, system.id)
+        )
+        |> Repo.insert()
+
+      %Ztripwire.Mapping.SystemStat{} = stat ->
+        stat
+        |> Ztripwire.Mapping.SystemStat.changeset(attrs)
+        |> Repo.update()
+    end
+  end
+
+  def get_system_stat(system_id),
+    do: Repo.get_by(Ztripwire.Mapping.SystemStat, map_system_id: system_id)
+
+  def list_system_stats(map_id) do
+    system_ids = from(s in MapSystem, where: s.map_id == ^map_id, select: s.id)
+
+    Repo.all(
+      from(st in Ztripwire.Mapping.SystemStat, where: st.map_system_id in subquery(system_ids))
+    )
+    |> Elixir.Map.new(&{&1.map_system_id, &1})
+  end
+
+  def record_visit(%MapSystem{} = system) do
+    case get_system_stat(system.id) do
+      nil ->
+        upsert_system_stat(system, %{
+          visits: 1,
+          recorded_at: DateTime.utc_now() |> DateTime.truncate(:second)
+        })
+
+      stat ->
+        upsert_system_stat(system, %{
+          visits: (stat.visits || 0) + 1,
+          recorded_at: DateTime.utc_now() |> DateTime.truncate(:second)
+        })
+    end
+  end
+
+  def map_statistics(map_id) do
+    systems = list_systems(map_id)
+    system_ids = Enum.map(systems, & &1.id)
+
+    signatures =
+      if system_ids == [],
+        do: 0,
+        else: Repo.aggregate(from(s in Signature, where: s.map_system_id in ^system_ids), :count)
+
+    connections = length(list_connections(map_id))
+
+    comments =
+      if system_ids == [],
+        do: 0,
+        else:
+          Repo.aggregate(
+            from(c in Ztripwire.Mapping.Comment, where: c.map_system_id in ^system_ids),
+            :count
+          )
+
+    %{
+      systems: length(systems),
+      connections: connections,
+      signatures: signatures,
+      comments: comments
+    }
+  end
+
+  def character_statistics(nil) do
+    %{
+      signatures_added: 0,
+      signatures_updated: 0,
+      signatures_deleted: 0,
+      wormholes_added: 0,
+      wormholes_updated: 0,
+      wormholes_deleted: 0,
+      comments_added: 0,
+      comments_updated: 0,
+      comments_deleted: 0,
+      systems_visited: 0,
+      logins: 0,
+      last_login: nil
+    }
+  end
+
+  def character_statistics(%{id: id}) do
+    case Repo.get(Character, id) do
+      nil ->
+        character_statistics(nil)
+
+      character ->
+        %{
+          signatures_added: character.signatures_added || 0,
+          signatures_updated: character.signatures_updated || 0,
+          signatures_deleted: character.signatures_deleted || 0,
+          wormholes_added: character.wormholes_added || 0,
+          wormholes_updated: character.wormholes_updated || 0,
+          wormholes_deleted: character.wormholes_deleted || 0,
+          comments_added: character.comments_added || 0,
+          comments_updated: character.comments_updated || 0,
+          comments_deleted: character.comments_deleted || 0,
+          systems_visited: character.systems_visited || 0,
+          logins: character.login_count || 0,
+          last_login: character.last_login_at
+        }
+    end
+  end
+
+  defp merge_attrs(attrs, extra), do: Elixir.Map.merge(attrs, extra)
+end

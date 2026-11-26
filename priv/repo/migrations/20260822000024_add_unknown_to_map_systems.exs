@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.AddUnknownToMapSystems do
+defmodule Ztripwire.Repo.Migrations.AddUnknownToMapSystems do
   use Ecto.Migration
 
   def change do

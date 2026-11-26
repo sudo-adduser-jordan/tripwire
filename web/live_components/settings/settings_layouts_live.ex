@@ -1,4 +1,4 @@
-defmodule TripwireWeb.LiveComponents.Settings.LayoutsLive do
+defmodule ZtripwireWeb.LiveComponents.Settings.LayoutsLive do
   use Phoenix.Component
 
   attr :settings_tab, :string, default: "account"

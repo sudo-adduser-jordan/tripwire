@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.CharacterIsAdmin do
+defmodule Ztripwire.Repo.Migrations.CharacterIsAdmin do
   use Ecto.Migration
 
   def change do

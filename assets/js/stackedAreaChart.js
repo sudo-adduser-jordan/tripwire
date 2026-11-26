@@ -188,7 +188,7 @@ function initSystemChart(dom) {
     stackedChart.setOption(stackedChartOptions)
     applyTheme()
     applyData(readDataset(target))
-    window.TripwireCharts.instance = stackedChart
+    window.ZtripwireCharts.instance = stackedChart
 
     new ResizeObserver(() => {
         if (stackedChart) stackedChart.resize()
@@ -211,6 +211,6 @@ function updateSystemChart(payload) {
 
 document.addEventListener('DOMContentLoaded', () => initSystemChart())
 
-window.TripwireCharts = window.TripwireCharts || {}
-window.TripwireCharts.initSystemChart = initSystemChart
-window.TripwireCharts.updateSystemChart = updateSystemChart
+window.ZtripwireCharts = window.ZtripwireCharts || {}
+window.ZtripwireCharts.initSystemChart = initSystemChart
+window.ZtripwireCharts.updateSystemChart = updateSystemChart

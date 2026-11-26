@@ -1,8 +1,8 @@
-defmodule Tripwire.Repo.Migrations.SeedJitaSystems do
+defmodule Ztripwire.Repo.Migrations.SeedJitaSystems do
   use Ecto.Migration
 
   def up do
-    Tripwire.Mapping.seed_jita_systems()
+    Ztripwire.Mapping.seed_jita_systems()
   end
 
   def down do

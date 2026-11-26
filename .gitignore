@@ -14,7 +14,7 @@ erl_crash.dump
 
 /tmp/
 
-tripwire-*.tar
+ztripwire-*.tar
 
 /priv/static/assets/
 

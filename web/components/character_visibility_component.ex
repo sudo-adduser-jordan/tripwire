@@ -1,9 +1,9 @@
-defmodule TripwireWeb.CharacterVisibilityComponents do
+defmodule ZtripwireWeb.CharacterVisibilityComponents do
   use Phoenix.Component
 
-  import TripwireWeb.IconComponent
+  import ZtripwireWeb.IconComponent
 
-  alias Tripwire.EveImages
+  alias Ztripwire.EveImages
 
   attr :character, :map, required: true
   attr :ship_type_id, :any, default: nil

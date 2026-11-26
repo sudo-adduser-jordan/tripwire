@@ -1,7 +1,7 @@
 import "phoenix_html"
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
-import { hooks as colocatedHooks } from "phoenix-colocated/tripwire"
+import { hooks as colocatedHooks } from "phoenix-colocated/ztripwire"
 import topbar from "../vendor/topbar"
 import mapDrag, { ChartMount } from "./mapDrag"
 import AutoDismiss from "./autoDismiss"
@@ -26,9 +26,9 @@ const GridStack = {
     },
 
     updated() {
-        if (window.TripwireGridStack) {
-            window.TripwireGridStack.init(this.el)
-            window.TripwireGridStack.refresh(this.el)
+        if (window.ZtripwireGridStack) {
+            window.ZtripwireGridStack.init(this.el)
+            window.ZtripwireGridStack.refresh(this.el)
             this._bindLayoutEvents()
         } else {
             this._ensure()
@@ -36,9 +36,9 @@ const GridStack = {
     },
 
     _ensure() {
-        if (window.TripwireGridStack) {
-            window.TripwireGridStack.init(this.el)
-            window.TripwireGridStack.refresh(this.el)
+        if (window.ZtripwireGridStack) {
+            window.ZtripwireGridStack.init(this.el)
+            window.ZtripwireGridStack.refresh(this.el)
             this._bindLayoutEvents()
             return
         }
@@ -54,15 +54,15 @@ const GridStack = {
         if (!this._layoutEventsBound) {
             this._layoutEventsBound = true
             this.handleEvent('layout-capture', () => {
-                const widgets = window.TripwireGridStack?.snapshot() || {}
+                const widgets = window.ZtripwireGridStack?.snapshot() || {}
                 this.pushEvent('layout-captured', { widgets: widgets })
             })
             this.handleEvent('layout-apply', ({ widgets }) => {
-                window.TripwireGridStack?.apply(widgets)
+                window.ZtripwireGridStack?.apply(widgets)
             })
         }
 
-        const grid = window.TripwireGrid
+        const grid = window.ZtripwireGrid
         if (!grid || grid._layoutChangeBound) return
         grid._layoutChangeBound = true
         grid.on('change', () => {
@@ -76,14 +76,14 @@ const GridStack = {
         if (this._layoutTimer) clearTimeout(this._layoutTimer)
         this._layoutTimer = setTimeout(() => {
             this._layoutTimer = null
-            const widgets = window.TripwireGridStack?.snapshot() || {}
+            const widgets = window.ZtripwireGridStack?.snapshot() || {}
             this.pushEvent('layout-changed', { widgets: widgets })
         }, 250)
     },
 
     destroyed() {
         if (this._layoutTimer) clearTimeout(this._layoutTimer)
-        window.TripwireGridStack?.destroy()
+        window.ZtripwireGridStack?.destroy()
     },
 }
 

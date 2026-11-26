@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.AddWidgetLayoutToUserSettings do
+defmodule Ztripwire.Repo.Migrations.AddWidgetLayoutToUserSettings do
   use Ecto.Migration
 
   def change do

@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.RemoveMapSystemLocked do
+defmodule Ztripwire.Repo.Migrations.RemoveMapSystemLocked do
   use Ecto.Migration
 
   def change do

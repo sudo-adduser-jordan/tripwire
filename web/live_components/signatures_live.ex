@@ -1,8 +1,8 @@
-defmodule TripwireWeb.LiveComponents.SignaturesLive do
-  use TripwireWeb, :live_component
+defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
+  use ZtripwireWeb, :live_component
 
-  alias Tripwire.Mapping
-  alias Tripwire.Signatures, as: SigParser
+  alias Ztripwire.Mapping
+  alias Ztripwire.Signatures, as: SigParser
 
   @columns [
     %{key: "status", label: ""},
@@ -230,11 +230,11 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
   def handle_event("toggle-tracker", _params, socket) do
     case socket.assigns do
       %{character: %{} = character, tracking?: true} ->
-        _ = Tripwire.Tracking.stop_poller(character)
+        _ = Ztripwire.Tracking.stop_poller(character)
         {:noreply, assign(socket, :tracking?, false)}
 
       %{character: %{} = character, tracking_available?: true} ->
-        _ = Tripwire.Tracking.ensure_poller(character)
+        _ = Ztripwire.Tracking.ensure_poller(character)
         {:noreply, assign(socket, :tracking?, true)}
 
       _ ->
@@ -591,7 +591,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
     case Map.get(assigns, :tracking?) do
       nil ->
         case Map.get(assigns, :character) do
-          %{} = character -> Tripwire.Tracking.tracking?(character)
+          %{} = character -> Ztripwire.Tracking.tracking?(character)
           _ -> false
         end
 
@@ -602,7 +602,7 @@ defmodule TripwireWeb.LiveComponents.SignaturesLive do
 
   defp tracking_available?(assigns) do
     case Map.get(assigns, :character) do
-      %{refresh_token: token} -> Tripwire.SSO.configured?() and not is_nil(token)
+      %{refresh_token: token} -> Ztripwire.SSO.configured?() and not is_nil(token)
       _ -> false
     end
   end

@@ -1,4 +1,4 @@
-defmodule TripwireWeb.LiveComponents.Settings.WidgetsLive do
+defmodule ZtripwireWeb.LiveComponents.Settings.WidgetsLive do
   use Phoenix.Component
 
   attr :settings_tab, :string, default: "account"

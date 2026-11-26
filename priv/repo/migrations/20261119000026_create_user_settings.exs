@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.CreateUserSettings do
+defmodule Ztripwire.Repo.Migrations.CreateUserSettings do
   use Ecto.Migration
 
   def up do

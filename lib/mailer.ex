@@ -1,3 +1,3 @@
-defmodule Tripwire.Mailer do
-  use Swoosh.Mailer, otp_app: :tripwire
+defmodule Ztripwire.Mailer do
+  use Swoosh.Mailer, otp_app: :ztripwire
 end

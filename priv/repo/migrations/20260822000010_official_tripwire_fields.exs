@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.OfficialTripwireFields do
+defmodule Ztripwire.Repo.Migrations.OfficialTripwireFields do
   use Ecto.Migration
 
   def change do

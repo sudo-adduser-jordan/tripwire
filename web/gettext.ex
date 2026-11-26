@@ -1,3 +1,3 @@
-defmodule TripwireWeb.Gettext do
-  use Gettext.Backend, otp_app: :tripwire
+defmodule ZtripwireWeb.Gettext do
+  use Gettext.Backend, otp_app: :ztripwire
 end

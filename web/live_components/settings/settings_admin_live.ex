@@ -1,7 +1,7 @@
-defmodule TripwireWeb.LiveComponents.Settings.AdminLive do
+defmodule ZtripwireWeb.LiveComponents.Settings.AdminLive do
   use Phoenix.Component
 
-  alias Tripwire.Accounts
+  alias Ztripwire.Accounts
 
   attr :settings_tab, :string, default: "account"
   attr :character, :any, default: nil
@@ -80,7 +80,7 @@ defmodule TripwireWeb.LiveComponents.Settings.AdminLive do
             <button type="submit" class="btn btn-secondary btn-sm">Add member</button>
           </form>
         </div>
-        <%= if Application.get_env(:tripwire, :dev_routes) do %>
+        <%= if Application.get_env(:ztripwire, :dev_routes) do %>
           <div class="settings-card border border-base-300">
             <p class="text-sm font-semibold">Developer tools</p>
             <p class="mt-1 text-xs opacity-60">Available in dev builds only.</p>

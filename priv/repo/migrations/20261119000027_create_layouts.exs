@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.CreateLayouts do
+defmodule Ztripwire.Repo.Migrations.CreateLayouts do
   use Ecto.Migration
 
   def change do

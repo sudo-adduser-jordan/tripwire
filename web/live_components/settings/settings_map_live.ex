@@ -1,4 +1,4 @@
-defmodule TripwireWeb.LiveComponents.Settings.MapLive do
+defmodule ZtripwireWeb.LiveComponents.Settings.MapLive do
   use Phoenix.Component
 
   attr :settings_tab, :string, default: "account"

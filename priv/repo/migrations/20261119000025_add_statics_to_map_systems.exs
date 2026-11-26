@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.AddStaticsToMapSystems do
+defmodule Ztripwire.Repo.Migrations.AddStaticsToMapSystems do
   use Ecto.Migration
 
   def up do
@@ -8,7 +8,7 @@ defmodule Tripwire.Repo.Migrations.AddStaticsToMapSystems do
 
     flush()
 
-    Tripwire.Mapping.SystemData.backfill()
+    Ztripwire.Mapping.SystemData.backfill()
   end
 
   def down do

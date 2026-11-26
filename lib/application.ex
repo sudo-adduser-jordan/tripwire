@@ -1,30 +1,30 @@
-defmodule Tripwire.Application do
+defmodule Ztripwire.Application do
   use Application
 
   @impl true
   def start(_type, _args) do
     children = [
-      TripwireWeb.Telemetry,
-      Tripwire.Repo,
-      Tripwire.Vault,
-      Tripwire.ESI.TokenCache,
-      Tripwire.Systems.Catalog,
-      Tripwire.Systems.Gates,
-      {Phoenix.PubSub, name: Tripwire.PubSub},
-      Tripwire.Tracking.PollerSupervisor,
-      {Registry, keys: :unique, name: Tripwire.TrackingRegistry},
-      Tripwire.SyncServer,
-      {DNSCluster, query: Application.get_env(:tripwire, :dns_cluster_query) || :ignore},
-      TripwireWeb.Endpoint
+      ZtripwireWeb.Telemetry,
+      Ztripwire.Repo,
+      Ztripwire.Vault,
+      Ztripwire.ESI.TokenCache,
+      Ztripwire.Systems.Catalog,
+      Ztripwire.Systems.Gates,
+      {Phoenix.PubSub, name: Ztripwire.PubSub},
+      Ztripwire.Tracking.PollerSupervisor,
+      {Registry, keys: :unique, name: Ztripwire.TrackingRegistry},
+      Ztripwire.SyncServer,
+      {DNSCluster, query: Application.get_env(:ztripwire, :dns_cluster_query) || :ignore},
+      ZtripwireWeb.Endpoint
     ]
 
-    opts = [strategy: :one_for_one, name: Tripwire.Supervisor]
+    opts = [strategy: :one_for_one, name: Ztripwire.Supervisor]
     Supervisor.start_link(children, opts)
   end
 
   @impl true
   def config_change(changed, _new, removed) do
-    TripwireWeb.Endpoint.config_change(changed, removed)
+    ZtripwireWeb.Endpoint.config_change(changed, removed)
     :ok
   end
 end

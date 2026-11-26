@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.CreateSignatures do
+defmodule Ztripwire.Repo.Migrations.CreateSignatures do
   use Ecto.Migration
 
   def change do

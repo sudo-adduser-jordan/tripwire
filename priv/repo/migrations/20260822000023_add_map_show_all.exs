@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.AddMapShowAll do
+defmodule Ztripwire.Repo.Migrations.AddMapShowAll do
   use Ecto.Migration
 
   def change do

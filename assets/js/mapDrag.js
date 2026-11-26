@@ -162,9 +162,9 @@ const MapDrag = {
 
     this.svg.addEventListener("pointerdown", this.onPointerDown)
     this.svg.addEventListener("click", this.onClick, true)
-    this.svg.addEventListener("tripwire:zoom-in", this.onZoomIn)
-    this.svg.addEventListener("tripwire:zoom-out", this.onZoomOut)
-    this.svg.addEventListener("tripwire:zoom-reset", this.onZoomReset)
+    this.svg.addEventListener("ztripwire:zoom-in", this.onZoomIn)
+    this.svg.addEventListener("ztripwire:zoom-out", this.onZoomOut)
+    this.svg.addEventListener("ztripwire:zoom-reset", this.onZoomReset)
     this.svg.addEventListener("keydown", this.onKeyDown)
     this.svg.addEventListener("dblclick", this.onDblClick)
     window.addEventListener("pointermove", this.onPointerMove, { passive: false })
@@ -182,9 +182,9 @@ const MapDrag = {
     if (!this.svg) return
     this.svg.removeEventListener("pointerdown", this.onPointerDown)
     this.svg.removeEventListener("click", this.onClick, true)
-    this.svg.removeEventListener("tripwire:zoom-in", this.onZoomIn)
-    this.svg.removeEventListener("tripwire:zoom-out", this.onZoomOut)
-    this.svg.removeEventListener("tripwire:zoom-reset", this.onZoomReset)
+    this.svg.removeEventListener("ztripwire:zoom-in", this.onZoomIn)
+    this.svg.removeEventListener("ztripwire:zoom-out", this.onZoomOut)
+    this.svg.removeEventListener("ztripwire:zoom-reset", this.onZoomReset)
     this.svg.removeEventListener("keydown", this.onKeyDown)
     this.svg.removeEventListener("dblclick", this.onDblClick)
     window.removeEventListener("pointermove", this.onPointerMove)
@@ -306,11 +306,11 @@ const MapDrag = {
 const ChartMount = {
   mounted() {
     const name = this.el.dataset.chartFn
-    const init = name && window.TripwireCharts && window.TripwireCharts[name]
+    const init = name && window.ZtripwireCharts && window.ZtripwireCharts[name]
     if (typeof init === "function") init(this.el)
     this.handleEvent("system-chart-data", (payload) => {
-      if (window.TripwireCharts && typeof window.TripwireCharts.updateSystemChart === "function") {
-        window.TripwireCharts.updateSystemChart(payload)
+      if (window.ZtripwireCharts && typeof window.ZtripwireCharts.updateSystemChart === "function") {
+        window.ZtripwireCharts.updateSystemChart(payload)
       }
     })
   },

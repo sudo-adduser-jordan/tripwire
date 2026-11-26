@@ -1,9 +1,9 @@
-defmodule TripwireWeb.FlashComponent do
+defmodule ZtripwireWeb.FlashComponent do
   use Phoenix.Component
-  use Gettext, backend: TripwireWeb.Gettext
+  use Gettext, backend: ZtripwireWeb.Gettext
 
-  import TripwireWeb.CoreComponents
-  import TripwireWeb.IconComponent
+  import ZtripwireWeb.CoreComponents
+  import ZtripwireWeb.IconComponent
   alias Phoenix.LiveView.JS
 
   attr :id, :string

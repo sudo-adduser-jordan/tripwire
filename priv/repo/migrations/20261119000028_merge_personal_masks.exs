@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.MergePersonalMasks do
+defmodule Ztripwire.Repo.Migrations.MergePersonalMasks do
   use Ecto.Migration
 
   def up do

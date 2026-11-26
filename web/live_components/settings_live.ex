@@ -1,13 +1,13 @@
-defmodule TripwireWeb.LiveComponents.SettingsLive do
+defmodule ZtripwireWeb.LiveComponents.SettingsLive do
   use Phoenix.Component
 
-  alias TripwireWeb.LiveComponents.Settings.AccountLive
-  alias TripwireWeb.LiveComponents.Settings.AdminLive
-  alias TripwireWeb.LiveComponents.Settings.LayoutsLive
-  alias TripwireWeb.LiveComponents.Settings.MapLive
-  alias TripwireWeb.LiveComponents.Settings.StatisticsLive
-  alias TripwireWeb.LiveComponents.Settings.ThemesLive
-  alias TripwireWeb.LiveComponents.Settings.WidgetsLive
+  alias ZtripwireWeb.LiveComponents.Settings.AccountLive
+  alias ZtripwireWeb.LiveComponents.Settings.AdminLive
+  alias ZtripwireWeb.LiveComponents.Settings.LayoutsLive
+  alias ZtripwireWeb.LiveComponents.Settings.MapLive
+  alias ZtripwireWeb.LiveComponents.Settings.StatisticsLive
+  alias ZtripwireWeb.LiveComponents.Settings.ThemesLive
+  alias ZtripwireWeb.LiveComponents.Settings.WidgetsLive
 
   attr :map_layout, :string, default: "top"
   attr :show_row_guides, :boolean, default: false

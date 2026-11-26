@@ -1,7 +1,7 @@
-defmodule TripwireWeb.MaskAvatarComponents do
+defmodule ZtripwireWeb.MaskAvatarComponents do
   use Phoenix.Component
 
-  alias Tripwire.EveImages
+  alias Ztripwire.EveImages
 
   attr :mask, :map, required: true
   attr :dot, :string, default: "avatar-offline"

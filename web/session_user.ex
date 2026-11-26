@@ -1,4 +1,4 @@
-defmodule TripwireWeb.SessionUser do
+defmodule ZtripwireWeb.SessionUser do
   @user_keys ["current_user", :current_user]
   @ids_keys ["character_ids", :character_ids]
   @mask_keys ["mask_id", :mask_id]

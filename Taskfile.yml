@@ -44,12 +44,12 @@ tasks:
       - curl -L --etag-save priv/sde/sde.etag --etag-compare priv/sde/sde.etag -o priv/sde/eve-online-static-data-latest-jsonl.zip https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip
       - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix deps.get{{.RESET}}"
       - mix deps.get
-      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix tripwire.build_wormhole_systems{{.RESET}}"
-      - mix tripwire.build_wormhole_systems
+      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix ztripwire.build_wormhole_systems{{.RESET}}"
+      - mix ztripwire.build_wormhole_systems
       - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix ecto.setup{{.RESET}}"
       - mix ecto.setup
-      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix tripwire.sync_sde{{.RESET}}"
-      - mix tripwire.sync_sde
+      - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix ztripwire.sync_sde{{.RESET}}"
+      - mix ztripwire.sync_sde
       - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix assets.setup{{.RESET}}"
       - mix assets.setup
       - echo -e "{{.BLUE}}[setup]{{.RESET}} {{.CYAN}}mix assets.build{{.RESET}}"
@@ -60,18 +60,18 @@ tasks:
     cmds:
       - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}mix ecto.migrate{{.RESET}}"
       - mix ecto.migrate
-      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}mix tripwire.backfill_system_data{{.RESET}}"
-      - mix tripwire.backfill_system_data
-      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}mix tripwire.sync_sde{{.RESET}}"
-      - mix tripwire.sync_sde
+      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}mix ztripwire.backfill_system_data{{.RESET}}"
+      - mix ztripwire.backfill_system_data
+      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}mix ztripwire.sync_sde{{.RESET}}"
+      - mix ztripwire.sync_sde
       - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=test mix ecto.migrate{{.RESET}}"
       - MIX_ENV=test mix ecto.migrate
       - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix ecto.migrate{{.RESET}}"
-      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix ecto.migrate
-      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix tripwire.backfill_system_data{{.RESET}}"
-      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix tripwire.backfill_system_data
-      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix tripwire.sync_sde{{.RESET}}"
-      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix tripwire.sync_sde
+      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/ztripwire-prod.db}" mix ecto.migrate
+      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix ztripwire.backfill_system_data{{.RESET}}"
+      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/ztripwire-prod.db}" mix ztripwire.backfill_system_data
+      - echo -e "{{.BLUE}}[migrate]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix ztripwire.sync_sde{{.RESET}}"
+      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/ztripwire-prod.db}" mix ztripwire.sync_sde
       - echo -e "{{.GREEN}}[migrate]{{.RESET}} migrations complete"
   start:
     desc: Restart the production server in the background
@@ -79,24 +79,24 @@ tasks:
       - task: stop
       - mkdir -p logs
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}database migrations{{.RESET}}"
-      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix ecto.migrate
+      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/ztripwire-prod.db}" mix ecto.migrate
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}system data backfill{{.RESET}}"
-      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix tripwire.backfill_system_data
+      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/ztripwire-prod.db}" mix ztripwire.backfill_system_data
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}SDE sync{{.RESET}}"
-      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" mix tripwire.sync_sde
-      - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix tailwind tripwire --minify{{.RESET}}"
-      - MIX_ENV=prod mix tailwind tripwire --minify
-      - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix esbuild tripwire --minify{{.RESET}}"
-      - MIX_ENV=prod mix esbuild tripwire --minify
+      - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/ztripwire-prod.db}" mix ztripwire.sync_sde
+      - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix tailwind ztripwire --minify{{.RESET}}"
+      - MIX_ENV=prod mix tailwind ztripwire --minify
+      - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix esbuild ztripwire --minify{{.RESET}}"
+      - MIX_ENV=prod mix esbuild ztripwire --minify
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}MIX_ENV=prod mix phx.digest{{.RESET}}"
       - MIX_ENV=prod mix phx.digest
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}mix phx.server on port ${PORT:-4000}{{.RESET}}"
       - |
-        sh -c 'MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/tripwire-prod.db}" \
+        sh -c 'MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/ztripwire-prod.db}" \
           setsid nohup mix phx.server > logs/prod.log 2>&1 &
         pid=$!
         for _ in $(seq 1 1800); do
-          if grep -q "\[info\] Running TripwireWeb.Endpoint with" logs/prod.log 2>/dev/null; then
+          if grep -q "\[info\] Running ZtripwireWeb.Endpoint with" logs/prod.log 2>/dev/null; then
             exit 0
           fi
           if ! kill -0 "$pid" 2>/dev/null; then
@@ -111,9 +111,9 @@ tasks:
         exit 1'
       - echo -e "{{.GREEN}}[start]{{.RESET}} http://localhost:${PORT:-4000}"
   stop:
-    desc: Stop running Tripwire server processes
+    desc: Stop running Ztripwire server processes
     cmds:
-      - echo -e "{{.YELLOW}}[stop]{{.RESET}} {{.CYAN}}stopping tripwire{{.RESET}}"
+      - echo -e "{{.RED}}[stop]{{.RESET}} stopping ztripwire"
       - |
         sh -c 'for pid in $(pgrep -f "mi[x] phx\.server" 2>/dev/null); do
           kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
@@ -127,7 +127,7 @@ tasks:
           curl -s -o /dev/null "http://localhost:${PORT:-4000}/" || break
           sleep 0.2
         done'
-      - echo -e "{{.GREEN}}[stop]{{.RESET}} stopped"
+      - echo -e "{{.RED}}[stop]{{.RESET}} stopped"
   dev:
     desc: Run the Phoenix development server
     cmds:
@@ -143,6 +143,6 @@ tasks:
     cmds:
       - echo -e "{{.BLUE}}[diagram]{{.RESET}} {{.CYAN}}mkdir -p docs tmp{{.RESET}}"
       - mkdir -p docs tmp
-      - echo -e "{{.BLUE}}[diagram]{{.RESET}} {{.CYAN}}mix tripwire.diagrams{{.RESET}}"
-      - mix tripwire.diagrams
+      - echo -e "{{.BLUE}}[diagram]{{.RESET}} {{.CYAN}}mix ztripwire.diagrams{{.RESET}}"
+      - mix ztripwire.diagrams
       - echo -e "{{.GREEN}}[diagram]{{.RESET}} docs/db-schema.md docs/architecture.md"

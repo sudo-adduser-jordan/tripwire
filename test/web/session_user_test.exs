@@ -1,7 +1,7 @@
-defmodule TripwireWeb.SessionUserTest do
+defmodule ZtripwireWeb.SessionUserTest do
   use ExUnit.Case, async: true
 
-  alias TripwireWeb.SessionUser
+  alias ZtripwireWeb.SessionUser
 
   test "get/1 reads the canonical string keyed session" do
     assert SessionUser.get(%{"current_user" => %{"id" => 1, "name" => "Pilot"}}) ==

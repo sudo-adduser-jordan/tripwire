@@ -1,23 +1,23 @@
-defmodule TripwireWeb.DashboardLive do
-  use TripwireWeb, :live_view
+defmodule ZtripwireWeb.DashboardLive do
+  use ZtripwireWeb, :live_view
 
-  alias Tripwire.Accounts
-  alias Tripwire.Data
-  alias Tripwire.Demo
-  alias Tripwire.ESI
-  alias Tripwire.Layouts
-  alias Tripwire.Mapping
-  alias Tripwire.Masks
-  alias Tripwire.Settings
-  alias Tripwire.Signatures, as: SigParser
-  alias Tripwire.Systems
-  alias Tripwire.Tracking
+  alias Ztripwire.Accounts
+  alias Ztripwire.Data
+  alias Ztripwire.Demo
+  alias Ztripwire.ESI
+  alias Ztripwire.Layouts
+  alias Ztripwire.Mapping
+  alias Ztripwire.Masks
+  alias Ztripwire.Settings
+  alias Ztripwire.Signatures, as: SigParser
+  alias Ztripwire.Systems
+  alias Ztripwire.Tracking
 
-  import TripwireWeb.FormHelpers, only: [present: 1, changeset_errors: 1, changeset_message: 1]
+  import ZtripwireWeb.FormHelpers, only: [present: 1, changeset_errors: 1, changeset_message: 1]
 
-  @demo_character_eve_id Tripwire.Demo.character_eve_id()
-  @demo_ship_name Tripwire.Demo.ship_name()
-  @demo_ship_type_id Tripwire.Demo.ship_type_id()
+  @demo_character_eve_id Ztripwire.Demo.character_eve_id()
+  @demo_ship_name Ztripwire.Demo.ship_name()
+  @demo_ship_type_id Ztripwire.Demo.ship_type_id()
   @topbar_refresh_ms 60_000
   @chart_refresh_ms 60_000
   @chart_ranges ~w(24h 48h week)
@@ -51,7 +51,7 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp session_character(session) do
-    case TripwireWeb.SessionUser.get(session) do
+    case ZtripwireWeb.SessionUser.get(session) do
       %{id: eve_id} ->
         case Accounts.get_character_by_eve_id(eve_id) do
           nil -> :expired
@@ -133,7 +133,7 @@ defmodule TripwireWeb.DashboardLive do
   defp data(_socket), do: :db
 
   defp put_data(socket, :db), do: socket
-  defp put_data(socket, %Tripwire.Demo.State{} = state), do: assign(socket, :demo_state, state)
+  defp put_data(socket, %Ztripwire.Demo.State{} = state), do: assign(socket, :demo_state, state)
 
   defp assign_demo_presence(socket) do
     presence = fetch_character_presence(socket.assigns.character)
@@ -176,7 +176,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:branding, nil)
     |> assign(:tracking?, true)
     |> assign_demo_presence()
-    |> assign(:sso_configured?, Tripwire.SSO.configured?())
+    |> assign(:sso_configured?, Ztripwire.SSO.configured?())
     |> schedule_topbar_load()
     |> schedule_chart_refresh()
   end
@@ -627,7 +627,7 @@ defmodule TripwireWeb.DashboardLive do
         put_data(socket, data)
 
       {{:error, changeset}, _data} ->
-        Tripwire.Log.emit(:warning, %{
+        Ztripwire.Log.emit(:warning, %{
           event: "user_layout_update_failed",
           action: "reset",
           errors: changeset_errors(changeset)
@@ -775,7 +775,7 @@ defmodule TripwireWeb.DashboardLive do
   def handle_event("claim-admin", _params, socket) do
     with true <- socket.assigns[:claim_admin?],
          {:ok, character} <- Accounts.claim_admin(socket.assigns.character) do
-      Tripwire.Log.emit(:info, %{
+      Ztripwire.Log.emit(:info, %{
         event: "admin_claimed",
         eve_id: character.eve_id,
         name: character.name
@@ -1469,11 +1469,11 @@ defmodule TripwireWeb.DashboardLive do
         socket = ensure_jita_system(socket, map)
 
         Phoenix.PubSub.unsubscribe(
-          Tripwire.PubSub,
-          Tripwire.Tracking.map_topic(socket.assigns.map.id)
+          Ztripwire.PubSub,
+          Ztripwire.Tracking.map_topic(socket.assigns.map.id)
         )
 
-        Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map.id))
+        Phoenix.PubSub.subscribe(Ztripwire.PubSub, Ztripwire.Tracking.map_topic(map.id))
 
         {:noreply,
          socket
@@ -1590,7 +1590,7 @@ defmodule TripwireWeb.DashboardLive do
              ESI.get_character_location(socket.assigns.character.eve_id, access),
            prev = selected_system(socket),
            {:ok, %{system: system}} <-
-             Tripwire.Tracking.apply_location_change(
+             Ztripwire.Tracking.apply_location_change(
                socket.assigns.map,
                socket.assigns.character.name,
                prev,
@@ -1693,7 +1693,7 @@ defmodule TripwireWeb.DashboardLive do
   defp session_characters(session, current) do
     known =
       session
-      |> TripwireWeb.SessionUser.ids()
+      |> ZtripwireWeb.SessionUser.ids()
       |> Enum.map(&Accounts.get_character_by_eve_id/1)
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq_by(& &1.id)
@@ -1800,7 +1800,7 @@ defmodule TripwireWeb.DashboardLive do
 
   defp find_mask(socket, mask_id) do
     Enum.find(socket.assigns.masks, &(&1.id == mask_id)) ||
-      Tripwire.Repo.get(Tripwire.Masks.Mask, mask_id)
+      Ztripwire.Repo.get(Ztripwire.Masks.Mask, mask_id)
   end
 
   defp scoped_member?(socket, mask, member) do
@@ -1935,7 +1935,7 @@ defmodule TripwireWeb.DashboardLive do
         put_data(socket, data)
 
       {{:error, changeset}, _data} ->
-        Tripwire.Log.emit(:warning, %{
+        Ztripwire.Log.emit(:warning, %{
           event: "user_layout_update_failed",
           action: "save",
           active_layout: inspect(active_id),
@@ -1952,7 +1952,7 @@ defmodule TripwireWeb.DashboardLive do
         put_data(socket, data) |> assign(key, value)
 
       {{:error, changeset}, _data} ->
-        Tripwire.Log.emit(:warning, %{
+        Ztripwire.Log.emit(:warning, %{
           event: "user_settings_update_failed",
           key: key,
           value: inspect(value),
@@ -2005,7 +2005,7 @@ defmodule TripwireWeb.DashboardLive do
     |> assign(:demo?, false)
     |> assign_claim_admin(character)
     |> assign(:branding, Accounts.branding())
-    |> assign(:sso_configured?, Tripwire.SSO.configured?())
+    |> assign(:sso_configured?, Ztripwire.SSO.configured?())
     |> subscribe_to_map(map.id)
     |> schedule_topbar_load()
     |> schedule_chart_refresh()
@@ -2043,7 +2043,7 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp restore_mask(default, session) do
-    case TripwireWeb.SessionUser.mask_id(session) do
+    case ZtripwireWeb.SessionUser.mask_id(session) do
       nil ->
         default
 
@@ -2156,11 +2156,11 @@ defmodule TripwireWeb.DashboardLive do
     claim_admin_modal? = settings[:claim_admin_modal?]
 
     Phoenix.PubSub.unsubscribe(
-      Tripwire.PubSub,
-      Tripwire.Tracking.map_topic(socket.assigns.map.id)
+      Ztripwire.PubSub,
+      Ztripwire.Tracking.map_topic(socket.assigns.map.id)
     )
 
-    Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map.id))
+    Phoenix.PubSub.subscribe(Ztripwire.PubSub, Ztripwire.Tracking.map_topic(map.id))
 
     socket
     |> assign(:character, character)
@@ -2384,7 +2384,7 @@ defmodule TripwireWeb.DashboardLive do
       candidates = Enum.reject(candidates, &MapSet.member?(chain_solar, &1.solar_system_id))
 
       route_fn =
-        Application.get_env(:tripwire, :route_fn, fn o, d -> ESI.get_route(o, d) end)
+        Application.get_env(:ztripwire, :route_fn, fn o, d -> ESI.get_route(o, d) end)
 
       {added, skipped, socket} =
         Enum.reduce(candidates, {0, 0, socket}, fn cand, {a, s, socket} ->
@@ -2719,7 +2719,7 @@ defmodule TripwireWeb.DashboardLive do
           )
 
         socket = put_data(socket, data)
-        unless demo?(socket), do: Tripwire.Tracking.broadcast_map_update(socket.assigns.map.id)
+        unless demo?(socket), do: Ztripwire.Tracking.broadcast_map_update(socket.assigns.map.id)
 
         assign(
           socket,
@@ -3044,12 +3044,12 @@ defmodule TripwireWeb.DashboardLive do
   defp autoselect_first_system(socket), do: socket
 
   defp subscribe_to_map(socket, map_id) do
-    Phoenix.PubSub.subscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map_id))
+    Phoenix.PubSub.subscribe(Ztripwire.PubSub, Ztripwire.Tracking.map_topic(map_id))
     socket
   end
 
   defp unsubscribe_from_map(map_id) do
-    Phoenix.PubSub.unsubscribe(Tripwire.PubSub, Tripwire.Tracking.map_topic(map_id))
+    Phoenix.PubSub.unsubscribe(Ztripwire.PubSub, Ztripwire.Tracking.map_topic(map_id))
   end
 
   defp assign_topbar_defaults(socket) do
@@ -3177,7 +3177,7 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   defp topbar_esi_enabled? do
-    Application.get_env(:tripwire, :topbar_esi, true)
+    Application.get_env(:ztripwire, :topbar_esi, true)
   end
 
   defp fetch_topbar_data(character, characters) do
@@ -3250,7 +3250,7 @@ defmodule TripwireWeb.DashboardLive do
     end
   rescue
     exception ->
-      Tripwire.Log.emit(:warning, %{
+      Ztripwire.Log.emit(:warning, %{
         event: "character_presence_failed",
         eve_id: character.eve_id,
         error: Exception.message(exception)
@@ -3303,7 +3303,7 @@ defmodule TripwireWeb.DashboardLive do
       range = socket.assigns[:chart_range] || "24h"
 
       Task.start(fn ->
-        send(pid, {:system_info_loaded, solar_system_id, Tripwire.Systems.fetch_info(system)})
+        send(pid, {:system_info_loaded, solar_system_id, Ztripwire.Systems.fetch_info(system)})
       end)
 
       Task.start(fn ->
@@ -3345,11 +3345,11 @@ defmodule TripwireWeb.DashboardLive do
     now = DateTime.utc_now()
 
     {ship_kills, pod_kills} =
-      if Tripwire.Systems.esi_resolvable?(system) do
+      if Ztripwire.Systems.esi_resolvable?(system) do
         since = DateTime.add(now, -length(labels) * width * 3600, :second)
 
-        case Tripwire.ZKill.kill_history(system.solar_system_id, since: since) do
-          {:ok, kills} -> Tripwire.ZKill.bucket(kills, now, length(labels), width)
+        case Ztripwire.ZKill.kill_history(system.solar_system_id, since: since) do
+          {:ok, kills} -> Ztripwire.ZKill.bucket(kills, now, length(labels), width)
           {:error, _} -> {List.duplicate(0, length(labels)), List.duplicate(0, length(labels))}
         end
       else
@@ -3357,8 +3357,8 @@ defmodule TripwireWeb.DashboardLive do
       end
 
     {jumps, npc_kills} =
-      if Tripwire.Systems.esi_resolvable?(system) do
-        activity = Tripwire.ESI.system_activity(system.solar_system_id)
+      if Ztripwire.Systems.esi_resolvable?(system) do
+        activity = Ztripwire.ESI.system_activity(system.solar_system_id)
         tip = fn value -> List.duplicate(0, length(labels) - 1) ++ [value] end
         {tip.(activity.jumps), tip.(activity.npc_kills)}
       else

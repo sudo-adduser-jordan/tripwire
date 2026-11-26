@@ -1,21 +1,21 @@
-defmodule TripwireWeb.ConnCase do
+defmodule ZtripwireWeb.ConnCase do
   use ExUnit.CaseTemplate
 
   using do
     quote do
-      @endpoint TripwireWeb.Endpoint
+      @endpoint ZtripwireWeb.Endpoint
 
-      use TripwireWeb, :verified_routes
+      use ZtripwireWeb, :verified_routes
 
       import Plug.Conn
       import Phoenix.ConnTest
       import Phoenix.LiveViewTest
-      import TripwireWeb.ConnCase
+      import ZtripwireWeb.ConnCase
     end
   end
 
   setup tags do
-    Tripwire.DataCase.setup_sandbox(tags)
+    Ztripwire.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 end

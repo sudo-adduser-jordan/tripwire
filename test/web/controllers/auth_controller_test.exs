@@ -1,5 +1,5 @@
-defmodule TripwireWeb.AuthControllerTest do
-  use TripwireWeb.ConnCase, async: false
+defmodule ZtripwireWeb.AuthControllerTest do
+  use ZtripwireWeb.ConnCase, async: false
 
   test "failed SSO callback flashes the failure reason", %{conn: conn} do
     System.put_env("EVESSO_CLIENT_ID", "test-id")
@@ -99,7 +99,7 @@ defmodule TripwireWeb.AuthControllerTest do
 
   test "session switch endpoint stores the character without redirecting", %{conn: conn} do
     {:ok, character} =
-      Tripwire.Accounts.upsert_character(%{eve_id: 77_001, name: "Session Char"})
+      Ztripwire.Accounts.upsert_character(%{eve_id: 77_001, name: "Session Char"})
 
     conn = get(conn, "/auth/session/#{character.eve_id}")
 
@@ -116,7 +116,7 @@ defmodule TripwireWeb.AuthControllerTest do
   end
 
   test "mask session endpoint stores the mask without redirecting", %{conn: conn} do
-    {:ok, mask} = Tripwire.Masks.create_mask(%{name: "Session Corp", kind: "corporation"})
+    {:ok, mask} = Ztripwire.Masks.create_mask(%{name: "Session Corp", kind: "corporation"})
 
     conn = get(conn, "/auth/session/mask/#{mask.id}")
 
@@ -125,7 +125,7 @@ defmodule TripwireWeb.AuthControllerTest do
   end
 
   test "mask session endpoint rejects the demo mask and unknown ids", %{conn: conn} do
-    demo = Tripwire.TestFixtures.demo_mask()
+    demo = Ztripwire.TestFixtures.demo_mask()
 
     conn = get(conn, "/auth/session/mask/#{demo.id}")
 

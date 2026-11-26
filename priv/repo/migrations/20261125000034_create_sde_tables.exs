@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.CreateSdeTables do
+defmodule Ztripwire.Repo.Migrations.CreateSdeTables do
   use Ecto.Migration
 
   def change do

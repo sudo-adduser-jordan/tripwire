@@ -1,9 +1,9 @@
-defmodule TripwireWeb.InputComponent do
+defmodule ZtripwireWeb.InputComponent do
   use Phoenix.Component
-  use Gettext, backend: TripwireWeb.Gettext
+  use Gettext, backend: ZtripwireWeb.Gettext
 
-  import TripwireWeb.CoreComponents
-  import TripwireWeb.IconComponent
+  import ZtripwireWeb.CoreComponents
+  import ZtripwireWeb.IconComponent
 
   attr :id, :any, default: nil
   attr :name, :any

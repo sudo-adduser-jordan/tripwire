@@ -1,15 +1,15 @@
-defmodule TripwireWeb.DashboardLiveTest do
-  use TripwireWeb.ConnCase, async: false
+defmodule ZtripwireWeb.DashboardLiveTest do
+  use ZtripwireWeb.ConnCase, async: false
 
-  alias Tripwire.Accounts
-  alias Tripwire.Demo
-  alias Tripwire.Layouts
-  alias Tripwire.Mapping
-  alias Tripwire.Masks
-  alias Tripwire.Repo
-  alias Tripwire.Settings
-  alias Tripwire.Systems
-  alias Tripwire.Systems.Gates
+  alias Ztripwire.Accounts
+  alias Ztripwire.Demo
+  alias Ztripwire.Layouts
+  alias Ztripwire.Mapping
+  alias Ztripwire.Masks
+  alias Ztripwire.Repo
+  alias Ztripwire.Settings
+  alias Ztripwire.Systems
+  alias Ztripwire.Systems.Gates
 
   setup do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 42_000, name: "Kariyo Astrien"})
@@ -18,9 +18,9 @@ defmodule TripwireWeb.DashboardLiveTest do
   end
 
   defp stop_trackers do
-    Tripwire.TrackingRegistry
+    Ztripwire.TrackingRegistry
     |> Registry.select([{{:"$1", :"$2", :_}, [], [:"$2"]}])
-    |> Enum.each(&DynamicSupervisor.terminate_child(Tripwire.Tracking.PollerSupervisor, &1))
+    |> Enum.each(&DynamicSupervisor.terminate_child(Ztripwire.Tracking.PollerSupervisor, &1))
   end
 
   defp login(conn, character) do
@@ -274,12 +274,12 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     {:ok, _} =
-      Tripwire.Tracking.TestPresence.ensure_started(character, map, system,
+      Ztripwire.Tracking.TestPresence.ensure_started(character, map, system,
         ship_name: "Rifter",
         ship_type_id: 587
       )
 
-    {:ok, _} = Tripwire.Tracking.TestPresence.ensure_started(other, map, system)
+    {:ok, _} = Ztripwire.Tracking.TestPresence.ensure_started(other, map, system)
 
     render_click(view, "refresh-occupants", %{})
 
@@ -301,7 +301,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     {:ok, _} =
-      Tripwire.Tracking.TestPresence.ensure_started(character, map, system,
+      Ztripwire.Tracking.TestPresence.ensure_started(character, map, system,
         ship_name: "u'ⁿ'",
         ship_type_id: 587
       )
@@ -340,7 +340,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     {:ok, _} =
-      Tripwire.Tracking.TestPresence.ensure_started(character, map, system,
+      Ztripwire.Tracking.TestPresence.ensure_started(character, map, system,
         ship_name: "A Very Long Ship Name",
         ship_type_id: 587
       )
@@ -360,7 +360,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     {:ok, _} =
-      Tripwire.Tracking.TestPresence.ensure_started(character, map, system,
+      Ztripwire.Tracking.TestPresence.ensure_started(character, map, system,
         ship_name: "/",
         ship_type_id: 587
       )
@@ -391,8 +391,8 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, _view, _html} = live(conn, ~p"/dashboard")
 
-    assert Tripwire.Tracking.tracking?(character)
-    assert Tripwire.Tracking.tracking?(other)
+    assert Ztripwire.Tracking.tracking?(character)
+    assert Ztripwire.Tracking.tracking?(other)
   end
 
   test "a corporation mask lists only corporation members on the map", %{
@@ -421,8 +421,8 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    {:ok, _} = Tripwire.Tracking.TestPresence.ensure_started(character, corp_map, corp_system)
-    {:ok, _} = Tripwire.Tracking.TestPresence.ensure_started(outsider, corp_map, corp_system)
+    {:ok, _} = Ztripwire.Tracking.TestPresence.ensure_started(character, corp_map, corp_system)
+    {:ok, _} = Ztripwire.Tracking.TestPresence.ensure_started(outsider, corp_map, corp_system)
 
     view
     |> element(~s|button[phx-click="switch-mask"][phx-value-id="#{corp_mask.id}"]|)
@@ -441,10 +441,10 @@ defmodule TripwireWeb.DashboardLiveTest do
 
     [map] = Repo.all(Mapping.Map)
     [system] = Mapping.list_systems(map.id)
-    on_exit(fn -> Tripwire.Tracking.stop_poller(character) end)
+    on_exit(fn -> Ztripwire.Tracking.stop_poller(character) end)
 
     {:ok, _} =
-      Tripwire.Tracking.TestPresence.ensure_started(character, map, system,
+      Ztripwire.Tracking.TestPresence.ensure_started(character, map, system,
         ship_name: "Rifter",
         ship_type_id: 587
       )
@@ -616,7 +616,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert has_element?(view, "#font-select")
     refute has_element?(view, "#theme-container-mapper")
 
-    for theme <- ~w(light dark native native-dark eve tripwire wanderer) do
+    for theme <- ~w(light dark native native-dark eve ztripwire wanderer) do
       refute core =~ ~s|id="theme-button-#{theme}"|
       refute pirate =~ ~s|id="theme-button-#{theme}"|
     end
@@ -2811,8 +2811,8 @@ defmodule TripwireWeb.DashboardLiveTest do
   end
 
   test "admin tab shows the metrics link when dev routes are enabled", %{conn: conn} do
-    previous = Application.get_env(:tripwire, :dev_routes)
-    Application.put_env(:tripwire, :dev_routes, true)
+    previous = Application.get_env(:ztripwire, :dev_routes)
+    Application.put_env(:ztripwire, :dev_routes, true)
 
     try do
       {:ok, view, _html} = live(conn, ~p"/dashboard")
@@ -2826,15 +2826,15 @@ defmodule TripwireWeb.DashboardLiveTest do
       assert html =~ "Metrics"
     after
       if is_nil(previous) do
-        Application.delete_env(:tripwire, :dev_routes)
+        Application.delete_env(:ztripwire, :dev_routes)
       else
-        Application.put_env(:tripwire, :dev_routes, previous)
+        Application.put_env(:ztripwire, :dev_routes, previous)
       end
     end
   end
 
   test "admin tab hides the metrics link without dev routes", %{conn: conn} do
-    refute Application.get_env(:tripwire, :dev_routes)
+    refute Application.get_env(:ztripwire, :dev_routes)
 
     {:ok, view, _html} = live(conn, ~p"/dashboard")
 
@@ -2917,7 +2917,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     assert toggle_html =~ "disabled"
     assert toggle_html =~ "Sign in with EVE SSO to enable auto-tracking"
 
-    assert Tripwire.Tracking.tracking?(character) == false
+    assert Ztripwire.Tracking.tracking?(character) == false
   end
 
   test "auto-tracker button sits between the signature count and system badge", %{
@@ -2965,7 +2965,7 @@ defmodule TripwireWeb.DashboardLiveTest do
 
       refute toggle_html =~ "disabled"
       assert toggle_html =~ "Stop auto-tracking this character"
-      assert Tripwire.Tracking.tracking?(character)
+      assert Ztripwire.Tracking.tracking?(character)
     after
       System.delete_env("EVESSO_CLIENT_ID")
       System.delete_env("EVESSO_SECRET_KEY")
@@ -3293,7 +3293,7 @@ defmodule TripwireWeb.DashboardLiveTest do
     character: character
   } do
     {:ok, other_mask} = Masks.create_mask(%{name: "Other Corp", kind: "corporation"})
-    demo_mask = Tripwire.TestFixtures.demo_mask()
+    demo_mask = Ztripwire.TestFixtures.demo_mask()
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 

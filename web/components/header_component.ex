@@ -1,4 +1,4 @@
-defmodule TripwireWeb.HeaderComponent do
+defmodule ZtripwireWeb.HeaderComponent do
   use Phoenix.Component
 
   slot :inner_block, required: true

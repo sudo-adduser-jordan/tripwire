@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.ChainSettings do
+defmodule Ztripwire.Repo.Migrations.ChainSettings do
   use Ecto.Migration
 
   def change do

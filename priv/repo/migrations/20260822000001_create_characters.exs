@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.CreateCharacters do
+defmodule Ztripwire.Repo.Migrations.CreateCharacters do
   use Ecto.Migration
 
   def change do

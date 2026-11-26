@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.AddCriticalTimeStatus do
+defmodule Ztripwire.Repo.Migrations.AddCriticalTimeStatus do
   use Ecto.Migration
 
   def up do

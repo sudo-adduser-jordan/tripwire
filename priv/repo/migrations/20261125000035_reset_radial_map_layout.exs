@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.ResetRadialMapLayout do
+defmodule Ztripwire.Repo.Migrations.ResetRadialMapLayout do
   use Ecto.Migration
 
   def up do

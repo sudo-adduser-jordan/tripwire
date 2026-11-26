@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.CreateMasks do
+defmodule Ztripwire.Repo.Migrations.CreateMasks do
   use Ecto.Migration
 
   def change do

@@ -6,7 +6,7 @@ function gridLocked(el) {
 }
 
 function syncLock(el) {
-    const grid = window.TripwireGrid
+    const grid = window.ZtripwireGrid
     if (!grid || typeof grid.setStatic !== 'function') return
     grid.setStatic(gridLocked(el))
     const lockSvg = document.getElementById('lock-svg')
@@ -76,7 +76,7 @@ function initGrid(el) {
         staticGrid: gridLocked(el),
     }, el)
 
-    window.TripwireGrid = grid
+    window.ZtripwireGrid = grid
     syncLock(el)
     reveal(el)
     watchViewport(el, grid)
@@ -86,10 +86,10 @@ function initGrid(el) {
 }
 
 function destroyGrid() {
-    if (window.TripwireGrid) {
-        unwatchViewport(window.TripwireGrid.el)
-        window.TripwireGrid.destroy(false)
-        window.TripwireGrid = null
+    if (window.ZtripwireGrid) {
+        unwatchViewport(window.ZtripwireGrid.el)
+        window.ZtripwireGrid.destroy(false)
+        window.ZtripwireGrid = null
     }
 }
 
@@ -247,7 +247,7 @@ function widgetElementId(key) {
 }
 
 function snapshotWidgets() {
-    const grid = window.TripwireGrid
+    const grid = window.ZtripwireGrid
     if (!grid || !grid.engine) return {}
 
     const widgets = {}
@@ -261,7 +261,7 @@ function snapshotWidgets() {
 }
 
 function applyLayout(widgets) {
-    const grid = window.TripwireGrid
+    const grid = window.ZtripwireGrid
     if (!grid || !grid.engine || !widgets) return
 
     suppressLayoutChange(grid.el)
@@ -279,7 +279,7 @@ function applyLayout(widgets) {
     grid.el._gridSig = itemSignature(grid.el)
 }
 
-window.TripwireGridStack = {
+window.ZtripwireGridStack = {
     init: initGrid,
     refresh: refreshGrid,
     destroy: destroyGrid,

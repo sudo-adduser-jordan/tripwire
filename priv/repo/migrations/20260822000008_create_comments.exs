@@ -1,4 +1,4 @@
-defmodule Tripwire.Repo.Migrations.CreateComments do
+defmodule Ztripwire.Repo.Migrations.CreateComments do
   use Ecto.Migration
 
   def change do
