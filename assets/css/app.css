@@ -496,14 +496,12 @@ html[data-solid][data-mode="dark"] body {
 
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
-#sys-modal.modal-open,
 #sig-modal.modal-open,
 #map-modal.modal-open {
   background-color: transparent;
   pointer-events: none;
 }
 
-#sys-modal > .modal-box,
 #sig-modal > .modal-box,
 #map-modal > .modal-box {
   pointer-events: auto;
@@ -511,14 +509,12 @@ html[data-solid][data-mode="dark"] body {
   cursor: grab;
 }
 
-#sys-modal.modal-dragging > .modal-box,
 #sig-modal.modal-dragging > .modal-box,
 #map-modal.modal-dragging > .modal-box {
   cursor: grabbing;
   user-select: none;
 }
 
-#sys-modal > .modal-box :is(input, select, textarea),
 #sig-modal > .modal-box :is(input, select, textarea),
 #map-modal > .modal-box :is(input, select, textarea) {
   cursor: auto;

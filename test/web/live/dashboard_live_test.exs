@@ -1727,47 +1727,57 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     refute node_html =~ "K162"
   end
 
-  test "clicking a node's J-code opens the system editor and saves changes", %{
+  test "clicking a node's signature opens that signature in the editor", %{
     conn: conn,
     character: character
   } do
-    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, unknown} = Mapping.add_unknown_system(map)
+
+    {:ok, _connection, _new?} =
+      Mapping.upsert_connection(map.id, system.id, unknown.id, %{hole_type: "K162"})
+
+    {:ok, sig} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "ABC-123", site_type: "wormhole", type_name: "Unstable Wormhole (K162)"},
+        character
+      )
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    refute render(view) =~ "sys-modal"
+    refute render(view) =~ "sig-modal"
 
     view
-    |> element("#chain-map text[phx-click='open-system']", "J150321")
+    |> element("#chain-map text[phx-click='open-node-signature']", "ABC-123")
     |> render_click()
 
-    assert render(view) =~ "sys-modal"
-    assert render(view) =~ "Edit System"
-    refute render(view) =~ "system[statics]"
-    refute render(view) =~ "system[security]"
+    html = render(view)
+    assert html =~ "sig-modal"
+    assert html =~ "Edit Signature"
+    assert html =~ ~s|name="sig[prefix]" value="ABC"|
+    assert html =~ ~s|name="sig[number]" value="123"|
+    assert html =~ ~s|name="sig[leads_system_id]"|
+    assert view |> element("#sig-modal button[phx-click='delete-signature']") |> has_element?()
+    assert Mapping.get_signature!(sig.id).sig_id == "ABC-123"
+  end
+
+  test "clicking a node with no signature opens the add signature dialog", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#sys-modal form[phx-submit='update-system']")
-    |> render_submit(%{
-      "system" => %{
-        "name" => "J150322",
-        "alias" => "Home",
-        "security" => "1.5",
-        "sys_class" => "C3",
-        "favorite" => "true"
-      }
-    })
+    |> element("#chain-map text[phx-click='open-node-signature']", "J150321")
+    |> render_click()
 
-    refute render(view) =~ "sys-modal"
-
-    reloaded = Mapping.get_system!(system.id)
-    assert reloaded.name == "J150322"
-    assert reloaded.alias == "Home"
-    assert reloaded.security == nil
-    assert reloaded.sys_class == "C3"
-    assert reloaded.statics == []
-    assert reloaded.favorite
-    assert_patch(view, "/J150322")
+    html = render(view)
+    assert html =~ "sig-modal"
+    assert html =~ "Add Signature"
+    assert html =~ ~s|name="sig[prefix]" value=""|
   end
 
   test "edit modals are draggable, undimmed and replace each other", %{
@@ -1779,22 +1789,12 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     view
-    |> element("#chain-map text[phx-click='open-system']", "J150321")
-    |> render_click()
-
-    system_modal = view |> element("#sys-modal") |> render()
-    assert system_modal =~ ~s|phx-hook="DraggableModal"|
-    refute system_modal =~ "modal-backdrop"
-
-    view
     |> element("#signatures button[phx-click='open-add']")
     |> render_click()
 
     sig_modal = view |> element("#sig-modal") |> render()
     assert sig_modal =~ ~s|phx-hook="DraggableModal"|
     refute sig_modal =~ "modal-backdrop"
-    refute sig_modal =~ "grid-cols-2"
-    refute render(view) =~ "sys-modal"
 
     view |> element("#map-edit") |> render_click()
 
@@ -1802,128 +1802,6 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert map_modal =~ ~s|phx-hook="DraggableModal"|
     refute map_modal =~ "modal-backdrop"
     refute render(view) =~ "sig-modal"
-  end
-
-  test "clicking an unknown node opens the system editor for that placeholder", %{
-    conn: conn,
-    character: character
-  } do
-    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
-    {:ok, unknown} = Mapping.add_unknown_system(map)
-
-    {:ok, _connection, _new?} =
-      Mapping.upsert_connection(map.id, system.id, unknown.id, %{hole_type: "K162"})
-
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
-
-    refute render(view) =~ "sys-modal"
-
-    view |> element("#node-#{unknown.id}") |> render_click()
-
-    html = render(view)
-    assert html =~ "sys-modal"
-    assert html =~ "Edit System"
-    assert html =~ "Unknown system"
-    assert html =~ ~s|>System</span>|
-    assert html =~ ~s|id="sys-name" name="system[name]" value=""|
-  end
-
-  test "the system field autocompletes from the catalog and converts the placeholder", %{
-    conn: conn,
-    character: character
-  } do
-    {_mask, map, system} = setup_with_system(%{character: character}, "Jita")
-    {:ok, unknown} = Mapping.add_unknown_system(map)
-
-    {:ok, _connection, _new?} =
-      Mapping.upsert_connection(map.id, system.id, unknown.id, %{hole_type: "K162"})
-
-    seed_catalog([%{solar_system_id: 31_001_663, name: "J231710", security: -1.0}])
-
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
-    view |> element("#node-#{unknown.id}") |> render_click()
-
-    html =
-      view
-      |> element("#sys-modal form[phx-submit='update-system']")
-      |> render_change(%{"system" => %{"name" => "J2317"}})
-
-    assert html =~ "J231710"
-    assert html =~ "phx-click=\"sys-name-pick\""
-    assert html =~ ~s|data-effect="Magnetar"|
-
-    view
-    |> element("#sys-modal button[phx-click='sys-name-pick'][phx-value-name='J231710']")
-    |> render_click()
-
-    picked = render(view)
-    assert picked =~ ~s|id="sys-name" name="system[name]" value="J231710"|
-    refute picked =~ "C247, H900"
-    refute picked =~ "Set by the system"
-
-    view
-    |> element("#sys-modal form[phx-submit='update-system']")
-    |> render_submit(%{"system" => %{"name" => "J231710"}})
-
-    refute render(view) =~ "sys-modal"
-
-    reloaded = Mapping.get_system!(unknown.id)
-    refute reloaded.unknown
-    assert reloaded.name == "J231710"
-    assert reloaded.solar_system_id == 31_001_663
-    assert reloaded.sys_class == "C4"
-    assert reloaded.effect == "Magnetar"
-    assert reloaded.statics == ["C247", "H900"]
-    assert_patch(view, "/J231710")
-  end
-
-  test "the system editor rejects a system that is already on the map", %{
-    conn: conn,
-    character: character
-  } do
-    {_mask, map, system} = setup_with_system(%{character: character}, "Jita")
-
-    {:ok, _other} =
-      Mapping.add_system_to_map(map, %{solar_system_id: 31_001_663, name: "J231710"})
-
-    seed_catalog([%{solar_system_id: 31_001_663, name: "J231710", security: -1.0}])
-
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
-
-    view
-    |> element("#chain-map text[phx-click='open-system']", "Jita")
-    |> render_click()
-
-    html =
-      view
-      |> element("#sys-modal form[phx-submit='update-system']")
-      |> render_submit(%{"system" => %{"name" => "J231710"}})
-
-    assert html =~ "sys-modal"
-    assert html =~ "already on this map"
-    assert Mapping.get_system!(system.id).name == "Jita"
-  end
-
-  test "deleting from a placeholder editor removes that node, not the selection", %{
-    conn: conn,
-    character: character
-  } do
-    {_mask, map, system} = setup_with_system(%{character: character}, "Jita")
-    {:ok, unknown} = Mapping.add_unknown_system(map)
-
-    {:ok, _connection, _new?} =
-      Mapping.upsert_connection(map.id, system.id, unknown.id, %{hole_type: "K162"})
-
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
-    view |> element("#node-#{unknown.id}") |> render_click()
-
-    view
-    |> element("#sys-modal button[phx-click='delete-system']")
-    |> render_click()
-
-    refute render(view) =~ "sys-modal"
-    assert Mapping.get_system(unknown.id) == nil
-    assert Mapping.get_system!(system.id).name == "Jita"
   end
 
   test "j-space nodes show static badges on the bottom edge", %{
@@ -1982,69 +1860,6 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert map_html =~ "translate(20, 80.0)"
     assert map_html =~ "translate(20, 100.0)"
     assert map_html =~ "translate(50, 100.0)"
-  end
-
-  test "system editor never changes the effect or the statics", %{
-    conn: conn,
-    character: character
-  } do
-    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
-    {:ok, _} = Mapping.update_system(system, %{effect: "Pulsar", statics: ["C247", "H900"]})
-
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
-
-    view
-    |> element("#chain-map text[phx-click='open-system']", "J150321")
-    |> render_click()
-
-    html = render(view)
-    assert html =~ "sys-modal"
-    refute html =~ "Set by the system"
-    refute html =~ "system[effect]"
-    refute html =~ "system[statics]"
-
-    view
-    |> element("#sys-modal form[phx-submit='update-system']")
-    |> render_submit(%{
-      "system" => %{
-        "name" => "J150321",
-        "alias" => "",
-        "sys_class" => "C2",
-        "effect" => "Bogus",
-        "statics" => "XYZ"
-      }
-    })
-
-    refute render(view) =~ "sys-modal"
-
-    reloaded = Mapping.get_system!(system.id)
-    assert reloaded.effect == "Pulsar"
-    assert reloaded.statics == ["C247", "H900"]
-    assert reloaded.sys_class == "C2"
-    assert render(view) =~ "data-effect=\"Pulsar\""
-    assert render(view) =~ "System effect: Pulsar"
-  end
-
-  test "system editor rejects an unknown class and keeps the modal open", %{
-    conn: conn,
-    character: character
-  } do
-    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
-
-    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
-
-    view
-    |> element("#chain-map text[phx-click='open-system']", "J150321")
-    |> render_click()
-
-    html =
-      view
-      |> element("#sys-modal form[phx-submit='update-system']")
-      |> render_submit(%{"system" => %{"name" => "J150321", "sys_class" => "C9"}})
-
-    assert html =~ "sys-modal"
-    assert html =~ "sys_class"
-    assert Mapping.get_system!(system.id).sys_class == nil
   end
 
   test "clicking the star favorites the system and turns all stars yellow", %{
@@ -2531,7 +2346,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
   test "adding a note leaves signatures untouched", %{conn: conn, character: character} do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
 
-    {:ok, _sig} = Mapping.create_signature(system, %{sig_id: "ABC-123"}, character)
+    {:ok, sig} = Mapping.create_signature(system, %{sig_id: "ABC-123"}, character)
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 

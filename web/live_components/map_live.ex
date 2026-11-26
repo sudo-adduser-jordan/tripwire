@@ -128,13 +128,10 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
     {:noreply, socket}
   end
 
-  def handle_event("open-system", %{"id" => id}, socket) do
-    send(self(), {:open_system, String.to_integer(id)})
-    {:noreply, socket}
-  end
-
-  def handle_event("open-unknown-system", %{"id" => id}, socket) do
-    send(self(), {:open_unknown_system, String.to_integer(id)})
+  def handle_event("open-node-signature", %{"id" => id}, socket) do
+    system_id = String.to_integer(id)
+    signature = node_signature(socket.assigns.connections, socket.assigns.wh_sigs, system_id)
+    send(self(), {:open_node_signature, system_id, signature && signature.id})
     {:noreply, socket}
   end
 
@@ -421,7 +418,7 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
                 data-system-id={system.id}
                 data-unknown={to_string(system.unknown)}
                 data-collapsed={to_string(Elixir.MapSet.member?(@collapsed_ids, system.id))}
-                phx-click={if system.unknown, do: "open-unknown-system", else: "select-system"}
+                phx-click="select-system"
                 phx-value-id={system.id}
                 phx-target={@myself}
               >
@@ -572,7 +569,7 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
                     y="41"
                     text-anchor="middle"
                     class="fill-base-content text-lg font-bold cursor-pointer hover:underline"
-                    phx-click={unless system.unknown, do: "open-system"}
+                    phx-click="open-node-signature"
                     phx-value-id={system.id}
                     phx-target={@myself}
                   >
@@ -582,7 +579,10 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
                     x={@node_w / 2}
                     y="61"
                     text-anchor="middle"
-                    class="fill-base-content/60 text-sm"
+                    class="fill-base-content/60 text-sm cursor-pointer hover:underline"
+                    phx-click="open-node-signature"
+                    phx-value-id={system.id}
+                    phx-target={@myself}
                   >
                     {node_footer(@connections, @wh_sigs, system.id)}
                   </text>
@@ -759,23 +759,27 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
 
   defp node_effect(system), do: Ztripwire.Systems.display_effect(system)
 
-  defp node_footer(connections, wh_sigs, system_id) do
+  defp node_signature(connections, wh_sigs, system_id) do
     case Enum.find(connections, fn {_conn, from, to} ->
            from.id == system_id or to.id == system_id
          end) do
       nil ->
-        ""
+        nil
 
       {conn, _, _} ->
         code = conn.hole_type |> to_string() |> String.upcase()
 
-        case Enum.find(
-               wh_sigs,
-               &(&1.map_system_id == system_id and SigParser.wormhole_code(&1.type_name) == code)
-             ) do
-          nil -> ""
-          sig -> sig.sig_id
-        end
+        Enum.find(
+          wh_sigs,
+          &(&1.map_system_id == system_id and SigParser.wormhole_code(&1.type_name) == code)
+        )
+    end
+  end
+
+  defp node_footer(connections, wh_sigs, system_id) do
+    case node_signature(connections, wh_sigs, system_id) do
+      nil -> ""
+      sig -> sig.sig_id
     end
   end
 

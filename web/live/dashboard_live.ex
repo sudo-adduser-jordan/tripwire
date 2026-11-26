@@ -241,23 +241,20 @@ defmodule ZtripwireWeb.DashboardLive do
     {:noreply, select_gate_system(socket, solar_system_id)}
   end
 
-  def handle_info({:open_system, system_id}, socket) do
+  def handle_info({:open_node_signature, system_id, signature_id}, socket) do
     if socket.assigns[:map_locked] do
       {:noreply,
        socket |> select_system_and_patch(system_id) |> put_flash(:error, "Map is locked")}
     else
-      {:noreply,
-       socket
-       |> select_system_and_patch(system_id)
-       |> open_system_modal(system_id)}
-    end
-  end
+      socket = select_system_and_patch(socket, system_id)
 
-  def handle_info({:open_unknown_system, system_id}, socket) do
-    if socket.assigns[:map_locked] do
-      {:noreply, put_flash(socket, :error, "Map is locked")}
-    else
-      {:noreply, open_system_modal(socket, system_id)}
+      socket =
+        case signature_id && Data.get_signature(data(socket), signature_id) do
+          nil -> open_signature_add(socket)
+          signature -> open_signature_edit(socket, signature)
+        end
+
+      {:noreply, socket}
     end
   end
 
@@ -677,7 +674,6 @@ defmodule ZtripwireWeb.DashboardLive do
       {:noreply,
        socket
        |> assign(:map_modal_open, true)
-       |> assign(:sys_modal_open, false)
        |> assign(:sig_modal_open, false)
        |> assign(:map_errors, [])
        |> assign(:map_form, %{
@@ -1234,14 +1230,7 @@ defmodule ZtripwireWeb.DashboardLive do
         {:noreply, put_flash(socket, :error, "Select a system first")}
 
       _system ->
-        {:noreply,
-         socket
-         |> assign(:sig_modal_open, true)
-         |> assign(:sys_modal_open, false)
-         |> assign(:map_modal_open, false)
-         |> assign(:sig_edit_id, nil)
-         |> assign(:sig_errors, [])
-         |> assign(:sig_form, sig_form_for(socket, selected_system(socket), nil))}
+        {:noreply, open_signature_add(socket)}
     end
   end
 
@@ -1251,14 +1240,7 @@ defmodule ZtripwireWeb.DashboardLive do
         {:noreply, put_flash(socket, :error, "Signature not found")}
 
       sig ->
-        {:noreply,
-         socket
-         |> assign(:sig_modal_open, true)
-         |> assign(:sys_modal_open, false)
-         |> assign(:map_modal_open, false)
-         |> assign(:sig_edit_id, sig.id)
-         |> assign(:sig_errors, [])
-         |> assign(:sig_form, sig_form_for(socket, selected_system(socket), sig))}
+        {:noreply, open_signature_edit(socket, sig)}
     end
   end
 
@@ -1343,119 +1325,6 @@ defmodule ZtripwireWeb.DashboardLive do
                 {:noreply,
                  socket |> put_data(data) |> assign(:sig_errors, changeset_errors(changeset))}
             end
-        end
-    end
-  end
-
-  def handle_event("close-sys-modal", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:sys_modal_open, false)
-     |> assign(:sys_edit_id, nil)
-     |> assign(:sys_errors, [])
-     |> assign(:sys_suggestions, [])}
-  end
-
-  def handle_event("sys-form-change", %{"system" => params}, socket) do
-    form = socket.assigns.sys_form
-    name = params["name"] || ""
-    changed? = String.trim(name) != String.trim(form["name"] || "")
-
-    form =
-      form
-      |> Map.put("name", name)
-      |> Map.put("alias", params["alias"] || "")
-      |> Map.put("sys_class", params["sys_class"] || "")
-      |> Map.put("favorite", params["favorite"] == "true")
-
-    socket =
-      if changed? do
-        socket
-        |> assign(:sys_form, preview_sys_form(socket, form))
-        |> assign(:sys_suggestions, sys_name_suggestions(socket, name))
-      else
-        assign(socket, :sys_form, form)
-      end
-
-    {:noreply, socket}
-  end
-
-  def handle_event("sys-name-pick", %{"name" => name}, socket) do
-    form = socket.assigns.sys_form |> Map.put("name", name)
-
-    {:noreply,
-     socket
-     |> assign(:sys_form, preview_sys_form(socket, form))
-     |> assign(:sys_suggestions, [])}
-  end
-
-  def handle_event("sys-suggest-close", _params, socket) do
-    {:noreply, assign(socket, :sys_suggestions, [])}
-  end
-
-  def handle_event("update-system", %{"system" => params}, socket) do
-    case socket.assigns.sys_edit_id && Data.get_system(data(socket), socket.assigns.sys_edit_id) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "No system selected")}
-
-      system ->
-        name = present(params["name"])
-
-        with {:ok, solar} <- submitted_solar(socket, system, name),
-             :ok <- unique_system(socket, system, solar) do
-          attrs =
-            %{
-              name: name,
-              alias: present(params["alias"]),
-              sys_class: present(params["sys_class"]),
-              favorite: params["favorite"] == "true"
-            }
-            |> reidentify(system, solar)
-
-          save_edited_system(socket, system, attrs)
-        else
-          {:error, message} -> {:noreply, assign(socket, :sys_errors, [message])}
-        end
-    end
-  end
-
-  def handle_event("delete-system", _params, socket) do
-    case socket.assigns.sys_edit_id && Data.get_system(data(socket), socket.assigns.sys_edit_id) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "No system selected")}
-
-      system ->
-        selected? = socket.assigns.selected_system_id == system.id
-        {{:ok, _}, data} = Data.delete_system(data(socket), system)
-        socket = put_data(socket, data)
-        remaining = chain_systems(socket)
-
-        socket =
-          socket
-          |> assign(:systems, remaining)
-          |> assign(
-            :connections,
-            Data.list_connections_with_endpoints(data(socket), socket.assigns.map.id)
-          )
-          |> assign(:system_suggestions, [])
-          |> assign(:sys_modal_open, false)
-          |> assign(:sys_edit_id, nil)
-          |> assign(:sys_errors, [])
-          |> assign(:sys_suggestions, [])
-          |> put_flash(:info, "System removed")
-
-        if selected? do
-          socket =
-            socket
-            |> assign(:selected_system_id, nil)
-            |> assign(:selected_system_name, nil)
-            |> assign(:chart_system, nil)
-            |> assign(:signatures, [])
-            |> assign(:comments, [])
-
-          {:noreply, patch_to_preferred(socket, remaining)}
-        else
-          {:noreply, socket}
         end
     end
   end
@@ -1641,77 +1510,6 @@ defmodule ZtripwireWeb.DashboardLive do
 
   def handle_event("refresh-occupants", _params, socket) do
     {:noreply, refresh_occupants(socket)}
-  end
-
-  defp save_edited_system(socket, system, attrs) do
-    was_unknown? = system.unknown
-
-    case Data.update_system(data(socket), system, attrs) do
-      {{:ok, updated}, data} ->
-        socket = put_data(socket, data)
-
-        socket =
-          socket
-          |> assign(:systems, chain_systems(socket))
-          |> assign(:sys_modal_open, false)
-          |> assign(:sys_edit_id, nil)
-          |> assign(:sys_errors, [])
-          |> assign(:sys_suggestions, [])
-          |> refresh_edited_system(updated)
-          |> maybe_select_converted(was_unknown?, updated)
-          |> put_flash(:info, "System updated")
-
-        {:noreply, socket}
-
-      {{:error, changeset}, data} ->
-        {:noreply, socket |> put_data(data) |> assign(:sys_errors, changeset_errors(changeset))}
-    end
-  end
-
-  defp submitted_solar(_socket, %{unknown: true}, nil),
-    do: {:error, "Pick a system from the list"}
-
-  defp submitted_solar(socket, %{unknown: true} = system, name) do
-    case resolve_sys_solar(socket.assigns.systems, name) do
-      solar when is_integer(solar) and solar > 0 and solar != system.solar_system_id ->
-        {:ok, solar}
-
-      _ ->
-        {:error, "Pick a system from the list"}
-    end
-  end
-
-  defp submitted_solar(socket, system, name) do
-    if name == system.name do
-      {:ok, nil}
-    else
-      {:ok, resolve_sys_solar(socket.assigns.systems, name)}
-    end
-  end
-
-  defp unique_system(_socket, _system, nil), do: :ok
-
-  defp unique_system(socket, system, solar) do
-    taken? =
-      Enum.any?(socket.assigns.systems, fn other ->
-        other.id != system.id and other.solar_system_id == solar
-      end)
-
-    if taken?, do: {:error, "That system is already on this map"}, else: :ok
-  end
-
-  defp reidentify(attrs, _system, nil), do: attrs
-
-  defp reidentify(attrs, system, solar) do
-    if solar == system.solar_system_id,
-      do: attrs,
-      else: Map.put(attrs, :solar_system_id, solar)
-  end
-
-  defp maybe_select_converted(socket, false, _system), do: socket
-
-  defp maybe_select_converted(socket, true, %{id: id, name: name}) do
-    socket |> select_system(id) |> push_patch(to: "/" <> name)
   end
 
   defp admin?(%{assigns: %{character: %{is_admin: true}}}), do: true
@@ -2209,8 +2007,6 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(:stale_ids, [])
     |> assign(:stale_system_id, nil)
     |> assign(:presences, %{})
-    |> assign(:sys_form, default_sys_form())
-    |> assign(:sys_suggestions, [])
     |> assign_claim_admin(character)
     |> assign(:claim_admin_modal?, claim_admin_modal?)
     |> ensure_character_pollers()
@@ -2305,8 +2101,6 @@ defmodule ZtripwireWeb.DashboardLive do
       |> assign(:chart_system, chart_system)
       |> assign(:signatures, Data.list_signatures(data(socket), system_id))
       |> assign(:comments, Data.list_comments(data(socket), system_id))
-      |> assign(:sys_form, sys_form_for(socket.assigns.systems, system_id))
-      |> assign(:sys_suggestions, [])
 
     schedule_system_detail(socket, chart_system)
   end
@@ -2320,8 +2114,6 @@ defmodule ZtripwireWeb.DashboardLive do
           |> assign(:chart_system, system)
           |> assign(:selected_system_id, nil)
           |> assign(:selected_system_name, name)
-          |> assign(:sys_form, default_sys_form())
-          |> assign(:sys_suggestions, [])
           |> schedule_system_detail(system)
 
         if Keyword.get(opts, :patch, true) do
@@ -2369,17 +2161,6 @@ defmodule ZtripwireWeb.DashboardLive do
 
   defp kspace_solar?(solar_system_id),
     do: is_integer(solar_system_id) and solar_system_id < 31_000_000
-
-  defp open_system_modal(socket, system_id) do
-    socket
-    |> assign(:sys_modal_open, true)
-    |> assign(:sig_modal_open, false)
-    |> assign(:map_modal_open, false)
-    |> assign(:sys_edit_id, system_id)
-    |> assign(:sys_errors, [])
-    |> assign(:sys_suggestions, [])
-    |> assign(:sys_form, sys_form_for(socket.assigns.systems, system_id))
-  end
 
   defp toggle_favorite(socket) do
     case selected_system(socket) do
@@ -2768,6 +2549,24 @@ defmodule ZtripwireWeb.DashboardLive do
     |> Map.put(:expires_at, SigParser.expires_at_for(params["life_status"], attrs[:life_length]))
   end
 
+  defp open_signature_add(socket) do
+    socket
+    |> assign(:sig_modal_open, true)
+    |> assign(:map_modal_open, false)
+    |> assign(:sig_edit_id, nil)
+    |> assign(:sig_errors, [])
+    |> assign(:sig_form, sig_form_for(socket, selected_system(socket), nil))
+  end
+
+  defp open_signature_edit(socket, signature) do
+    socket
+    |> assign(:sig_modal_open, true)
+    |> assign(:map_modal_open, false)
+    |> assign(:sig_edit_id, signature.id)
+    |> assign(:sig_errors, [])
+    |> assign(:sig_form, sig_form_for(socket, selected_system(socket), signature))
+  end
+
   defp sig_form_for(socket, system, sig) do
     base = if sig, do: SigParser.form_from(sig), else: SigParser.default_form()
     {prefix, number} = SigParser.split_id(base["sig_id"])
@@ -2959,156 +2758,6 @@ defmodule ZtripwireWeb.DashboardLive do
 
   defp suggest_systems(_, _), do: []
 
-  defp sys_form_for(systems, id) do
-    case Enum.find(systems, &(&1.id == id)) do
-      nil ->
-        default_sys_form()
-
-      %{unknown: true} = system ->
-        %{
-          "name" => "",
-          "alias" => system.alias || "",
-          "sys_class" => "",
-          "statics" => "",
-          "favorite" => system.favorite == true,
-          "effect" => "",
-          "solar_system_id" => nil
-        }
-
-      system ->
-        %{
-          "name" => system.name || "",
-          "alias" => system.alias || "",
-          "sys_class" => system.sys_class || "",
-          "statics" => Enum.join(system.statics || [], ", "),
-          "favorite" => system.favorite == true,
-          "effect" => Systems.display_effect(system) || "",
-          "solar_system_id" => system.solar_system_id
-        }
-    end
-  end
-
-  defp default_sys_form do
-    %{
-      "name" => "",
-      "alias" => "",
-      "sys_class" => "",
-      "statics" => "",
-      "favorite" => false,
-      "effect" => "",
-      "solar_system_id" => nil
-    }
-  end
-
-  defp preview_sys_form(socket, form) do
-    case resolve_sys_solar(socket.assigns.systems, form["name"]) do
-      solar when is_integer(solar) and solar > 0 -> preview_system_data(form, solar)
-      _ -> preview_stored_data(socket, form)
-    end
-  end
-
-  defp preview_system_data(form, solar) do
-    attrs = Systems.sde_attrs(solar)
-
-    form
-    |> Map.put("solar_system_id", solar)
-    |> Map.put("sys_class", attrs[:sys_class] || "")
-    |> Map.put("effect", attrs[:effect] || "")
-    |> Map.put("statics", statics_label(attrs[:statics]))
-  end
-
-  defp preview_stored_data(socket, form) do
-    case Enum.find(socket.assigns.systems, &(&1.id == socket.assigns.sys_edit_id)) do
-      %{unknown: true} ->
-        form
-        |> Map.put("solar_system_id", nil)
-        |> Map.put("effect", "")
-        |> Map.put("statics", "")
-
-      %{solar_system_id: solar} = system ->
-        form
-        |> Map.put("solar_system_id", solar)
-        |> Map.put("effect", Systems.display_effect(system) || "")
-        |> Map.put("statics", statics_label(system.statics))
-
-      nil ->
-        form
-    end
-  end
-
-  defp statics_label(statics) when is_list(statics), do: Enum.join(statics, ", ")
-  defp statics_label(_), do: ""
-
-  defp resolve_sys_solar(systems, query) do
-    name = query |> to_string() |> String.trim()
-
-    if name == "" do
-      nil
-    else
-      case Systems.Catalog.find(name) do
-        %{solar_system_id: solar} ->
-          solar
-
-        nil ->
-          case Enum.find(systems, &(String.downcase(&1.name || "") == String.downcase(name))) do
-            %{solar_system_id: solar} -> solar
-            nil -> nil
-          end
-      end
-    end
-  end
-
-  defp sys_name_suggestions(socket, query) do
-    q = query |> to_string() |> String.trim()
-
-    if q == "" do
-      []
-    else
-      taken =
-        socket.assigns.systems
-        |> Enum.reject(&(&1.id == socket.assigns.sys_edit_id))
-        |> Enum.map(& &1.solar_system_id)
-        |> MapSet.new()
-
-      Systems.Catalog.search(q, 8)
-      |> Enum.reject(&MapSet.member?(taken, &1.solar_system_id))
-      |> Enum.map(&with_sde_data/1)
-    end
-  end
-
-  defp with_sde_data(row) do
-    attrs = Systems.sde_attrs(row.solar_system_id)
-
-    Map.merge(row, %{
-      sys_class: attrs[:sys_class] || Systems.display_class(row),
-      effect: attrs[:effect]
-    })
-  end
-
-  defp sys_modal_title(systems, id) do
-    case Enum.find(systems, &(&1.id == id)) do
-      %{unknown: true} ->
-        "Unknown system"
-
-      %{name: name} when is_binary(name) ->
-        name
-
-      _ ->
-        ""
-    end
-  end
-
-  defp refresh_edited_system(socket, system) do
-    if socket.assigns.selected_system_id == system.id do
-      socket
-      |> assign(:selected_system_name, system.name)
-      |> assign(:chart_system, system)
-      |> push_patch(to: "/" <> system.name)
-    else
-      socket
-    end
-  end
-
   defp reload_signatures(socket) do
     case socket.assigns.selected_system_id do
       nil -> socket
@@ -3284,11 +2933,6 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(:map_scale, 100)
     |> assign(:map_background, nil)
     |> assign(:sso_configured?, false)
-    |> assign(:sys_form, default_sys_form())
-    |> assign(:sys_suggestions, [])
-    |> assign(:sys_modal_open, false)
-    |> assign(:sys_edit_id, nil)
-    |> assign(:sys_errors, [])
     |> assign(:occupants, [])
     |> assign(:system_info, nil)
     |> assign(:chart_range, "24h")

@@ -43,11 +43,13 @@ defmodule ZtripwireWeb.DemoNoDbTest do
     render_click(view, "toggle-favorite", %{})
 
     view
-    |> element("#chain-map text[phx-click='open-system']", "Home")
+    |> element("#chain-map text[phx-click='open-node-signature']", "Home")
     |> render_click()
 
+    assert render(view) =~ "sig-modal"
+
     view
-    |> element("#sys-modal button[phx-click='close-sys-modal']")
+    |> element("#sig-modal button[aria-label='Close']")
     |> render_click()
 
     view
@@ -72,17 +74,6 @@ defmodule ZtripwireWeb.DemoNoDbTest do
     })
 
     refute render(view) =~ "sig-modal"
-
-    view
-    |> element("#chain-map text[phx-click='open-system']", "Home")
-    |> render_click()
-
-    view
-    |> element("#sys-modal form[phx-submit='update-system']")
-    |> render_submit(%{"system" => %{"name" => "J150321", "alias" => "Home Base"}})
-
-    refute render(view) =~ "sys-modal"
-    assert render(view) =~ "Home Base"
 
     view |> element("#newTab") |> render_click()
     view |> element("#map-edit") |> render_click()
