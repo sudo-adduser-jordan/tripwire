@@ -198,7 +198,7 @@ defmodule ZtripwireWeb.LiveComponents.NavigationLive do
                     <img src="/images/alliance-default.png" alt="" loading="lazy" />
                   </div>
                 </div>
-                Demo
+                Demo Mask
               </a>
             </li>
             <li>

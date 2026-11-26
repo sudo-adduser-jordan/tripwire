@@ -5,7 +5,7 @@ defmodule Ztripwire.TestFixtures do
   alias Ztripwire.Repo
 
   def demo_mask do
-    {:ok, mask} = Masks.create_mask(%{name: "Demo", kind: "demo"})
+    {:ok, mask} = Masks.create_mask(%{name: "Demo Mask", kind: "demo"})
     mask
   end
 

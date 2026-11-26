@@ -532,7 +532,7 @@ defmodule Ztripwire.Demo.Fixture do
 
     mask = %Mask{
       id: 2,
-      name: "Demo",
+      name: "Demo Mask",
       kind: "demo",
       owner_character_id: character.id,
       inserted_at: now,
