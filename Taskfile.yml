@@ -32,8 +32,8 @@ tasks:
   remove:
     desc: Remove build artifacts and installed dependencies
     cmds:
-      - echo -e "{{.YELLOW}}[remove]{{.RESET}} {{.CYAN}}rm -rf _build deps assets/node_modules priv/static/assets cover tmp{{.RESET}}"
-      - rm -rf _build deps assets/node_modules priv/static/assets cover tmp
+      - echo -e "{{.YELLOW}}[remove]{{.RESET}} {{.CYAN}}rm -rf _build deps assets/node_modules priv/static/assets cover{{.RESET}}"
+      - rm -rf _build deps assets/node_modules priv/static/assets cover
       - echo -e "{{.GREEN}}[remove]{{.RESET}} artifacts removed"
   setup:
     desc: First-time setup of database, assets, SDE, and log directories
@@ -141,8 +141,8 @@ tasks:
   diagram:
     desc: Generate the database and architecture diagrams
     cmds:
-      - echo -e "{{.BLUE}}[diagram]{{.RESET}} {{.CYAN}}mkdir -p docs tmp{{.RESET}}"
-      - mkdir -p docs tmp
+      - echo -e "{{.BLUE}}[diagram]{{.RESET}} {{.CYAN}}mkdir -p docs{{.RESET}}"
+      - mkdir -p docs
       - echo -e "{{.BLUE}}[diagram]{{.RESET}} {{.CYAN}}mix ztripwire.diagrams{{.RESET}}"
       - mix ztripwire.diagrams
       - echo -e "{{.GREEN}}[diagram]{{.RESET}} docs/db-schema.md docs/architecture.md"

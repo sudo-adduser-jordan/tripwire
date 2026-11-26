@@ -153,13 +153,13 @@ fix:
 |---|---|
 | `task install` | `mix deps.get`, `mix assets.setup`, `npm ci --prefix assets` |
 | `task update` | `mix deps.update --all`, `npm update --prefix assets` |
-| `task remove` | `rm -rf _build deps assets/node_modules priv/static/assets cover tmp` |
+| `task remove` | `rm -rf _build deps assets/node_modules priv/static/assets cover` |
 | `task setup` | `mkdir -p priv/sde logs/test logs/errors`, `curl` official JSONL SDE to `priv/sde/eve-online-static-data-latest-jsonl.zip` with ETag conditional fetch, `mix ztripwire.build_wormhole_systems`, `mix deps.get`, `mix ecto.setup`, `mix assets.setup`, `mix assets.build` |
 | `task migrate` | `mix ecto.migrate` + `mix ztripwire.backfill_system_data`, `MIX_ENV=test mix ecto.migrate`, `MIX_ENV=prod` variants |
 | `task start` | `task stop`, `mkdir -p logs`, prod migrations plus `mix ztripwire.backfill_system_data`, assets, then launch detached with `DATABASE_PATH` defaulting to `./priv/db/ztripwire-prod.db` and keep the `$!` pid in the same shell; block until `logs/prod.log` reports a running endpoint, then print the URL (fails with the log tail if the server dies while booting) |
 | `task stop` | `pgrep -f "mi[x] phx\.server"` kills each server process group with `TERM`, waits for it to disappear, sweeps with `pkill`, then waits for the port to be released |
 | `task dev` | `task stop`, `mkdir -p logs/test logs/errors priv/sde`, `mix ecto.migrate`, then `MIX_ENV=dev mix phx.server` attached on port `PORT` (default `4000`) with live reload and the `config/dev.exs` watchers; Ctrl-C stops it |
-| `task diagram` | `mkdir -p docs tmp`, then `mix ztripwire.diagrams`, which writes `docs/db-schema.md` and `docs/architecture.md` |
+| `task diagram` | `mkdir -p docs`, then `mix ztripwire.diagrams`, which writes `docs/db-schema.md` and `docs/architecture.md` |
 
 Server lifecycle blocks run under `sh -c` because Task's built-in shell does not implement `$!` or `kill`.
 
