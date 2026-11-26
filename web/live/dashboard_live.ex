@@ -910,7 +910,7 @@ defmodule TripwireWeb.DashboardLive do
   end
 
   def handle_event("map-layout", %{"layout" => layout}, socket)
-      when layout in ~w(top bottom left right radial) do
+      when layout in ~w(top bottom left right) do
     if socket.assigns[:map_locked] do
       {:noreply, put_flash(socket, :error, "Map is locked")}
     else
@@ -1870,9 +1870,6 @@ defmodule TripwireWeb.DashboardLive do
   defp normalize_layout("bottom"), do: "up"
   defp normalize_layout("left"), do: "right"
   defp normalize_layout("right"), do: "left"
-
-  defp layout_positions(systems, connections, "radial", spacing, _home_id),
-    do: Mapping.radial_layout(systems, connections, spacing)
 
   defp layout_positions(systems, connections, layout, spacing, nil),
     do: Mapping.tree_layout(systems, connections, normalize_layout(layout), spacing)

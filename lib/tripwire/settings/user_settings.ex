@@ -2,7 +2,7 @@ defmodule Tripwire.Settings.UserSettings do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @layouts ~w(top bottom left right radial)
+  @layouts ~w(top bottom left right)
   @chart_ranges ~w(24h 48h week)
   @node_roundness ~w(square rounded oval)
 

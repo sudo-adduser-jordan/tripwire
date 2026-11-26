@@ -38,7 +38,7 @@ defmodule Tripwire.SettingsTest do
   test "update/1 persists preferences for every caller" do
     assert {:ok, _} =
              Settings.update(%{
-               map_layout: "radial",
+               map_layout: "left",
                map_scale: 150,
                node_spacing: 130,
                node_roundness: "square",
@@ -47,7 +47,7 @@ defmodule Tripwire.SettingsTest do
              })
 
     settings = Settings.get()
-    assert settings.map_layout == "radial"
+    assert settings.map_layout == "left"
     assert settings.map_scale == 150
     assert settings.node_spacing == 130
     assert settings.node_roundness == "square"

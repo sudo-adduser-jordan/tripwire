@@ -33,7 +33,6 @@ defmodule TripwireWeb.LiveComponents.Settings.MapLive do
           <p class="w-28 shrink-0 text-sm leading-tight sm:w-40">Map Layout</p>
           <form phx-change="map-layout" class="min-w-0">
             <select name="layout" class="select select-sm w-full max-w-48">
-              <option value="radial" selected={@map_layout == "radial"}>Radial</option>
               <option value="top" selected={@map_layout == "top"}>Top</option>
               <option value="bottom" selected={@map_layout == "bottom"}>Bottom</option>
               <option value="left" selected={@map_layout == "left"}>Left</option>

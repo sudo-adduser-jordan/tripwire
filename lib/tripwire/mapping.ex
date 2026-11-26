@@ -225,47 +225,6 @@ defmodule Tripwire.Mapping do
     end
   end
 
-  def depth_layers(systems, connections) do
-    ids = Enum.map(systems, & &1.id)
-
-    adj =
-      Enum.reduce(connections, %{}, fn {_conn, from, to}, adj ->
-        adj
-        |> Elixir.Map.update(from.id, [to.id], &[to.id | &1])
-        |> Elixir.Map.update(to.id, [from.id], &[from.id | &1])
-      end)
-
-    adj = Enum.reduce(ids, adj, &Elixir.Map.put_new(&2, &1, []))
-    seeds = component_roots(ids, connections)
-    seeds = seeds ++ (ids -- seeds)
-
-    depths =
-      Enum.reduce(seeds, %{}, fn seed, depths ->
-        if Elixir.Map.has_key?(depths, seed), do: depths, else: bfs_depths(adj, depths, seed)
-      end)
-
-    ids
-    |> Enum.group_by(&Elixir.Map.fetch!(depths, &1))
-    |> Enum.sort_by(&elem(&1, 0))
-    |> Enum.map(fn {depth, members} -> {depth, Enum.sort(members)} end)
-  end
-
-  def radial_layout(systems, connections, spacing \\ 1.0) do
-    systems
-    |> depth_layers(connections)
-    |> Enum.flat_map(fn {depth, members} ->
-      n = length(members)
-      radius = if depth == 0 and n == 1, do: 0.0, else: 150.0 * spacing * max(depth, 1)
-
-      Enum.with_index(members, fn id, i ->
-        angle = 2 * :math.pi() * i / max(n, 1) + depth * 0.5
-
-        {id, {460.0 + radius * :math.cos(angle), 325.0 + radius * :math.sin(angle)}}
-      end)
-    end)
-    |> Elixir.Map.new(fn {id, {x, y}} -> {id, %{x: x, y: y}} end)
-  end
-
   def tree_layout(systems, connections, orientation \\ "down", spacing \\ 1.0, opts \\ []) do
     ids = Enum.map(systems, & &1.id)
 
@@ -537,30 +496,6 @@ defmodule Tripwire.Mapping do
 
       _ ->
         {x, 60.0 + depth * 160.0 * spacing}
-    end
-  end
-
-  defp bfs_depths(adj, depths, seed) do
-    base = depths |> Elixir.Map.values() |> Enum.max(fn -> -1 end)
-    bfs_loop(adj, :queue.from_list([seed]), Elixir.Map.put(depths, seed, base + 1))
-  end
-
-  defp bfs_loop(adj, queue, depths) do
-    case :queue.out(queue) do
-      {:empty, _} ->
-        depths
-
-      {{:value, id}, rest} ->
-        depth = Elixir.Map.fetch!(depths, id)
-
-        {queue, depths} =
-          Enum.reduce(adj[id] || [], {rest, depths}, fn neighbor, {q, d} ->
-            if Elixir.Map.has_key?(d, neighbor),
-              do: {q, d},
-              else: {:queue.in(neighbor, q), Elixir.Map.put(d, neighbor, depth + 1)}
-          end)
-
-        bfs_loop(adj, queue, depths)
     end
   end
 
