@@ -754,6 +754,22 @@ defmodule Ztripwire.Demo do
     end
   end
 
+  def update_connection(%State{} = state, %MapConnection{} = connection, attrs) do
+    case Ecto.Changeset.apply_action(MapConnection.changeset(connection, attrs), :update) do
+      {:ok, updated} ->
+        updated = %{updated | updated_at: now()}
+        {{:ok, updated}, replace_connection(state, updated)}
+
+      {:error, changeset} ->
+        {{:error, changeset}, state}
+    end
+  end
+
+  def delete_connection(%State{} = state, %MapConnection{} = connection) do
+    {{:ok, connection},
+     %{state | connections: Enum.reject(state.connections, &(&1.id == connection.id))}}
+  end
+
   def sync_signature_to_connections(
         %State{} = state,
         %ChainMap{} = map,

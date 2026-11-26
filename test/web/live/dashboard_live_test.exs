@@ -1116,7 +1116,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert [%Mapping.Signature{sig_id: "QWE-123"}] = Mapping.list_signatures(system.id)
   end
 
-  test "signature editor edits the type id and scan time", %{
+  test "signature editor saves the hidden type id and bookmark and re-stamps the scan time", %{
     conn: conn,
     character: character
   } do
@@ -1161,8 +1161,67 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     reloaded = Mapping.get_signature!(sig.id)
     assert reloaded.type_id == 30_744
     assert reloaded.bookmark == "Two"
-    assert NaiveDateTime.to_iso8601(reloaded.inserted_at) == "2026-01-01T08:00:00"
+    assert NaiveDateTime.diff(NaiveDateTime.utc_now(), reloaded.inserted_at, :second) < 10
     assert NaiveDateTime.diff(reloaded.expires_at, reloaded.inserted_at) == 259_200
+  end
+
+  test "signature editor links both sides through the leads select", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, far} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
+
+    {:ok, _connection, true} =
+      Mapping.upsert_connection(map.id, system.id, far.id, %{hole_type: "K162"})
+
+    {:ok, sig} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "ABC-123", site_type: "wormhole", type_name: "Unstable Wormhole (K162)"},
+        character
+      )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    view
+    |> element("#signature-#{sig.id} button.btn-ghost[title='Edit signature']")
+    |> render_click()
+
+    view
+    |> element("#sig-modal form[phx-submit='save-signature']")
+    |> render_submit(%{
+      "sig" => %{
+        "prefix" => "ABC",
+        "number" => "123",
+        "kind" => "signature",
+        "site_type" => "wormhole",
+        "type_name" => "Unstable Wormhole (K162)",
+        "days" => "1",
+        "hours" => "0",
+        "minutes" => "0",
+        "life_status" => "eol",
+        "mass_status" => "critical",
+        "leads_system_id" => to_string(far.id),
+        "other_prefix" => "DEF",
+        "other_number" => "456",
+        "other_site_type" => "wormhole",
+        "other_name" => "Unstable Wormhole (K162)"
+      }
+    })
+
+    updated = Mapping.get_signature!(sig.id)
+    assert updated.life_length == 86_400
+    assert NaiveDateTime.diff(updated.expires_at, updated.inserted_at) == 10_800
+
+    connection = Mapping.connection_between(map.id, system.id, far.id)
+    assert connection.mass_status == "critical"
+
+    assert [%Mapping.Signature{sig_id: "DEF-456"}] = Mapping.list_signatures(far.id)
   end
 
   test "global paste imports signatures for a selected system", %{
@@ -1799,8 +1858,8 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     picked = render(view)
     assert picked =~ ~s|id="sys-name" name="system[name]" value="J231710"|
-    assert picked =~ "Magnetar"
-    assert picked =~ "C247, H900"
+    refute picked =~ "C247, H900"
+    refute picked =~ "Set by the system"
 
     view
     |> element("#sys-modal form[phx-submit='update-system']")
@@ -1925,7 +1984,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert map_html =~ "translate(50, 100.0)"
   end
 
-  test "system editor shows the effect and statics read-only and never changes them", %{
+  test "system editor never changes the effect or the statics", %{
     conn: conn,
     character: character
   } do
@@ -1940,9 +1999,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     html = render(view)
     assert html =~ "sys-modal"
-    assert html =~ "Pulsar"
-    assert html =~ "C247, H900"
-    assert html =~ "Set by the system"
+    refute html =~ "Set by the system"
     refute html =~ "system[effect]"
     refute html =~ "system[statics]"
 

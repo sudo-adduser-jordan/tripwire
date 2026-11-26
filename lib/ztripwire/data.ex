@@ -203,6 +203,17 @@ defmodule Ztripwire.Data do
   def upsert_connection(%State{} = state, map_id, a, b, attrs),
     do: Demo.upsert_connection(state, map_id, a, b, attrs)
 
+  def update_connection(:db, connection, attrs),
+    do: {Mapping.update_connection(connection, attrs), :db}
+
+  def update_connection(%State{} = state, connection, attrs),
+    do: Demo.update_connection(state, connection, attrs)
+
+  def delete_connection(:db, connection), do: {Mapping.delete_connection(connection), :db}
+
+  def delete_connection(%State{} = state, connection),
+    do: Demo.delete_connection(state, connection)
+
   def sync_signature_to_connections(:db, map, system, old_code, new_code),
     do: {Mapping.sync_signature_to_connections(map, system, old_code, new_code), :db}
 

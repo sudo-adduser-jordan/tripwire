@@ -203,7 +203,7 @@
     <div class="modal-box">
       <h3 class="text-lg font-bold">Edit System</h3>
       <p class="font-mono text-sm opacity-60">
-        {sys_modal_title(@systems, @sys_edit_id, @sys_form["solar_system_id"])}
+        {sys_modal_title(@systems, @sys_edit_id)}
       </p>
       <p :if={@sys_errors != []} class="alert alert-error mt-2 py-2 text-sm">
         {Enum.join(@sys_errors, ", ")}
@@ -281,24 +281,6 @@
             </option>
           </select>
         </label>
-        <div class="rounded-box bg-base-200 px-3 py-2 text-xs">
-          <div class="flex items-baseline justify-between gap-3">
-            <span class="label-text">Effect</span>
-            <span class="flex min-w-0 items-center gap-1.5 font-mono opacity-60">
-              <.effect_icon
-                :if={@sys_form["effect"]}
-                effect={@sys_form["effect"]}
-                class="size-4 shrink-0"
-              />
-              <span class="truncate">{@sys_form["effect"] || "None"}</span>
-            </span>
-          </div>
-          <div class="flex items-baseline justify-between gap-3">
-            <span class="label-text">Statics</span>
-            <span class="truncate font-mono opacity-60">{@sys_form["statics"] || "None"}</span>
-          </div>
-          <p class="mt-1 text-right text-xs opacity-50">Set by the system</p>
-        </div>
         <label class="label cursor-pointer justify-start gap-2">
           <input
             type="checkbox"
@@ -328,111 +310,244 @@
   </div>
 
   <div :if={@sig_modal_open} id="sig-modal" class="modal modal-open" phx-hook="DraggableModal">
-    <div class="modal-box">
-      <h3 class="text-lg font-bold">
-        {if @sig_edit_id, do: "Edit Signature", else: "Add Signature"}
-      </h3>
+    <div class="modal-box max-w-2xl">
+      <div class="flex items-start justify-between gap-3">
+        <h3 class="text-lg font-bold">
+          {if @sig_edit_id, do: "Edit Signature", else: "Add Signature"}
+        </h3>
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm btn-circle"
+          phx-click="close-sig-modal"
+          aria-label="Close"
+        >
+          ✕
+        </button>
+      </div>
       <p :if={@sig_errors != []} class="alert alert-error mt-2 py-2 text-sm">
         {Enum.join(@sig_errors, ", ")}
       </p>
-      <form phx-submit="save-signature" class="mt-3 flex flex-col gap-3">
-        <label class="form-control">
-          <span class="label label-text">Signature ID</span>
-          <input
-            name="sig[sig_id]"
-            value={@sig_form["sig_id"]}
-            placeholder="ABC-123"
-            pattern="[A-Za-z]{3}-[0-9]{3}"
-            required
-            autofocus
-            autocomplete="off"
-            class="input input-bordered input-sm w-full font-mono uppercase"
-          />
-        </label>
-        <label class="form-control">
-          <span class="label label-text">Group</span>
-          <select name="sig[kind]" class="select select-bordered select-sm w-full">
-            <option value="signature" selected={@sig_form["kind"] == "signature"}>
-              Signature
-            </option>
-            <option value="anomaly" selected={@sig_form["kind"] == "anomaly"}>Anomaly</option>
-          </select>
-        </label>
-        <label class="form-control">
-          <span class="label label-text">Site type</span>
-          <select name="sig[site_type]" class="select select-bordered select-sm w-full">
-            <option
-              :for={opt <- ~w(unknown combat data relic ore gas wormhole)}
-              value={opt}
-              selected={@sig_form["site_type"] == opt}
-            >
-              {opt}
-            </option>
-          </select>
-        </label>
-        <label class="form-control">
-          <span class="label label-text">Name / wormhole type</span>
-          <input
-            name="sig[type_name]"
-            value={@sig_form["type_name"]}
-            placeholder="Unstable Wormhole (K162) or site name"
-            autocomplete="off"
-            class="input input-bordered input-sm w-full"
-          />
-        </label>
-        <label class="form-control">
-          <span class="label label-text">Lifetime</span>
-          <select name="sig[life_length]" class="select select-bordered select-sm w-full">
-            <option
-              :for={{label, value} <- life_options()}
-              value={value}
-              selected={to_string(@sig_form["life_length"]) == to_string(value)}
-            >
-              {label}
-            </option>
-          </select>
-        </label>
-        <label class="form-control">
-          <span class="label label-text">Type ID</span>
-          <input
-            name="sig[type_id]"
-            value={@sig_form["type_id"]}
-            type="number"
-            min="1"
-            step="1"
-            placeholder="Optional ESI type"
-            autocomplete="off"
-            class="input input-bordered input-sm w-full"
-          />
-        </label>
-        <label class="form-control">
-          <span class="label label-text">Scanned at</span>
-          <input
-            name="sig[scanned_at]"
-            value={@sig_form["scanned_at"]}
-            type="datetime-local"
-            autocomplete="off"
-            class="input input-bordered input-sm w-full"
-          />
-          <span class="mt-1 text-xs opacity-60">Blank uses now.</span>
-        </label>
-        <label class="form-control">
-          <span class="label label-text">Bookmark</span>
-          <input
-            name="sig[bookmark]"
-            value={@sig_form["bookmark"]}
-            placeholder="Optional bookmark label"
-            autocomplete="off"
-            class="input input-bordered input-sm w-full"
-          />
-        </label>
-        <div class="modal-action">
-          <button type="button" class="btn btn-sm" phx-click="close-sig-modal">
-            Cancel
+      <form
+        phx-submit="save-signature"
+        phx-change="sig-form-change"
+        phx-debounce="200"
+        class="mt-3"
+      >
+        <div class="flex gap-3">
+          <span class="hidden shrink-0 rotate-180 items-center justify-center text-xs uppercase tracking-widest opacity-60 [writing-mode:vertical-rl] md:flex">
+            {@selected_system_name || "This"} Side
+          </span>
+          <div class="flex min-w-0 flex-1 flex-col gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="label label-text w-14 justify-end">ID:</span>
+              <input
+                name="sig[prefix]"
+                value={@sig_form["prefix"]}
+                maxlength="3"
+                pattern="[A-Za-z]{3}"
+                title="Three letters"
+                required
+                autofocus
+                autocomplete="off"
+                class="input input-bordered input-sm w-16 font-mono uppercase text-center"
+              />
+              <span class="font-mono opacity-60">-</span>
+              <input
+                name="sig[number]"
+                value={@sig_form["number"]}
+                maxlength="3"
+                pattern="[0-9]{3}"
+                title="Three digits"
+                required
+                autocomplete="off"
+                class="input input-bordered input-sm w-16 font-mono text-center"
+              />
+              <select name="sig[kind]" class="select select-bordered select-sm">
+                <option value="signature" selected={@sig_form["kind"] == "signature"}>
+                  Signature
+                </option>
+                <option value="anomaly" selected={@sig_form["kind"] == "anomaly"}>Anomaly</option>
+              </select>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="label label-text w-14 justify-end">Length:</span>
+              <input
+                name="sig[days]"
+                value={@sig_form["days"]}
+                type="number"
+                min="0"
+                max="30"
+                class="input input-bordered input-sm w-16 text-center"
+              />
+              <span class="text-xs opacity-60">days</span>
+              <input
+                name="sig[hours]"
+                value={@sig_form["hours"]}
+                type="number"
+                min="0"
+                max="23"
+                class="input input-bordered input-sm w-16 text-center"
+              />
+              <span class="text-xs opacity-60">hours</span>
+              <input
+                name="sig[minutes]"
+                value={@sig_form["minutes"]}
+                type="number"
+                min="0"
+                max="59"
+                class="input input-bordered input-sm w-16 text-center"
+              />
+              <span class="text-xs opacity-60">minutes</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="label label-text w-14 justify-end">Type:</span>
+              <select
+                name="sig[site_type]"
+                class="select select-bordered select-sm min-w-0 flex-1"
+              >
+                <option
+                  :for={opt <- ~w(unknown combat data relic ore gas wormhole)}
+                  value={opt}
+                  selected={@sig_form["site_type"] == opt}
+                >
+                  {opt}
+                </option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="label label-text w-14 justify-end">Leads:</span>
+              <select
+                name="sig[leads_system_id]"
+                class="select select-bordered select-sm min-w-0 flex-1"
+              >
+                <option value="">—</option>
+                <option
+                  :for={
+                    sys <-
+                      @systems
+                      |> Enum.reject(&(&1.id == @selected_system_id))
+                      |> Enum.sort_by(&(&1.name || "~"))
+                  }
+                  value={sys.id}
+                  selected={@sig_form["leads_system_id"] == to_string(sys.id)}
+                >
+                  {if sys.name in [nil, ""], do: "Unmapped", else: sys.name}
+                </option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="label label-text w-14 justify-end">Name:</span>
+              <input
+                name="sig[type_name]"
+                value={@sig_form["type_name"]}
+                placeholder="Unstable Wormhole (K162) or site name"
+                autocomplete="off"
+                class="input input-bordered input-sm min-w-0 flex-1"
+              />
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="label label-text w-14 justify-end">Life:</span>
+              <select name="sig[life_status]" class="select select-bordered select-sm">
+                <option value="stable" selected={@sig_form["life_status"] == "stable"}>
+                  Stable
+                </option>
+                <option value="eol" selected={@sig_form["life_status"] == "eol"}>EOL</option>
+                <option value="critical" selected={@sig_form["life_status"] == "critical"}>
+                  Critical
+                </option>
+              </select>
+              <span class="label label-text justify-end">Mass:</span>
+              <select name="sig[mass_status]" class="select select-bordered select-sm">
+                <option value="stable" selected={@sig_form["mass_status"] == "stable"}>
+                  Stable
+                </option>
+                <option value="destab" selected={@sig_form["mass_status"] == "destab"}>
+                  Destab
+                </option>
+                <option value="critical" selected={@sig_form["mass_status"] == "critical"}>
+                  Critical
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider my-2"></div>
+
+        <div class="flex gap-3">
+          <span class="hidden shrink-0 rotate-180 items-center justify-center text-xs uppercase tracking-widest opacity-60 [writing-mode:vertical-rl] md:flex">
+            Other Side
+          </span>
+          <div class="flex min-w-0 flex-1 flex-col gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="label label-text w-14 justify-end">ID:</span>
+              <input
+                name="sig[other_prefix]"
+                value={@sig_form["other_prefix"]}
+                maxlength="3"
+                pattern="[A-Za-z]{3}"
+                placeholder="???"
+                autocomplete="off"
+                class="input input-bordered input-sm w-16 font-mono uppercase text-center"
+              />
+              <span class="font-mono opacity-60">-</span>
+              <input
+                name="sig[other_number]"
+                value={@sig_form["other_number"]}
+                maxlength="3"
+                pattern="[0-9]{3}"
+                placeholder="###"
+                autocomplete="off"
+                class="input input-bordered input-sm w-16 font-mono text-center"
+              />
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="label label-text w-14 justify-end">Type:</span>
+              <select
+                name="sig[other_site_type]"
+                class="select select-bordered select-sm min-w-0 flex-1"
+              >
+                <option
+                  :for={opt <- ~w(unknown combat data relic ore gas wormhole)}
+                  value={opt}
+                  selected={@sig_form["other_site_type"] == opt}
+                >
+                  {opt}
+                </option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="label label-text w-14 justify-end">Name:</span>
+              <input
+                name="sig[other_name]"
+                value={@sig_form["other_name"]}
+                placeholder="Unstable Wormhole (K162) or site name"
+                autocomplete="off"
+                class="input input-bordered input-sm min-w-0 flex-1"
+              />
+            </div>
+          </div>
+        </div>
+
+        <input type="hidden" name="sig[type_id]" value={@sig_form["type_id"]} />
+        <input type="hidden" name="sig[bookmark]" value={@sig_form["bookmark"]} />
+        <div class="modal-action justify-between">
+          <button
+            :if={@sig_edit_id}
+            type="button"
+            class="btn btn-error btn-sm"
+            phx-click="delete-signature"
+            phx-value-id={@sig_edit_id}
+            data-confirm="Delete this signature and its pair?"
+          >
+            Delete
           </button>
-          <button type="submit" class="btn btn-primary btn-sm">
-            {if @sig_edit_id, do: "Save", else: "Add"}
-          </button>
+          <div class="ml-auto flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm">
+              {if @sig_edit_id, do: "Save", else: "Add"}
+            </button>
+            <button type="button" class="btn btn-sm" phx-click="close-sig-modal">Cancel</button>
+          </div>
         </div>
       </form>
     </div>

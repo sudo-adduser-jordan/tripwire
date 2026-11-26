@@ -175,19 +175,98 @@ defmodule Ztripwire.Signatures do
     }
   end
 
+  def split_id(sig_id) when is_binary(sig_id) do
+    case sig_id |> String.trim() |> String.upcase() |> String.split("-", parts: 2) do
+      [prefix, number] -> {prefix, number}
+      [prefix] -> {prefix, ""}
+      _ -> {"", ""}
+    end
+  end
+
+  def split_id(_), do: {"", ""}
+
+  def join_id(prefix, number) do
+    prefix = prefix |> to_string() |> String.trim() |> String.upcase()
+    number = number |> to_string() |> String.trim()
+
+    if prefix == "" and number == "", do: "", else: "#{prefix}-#{number}"
+  end
+
+  def length_parts(seconds) when is_integer(seconds) and seconds > 0 do
+    {div(seconds, 86_400), div(rem(seconds, 86_400), 3_600), div(rem(seconds, 3_600), 60)}
+  end
+
+  def length_parts(_), do: {3, 0, 0}
+
+  def length_seconds(days, hours, minutes) do
+    total = count(days) * 86_400 + count(hours) * 3_600 + count(minutes) * 60
+    if total > 0, do: total
+  end
+
+  defp count(value) do
+    case Integer.parse(to_string(value || "")) do
+      {n, _} when n > 0 -> n
+      _ -> 0
+    end
+  end
+
+  def signature_life_status(%{expires_at: %NaiveDateTime{} = expires_at}) do
+    seconds_left = NaiveDateTime.diff(expires_at, NaiveDateTime.utc_now(), :second)
+
+    case life_status(seconds_left) do
+      :stable -> "stable"
+      :eol -> "eol"
+      _ -> "critical"
+    end
+  end
+
+  def signature_life_status(_), do: "stable"
+
+  def expires_at_for("eol", _length), do: in_seconds(3 * 3600)
+  def expires_at_for("critical", _length), do: in_seconds(30 * 60)
+
+  def expires_at_for(_status, length) when is_integer(length) and length > 0,
+    do: in_seconds(length)
+
+  def expires_at_for(_status, _), do: in_seconds(default_life_length())
+
+  defp in_seconds(seconds) do
+    NaiveDateTime.utc_now()
+    |> NaiveDateTime.add(seconds, :second)
+    |> NaiveDateTime.truncate(:second)
+  end
+
   def attrs_from_params(params) do
     type_name = trim_or_nil(params["type_name"])
 
     %{
-      sig_id: params["sig_id"],
+      sig_id: params_id(params),
       kind: params["kind"] || "signature",
       site_type: infer_site_type(params["site_type"] || "unknown", type_name),
       type_name: type_name,
       type_id: parse_type_id(params["type_id"]),
       bookmark: trim_or_nil(params["bookmark"]),
-      life_length: parse_life_length(params["life_length"])
+      life_length: params_life_length(params)
     }
     |> put_scanned_at(params["scanned_at"])
+  end
+
+  defp params_id(params) do
+    case params["sig_id"] do
+      id when is_binary(id) and id != "" -> id
+      _ -> join_id(params["prefix"], params["number"])
+    end
+  end
+
+  defp params_life_length(params) do
+    case params["life_length"] do
+      value when value in [nil, ""] ->
+        length_seconds(params["days"], params["hours"], params["minutes"]) ||
+          default_life_length()
+
+      value ->
+        parse_life_length(value)
+    end
   end
 
   def parse_scanned_at(value) when is_binary(value) do
@@ -240,14 +319,12 @@ defmodule Ztripwire.Signatures do
 
   defp trim_or_nil(_value), do: nil
 
-  defp parse_life_length(nil), do: 259_200
-  defp parse_life_length(""), do: 259_200
   defp parse_life_length(value) when is_integer(value), do: value
 
   defp parse_life_length(value) when is_binary(value) do
     case Integer.parse(value) do
       {number, ""} -> number
-      _ -> 259_200
+      _ -> default_life_length()
     end
   end
 

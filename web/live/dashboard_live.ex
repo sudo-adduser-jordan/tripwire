@@ -1241,7 +1241,7 @@ defmodule ZtripwireWeb.DashboardLive do
          |> assign(:map_modal_open, false)
          |> assign(:sig_edit_id, nil)
          |> assign(:sig_errors, [])
-         |> assign(:sig_form, SigParser.default_form())}
+         |> assign(:sig_form, sig_form_for(socket, selected_system(socket), nil))}
     end
   end
 
@@ -1258,7 +1258,7 @@ defmodule ZtripwireWeb.DashboardLive do
          |> assign(:map_modal_open, false)
          |> assign(:sig_edit_id, sig.id)
          |> assign(:sig_errors, [])
-         |> assign(:sig_form, SigParser.form_from(sig))}
+         |> assign(:sig_form, sig_form_for(socket, selected_system(socket), sig))}
     end
   end
 
@@ -1270,26 +1270,51 @@ defmodule ZtripwireWeb.DashboardLive do
      |> assign(:sig_errors, [])}
   end
 
+  def handle_event("delete-signature", %{"id" => id}, socket) do
+    case Data.get_signature(data(socket), id) do
+      nil ->
+        {:noreply, socket}
+
+      signature ->
+        {_result, data} = Data.delete_signature(data(socket), signature, socket.assigns.character)
+
+        {:noreply,
+         socket
+         |> put_data(data)
+         |> assign(:sig_modal_open, false)
+         |> assign(:sig_edit_id, nil)
+         |> assign(:sig_errors, [])
+         |> reload_signatures()
+         |> reload_map()}
+    end
+  end
+
+  def handle_event("sig-form-change", %{"sig" => params}, socket) do
+    {:noreply, assign(socket, :sig_form, Map.merge(socket.assigns.sig_form, params))}
+  end
+
   def handle_event("save-signature", %{"sig" => params}, socket) do
     case selected_system(socket) do
       nil ->
         {:noreply, put_flash(socket, :error, "Select a system first")}
 
       system ->
-        attrs = SigParser.attrs_from_params(params)
+        attrs = signature_attrs(params)
 
         case socket.assigns.sig_edit_id do
           nil ->
             case Data.create_signature(data(socket), system, attrs, socket.assigns.character) do
-              {{:ok, _}, data} ->
+              {{:ok, sig}, data} ->
                 {:noreply,
                  socket
                  |> put_data(data)
                  |> assign(:sig_modal_open, false)
                  |> assign(:sig_edit_id, nil)
                  |> assign(:sig_errors, [])
-                 |> reload_signatures()
                  |> sync_map_hole_type(system, nil, sig_hole_code(attrs))
+                 |> apply_sig_links(sig, params)
+                 |> reload_signatures()
+                 |> reload_map()
                  |> put_flash(:info, "Signature added")}
 
               {{:error, changeset}, data} ->
@@ -1301,15 +1326,17 @@ defmodule ZtripwireWeb.DashboardLive do
             sig = Data.get_signature!(data(socket), id)
 
             case Data.update_signature(data(socket), sig, attrs, socket.assigns.character) do
-              {{:ok, _}, data} ->
+              {{:ok, sig}, data} ->
                 {:noreply,
                  socket
                  |> put_data(data)
                  |> assign(:sig_modal_open, false)
                  |> assign(:sig_edit_id, nil)
                  |> assign(:sig_errors, [])
-                 |> reload_signatures()
                  |> sync_map_hole_type(system, sig_hole_code(sig), sig_hole_code(attrs))
+                 |> apply_sig_links(sig, params)
+                 |> reload_signatures()
+                 |> reload_map()
                  |> put_flash(:info, "Signature updated")}
 
               {{:error, changeset}, data} ->
@@ -2732,6 +2759,179 @@ defmodule ZtripwireWeb.DashboardLive do
   defp sig_hole_code(%{site_type: "wormhole", type_name: name}), do: SigParser.wormhole_code(name)
   defp sig_hole_code(_), do: nil
 
+  defp signature_attrs(params) do
+    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+    attrs = SigParser.attrs_from_params(params)
+
+    attrs
+    |> Map.put(:inserted_at, now)
+    |> Map.put(:expires_at, SigParser.expires_at_for(params["life_status"], attrs[:life_length]))
+  end
+
+  defp sig_form_for(socket, system, sig) do
+    base = if sig, do: SigParser.form_from(sig), else: SigParser.default_form()
+    {prefix, number} = SigParser.split_id(base["sig_id"])
+    life_length = parse_integer(base["life_length"]) || SigParser.default_life_length()
+    {days, hours, minutes} = SigParser.length_parts(life_length)
+    {connection, far} = sig_connection(socket, system)
+    paired = if sig, do: sig_pair(socket, far, sig), else: nil
+
+    {other_prefix, other_number} =
+      if paired, do: SigParser.split_id(paired.sig_id), else: {"", ""}
+
+    base
+    |> Map.merge(%{
+      "prefix" => prefix,
+      "number" => number,
+      "days" => Integer.to_string(days),
+      "hours" => Integer.to_string(hours),
+      "minutes" => Integer.to_string(minutes),
+      "life_status" => (sig && SigParser.signature_life_status(sig)) || "stable",
+      "mass_status" => (connection && connection.mass_status) || "stable",
+      "leads_system_id" => if(far, do: Integer.to_string(far.id), else: ""),
+      "other_prefix" => other_prefix,
+      "other_number" => other_number,
+      "other_site_type" => (paired && paired.site_type) || "unknown",
+      "other_name" => (paired && paired.type_name) || ""
+    })
+  end
+
+  defp sig_connection(_socket, nil), do: {nil, nil}
+
+  defp sig_connection(socket, %{id: system_id}) do
+    Enum.find_value(socket.assigns.connections, {nil, nil}, fn {connection, from, to} ->
+      cond do
+        connection.from_system_id == system_id -> {connection, to}
+        connection.to_system_id == system_id -> {connection, from}
+        true -> nil
+      end
+    end)
+  end
+
+  defp sig_pair(_socket, nil, _sig), do: nil
+
+  defp sig_pair(socket, far, sig) do
+    case sig_hole_code(sig) do
+      nil ->
+        nil
+
+      code ->
+        data(socket)
+        |> Data.list_signatures(far.id)
+        |> Enum.find(&(sig_hole_code(&1) == code))
+    end
+  end
+
+  defp apply_sig_links(socket, sig, params) do
+    with true <- sig.site_type == "wormhole",
+         %{} = system <- Data.get_system(data(socket), sig.map_system_id) do
+      {connection, far} = sig_connection(socket, system)
+      target = sig_target(socket, params["leads_system_id"])
+
+      socket
+      |> apply_signature_connection(system, connection, far, target, params)
+      |> apply_other_side(sig, target, params)
+    else
+      _ -> socket
+    end
+  end
+
+  defp sig_target(_socket, value) when value in [nil, ""], do: nil
+
+  defp sig_target(socket, value) do
+    with id when is_integer(id) <- parse_integer(value) do
+      Enum.find(socket.assigns.systems, &(&1.id == id))
+    end
+  end
+
+  defp apply_signature_connection(socket, _system, nil, _far, nil, _params), do: socket
+
+  defp apply_signature_connection(socket, _system, connection, _far, nil, _params) do
+    {_result, data} = Data.delete_connection(data(socket), connection)
+    put_data(socket, data)
+  end
+
+  defp apply_signature_connection(socket, system, nil, _far, target, params) do
+    {_result, data} =
+      Data.upsert_connection(data(socket), socket.assigns.map.id, system.id, target.id, %{
+        hole_type: SigParser.wormhole_code(params["type_name"]),
+        mass_status: params["mass_status"] || "stable"
+      })
+
+    put_data(socket, data)
+  end
+
+  defp apply_signature_connection(socket, system, connection, far, target, params) do
+    mass = params["mass_status"] || connection.mass_status || "stable"
+
+    attrs =
+      cond do
+        far && far.id == target.id ->
+          %{mass_status: mass}
+
+        connection.from_system_id == system.id ->
+          %{from_system_id: target.id, mass_status: mass}
+
+        true ->
+          %{to_system_id: target.id, mass_status: mass}
+      end
+
+    {_result, data} = Data.update_connection(data(socket), connection, attrs)
+    put_data(socket, data)
+  end
+
+  defp apply_other_side(socket, _sig, nil, _params), do: socket
+
+  defp apply_other_side(socket, sig, target, params) do
+    other_id = SigParser.join_id(params["other_prefix"], params["other_number"])
+
+    if other_id == "" do
+      socket
+    else
+      case sig_pair(socket, target, sig) do
+        nil -> create_paired_signature(socket, target, other_id, params)
+        paired -> update_paired_signature(socket, paired, other_id, params)
+      end
+    end
+  end
+
+  defp create_paired_signature(socket, target, other_id, params) do
+    attrs =
+      %{
+        "sig_id" => other_id,
+        "kind" => "signature",
+        "site_type" => params["other_site_type"] || "unknown",
+        "type_name" => params["other_name"],
+        "life_length" => params["life_length"]
+      }
+      |> signature_attrs()
+
+    case Data.create_signature(data(socket), target, attrs, socket.assigns.character) do
+      {{:ok, _signature}, data} -> put_data(socket, data)
+      _ -> socket
+    end
+  end
+
+  defp update_paired_signature(socket, paired, other_id, params) do
+    attrs = %{
+      sig_id: other_id,
+      site_type: params["other_site_type"] || paired.site_type,
+      type_name: present(params["other_name"])
+    }
+
+    case Data.update_signature(data(socket), paired, attrs, socket.assigns.character) do
+      {{:ok, _signature}, data} -> put_data(socket, data)
+      _ -> socket
+    end
+  end
+
+  defp parse_integer(value) do
+    case Integer.parse(to_string(value || "")) do
+      {number, _} -> number
+      _ -> nil
+    end
+  end
+
   defp suggest_systems(systems, query) when is_list(systems) do
     q = query |> to_string() |> String.trim() |> String.downcase()
 
@@ -2885,13 +3085,13 @@ defmodule ZtripwireWeb.DashboardLive do
     })
   end
 
-  defp sys_modal_title(systems, id, solar) do
+  defp sys_modal_title(systems, id) do
     case Enum.find(systems, &(&1.id == id)) do
       %{unknown: true} ->
         "Unknown system"
 
       %{name: name} when is_binary(name) ->
-        if is_integer(solar) and solar > 0, do: "#{name}, #{solar}", else: name
+        name
 
       _ ->
         ""
@@ -3397,14 +3597,5 @@ defmodule ZtripwireWeb.DashboardLive do
 
   defp flash_changeset_errors(socket, changeset) do
     put_flash(socket, :error, changeset_message(changeset))
-  end
-
-  defp life_options do
-    [
-      {"24 hours", 86_400},
-      {"48 hours", 172_800},
-      {"72 hours", 259_200},
-      {"7 days", 604_800}
-    ]
   end
 end
