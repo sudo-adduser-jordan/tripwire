@@ -12,8 +12,9 @@ defmodule ZtripwireWeb.DashboardLive do
   alias Ztripwire.Signatures, as: SigParser
   alias Ztripwire.Systems
   alias Ztripwire.Tracking
+  alias Ztripwire.Wormholes
 
-  import ZtripwireWeb.FormHelpers, only: [present: 1, changeset_errors: 1, changeset_message: 1]
+  import ZtripwireWeb.FormHelpers, only: [changeset_errors: 1, changeset_message: 1]
 
   @demo_character_eve_id Ztripwire.Demo.character_eve_id()
   @demo_ship_name Ztripwire.Demo.ship_name()
@@ -1272,7 +1273,47 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   def handle_event("sig-form-change", %{"sig" => params}, socket) do
-    {:noreply, assign(socket, :sig_form, Map.merge(socket.assigns.sig_form, params))}
+    previous = socket.assigns.sig_form
+    form = Map.merge(previous, params)
+    form = form |> autofill_wormhole(previous, params) |> refresh_quick_types(socket)
+
+    {:noreply, assign(socket, :sig_form, form)}
+  end
+
+  def handle_event("sig-type-pick", %{"code" => code}, socket) do
+    previous = socket.assigns.sig_form
+    form = Map.put(previous, "wormhole_code", String.upcase(code))
+
+    form =
+      form
+      |> autofill_wormhole(previous, %{"wormhole_code" => code})
+      |> refresh_quick_types(socket)
+
+    {:noreply, assign(socket, :sig_form, form)}
+  end
+
+  def handle_event("sig-other-type-pick", %{"code" => code}, socket) do
+    previous = socket.assigns.sig_form
+    form = Map.put(previous, "other_wormhole_code", String.upcase(code))
+
+    form =
+      form
+      |> autofill_wormhole(previous, %{"other_wormhole_code" => code})
+      |> refresh_quick_types(socket)
+
+    {:noreply, assign(socket, :sig_form, form)}
+  end
+
+  def handle_event("sig-leads-pick", %{"value" => value}, socket) do
+    form = socket.assigns.sig_form |> Map.put("leads_to", value) |> refresh_quick_types(socket)
+
+    {:noreply, assign(socket, :sig_form, form)}
+  end
+
+  def handle_event("sig-clear-leads", _params, socket) do
+    form = socket.assigns.sig_form |> Map.put("leads_to", "") |> refresh_quick_types(socket)
+
+    {:noreply, assign(socket, :sig_form, form)}
   end
 
   def handle_event("save-signature", %{"sig" => params}, socket) do
@@ -2541,6 +2582,17 @@ defmodule ZtripwireWeb.DashboardLive do
   defp sig_hole_code(_), do: nil
 
   defp signature_attrs(params) do
+    params =
+      if params["site_type"] == "wormhole" do
+        Map.put(
+          params,
+          "type_name",
+          SigParser.join_wormhole(params["type_name"], params["wormhole_code"])
+        )
+      else
+        params
+      end
+
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
     attrs = SigParser.attrs_from_params(params)
 
@@ -2573,26 +2625,165 @@ defmodule ZtripwireWeb.DashboardLive do
     life_length = parse_integer(base["life_length"]) || SigParser.default_life_length()
     {days, hours, minutes} = SigParser.length_parts(life_length)
     {connection, far} = sig_connection(socket, system)
+    {name, code} = if sig, do: SigParser.split_wormhole(sig.type_name), else: {"", ""}
     paired = if sig, do: sig_pair(socket, far, sig), else: nil
 
     {other_prefix, other_number} =
       if paired, do: SigParser.split_id(paired.sig_id), else: {"", ""}
 
+    {other_name, other_code} =
+      if paired, do: SigParser.split_wormhole(paired.type_name), else: {"", ""}
+
     base
     |> Map.merge(%{
+      "site_type" => base["site_type"] || "unknown",
+      "type_name" => name,
+      "wormhole_code" => code,
       "prefix" => prefix,
       "number" => number,
       "days" => Integer.to_string(days),
       "hours" => Integer.to_string(hours),
       "minutes" => Integer.to_string(minutes),
-      "life_status" => (sig && SigParser.signature_life_status(sig)) || "stable",
+      "life_status" =>
+        (connection && connection.time_status) ||
+          (sig && SigParser.signature_life_status(sig)) || "stable",
       "mass_status" => (connection && connection.mass_status) || "stable",
-      "leads_system_id" => if(far, do: Integer.to_string(far.id), else: ""),
+      "leads_to" => if(far, do: far.name || "", else: ""),
       "other_prefix" => other_prefix,
       "other_number" => other_number,
-      "other_site_type" => (paired && paired.site_type) || "unknown",
-      "other_name" => (paired && paired.type_name) || ""
+      "other_type_name" => other_name,
+      "other_wormhole_code" => other_code
     })
+    |> refresh_quick_types(socket)
+  end
+
+  defp autofill_wormhole(form, previous, params) do
+    form
+    |> autofill_code(previous, params, "wormhole_code", "other_wormhole_code")
+    |> autofill_code(previous, params, "other_wormhole_code", "wormhole_code")
+  end
+
+  defp autofill_code(form, previous, params, key, mirror_key) do
+    value = form[key] |> to_string() |> String.trim() |> String.upcase()
+    previous_value = previous[key] |> to_string() |> String.upcase()
+
+    cond do
+      not Map.has_key?(params, key) ->
+        form
+
+      value == "" or value == previous_value ->
+        Map.put(form, key, value)
+
+      Wormholes.get(value) == nil and value != "????" ->
+        Map.put(form, key, value)
+
+      true ->
+        form
+        |> Map.put(key, value)
+        |> Map.put(mirror_key, mirror_code(form[mirror_key], value))
+        |> put_length_from_code(value)
+    end
+  end
+
+  defp mirror_code(current, code) do
+    current = current |> to_string() |> String.trim() |> String.upcase()
+
+    cond do
+      code == "K162" and Wormholes.get(current) != nil -> "????"
+      code != "K162" and current in ["", "K162", "????"] -> "K162"
+      true -> current
+    end
+  end
+
+  defp put_length_from_code(form, code) do
+    case Wormholes.life_seconds(code) do
+      nil ->
+        form
+
+      seconds ->
+        {days, hours, minutes} = SigParser.length_parts(seconds)
+
+        Map.merge(form, %{
+          "days" => Integer.to_string(days),
+          "hours" => Integer.to_string(hours),
+          "minutes" => Integer.to_string(minutes)
+        })
+    end
+  end
+
+  defp refresh_quick_types(form, socket) do
+    system = selected_system(socket)
+    source = system && Systems.display_class(system)
+    target = sig_leads_class(form["leads_to"])
+    codes = Wormholes.eligible_types(source, target).from
+
+    Map.put(form, "quick_types", if(length(codes) in 1..3, do: codes, else: []))
+  end
+
+  defp sig_leads_class(value) do
+    case generic_target(value) do
+      nil -> nil
+      {_label, class} -> class
+    end
+  end
+
+  defp generic_target(value) do
+    case value |> to_string() |> String.trim() |> String.downcase() do
+      "class-1" -> {"Class-1", "C1"}
+      "class-2" -> {"Class-2", "C2"}
+      "class-3" -> {"Class-3", "C3"}
+      "class-4" -> {"Class-4", "C4"}
+      "class-5" -> {"Class-5", "C5"}
+      "class-6" -> {"Class-6", "C6"}
+      "class-13" -> {"Class-13", "C13"}
+      "thera" -> {"Thera", "Thera"}
+      "high-sec" -> {"High-Sec", "HS"}
+      "low-sec" -> {"Low-Sec", "LS"}
+      "null-sec" -> {"Null-Sec", "NS"}
+      "triglavian" -> {"Triglavian", "Trig"}
+      "drifter" -> {"Drifter", "Drifter"}
+      _ -> nil
+    end
+  end
+
+  defp leads_chips do
+    [
+      {"Class-1", "C1"},
+      {"Class-2", "C2"},
+      {"Class-3", "C3"},
+      {"Class-4", "C4"},
+      {"Class-5", "C5"},
+      {"Class-6", "C6"},
+      {"High-Sec", "HS"},
+      {"Low-Sec", "LS"},
+      {"Null-Sec", "NS"},
+      {"Triglavian", "Trig"},
+      {"Drifter", "Drifter"}
+    ]
+  end
+
+  defp leads_system_options(systems, selected_id) do
+    systems
+    |> Enum.reject(&(&1.id == selected_id))
+    |> Enum.map(& &1.name)
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.sort()
+  end
+
+  defp life_choices do
+    [
+      {"stable", "Stable", "More than 4 hours remaining"},
+      {"critical", "EOL", "End of life: less than 4 hours remaining"},
+      {"<1h", "<1h", "Less than 1 hour remaining"}
+    ]
+  end
+
+  defp mass_choices do
+    [
+      {"stable", "Stable", "More than 50% remaining"},
+      {"destab", "<50%", "Less than 50% remaining"},
+      {"critical", "<10%", "Less than 10% remaining"}
+    ]
   end
 
   defp sig_connection(_socket, nil), do: {nil, nil}
@@ -2625,11 +2816,11 @@ defmodule ZtripwireWeb.DashboardLive do
     with true <- sig.site_type == "wormhole",
          %{} = system <- Data.get_system(data(socket), sig.map_system_id) do
       {connection, far} = sig_connection(socket, system)
-      target = sig_target(socket, params["leads_system_id"])
 
       socket
-      |> apply_signature_connection(system, connection, far, target, params)
-      |> apply_other_side(sig, target, params)
+      |> apply_signature_connection(system, connection, far, params)
+      |> reload_map()
+      |> apply_other_side(sig, params)
     else
       _ -> socket
     end
@@ -2638,84 +2829,140 @@ defmodule ZtripwireWeb.DashboardLive do
   defp sig_target(_socket, value) when value in [nil, ""], do: nil
 
   defp sig_target(socket, value) do
-    with id when is_integer(id) <- parse_integer(value) do
-      Enum.find(socket.assigns.systems, &(&1.id == id))
+    name = value |> to_string() |> String.trim()
+
+    cond do
+      name == "" ->
+        nil
+
+      system =
+          Enum.find(
+            socket.assigns.systems,
+            &(String.downcase(&1.name || "") == String.downcase(name))
+          ) ->
+        {:system, system}
+
+      target = generic_target(name) ->
+        {:class, elem(target, 0), elem(target, 1)}
+
+      system = Systems.Catalog.find(name) ->
+        {:catalog, system.solar_system_id, system.name}
+
+      true ->
+        :invalid
     end
   end
 
-  defp apply_signature_connection(socket, _system, nil, _far, nil, _params), do: socket
+  defp apply_signature_connection(socket, _system, nil, _far, _params), do: socket
 
-  defp apply_signature_connection(socket, _system, connection, _far, nil, _params) do
-    {_result, data} = Data.delete_connection(data(socket), connection)
-    put_data(socket, data)
-  end
-
-  defp apply_signature_connection(socket, system, nil, _far, target, params) do
-    {_result, data} =
-      Data.upsert_connection(data(socket), socket.assigns.map.id, system.id, target.id, %{
-        hole_type: SigParser.wormhole_code(params["type_name"]),
-        mass_status: params["mass_status"] || "stable"
-      })
-
-    put_data(socket, data)
-  end
-
-  defp apply_signature_connection(socket, system, connection, far, target, params) do
+  defp apply_signature_connection(socket, system, connection, far, params) do
     mass = params["mass_status"] || connection.mass_status || "stable"
+    life = params["life_status"] || connection.time_status || "stable"
 
-    attrs =
-      cond do
-        far && far.id == target.id ->
-          %{mass_status: mass}
+    case sig_target(socket, params["leads_to"]) do
+      nil ->
+        update_connection_status(socket, connection, %{mass_status: mass, time_status: life})
 
-        connection.from_system_id == system.id ->
-          %{from_system_id: target.id, mass_status: mass}
+      :invalid ->
+        socket
 
-        true ->
-          %{to_system_id: target.id, mass_status: mass}
-      end
+      {:system, target} ->
+        attrs =
+          cond do
+            far && far.id == target.id ->
+              %{mass_status: mass, time_status: life}
 
-    {_result, data} = Data.update_connection(data(socket), connection, attrs)
-    put_data(socket, data)
+            connection.from_system_id == system.id ->
+              %{to_system_id: target.id, mass_status: mass, time_status: life}
+
+            true ->
+              %{from_system_id: target.id, mass_status: mass, time_status: life}
+          end
+
+        update_connection_status(socket, connection, attrs)
+
+      {:class, label, class} ->
+        socket = relabel_far_system(socket, far, label, class)
+        update_connection_status(socket, connection, %{mass_status: mass, time_status: life})
+
+      {:catalog, solar, name} ->
+        case Data.add_system_to_map(data(socket), socket.assigns.map, %{
+               solar_system_id: solar,
+               name: name
+             }) do
+          {{:ok, target}, data} ->
+            socket = put_data(socket, data)
+
+            attrs =
+              if connection.from_system_id == system.id,
+                do: %{to_system_id: target.id, mass_status: mass, time_status: life},
+                else: %{from_system_id: target.id, mass_status: mass, time_status: life}
+
+            update_connection_status(socket, connection, attrs)
+
+          _ ->
+            socket
+        end
+    end
   end
 
-  defp apply_other_side(socket, _sig, nil, _params), do: socket
+  defp update_connection_status(socket, connection, attrs) do
+    case Data.update_connection(data(socket), connection, attrs) do
+      {{:ok, _connection}, data} -> put_data(socket, data)
+      _ -> socket
+    end
+  end
 
-  defp apply_other_side(socket, sig, target, params) do
+  defp relabel_far_system(socket, %{unknown: true} = far, label, class) do
+    case Data.update_system(data(socket), far, %{name: label, sys_class: class}) do
+      {{:ok, _system}, data} -> socket |> put_data(data) |> reload_map()
+      _ -> socket
+    end
+  end
+
+  defp relabel_far_system(socket, _far, _label, _class), do: socket
+
+  defp apply_other_side(socket, sig, params) do
     other_id = SigParser.join_id(params["other_prefix"], params["other_number"])
+    system = Data.get_system(data(socket), sig.map_system_id)
+    {_connection, far} = sig_connection(socket, system)
 
-    if other_id == "" do
+    if other_id == "" or far == nil do
       socket
     else
-      case sig_pair(socket, target, sig) do
-        nil -> create_paired_signature(socket, target, other_id, params)
-        paired -> update_paired_signature(socket, paired, other_id, params)
+      other_type_name =
+        SigParser.join_wormhole(params["other_type_name"], params["other_wormhole_code"])
+
+      case sig_pair(socket, far, sig) do
+        nil -> create_paired_signature(socket, far, other_id, params)
+        paired -> update_paired_signature(socket, paired, other_id, other_type_name)
       end
     end
   end
 
-  defp create_paired_signature(socket, target, other_id, params) do
+  defp create_paired_signature(socket, far, other_id, params) do
     attrs =
-      %{
+      signature_attrs(%{
         "sig_id" => other_id,
         "kind" => "signature",
-        "site_type" => params["other_site_type"] || "unknown",
-        "type_name" => params["other_name"],
-        "life_length" => params["life_length"]
-      }
-      |> signature_attrs()
+        "site_type" => "wormhole",
+        "type_name" => params["other_type_name"],
+        "wormhole_code" => params["other_wormhole_code"],
+        "life_length" => params["life_length"],
+        "life_status" => params["life_status"]
+      })
 
-    case Data.create_signature(data(socket), target, attrs, socket.assigns.character) do
+    case Data.create_signature(data(socket), far, attrs, socket.assigns.character) do
       {{:ok, _signature}, data} -> put_data(socket, data)
       _ -> socket
     end
   end
 
-  defp update_paired_signature(socket, paired, other_id, params) do
+  defp update_paired_signature(socket, paired, other_id, other_type_name) do
     attrs = %{
       sig_id: other_id,
-      site_type: params["other_site_type"] || paired.site_type,
-      type_name: present(params["other_name"])
+      site_type: "wormhole",
+      type_name: other_type_name
     }
 
     case Data.update_signature(data(socket), paired, attrs, socket.assigns.character) do

@@ -192,6 +192,35 @@ defmodule Ztripwire.Signatures do
     if prefix == "" and number == "", do: "", else: "#{prefix}-#{number}"
   end
 
+  def split_wormhole(nil), do: {"", ""}
+
+  def split_wormhole(type_name) when is_binary(type_name) do
+    trimmed = String.trim(type_name)
+
+    case Regex.run(~r/^(.*?)\s*\(([A-Za-z?][0-9?]{3})\)$/, trimmed) do
+      [_, name, code] ->
+        {String.trim(name), String.upcase(code)}
+
+      nil ->
+        if Regex.match?(~r/^[A-Z?][0-9?]{3}$/, String.upcase(trimmed)),
+          do: {"", String.upcase(trimmed)},
+          else: {trimmed, ""}
+    end
+  end
+
+  def split_wormhole(_), do: {"", ""}
+
+  def join_wormhole(name, code) do
+    name = name |> to_string() |> String.trim()
+    code = code |> to_string() |> String.trim() |> String.upcase()
+
+    cond do
+      name == "" -> code
+      code == "" -> name
+      true -> "#{name} (#{code})"
+    end
+  end
+
   def length_parts(seconds) when is_integer(seconds) and seconds > 0 do
     {div(seconds, 86_400), div(rem(seconds, 86_400), 3_600), div(rem(seconds, 3_600), 60)}
   end
@@ -215,15 +244,15 @@ defmodule Ztripwire.Signatures do
 
     case life_status(seconds_left) do
       :stable -> "stable"
-      :eol -> "eol"
-      _ -> "critical"
+      :eol -> "critical"
+      _ -> "<1h"
     end
   end
 
   def signature_life_status(_), do: "stable"
 
-  def expires_at_for("eol", _length), do: in_seconds(3 * 3600)
-  def expires_at_for("critical", _length), do: in_seconds(30 * 60)
+  def expires_at_for("critical", _length), do: in_seconds(4 * 3600)
+  def expires_at_for("<1h", _length), do: in_seconds(3600)
 
   def expires_at_for(_status, length) when is_integer(length) and length > 0,
     do: in_seconds(length)

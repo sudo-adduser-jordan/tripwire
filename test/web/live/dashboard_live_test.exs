@@ -1200,26 +1200,29 @@ defmodule ZtripwireWeb.DashboardLiveTest do
         "number" => "123",
         "kind" => "signature",
         "site_type" => "wormhole",
-        "type_name" => "Unstable Wormhole (K162)",
+        "wormhole_code" => "K162",
+        "type_name" => "Unstable Wormhole",
         "days" => "1",
         "hours" => "0",
         "minutes" => "0",
-        "life_status" => "eol",
+        "life_status" => "critical",
         "mass_status" => "critical",
-        "leads_system_id" => to_string(far.id),
+        "leads_to" => "J150322",
         "other_prefix" => "DEF",
         "other_number" => "456",
-        "other_site_type" => "wormhole",
-        "other_name" => "Unstable Wormhole (K162)"
+        "other_wormhole_code" => "K162",
+        "other_type_name" => "Unstable Wormhole"
       }
     })
 
     updated = Mapping.get_signature!(sig.id)
     assert updated.life_length == 86_400
-    assert NaiveDateTime.diff(updated.expires_at, updated.inserted_at) == 10_800
+    assert NaiveDateTime.diff(updated.expires_at, updated.inserted_at) == 14_400
+    assert updated.type_name == "Unstable Wormhole (K162)"
 
     connection = Mapping.connection_between(map.id, system.id, far.id)
     assert connection.mass_status == "critical"
+    assert connection.time_status == "critical"
 
     assert [%Mapping.Signature{sig_id: "DEF-456"}] = Mapping.list_signatures(far.id)
   end
@@ -1757,7 +1760,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert html =~ "Edit Signature"
     assert html =~ ~s|name="sig[prefix]" value="ABC"|
     assert html =~ ~s|name="sig[number]" value="123"|
-    assert html =~ ~s|name="sig[leads_system_id]"|
+    assert html =~ ~s|name="sig[leads_to]"|
     assert view |> element("#sig-modal button[phx-click='delete-signature']") |> has_element?()
     assert Mapping.get_signature!(sig.id).sig_id == "ABC-123"
   end
@@ -1817,6 +1820,123 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert map_modal =~ ~s|phx-hook="DraggableModal"|
     refute map_modal =~ "modal-backdrop"
     refute render(view) =~ "sig-modal"
+  end
+
+  test "signature editor shows the upstream type select and wormhole fields", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, _sig} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "ABC-123", site_type: "wormhole", type_name: "Unstable Wormhole (K162)"},
+        character
+      )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#signatures button[phx-click='open-add']")
+    |> render_click()
+
+    view
+    |> element("#sig-modal form[phx-submit='save-signature']")
+    |> render_change(%{"sig" => %{"site_type" => "wormhole"}})
+
+    html = view |> element("#sig-modal") |> render()
+
+    assert html =~ ~s|<select name="sig[site_type]"|
+    refute html =~ ~s|<select name="sig[kind]"|
+
+    labels = ~w(Unknown Combat Wormhole Ore Data Gas Relic)
+    positions = Enum.map(labels, fn label -> elem(:binary.match(html, label), 0) end)
+    assert positions == Enum.sort(positions)
+
+    assert html =~ ~s|name="sig[wormhole_code]"|
+    assert html =~ ~s|name="sig[leads_to]"|
+    assert html =~ ~s|name="sig[life_status]"|
+    assert html =~ ~s|name="sig[mass_status]"|
+    assert html =~ "EOL"
+    assert html =~ "1h"
+    assert html =~ "50%"
+    assert html =~ "10%"
+  end
+
+  test "choosing a wormhole type fills the length and mirrors K162", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#signatures button[phx-click='open-add']")
+    |> render_click()
+
+    html =
+      view
+      |> element("#sig-modal form[phx-submit='save-signature']")
+      |> render_change(%{"sig" => %{"site_type" => "wormhole", "wormhole_code" => "Z647"}})
+
+    assert html =~ ~s|name="sig[other_wormhole_code]" value="K162"|
+    assert html =~ ~s|name="sig[days]" value="0"|
+    assert html =~ ~s|name="sig[hours]" value="16"|
+    assert html =~ ~s|name="sig[minutes]" value="0"|
+  end
+
+  test "a class in leads relabels the far placeholder", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, unknown} = Mapping.add_unknown_system(map)
+
+    {:ok, _connection, _new?} =
+      Mapping.upsert_connection(map.id, system.id, unknown.id, %{hole_type: "K162"})
+
+    {:ok, sig} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "ABC-123", site_type: "wormhole", type_name: "Unstable Wormhole (K162)"},
+        character
+      )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    view
+    |> element("#signature-#{sig.id} button.btn-ghost[title='Edit signature']")
+    |> render_click()
+
+    view
+    |> element("#sig-modal form[phx-submit='save-signature']")
+    |> render_submit(%{
+      "sig" => %{
+        "prefix" => "ABC",
+        "number" => "123",
+        "site_type" => "wormhole",
+        "wormhole_code" => "K162",
+        "type_name" => "Unstable Wormhole",
+        "days" => "3",
+        "hours" => "0",
+        "minutes" => "0",
+        "life_status" => "stable",
+        "mass_status" => "stable",
+        "leads_to" => "Class-5"
+      }
+    })
+
+    reloaded = Mapping.get_system!(unknown.id)
+    refute reloaded.unknown
+    assert reloaded.name == "Class-5"
+    assert reloaded.sys_class == "C5"
+    assert Mapping.connection_between(map.id, system.id, unknown.id)
   end
 
   test "j-space nodes show static badges on the bottom edge", %{

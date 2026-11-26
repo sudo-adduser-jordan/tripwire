@@ -104,6 +104,28 @@ defmodule Ztripwire.Wormholes do
 
   def dummy(key), do: Map.get(@dummy, key)
 
+  def life_hours(code) when is_binary(code) do
+    case get(code) do
+      %{"life" => life} when is_binary(life) ->
+        case Float.parse(life) do
+          {hours, _} -> hours
+          :error -> nil
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  def life_hours(_), do: nil
+
+  def life_seconds(code) do
+    case life_hours(code) do
+      nil -> nil
+      hours -> round(hours * 3600)
+    end
+  end
+
   def eligible_types(source, target) do
     source = source |> to_string() |> class_short() |> blank_to_nil()
     target = target |> to_string() |> class_short() |> blank_to_nil()
