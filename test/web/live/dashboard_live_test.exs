@@ -1762,22 +1762,37 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert Mapping.get_signature!(sig.id).sig_id == "ABC-123"
   end
 
-  test "clicking a node with no signature opens the add signature dialog", %{
+  test "clicking a node name selects and patches the system without opening the editor", %{
     conn: conn,
     character: character
   } do
-    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#chain-map text[phx-click='open-node-signature']", "J150321")
-    |> render_click()
+    refute view |> element("#chain-map") |> render() =~ "open-node-signature"
 
-    html = render(view)
-    assert html =~ "sig-modal"
-    assert html =~ "Add Signature"
-    assert html =~ ~s|name="sig[prefix]" value=""|
+    view |> element("#node-#{system.id}") |> render_click()
+
+    assert_patch(view, "/J150321")
+    refute render(view) =~ "sig-modal"
+  end
+
+  test "nodes whose hole has no scanned signature have no signature line", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, unknown} = Mapping.add_unknown_system(map)
+
+    {:ok, _connection, _new?} =
+      Mapping.upsert_connection(map.id, system.id, unknown.id, %{hole_type: "K162"})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    map_html = view |> element("#chain-map") |> render()
+    refute map_html =~ "open-node-signature"
+    refute map_html =~ "ABC-123"
   end
 
   test "edit modals are draggable, undimmed and replace each other", %{

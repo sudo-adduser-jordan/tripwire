@@ -80,7 +80,7 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
   defp node_icon_x(radius), do: 4.0 + Float.round(radius * 0.55, 1)
   defp node_icon_y(radius), do: 4.0 + Float.round(radius * 0.09, 1)
 
-  defp node_text_offset("", node_h), do: node_h / 2 - 25.25
+  defp node_text_offset(nil, node_h), do: node_h / 2 - 25.25
   defp node_text_offset(_footer, node_h), do: node_h / 2 - 35.25
 
   defp node_badge_inset(radius), do: max(4, round(radius * 0.45))
@@ -568,14 +568,12 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
                     x={@node_w / 2}
                     y="41"
                     text-anchor="middle"
-                    class="fill-base-content text-lg font-bold cursor-pointer hover:underline"
-                    phx-click="open-node-signature"
-                    phx-value-id={system.id}
-                    phx-target={@myself}
+                    class="fill-base-content text-lg font-bold cursor-pointer"
                   >
                     {node_label(system)}
                   </text>
                   <text
+                    :if={footer = node_footer(@connections, @wh_sigs, system.id)}
                     x={@node_w / 2}
                     y="61"
                     text-anchor="middle"
@@ -584,7 +582,7 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
                     phx-value-id={system.id}
                     phx-target={@myself}
                   >
-                    {node_footer(@connections, @wh_sigs, system.id)}
+                    {footer}
                   </text>
                 </g>
                 <g :if={activity = node_activity(@stats, system.id)}>
@@ -778,7 +776,7 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
 
   defp node_footer(connections, wh_sigs, system_id) do
     case node_signature(connections, wh_sigs, system_id) do
-      nil -> ""
+      nil -> nil
       sig -> sig.sig_id
     end
   end

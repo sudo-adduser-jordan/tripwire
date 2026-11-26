@@ -43,7 +43,7 @@ defmodule ZtripwireWeb.DemoNoDbTest do
     render_click(view, "toggle-favorite", %{})
 
     view
-    |> element("#chain-map text[phx-click='open-node-signature']", "Home")
+    |> element("#chain-map text[phx-click='open-node-signature']", "ABC-123")
     |> render_click()
 
     assert render(view) =~ "sig-modal"
