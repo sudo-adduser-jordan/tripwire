@@ -2148,9 +2148,91 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     container = view |> element("#system-container") |> render()
     assert container =~ "Perimeter"
     assert container =~ "Maurasi"
-    refute container =~ "Jita"
+    assert container =~ "Jita"
+    assert container =~ "1 jump from Perimeter"
+    refute container =~ ~s|title="Select system J150321"|
     assert view |> element("#topbar-system") |> render() =~ "Perimeter"
     assert render(view) =~ "Shortcuts"
+  end
+
+  test "gate neighbours already on the map stay in the selector and select the map node", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, _hole} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, _jita} =
+      Mapping.add_system_to_map(map, %{
+        solar_system_id: 30_000_142,
+        name: "Jita",
+        security: 0.9
+      })
+
+    {:ok, _perimeter} =
+      Mapping.add_system_to_map(map, %{
+        solar_system_id: 30_000_144,
+        name: "Perimeter",
+        security: 1.0
+      })
+
+    seed_catalog([
+      %{solar_system_id: 30_000_142, name: "Jita", security: 0.9},
+      %{solar_system_id: 30_000_144, name: "Perimeter", security: 1.0}
+    ])
+
+    seed_gates([{30_000_142, 30_000_144}])
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    container = view |> element("#system-container") |> render()
+    assert container =~ "Perimeter"
+    assert container =~ "1 jump from Jita"
+
+    view
+    |> element("#system-container button[title='Select system Perimeter (1 jump from Jita)']")
+    |> render_click()
+
+    assert_patch(view, "/Perimeter")
+    assert has_element?(view, "#system-favorite")
+    assert view |> element("#system-container") |> render() =~ "title=\"Select system Perimeter\""
+    assert view |> element("#topbar-system") |> render() =~ "Perimeter"
+    assert length(Mapping.list_systems(map.mask_id)) == 3
+  end
+
+  test "a gate neighbour that is already a chain connection is listed once", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, _hole} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, jita} =
+      Mapping.add_system_to_map(map, %{
+        solar_system_id: 30_000_142,
+        name: "Jita",
+        security: 0.9
+      })
+
+    {:ok, perimeter} =
+      Mapping.add_system_to_map(map, %{
+        solar_system_id: 30_000_144,
+        name: "Perimeter",
+        security: 1.0
+      })
+
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.mask_id, jita.id, perimeter.id)
+
+    seed_catalog([
+      %{solar_system_id: 30_000_142, name: "Jita", security: 0.9},
+      %{solar_system_id: 30_000_144, name: "Perimeter", security: 1.0}
+    ])
+
+    seed_gates([{30_000_142, 30_000_144}])
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    container = view |> element("#system-container") |> render()
+    assert length(Regex.scan(~r/title="Select system Perimeter/, container)) == 1
+    refute container =~ "1 jump from"
   end
 
   test "an off-chain k-space url opens its statistics without a chain node", %{

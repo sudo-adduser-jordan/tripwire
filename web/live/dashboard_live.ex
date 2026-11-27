@@ -2151,15 +2151,12 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   defp select_gate_system(socket, solar_system_id, opts \\ []) do
-    case Systems.Catalog.get(solar_system_id) do
-      %{name: name} = system ->
-        socket =
-          socket
-          |> assign_selection_reset()
-          |> assign(:chart_system, system)
-          |> assign(:selected_system_id, nil)
-          |> assign(:selected_system_name, name)
-          |> schedule_system_detail(system)
+    case Enum.find(
+           socket.assigns[:systems] || [],
+           &(not &1.unknown and &1.solar_system_id == solar_system_id)
+         ) do
+      %{id: id, name: name} ->
+        socket = select_system(socket, id)
 
         if Keyword.get(opts, :patch, true) do
           push_patch(socket, to: "/" <> name)
@@ -2168,7 +2165,25 @@ defmodule ZtripwireWeb.DashboardLive do
         end
 
       nil ->
-        put_flash(socket, :error, "System not found")
+        case Systems.Catalog.get(solar_system_id) do
+          %{name: name} = system ->
+            socket =
+              socket
+              |> assign_selection_reset()
+              |> assign(:chart_system, system)
+              |> assign(:selected_system_id, nil)
+              |> assign(:selected_system_name, name)
+              |> schedule_system_detail(system)
+
+            if Keyword.get(opts, :patch, true) do
+              push_patch(socket, to: "/" <> name)
+            else
+              socket
+            end
+
+          nil ->
+            put_flash(socket, :error, "System not found")
+        end
     end
   end
 
