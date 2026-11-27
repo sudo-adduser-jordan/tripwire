@@ -77,7 +77,9 @@ tasks:
     desc: Restart the production server in the background
     cmds:
       - task: stop
-      - mkdir -p logs
+      - mkdir -p logs priv/sde
+      - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}curl eve-online-static-data-latest-jsonl.zip{{.RESET}}"
+      - curl -L --etag-save priv/sde/sde.etag --etag-compare priv/sde/sde.etag -o priv/sde/eve-online-static-data-latest-jsonl.zip https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip || echo -e "{{.YELLOW}}[start]{{.RESET}} SDE download failed"
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}database migrations{{.RESET}}"
       - MIX_ENV=prod DATABASE_PATH="${DATABASE_PATH:-./priv/db/ztripwire-prod.db}" mix ecto.migrate
       - echo -e "{{.BLUE}}[start]{{.RESET}} {{.CYAN}}system data backfill{{.RESET}}"
@@ -134,8 +136,12 @@ tasks:
       - task: stop
       - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}mkdir -p logs/test logs/errors priv/sde{{.RESET}}"
       - mkdir -p logs/test logs/errors priv/sde
+      - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}curl eve-online-static-data-latest-jsonl.zip{{.RESET}}"
+      - curl -L --etag-save priv/sde/sde.etag --etag-compare priv/sde/sde.etag -o priv/sde/eve-online-static-data-latest-jsonl.zip https://developers.eveonline.com/static-data/eve-online-static-data-latest-jsonl.zip || echo -e "{{.YELLOW}}[dev]{{.RESET}} SDE download failed; gate neighbours unavailable"
       - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}mix ecto.migrate{{.RESET}}"
       - mix ecto.migrate
+      - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}mix ztripwire.sync_sde{{.RESET}}"
+      - mix ztripwire.sync_sde || echo -e "{{.YELLOW}}[dev]{{.RESET}} SDE sync failed; gate neighbours unavailable"
       - echo -e "{{.BLUE}}[dev]{{.RESET}} {{.CYAN}}MIX_ENV=dev mix phx.server on http://localhost:${PORT:-4000}{{.RESET}}"
       - MIX_ENV=dev mix phx.server
   diagram:
