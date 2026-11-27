@@ -18,7 +18,7 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
       end)
 
     chart_system = Map.get(assigns, :chart_system)
-    chain_systems = visible_systems(systems, connections, chart_system)
+    connected_systems = connected_systems(systems, connections, chart_system)
 
     {:ok,
      socket
@@ -26,8 +26,8 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
      |> assign(:systems, systems)
      |> assign(:connections, connections)
      |> assign(:chart_system, chart_system)
-     |> assign(:chain_systems, chain_systems)
-     |> assign(:gate_systems, gate_systems(chart_system, chain_systems))
+     |> assign(:connected_systems, connected_systems)
+     |> assign(:gate_systems, gate_systems(chart_system, connected_systems))
      |> assign_new(:system_info, fn -> nil end)
      |> assign_new(:chart_range, fn -> "24h" end)
      |> assign_new(:chart_hidden, fn -> MapSet.new() end)
@@ -171,7 +171,8 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
           </div>
           <.chart_legend chart_hidden={@chart_hidden} />
           <.system_selector
-            chain_systems={@chain_systems}
+            systems={@systems}
+            connected_systems={@connected_systems}
             chart_system={@chart_system}
             gate_systems={@gate_systems}
           />
@@ -210,7 +211,8 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
     """
   end
 
-  attr :chain_systems, :list, default: []
+  attr :systems, :list, default: []
+  attr :connected_systems, :list, default: []
   attr :chart_system, :any, default: nil
   attr :gate_systems, :list, default: []
 
@@ -218,11 +220,8 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
     ~H"""
     <div class="flex shrink-0 flex-wrap items-center gap-1 px-2 pt-0.5 pb-2">
       <button
-        :for={sys <- @chain_systems}
-        class={
-          "btn btn-xs " <>
-            (if same_system?(sys, @chart_system), do: "btn-primary", else: "btn-ghost")
-        }
+        :for={sys <- @connected_systems}
+        class="btn btn-ghost btn-xs"
         title={"Select system #{sys.name}"}
         phx-click="select-system"
         phx-value-id={sys.id}
@@ -230,24 +229,21 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
         {sys.name}
       </button>
       <span
-        :if={@gate_systems != []}
+        :if={@gate_systems != [] and @connected_systems != []}
         class="mx-1 h-4 w-px shrink-0 bg-base-content/20"
         aria-hidden="true"
       >
       </span>
       <button
         :for={sys <- @gate_systems}
-        class={
-          "btn btn-xs " <>
-            (if same_system?(sys, @chart_system), do: "btn-primary", else: "btn-ghost")
-        }
+        class="btn btn-ghost btn-xs"
         title={"Select system #{sys.name} (1 jump from #{chart_name(@chart_system)})"}
         phx-click="select-gate-system"
         phx-value-solar={sys.solar_system_id}
       >
         {sys.name}
       </button>
-      <span :if={@chain_systems == []} class="p-1 text-sm opacity-50">No systems on map yet</span>
+      <span :if={@systems == []} class="p-1 text-sm opacity-50">No systems on map yet</span>
     </div>
     """
   end
@@ -369,15 +365,12 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
   defp chart_name(%{name: name}) when is_binary(name) and name != "", do: name
   defp chart_name(_), do: "Jita"
 
-  defp same_system?(%{solar_system_id: id}, %{solar_system_id: id}) when is_integer(id), do: true
-  defp same_system?(_, _), do: false
-
-  defp gate_systems(chart, chain_systems) do
+  defp gate_systems(chart, connected_systems) do
     with %{solar_system_id: solar} when is_integer(solar) <- chart,
          true <- solar < 31_000_000,
          true <- Systems.Gates.loaded?(),
          true <- Systems.Catalog.loaded?() do
-      shown = MapSet.new(chain_systems, & &1.solar_system_id)
+      shown = MapSet.new(connected_systems, & &1.solar_system_id)
 
       Systems.Gates.neighbors(solar)
       |> Enum.reject(&(&1 >= 31_000_000 or MapSet.member?(shown, &1)))
@@ -409,7 +402,7 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
 
   defp favorites(_), do: []
 
-  defp visible_systems(systems, connections, chart_system) do
+  defp connected_systems(systems, connections, chart_system) do
     known = Enum.reject(systems, & &1.unknown)
     solar_system_id = solar_system_id(chart_system)
 
@@ -422,10 +415,7 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
         id
       end
 
-    Enum.filter(
-      known,
-      &(&1.solar_system_id == solar_system_id or MapSet.member?(neighbor_ids, &1.solar_system_id))
-    )
+    Enum.filter(known, &MapSet.member?(neighbor_ids, &1.solar_system_id))
   end
 
   defp solar_system_id(%{solar_system_id: solar_system_id}), do: solar_system_id

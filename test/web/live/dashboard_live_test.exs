@@ -1094,9 +1094,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     refute render(view) =~ "sig-modal"
 
@@ -1135,9 +1133,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> element("#signature-#{sig.id} button.btn-ghost[title='Edit signature']")
@@ -1188,9 +1184,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> element("#signature-#{sig.id} button.btn-ghost[title='Edit signature']")
@@ -1239,9 +1233,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> render_click("global-paste", %{
@@ -1279,9 +1271,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> render_click("global-paste", %{
@@ -1290,9 +1280,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     view |> element("#chainTabs button[title='Chain 2']") |> render_click()
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     assert render(view) =~ "ABC-123"
     assert render(view) =~ "Unstable Wormhole (Z647)"
@@ -1308,9 +1296,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     assert render(view) =~ "OLD-001"
 
@@ -1359,9 +1345,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> render_click("global-paste", %{
@@ -1427,9 +1411,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> render_click("global-paste", %{
@@ -1515,9 +1497,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     before = Map.new([home.id, a.id, b.id, jita.id], &{&1, Mapping.get_system!(&1)})
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> render_click("global-paste", %{
@@ -1560,9 +1540,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> render_click("global-paste", %{
@@ -1585,9 +1563,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> render_click("global-paste", %{
@@ -1613,9 +1589,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view |> render_click("global-paste", %{"text" => "nothing to see here"})
 
@@ -1733,9 +1707,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert html =~ "J150321"
     assert html =~ "J150322"
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     assert render(view) =~ "J150321"
   end
@@ -1954,9 +1926,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> element("#signature-#{sig.id} button.btn-ghost[title='Edit signature']")
@@ -1996,9 +1966,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     html = render(view)
     assert html =~ "Static wormhole: HS"
@@ -2053,9 +2021,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     refute render(view) =~ "hero-star-solid"
 
@@ -2099,6 +2065,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert container =~ "J150321"
     assert container =~ "J150322"
     refute container =~ "J150323"
+    refute container =~ ~s|title="Select system J150321"|
 
     view
     |> element("#system-container button[title='Select system J150322']")
@@ -2108,6 +2075,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert container =~ "J150321"
     assert container =~ "J150322"
     refute container =~ "J150323"
+    refute container =~ ~s|title="Select system J150322"|
   end
 
   test "system widget lists gate neighbours of the selected k-space system", %{
@@ -2194,7 +2162,8 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     assert_patch(view, "/Perimeter")
     assert has_element?(view, "#system-favorite")
-    assert view |> element("#system-container") |> render() =~ "title=\"Select system Perimeter\""
+    assert view |> element("#system-container") |> render() =~ ~s|data-copy="Perimeter"|
+    refute view |> element("#system-container") |> render() =~ ~s|title="Select system Perimeter"|
     assert view |> element("#topbar-system") |> render() =~ "Perimeter"
     assert length(Mapping.list_systems(map.mask_id)) == 3
   end
@@ -2583,9 +2552,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     assert has_element?(view, "#note-composer[data-open='false']")
     refute render(view) =~ "grid-rows-[1fr]"
@@ -2615,9 +2582,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> element(~s|#notes form[phx-submit="comment-submit"]|)
@@ -2639,9 +2604,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     refute has_element?(view, "#comment-#{comment.id} textarea")
 
@@ -3091,9 +3054,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     html = render(view)
     assert html =~ ~r|signatures.*toggle-tracker.*J150321|s
@@ -3162,9 +3123,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     table = view |> element("#signatures table") |> render()
     assert table =~ "Mass"
@@ -3224,9 +3183,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     table = view |> element("#signatures table") |> render()
 
@@ -3268,9 +3225,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J000000']")
-    |> render_click()
+    render_patch(view, "/J000000")
 
     view
     |> element("#signatures th button[phx-value-column='name']")
@@ -3292,9 +3247,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert view |> element("#signatures th[data-column='name']") |> render() =~
              ~s(aria-sort="descending")
 
-    view
-    |> element("#system-container button[title='Select system J000001']")
-    |> render_click()
+    render_patch(view, "/J000001")
 
     refute view |> element("#signature-columns") |> render() =~ ~s(aria-sort="ascending")
     refute view |> element("#signature-columns") |> render() =~ ~s(aria-sort="descending")
@@ -3309,9 +3262,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J000000']")
-    |> render_click()
+    render_patch(view, "/J000000")
 
     assert column_keys(view |> element("#signature-columns") |> render()) ==
              ~w(status id age type name life mass)
@@ -3344,9 +3295,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, sig} =
       Mapping.create_signature(system, %{sig_id: "XYZ-010"}, character)
 
-    view
-    |> element("#system-container button[title='Select system J000000']")
-    |> render_click()
+    render_click(view, "select-system", %{"id" => to_string(system.id)})
 
     assert render(view) =~ "XYZ-010"
 
@@ -3375,9 +3324,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> element("#signatures button[phx-click='open-add']")
@@ -3417,9 +3364,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> element("#signature-#{sig.id} button.btn-ghost[title='Edit signature']")
@@ -3460,9 +3405,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> render_click("global-paste", %{
@@ -3751,9 +3694,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> render_click("global-paste", %{
@@ -3776,9 +3717,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    view
-    |> element("#system-container button[title='Select system J150321']")
-    |> render_click()
+    render_patch(view, "/J150321")
 
     view
     |> render_click("global-paste", %{
