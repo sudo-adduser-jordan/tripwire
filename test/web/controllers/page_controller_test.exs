@@ -28,7 +28,7 @@ defmodule ZtripwireWeb.PageControllerTest do
     with_env(
       %{
         "EVESSO_CLIENT_ID" => "client-id",
-        "EVESSO_SECRET_KEY" => "client-secret"
+        "EVESSO_CLIENT_SECRET" => "client-secret"
       },
       fn ->
         conn = get(conn, ~p"/")

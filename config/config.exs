@@ -14,7 +14,7 @@ config :ueberauth, Ueberauth,
 
 config :ueberauth, Ueberauth.Strategy.EVESSO.OAuth,
   client_id: {:system, "EVESSO_CLIENT_ID"},
-  client_secret: {:system, "EVESSO_SECRET_KEY"}
+  client_secret: {:system, "EVESSO_CLIENT_SECRET"}
 
 config :ztripwire, Ztripwire.Mailer, adapter: Swoosh.Adapters.Local
 

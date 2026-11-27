@@ -19,7 +19,7 @@ defmodule ZtripwireWeb.AuthControllerTest do
 
   test "SSO request redirects to EVE with a state parameter and state cookie", %{conn: conn} do
     System.put_env("EVESSO_CLIENT_ID", "test-id")
-    System.put_env("EVESSO_SECRET_KEY", "test-secret")
+    System.put_env("EVESSO_CLIENT_SECRET", "test-secret")
 
     try do
       conn = get(conn, "/auth/evesso")
@@ -38,13 +38,13 @@ defmodule ZtripwireWeb.AuthControllerTest do
       assert is_binary(signed) and signed != state
     after
       System.delete_env("EVESSO_CLIENT_ID")
-      System.delete_env("EVESSO_SECRET_KEY")
+      System.delete_env("EVESSO_CLIENT_SECRET")
     end
   end
 
   test "SSO callback with a matching state cookie passes the CSRF checks", %{conn: conn} do
     System.put_env("EVESSO_CLIENT_ID", "test-id")
-    System.put_env("EVESSO_SECRET_KEY", "test-secret")
+    System.put_env("EVESSO_CLIENT_SECRET", "test-secret")
 
     config = Application.get_env(:ueberauth, Ueberauth.Strategy.EVESSO.OAuth)
 
@@ -82,14 +82,14 @@ defmodule ZtripwireWeb.AuthControllerTest do
     after
       Application.put_env(:ueberauth, Ueberauth.Strategy.EVESSO.OAuth, config)
       System.delete_env("EVESSO_CLIENT_ID")
-      System.delete_env("EVESSO_SECRET_KEY")
+      System.delete_env("EVESSO_CLIENT_SECRET")
     end
   end
 
   test "SSO callback without configured credentials stays in demo mode", %{conn: conn} do
     System.delete_env("EVESSO_CLIENT_ID")
-    System.delete_env("EVESSO_SECRET_KEY")
     System.delete_env("EVESSO_CLIENT_SECRET")
+    System.delete_env("EVESSO_SECRET_KEY")
 
     conn = get(conn, "/auth/evesso")
 

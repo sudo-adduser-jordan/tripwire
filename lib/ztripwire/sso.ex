@@ -1,6 +1,6 @@
 defmodule Ztripwire.SSO do
   @client_id_vars ~w(EVESSO_CLIENT_ID)
-  @client_secret_vars ~w(EVESSO_SECRET_KEY EVESSO_CLIENT_SECRET)
+  @client_secret_vars ~w(EVESSO_CLIENT_SECRET EVESSO_SECRET_KEY)
   @state_cookie "ueberauth.state_param"
 
   def configured?, do: credential?(@client_id_vars) and credential?(@client_secret_vars)

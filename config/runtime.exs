@@ -7,8 +7,22 @@ end
 config :ztripwire, ZtripwireWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
-if sso_secret = System.get_env("EVESSO_SECRET_KEY") || System.get_env("EVESSO_CLIENT_SECRET") do
+if sso_secret = System.get_env("EVESSO_CLIENT_SECRET") || System.get_env("EVESSO_SECRET_KEY") do
   config :ueberauth, Ueberauth.Strategy.EVESSO.OAuth, client_secret: sso_secret
+end
+
+if callback_url = System.get_env("EVESSO_CALLBACK_URL") do
+  providers =
+    :ueberauth
+    |> Application.get_env(Ueberauth, [])
+    |> Keyword.get(:providers, [])
+    |> Keyword.update(:evesso, nil, fn {module, opts} ->
+      {module, Keyword.put(opts, :callback_url, callback_url)}
+    end)
+
+  if providers do
+    config :ueberauth, Ueberauth, providers: providers
+  end
 end
 
 if config_env() == :prod do

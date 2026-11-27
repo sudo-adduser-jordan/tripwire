@@ -51,7 +51,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
   test "demo mode shows the official SSO button when credentials exist", %{conn: conn} do
     System.put_env("EVESSO_CLIENT_ID", "test-id")
-    System.put_env("EVESSO_SECRET_KEY", "test-secret")
+    System.put_env("EVESSO_CLIENT_SECRET", "test-secret")
 
     try do
       {:ok, _view, html} = live(conn, ~p"/dashboard")
@@ -61,7 +61,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
       refute html =~ "EVESSO_CLIENT_ID"
     after
       System.delete_env("EVESSO_CLIENT_ID")
-      System.delete_env("EVESSO_SECRET_KEY")
+      System.delete_env("EVESSO_CLIENT_SECRET")
     end
   end
 
@@ -2957,7 +2957,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     character: character
   } do
     System.put_env("EVESSO_CLIENT_ID", "test-id")
-    System.put_env("EVESSO_SECRET_KEY", "test-secret")
+    System.put_env("EVESSO_CLIENT_SECRET", "test-secret")
 
     {:ok, character} =
       Accounts.upsert_character(%{eve_id: character.eve_id, refresh_token: "tok"})
@@ -2975,7 +2975,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
       assert Ztripwire.Tracking.tracking?(character)
     after
       System.delete_env("EVESSO_CLIENT_ID")
-      System.delete_env("EVESSO_SECRET_KEY")
+      System.delete_env("EVESSO_CLIENT_SECRET")
     end
   end
 
@@ -3211,7 +3211,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     character: character
   } do
     System.put_env("EVESSO_CLIENT_ID", "test-id")
-    System.put_env("EVESSO_SECRET_KEY", "test-secret")
+    System.put_env("EVESSO_CLIENT_SECRET", "test-secret")
 
     try do
       {:ok, other} = Accounts.upsert_character(%{eve_id: 43_000, name: "Second Char"})
@@ -3255,7 +3255,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
       assert Accounts.get_character(other.id) == nil
     after
       System.delete_env("EVESSO_CLIENT_ID")
-      System.delete_env("EVESSO_SECRET_KEY")
+      System.delete_env("EVESSO_CLIENT_SECRET")
     end
   end
 
@@ -3576,7 +3576,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
   test "account tab manages characters and masks", %{conn: conn} do
     System.put_env("EVESSO_CLIENT_ID", "test-id")
-    System.put_env("EVESSO_SECRET_KEY", "test-secret")
+    System.put_env("EVESSO_CLIENT_SECRET", "test-secret")
 
     try do
       {:ok, view, _html} = live(conn, ~p"/dashboard")
@@ -3590,7 +3590,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
       assert html =~ "delete-mask"
     after
       System.delete_env("EVESSO_CLIENT_ID")
-      System.delete_env("EVESSO_SECRET_KEY")
+      System.delete_env("EVESSO_CLIENT_SECRET")
     end
   end
 
