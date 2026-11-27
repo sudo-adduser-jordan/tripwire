@@ -40,7 +40,13 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
      |> assign(:tracking_available?, tracking_available?(assigns))
      |> assign_new(:sort, fn -> nil end)
      |> assign_new(:column_order, fn -> @column_keys end)
+     |> assign_new(:selected_signature_ids, fn -> MapSet.new() end)
      |> reset_sort_on_system_change(previous_system_id, Map.get(assigns, :selected_system_id))
+     |> reset_selection_on_system_change(
+       previous_system_id,
+       Map.get(assigns, :selected_system_id)
+     )
+     |> prune_selected_signatures(signatures)
      |> assign_new(:undo_available, fn -> false end)
      |> assign_new(:redo_available, fn -> false end)}
   end
@@ -49,6 +55,16 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
 
   defp reset_sort_on_system_change(socket, _previous, _current),
     do: assign(socket, :sort, nil)
+
+  defp reset_selection_on_system_change(socket, system_id, system_id), do: socket
+
+  defp reset_selection_on_system_change(socket, _previous, _current),
+    do: assign(socket, :selected_signature_ids, MapSet.new())
+
+  defp prune_selected_signatures(socket, signatures) do
+    ids = MapSet.new(signatures, &to_string(&1.id))
+    update(socket, :selected_signature_ids, &MapSet.intersection(&1, ids))
+  end
 
   defp wh_links(connections) do
     Enum.flat_map(connections, fn {conn, from, to} ->
@@ -138,6 +154,32 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
     {:noreply, assign(socket, :column_order, normalize_order(order))}
   end
 
+  def handle_event("select-signature", %{"id" => id} = params, socket) do
+    id = to_string(id)
+
+    selected =
+      if params["ctrlKey"] == true or params["metaKey"] == true do
+        toggle_selected(socket.assigns.selected_signature_ids, id)
+      else
+        MapSet.new([id])
+      end
+
+    {:noreply, assign(socket, :selected_signature_ids, selected)}
+  end
+
+  def handle_event("select-all", _params, socket) do
+    ids = MapSet.new(socket.assigns.signatures, &to_string(&1.id))
+    {:noreply, assign(socket, :selected_signature_ids, ids)}
+  end
+
+  defp toggle_selected(selected, id) do
+    if MapSet.member?(selected, id) do
+      MapSet.delete(selected, id)
+    else
+      MapSet.put(selected, id)
+    end
+  end
+
   attr :position, :map, default: %{"x" => 0, "y" => 6, "w" => 12, "h" => 6}
 
   def render(assigns) do
@@ -222,7 +264,12 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
           </ul>
         </div>
         <div class="min-h-0 w-full max-w-full flex-1 overflow-auto">
-          <table class="widget-table table table-xs w-full">
+          <table
+            id="signatures-table"
+            class="widget-table table table-xs w-full"
+            phx-hook="SignatureSelect"
+            phx-target={@myself}
+          >
             <thead
               id="signature-columns"
               phx-hook="ColumnReorder"
@@ -269,7 +316,18 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
               <tr
                 :for={sig <- sort_signatures(@signatures, @sort, @wh_links, @wh_mass)}
                 id={"signature-#{sig.id}"}
-                class="transition-colors hover:bg-base-200"
+                data-signature-id={sig.id}
+                data-selected={to_string(selected_signature?(@selected_signature_ids, sig))}
+                phx-click="select-signature"
+                phx-value-id={sig.id}
+                phx-target={@myself}
+                class={[
+                  "cursor-pointer transition-colors",
+                  if(selected_signature?(@selected_signature_ids, sig),
+                    do: "bg-base-200",
+                    else: "hover:bg-base-200"
+                  )
+                ]}
               >
                 <td
                   :for={col <- ordered_columns(@column_order)}
@@ -415,6 +473,9 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
 
   defp column_class("name"), do: "cell-truncate"
   defp column_class(_), do: nil
+
+  defp selected_signature?(selected_ids, sig),
+    do: MapSet.member?(selected_ids, to_string(sig.id))
 
   defp sort_title(%{label: ""}), do: "Click to sort by scan status · drag to reorder"
   defp sort_title(%{label: label}), do: "Click to sort by #{label} · drag to reorder"

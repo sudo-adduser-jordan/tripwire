@@ -9,6 +9,7 @@ import GridWidget from "./gridWidget"
 import ScrollIntoView from "./scrollIntoView"
 import NotesComposer from "./notesComposer"
 import ColumnReorder from "./columnReorder"
+import SignatureSelect from "./signatureSelect"
 import CopyText from "./copyText"
 import GlobalPaste from "./globalPaste"
 import SearchSuggest from "./searchSuggest"
@@ -97,6 +98,7 @@ const hooks = {
     ScrollIntoView: ScrollIntoView,
     NotesComposer: NotesComposer,
     ColumnReorder: ColumnReorder,
+    SignatureSelect: SignatureSelect,
     CopyText: CopyText,
     GlobalPaste: GlobalPaste,
     SearchSuggest: SearchSuggest,
@@ -111,6 +113,9 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
     longPollFallbackMs: 2500,
     params: { _csrf_token: csrfToken },
+    metadata: {
+        click: (event) => ({ ctrlKey: event.ctrlKey, metaKey: event.metaKey }),
+    },
     hooks,
 })
 

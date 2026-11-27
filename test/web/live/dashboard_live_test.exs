@@ -3253,6 +3253,68 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     refute view |> element("#signature-columns") |> render() =~ ~s(aria-sort="descending")
   end
 
+  test "clicking signature rows selects them, ctrl toggles and ctrl-a selects all", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J000000")
+
+    {:ok, first} = Mapping.create_signature(system, %{sig_id: "AAA-001"}, character)
+    {:ok, second} = Mapping.create_signature(system, %{sig_id: "BBB-002"}, character)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+    render_patch(view, "/J000000")
+
+    view |> element("#signature-#{first.id}") |> render_click()
+
+    assert view |> element("#signature-#{first.id}") |> render() =~ ~s(data-selected="true")
+    assert view |> element("#signature-#{second.id}") |> render() =~ ~s(data-selected="false")
+
+    view |> element("#signature-#{second.id}") |> render_click(%{"ctrlKey" => true})
+
+    assert view |> element("#signature-#{first.id}") |> render() =~ ~s(data-selected="true")
+    assert view |> element("#signature-#{second.id}") |> render() =~ ~s(data-selected="true")
+
+    view |> element("#signature-#{first.id}") |> render_click(%{"ctrlKey" => true})
+
+    assert view |> element("#signature-#{first.id}") |> render() =~ ~s(data-selected="false")
+    assert view |> element("#signature-#{second.id}") |> render() =~ ~s(data-selected="true")
+
+    view |> element("#signatures th button[phx-value-column='name']") |> render_click()
+
+    assert view |> element("#signature-#{second.id}") |> render() =~ ~s(data-selected="true")
+
+    view |> element("#signatures table") |> render_hook("select-all", %{})
+
+    assert view |> element("#signature-#{first.id}") |> render() =~ ~s(data-selected="true")
+    assert view |> element("#signature-#{second.id}") |> render() =~ ~s(data-selected="true")
+  end
+
+  test "switching systems clears the signature selection", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, map, system} = setup_with_system(%{character: character}, "J000000")
+
+    {:ok, first} = Mapping.create_signature(system, %{sig_id: "AAA-001"}, character)
+
+    {:ok, other} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J000001"})
+
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, system.id, other.id, %{})
+    {:ok, second} = Mapping.create_signature(other, %{sig_id: "BBB-002"}, character)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+    render_patch(view, "/J000000")
+
+    view |> element("#signature-#{first.id}") |> render_click()
+    assert view |> element("#signature-#{first.id}") |> render() =~ ~s(data-selected="true")
+
+    render_patch(view, "/J000001")
+
+    assert view |> element("#signature-#{second.id}") |> render() =~ ~s(data-selected="false")
+  end
+
   test "signature column headers and body cells can be reordered", %{
     conn: conn,
     character: character
