@@ -263,17 +263,6 @@ defmodule ZtripwireWeb.DashboardLive do
     {:noreply, toggle_favorite(socket)}
   end
 
-  def handle_info({:signatures_updated, system_id}, socket) do
-    socket =
-      if socket.assigns.selected_system_id == system_id do
-        assign(socket, :signatures, Data.list_signatures(data(socket), system_id))
-      else
-        socket
-      end
-
-    {:noreply, socket}
-  end
-
   def handle_info({:systems_updated, map_id}, %{assigns: %{map: map}} = socket)
       when not is_nil(map) and map_id == map.id do
     {:noreply,
@@ -291,44 +280,6 @@ defmodule ZtripwireWeb.DashboardLive do
       end
 
     {:noreply, socket}
-  end
-
-  def handle_info({:demo_delete_signature, id, _system_id}, socket) do
-    case Data.get_signature(data(socket), id) do
-      nil ->
-        {:noreply, socket}
-
-      signature ->
-        {{:ok, _}, data} =
-          Data.delete_signature(data(socket), signature, socket.assigns.character)
-
-        {:noreply, socket |> put_data(data) |> reload_signatures()}
-    end
-  end
-
-  def handle_info({:demo_restore_signature, system_id, signature}, socket) do
-    case Data.get_system(data(socket), system_id) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "Select a system before undoing")}
-
-      system ->
-        attrs = %{
-          sig_id: signature.sig_id,
-          kind: signature.kind,
-          site_type: signature.site_type,
-          type_name: signature.type_name,
-          bookmark: signature.bookmark,
-          life_length: signature.life_length
-        }
-
-        case Data.create_signature(data(socket), system, attrs, socket.assigns.character) do
-          {{:ok, _}, data} ->
-            {:noreply, socket |> put_data(data) |> reload_signatures()}
-
-          {{:error, changeset}, data} ->
-            {:noreply, socket |> put_data(data) |> flash_changeset_errors(changeset)}
-        end
-    end
   end
 
   def handle_info(:demo_toggle_tracker, socket) do
@@ -1135,8 +1086,8 @@ defmodule ZtripwireWeb.DashboardLive do
 
     with system when not is_nil(system) <- selected_system(socket),
          entries when entries != [] <- SigParser.parse_paste(text) do
-      before_ids =
-        Data.list_signatures(data(socket), system.id) |> Enum.map(& &1.sig_id) |> MapSet.new()
+      before = Data.list_signatures(data(socket), system.id)
+      before_ids = MapSet.new(before, & &1.sig_id)
 
       pasted_ids = entries |> Enum.map(& &1.sig_id) |> MapSet.new()
 
@@ -1149,6 +1100,13 @@ defmodule ZtripwireWeb.DashboardLive do
         Data.sync_map_after_signature_change(data(socket), system, [])
 
       socket = put_data(socket, data)
+
+      socket =
+        push_signature_history(
+          socket,
+          system.id,
+          {:batch, signature_diff_ops(before, Data.list_signatures(data(socket), system.id))}
+        )
 
       missing = before_ids |> MapSet.difference(pasted_ids) |> Enum.sort()
 
@@ -1213,6 +1171,10 @@ defmodule ZtripwireWeb.DashboardLive do
 
         {:noreply,
          socket
+         |> push_signature_history(
+           system.id,
+           {:batch, Enum.map(deleted, &{:delete, signature_history_attrs(&1)})}
+         )
          |> assign(:stale_ids, [])
          |> assign(:stale_system_id, nil)
          |> reload_map_from_sync(dropped, linked, hidden)
@@ -1259,16 +1221,35 @@ defmodule ZtripwireWeb.DashboardLive do
         {:noreply, socket}
 
       signature ->
-        {_result, data} = Data.delete_signature(data(socket), signature, socket.assigns.character)
+        case delete_signature_data(socket, signature) do
+          {:ok, socket} ->
+            {:noreply,
+             socket
+             |> push_signature_history(
+               signature.map_system_id,
+               {:delete, signature_history_attrs(signature)}
+             )
+             |> assign(:sig_modal_open, false)
+             |> assign(:sig_edit_id, nil)
+             |> assign(:sig_errors, [])}
 
-        {:noreply,
-         socket
-         |> put_data(data)
-         |> assign(:sig_modal_open, false)
-         |> assign(:sig_edit_id, nil)
-         |> assign(:sig_errors, [])
-         |> reload_signatures()
-         |> reload_map()}
+          {:error, socket} ->
+            {:noreply, socket}
+        end
+    end
+  end
+
+  def handle_event("undo", _params, socket) do
+    case socket.assigns.selected_system_id do
+      nil -> {:noreply, put_flash(socket, :error, "Select a system before undoing")}
+      system_id -> {:noreply, apply_signature_history_step(socket, system_id, :undo)}
+    end
+  end
+
+  def handle_event("redo", _params, socket) do
+    case socket.assigns.selected_system_id do
+      nil -> {:noreply, put_flash(socket, :error, "Select a system before redoing")}
+      system_id -> {:noreply, apply_signature_history_step(socket, system_id, :redo)}
     end
   end
 
@@ -1331,6 +1312,7 @@ defmodule ZtripwireWeb.DashboardLive do
                 {:noreply,
                  socket
                  |> put_data(data)
+                 |> push_signature_history(system.id, {:add, signature_history_attrs(sig)})
                  |> assign(:sig_modal_open, false)
                  |> assign(:sig_edit_id, nil)
                  |> assign(:sig_errors, [])
@@ -1347,12 +1329,17 @@ defmodule ZtripwireWeb.DashboardLive do
 
           id ->
             sig = Data.get_signature!(data(socket), id)
+            old_attrs = signature_history_attrs(sig)
 
             case Data.update_signature(data(socket), sig, attrs, socket.assigns.character) do
               {{:ok, sig}, data} ->
                 {:noreply,
                  socket
                  |> put_data(data)
+                 |> push_signature_history(
+                   system.id,
+                   {:update, old_attrs, signature_history_attrs(sig)}
+                 )
                  |> assign(:sig_modal_open, false)
                  |> assign(:sig_edit_id, nil)
                  |> assign(:sig_errors, [])
@@ -1425,6 +1412,8 @@ defmodule ZtripwireWeb.DashboardLive do
          |> assign(:system_suggestions, [])
          |> assign(:signatures, [])
          |> assign(:comments, [])
+         |> assign(:undo, %{})
+         |> assign(:redo, %{})
          |> refresh_occupants()
          |> patch_to_preferred(chain_systems(socket, map))
          |> push_event("mask-switched", %{mask_id: mask.id})}
@@ -1974,6 +1963,8 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(:system_suggestions, [])
     |> assign(:signatures, [])
     |> assign(:comments, [])
+    |> assign(:undo, %{})
+    |> assign(:redo, %{})
     |> patch_to_preferred(systems)
     |> refresh_occupants()
   end
@@ -2040,6 +2031,8 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(:selected_system_id, nil)
     |> assign(:selected_system_name, nil)
     |> assign(:chart_system, nil)
+    |> assign(:undo, %{})
+    |> assign(:redo, %{})
     |> assign(:system_suggestions, [])
     |> assign(:signatures, [])
     |> assign(:comments, [])
@@ -2599,6 +2592,185 @@ defmodule ZtripwireWeb.DashboardLive do
     attrs
     |> Map.put(:inserted_at, now)
     |> Map.put(:expires_at, SigParser.expires_at_for(params["life_status"], attrs[:life_length]))
+  end
+
+  defp signature_history_attrs(sig) do
+    %{
+      sig_id: sig.sig_id,
+      kind: sig.kind,
+      type_name: sig.type_name,
+      type_id: sig.type_id,
+      site_type: sig.site_type,
+      bookmark: sig.bookmark,
+      life_length: sig.life_length,
+      inserted_at: sig.inserted_at,
+      expires_at: sig.expires_at
+    }
+  end
+
+  defp push_signature_history(socket, _system_id, {:batch, []}), do: socket
+
+  defp push_signature_history(socket, system_id, {:batch, [op]}),
+    do: push_signature_history(socket, system_id, op)
+
+  defp push_signature_history(socket, system_id, op) do
+    undo = Map.update(socket.assigns.undo, system_id, [op], &[op | &1])
+    redo = Map.delete(socket.assigns.redo, system_id)
+    assign(socket, undo: undo, redo: redo)
+  end
+
+  defp apply_signature_history_step(socket, system_id, direction) do
+    {from, to} = if direction == :undo, do: {:undo, :redo}, else: {:redo, :undo}
+
+    case Map.get(socket.assigns[from], system_id, []) do
+      [] ->
+        socket
+
+      [op | rest] ->
+        case apply_signature_history(socket, system_id, op, direction) do
+          {:ok, socket} ->
+            from_map = Map.put(socket.assigns[from], system_id, rest)
+            to_map = Map.update(socket.assigns[to], system_id, [op], &[op | &1])
+            assign(socket, [{from, from_map}, {to, to_map}])
+
+          {:error, socket} ->
+            socket
+        end
+    end
+  end
+
+  defp apply_signature_history(socket, system_id, {:batch, ops}, :undo) do
+    Enum.reduce_while(Enum.reverse(ops), {:ok, socket}, fn op, {:ok, acc} ->
+      case apply_signature_history(acc, system_id, op, :undo) do
+        {:ok, acc} -> {:cont, {:ok, acc}}
+        {:error, acc} -> {:halt, {:error, acc}}
+      end
+    end)
+  end
+
+  defp apply_signature_history(socket, system_id, {:batch, ops}, :redo) do
+    Enum.reduce_while(ops, {:ok, socket}, fn op, {:ok, acc} ->
+      case apply_signature_history(acc, system_id, op, :redo) do
+        {:ok, acc} -> {:cont, {:ok, acc}}
+        {:error, acc} -> {:halt, {:error, acc}}
+      end
+    end)
+  end
+
+  defp apply_signature_history(socket, system_id, {:add, attrs}, :undo),
+    do: delete_history_signature(socket, system_id, attrs.sig_id)
+
+  defp apply_signature_history(socket, system_id, {:add, attrs}, :redo),
+    do: create_history_signature(socket, system_id, attrs)
+
+  defp apply_signature_history(socket, system_id, {:delete, attrs}, :undo),
+    do: create_history_signature(socket, system_id, attrs)
+
+  defp apply_signature_history(socket, system_id, {:delete, attrs}, :redo),
+    do: delete_history_signature(socket, system_id, attrs.sig_id)
+
+  defp apply_signature_history(socket, system_id, {:update, old_attrs, new_attrs}, :undo),
+    do: update_history_signature(socket, system_id, old_attrs, new_attrs.sig_id)
+
+  defp apply_signature_history(socket, system_id, {:update, old_attrs, new_attrs}, :redo),
+    do: update_history_signature(socket, system_id, new_attrs, old_attrs.sig_id)
+
+  defp delete_history_signature(socket, system_id, sig_id) do
+    case find_signature_by_id(socket, system_id, sig_id) do
+      nil -> {:error, put_flash(socket, :error, "Signature not found")}
+      signature -> delete_signature_data(socket, signature)
+    end
+  end
+
+  defp create_history_signature(socket, system_id, attrs) do
+    case Data.get_system(data(socket), system_id) do
+      nil ->
+        {:error, put_flash(socket, :error, "Signature system not found")}
+
+      system ->
+        case Data.create_signature(data(socket), system, attrs, socket.assigns.character) do
+          {{:ok, _signature}, data} ->
+            {{dropped, linked, hidden}, data} =
+              Data.sync_map_after_signature_change(data, system, [])
+
+            socket = put_data(socket, data)
+            {:ok, socket |> reload_map_from_sync(dropped, linked, hidden) |> reload_signatures()}
+
+          {{:error, changeset}, data} ->
+            {:error, socket |> put_data(data) |> flash_changeset_errors(changeset)}
+        end
+    end
+  end
+
+  defp update_history_signature(socket, system_id, attrs, current_sig_id) do
+    with %{} = system <- Data.get_system(data(socket), system_id),
+         %{} = signature <- find_signature_by_id(socket, system_id, current_sig_id) do
+      case Data.update_signature(data(socket), signature, attrs, socket.assigns.character) do
+        {{:ok, updated}, data} ->
+          socket = put_data(socket, data)
+
+          socket =
+            sync_map_hole_type(socket, system, sig_hole_code(signature), sig_hole_code(updated))
+
+          {:ok, socket |> reload_signatures() |> reload_map()}
+
+        {{:error, changeset}, data} ->
+          {:error, socket |> put_data(data) |> flash_changeset_errors(changeset)}
+      end
+    else
+      _ -> {:error, put_flash(socket, :error, "Signature not found")}
+    end
+  end
+
+  defp find_signature_by_id(socket, system_id, sig_id) do
+    data(socket)
+    |> Data.list_signatures(system_id)
+    |> Enum.find(&(&1.sig_id == sig_id))
+  end
+
+  defp delete_signature_data(socket, signature) do
+    case Data.get_system(data(socket), signature.map_system_id) do
+      nil ->
+        {:error, put_flash(socket, :error, "Signature not found")}
+
+      system ->
+        case Data.delete_signature(data(socket), signature, socket.assigns.character) do
+          {{:ok, deleted}, data} ->
+            {{dropped, linked, hidden}, data} =
+              Data.sync_map_after_signature_change(data, system, [deleted])
+
+            socket = put_data(socket, data)
+            {:ok, socket |> reload_map_from_sync(dropped, linked, hidden) |> reload_signatures()}
+
+          {{:error, _changeset}, data} ->
+            {:error, put_data(socket, data)}
+        end
+    end
+  end
+
+  defp signature_diff_ops(before_sigs, after_sigs) do
+    before_by_id = Map.new(before_sigs, &{&1.sig_id, &1})
+    after_by_id = Map.new(after_sigs, &{&1.sig_id, &1})
+
+    added =
+      for {id, sig} <- after_by_id, not Map.has_key?(before_by_id, id) do
+        {:add, signature_history_attrs(sig)}
+      end
+
+    deleted =
+      for {id, sig} <- before_by_id, not Map.has_key?(after_by_id, id) do
+        {:delete, signature_history_attrs(sig)}
+      end
+
+    updated =
+      for {id, sig} <- after_by_id,
+          old = Map.get(before_by_id, id),
+          old != nil,
+          signature_history_attrs(old) != signature_history_attrs(sig) do
+        {:update, signature_history_attrs(old), signature_history_attrs(sig)}
+      end
+
+    added ++ deleted ++ updated
   end
 
   defp open_signature_add(socket) do
@@ -3187,6 +3359,8 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(:chart_data, %{labels: [], jumps: [], ship_kills: [], pod_kills: [], npc_kills: []})
     |> assign(:map_locked, false)
     |> assign(:collapsed_by_map, %{})
+    |> assign(:undo, %{})
+    |> assign(:redo, %{})
     |> assign(:map_modal_open, false)
     |> assign(:map_form, %{
       "name" => "",

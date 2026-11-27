@@ -3204,6 +3204,127 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     assert render(view) =~ "XYZ-010"
     assert [_restored] = Mapping.list_signatures(system.id)
+
+    view |> element("button[phx-click='redo']") |> render_click()
+
+    refute render(view) =~ "XYZ-010"
+    assert Mapping.list_signatures(system.id) == []
+  end
+
+  test "add then undo removes the signature and redo restores it", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    view
+    |> element("#signatures button[phx-click='open-add']")
+    |> render_click()
+
+    view
+    |> element("#sig-modal form[phx-submit='save-signature']")
+    |> render_submit(%{
+      "sig" => %{"sig_id" => "UND-001", "kind" => "signature", "site_type" => "unknown"}
+    })
+
+    assert render(view) =~ "UND-001"
+
+    view |> element("button[phx-click='undo']") |> render_click()
+
+    refute render(view) =~ "UND-001"
+    assert Mapping.list_signatures(system.id) == []
+
+    view |> element("button[phx-click='redo']") |> render_click()
+
+    assert render(view) =~ "UND-001"
+    assert [%Mapping.Signature{sig_id: "UND-001"}] = Mapping.list_signatures(system.id)
+  end
+
+  test "edit then undo restores the old signature and redo reapplies the edit", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, sig} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "EDT-001", site_type: "wormhole", type_name: "Unstable Wormhole (K162)"},
+        character
+      )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    view
+    |> element("#signature-#{sig.id} button.btn-ghost[title='Edit signature']")
+    |> render_click()
+
+    view
+    |> element("#sig-modal form[phx-submit='save-signature']")
+    |> render_submit(%{
+      "sig" => %{
+        "sig_id" => "EDT-001",
+        "kind" => "signature",
+        "site_type" => "wormhole",
+        "type_name" => "Unstable Wormhole",
+        "wormhole_code" => "O477"
+      }
+    })
+
+    assert [%Mapping.Signature{type_name: "Unstable Wormhole (O477)"}] =
+             Mapping.list_signatures(system.id)
+
+    view |> element("button[phx-click='undo']") |> render_click()
+
+    assert [%Mapping.Signature{type_name: "Unstable Wormhole (K162)"}] =
+             Mapping.list_signatures(system.id)
+
+    view |> element("button[phx-click='redo']") |> render_click()
+
+    assert [%Mapping.Signature{type_name: "Unstable Wormhole (O477)"}] =
+             Mapping.list_signatures(system.id)
+  end
+
+  test "undo restores signatures removed by the stale paste prompt", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, _} = Mapping.create_signature(system, %{sig_id: "OLD-001"}, character)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    view
+    |> render_click("global-paste", %{
+      "text" => "NEW-002\tCosmic Signature\tSerpentis Frigate Den"
+    })
+
+    view |> element("#stale-toast button[phx-click='delete-stale']") |> render_click()
+
+    assert [%Mapping.Signature{sig_id: "NEW-002"}] = Mapping.list_signatures(system.id)
+
+    view |> element("button[phx-click='undo']") |> render_click()
+
+    assert Enum.sort(Enum.map(Mapping.list_signatures(system.id), & &1.sig_id)) ==
+             ["NEW-002", "OLD-001"]
+
+    view |> element("button[phx-click='redo']") |> render_click()
+
+    assert [%Mapping.Signature{sig_id: "NEW-002"}] = Mapping.list_signatures(system.id)
   end
 
   test "topbar character dropdown adds and switches characters", %{

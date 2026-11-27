@@ -41,8 +41,8 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
      |> assign_new(:sort, fn -> nil end)
      |> assign_new(:column_order, fn -> @column_keys end)
      |> reset_sort_on_system_change(previous_system_id, Map.get(assigns, :selected_system_id))
-     |> assign_new(:undo, fn -> [] end)
-     |> assign_new(:redo, fn -> [] end)}
+     |> assign_new(:undo_available, fn -> false end)
+     |> assign_new(:redo_available, fn -> false end)}
   end
 
   defp reset_sort_on_system_change(socket, system_id, system_id), do: socket
@@ -103,124 +103,6 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
   defp mass_text_class(_), do: "opacity-40"
 
   defp dest_name(system), do: system.alias || system.name
-
-  def handle_event("delete-signature", %{"id" => id}, %{assigns: %{demo?: true}} = socket) do
-    case Enum.find(socket.assigns.signatures, &(to_string(&1.id) == to_string(id))) do
-      nil ->
-        {:noreply, socket}
-
-      signature ->
-        send(self(), {:demo_delete_signature, signature.id, signature.map_system_id})
-        {:noreply, assign(socket, :undo, [{:delete, signature} | socket.assigns.undo])}
-    end
-  end
-
-  def handle_event("delete-signature", %{"id" => id}, socket) do
-    signature = Mapping.get_signature!(id)
-    {:ok, deleted} = Mapping.delete_signature(signature, socket.assigns.character)
-    undo = [{:delete, deleted} | socket.assigns.undo]
-
-    system = Mapping.get_system!(deleted.map_system_id)
-    {dropped, linked, hidden} = Mapping.sync_map_after_signature_change(system, [deleted])
-
-    send(self(), {:signatures_updated, deleted.map_system_id})
-    send_map_update(system, dropped, linked, hidden)
-
-    {:noreply,
-     socket
-     |> assign(:undo, undo)
-     |> assign(:signatures, Mapping.list_signatures(deleted.map_system_id))}
-  end
-
-  def handle_event("undo", _params, %{assigns: %{demo?: true}} = socket) do
-    case socket.assigns.undo do
-      [] ->
-        {:noreply, socket}
-
-      [{:delete, signature} | rest] ->
-        if is_nil(socket.assigns.selected_system_id) do
-          {:noreply, put_flash(socket, :error, "Select a system before undoing")}
-        else
-          send(self(), {:demo_restore_signature, signature.map_system_id, signature})
-
-          {:noreply,
-           socket
-           |> assign(:undo, rest)
-           |> assign(:redo, [{:delete, signature} | socket.assigns.redo])}
-        end
-    end
-  end
-
-  def handle_event("undo", _params, socket) do
-    case socket.assigns.undo do
-      [] ->
-        {:noreply, socket}
-
-      [{:delete, signature} | rest] ->
-        case selected_system(socket) do
-          nil ->
-            {:noreply, put_flash(socket, :error, "Select a system before undoing")}
-
-          system ->
-            {:ok, restored} =
-              Mapping.create_signature(
-                system,
-                %{sig_id: signature.sig_id, kind: signature.kind, type_name: signature.type_name},
-                socket.assigns.character
-              )
-
-            redo = [{:delete, restored} | socket.assigns.redo]
-            {dropped, linked, hidden} = Mapping.sync_map_after_signature_change(system, [])
-
-            send(self(), {:signatures_updated, system.id})
-            send_map_update(system, dropped, linked, hidden)
-
-            {:noreply,
-             socket
-             |> assign(:undo, rest)
-             |> assign(:redo, redo)
-             |> assign(:signatures, Mapping.list_signatures(system.id))}
-        end
-    end
-  end
-
-  def handle_event("redo", _params, %{assigns: %{demo?: true}} = socket) do
-    case socket.assigns.redo do
-      [] ->
-        {:noreply, socket}
-
-      [{:delete, signature} | rest] ->
-        send(self(), {:demo_delete_signature, signature.id, signature.map_system_id})
-
-        {:noreply,
-         socket
-         |> assign(:redo, rest)
-         |> assign(:undo, [{:delete, signature} | socket.assigns.undo])}
-    end
-  end
-
-  def handle_event("redo", _params, socket) do
-    case socket.assigns.redo do
-      [] ->
-        {:noreply, socket}
-
-      [{:delete, signature} | rest] ->
-        {:ok, deleted} = Mapping.delete_signature(signature, socket.assigns.character)
-        undo = [{:delete, signature} | socket.assigns.undo]
-
-        system = Mapping.get_system!(deleted.map_system_id)
-        {dropped, linked, hidden} = Mapping.sync_map_after_signature_change(system, [deleted])
-
-        send(self(), {:signatures_updated, deleted.map_system_id})
-        send_map_update(system, dropped, linked, hidden)
-
-        {:noreply,
-         socket
-         |> assign(:redo, rest)
-         |> assign(:undo, undo)
-         |> assign(:signatures, Mapping.list_signatures(deleted.map_system_id))}
-    end
-  end
 
   def handle_event("toggle-tracker", _params, %{assigns: %{demo?: true}} = socket) do
     send(self(), :demo_toggle_tracker)
@@ -285,7 +167,7 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
                 class="btn btn-ghost btn-xs"
                 title="Undo"
                 phx-click="undo"
-                phx-target={@myself}
+                disabled={!@undo_available}
               >
                 <.icon name="hero-arrow-uturn-left" class="size-4" />
               </button>
@@ -293,7 +175,7 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
                 class="btn btn-ghost btn-xs"
                 title="Redo"
                 phx-click="redo"
-                phx-target={@myself}
+                disabled={!@redo_available}
               >
                 <.icon name="hero-arrow-uturn-right" class="size-4" />
               </button>
@@ -416,7 +298,6 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
                     title="Delete signature"
                     phx-click="delete-signature"
                     phx-value-id={sig.id}
-                    phx-target={@myself}
                     data-confirm="Delete this signature?"
                   >
                     <.icon name="hero-trash" class="size-4" />
@@ -578,12 +459,6 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
   defp mass_rank("critical"), do: 2
   defp mass_rank(_mass), do: 3
 
-  defp selected_system(%{assigns: %{selected_system_id: nil}}), do: nil
-
-  defp selected_system(%{assigns: %{selected_system_id: id}} = socket) do
-    Enum.find(Map.get(socket.assigns, :systems) || [], &(&1.id == id))
-  end
-
   defp system_label(nil), do: "no system selected"
   defp system_label(_), do: "system selected"
 
@@ -707,11 +582,5 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
     days = div(seconds, 86_400)
     hours = rem(seconds, 86_400) |> div(3600)
     "#{days}d #{hours}h"
-  end
-
-  defp send_map_update(system, dropped, linked, hidden) do
-    if dropped + linked + hidden > 0 do
-      send(self(), {:systems_updated, system.map_id})
-    end
   end
 end

@@ -162,6 +162,8 @@
         character={@character}
         demo?={@demo?}
         tracking?={Map.get(assigns, :tracking?)}
+        undo_available={Map.get(@undo, @selected_system_id, []) != []}
+        redo_available={Map.get(@redo, @selected_system_id, []) != []}
         position={@widget_positions["signatures"]}
       />
       <.live_component
