@@ -6,9 +6,9 @@ defmodule Ztripwire.MappingTest do
   alias Ztripwire.Repo
 
   setup do
-    mask = Ztripwire.TestFixtures.demo_mask()
-    {:ok, _map} = Ztripwire.TestFixtures.seed_demo_map(mask)
-    %{mask: mask}
+    {:ok, mask} = Masks.create_mask(%{name: "Test Mask", kind: "personal"})
+    {:ok, map} = Mapping.create_map(%{name: "Home", mask_id: mask.id})
+    %{mask: mask, map: map}
   end
 
   test "clamp_pan/3 centers a chain horizontally and pins it to the top" do
@@ -68,6 +68,76 @@ defmodule Ztripwire.MappingTest do
 
     assert Mapping.clamp_pan([left, home, right], 10_000.0, 10_000.0, 1.6) ==
              {1371.0, 20.0}
+  end
+
+  test "converting a placeholder to an existing system merges it into that system", %{mask: mask} do
+    {:ok, first} = Mapping.create_map(%{name: "First", mask_id: mask.id})
+    {:ok, second} = Mapping.create_map(%{name: "Second", mask_id: mask.id})
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_888, name: "Merge"})
+
+    {:ok, origin} =
+      Mapping.add_system_to_map(first, %{solar_system_id: 31_000_881, name: "J500881"})
+
+    {:ok, placeholder} = Mapping.add_unknown_system(first)
+
+    {:ok, _, _} =
+      Mapping.upsert_connection(first.mask_id, origin.id, placeholder.id, %{hole_type: "N770"})
+
+    {:ok, _sig} =
+      Mapping.create_signature(
+        placeholder,
+        %{sig_id: "AAA-881", kind: "signature", site_type: "unknown"},
+        character
+      )
+
+    {:ok, target} =
+      Mapping.add_system_to_map(second, %{solar_system_id: 31_000_882, name: "J500882"})
+
+    assert {:ok, converted} =
+             Mapping.convert_unknown_system(placeholder, %{
+               solar_system_id: target.solar_system_id,
+               name: target.name
+             })
+
+    assert converted.id == target.id
+    assert Mapping.get_system(placeholder.id) == nil
+    assert [moved] = Mapping.list_signatures(target.id)
+    assert moved.sig_id == "AAA-881"
+
+    assert %{hole_type: "N770"} =
+             Mapping.connection_between(first.mask_id, origin.id, target.id)
+  end
+
+  test "map tabs in one mask share systems and signatures", %{mask: mask} do
+    {:ok, first} = Mapping.create_map(%{name: "First", mask_id: mask.id})
+    {:ok, second} = Mapping.create_map(%{name: "Second", mask_id: mask.id})
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_777, name: "Shared"})
+
+    {:ok, system} =
+      Mapping.add_system_to_map(first, %{solar_system_id: 31_000_777, name: "J500777"})
+
+    {:ok, _sig} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "AAA-777", kind: "signature", site_type: "unknown"},
+        character
+      )
+
+    assert [shared] = Enum.filter(Mapping.list_systems(second.mask_id), &(&1.id == system.id))
+    assert Enum.map(Mapping.list_signatures(shared.id), & &1.sig_id) == ["AAA-777"]
+    refute Map.has_key?(Mapping.view_positions(second), system.id)
+
+    {:ok, same} =
+      Mapping.add_system_to_map(second, %{solar_system_id: 31_000_777, name: "J500777"})
+
+    assert same.id == system.id
+    assert Map.has_key?(Mapping.view_positions(second), system.id)
+
+    {:ok, other} =
+      Mapping.add_system_to_map(second, %{solar_system_id: 31_000_778, name: "J500778"})
+
+    assert Map.has_key?(Mapping.view_positions(second), other.id)
+    refute Map.has_key?(Mapping.view_positions(first), other.id)
   end
 
   test "add_system_to_map/2 fills wormhole class, effect and statics", %{mask: mask} do
@@ -207,18 +277,16 @@ defmodule Ztripwire.MappingTest do
   end
 
   test "SystemData.backfill/1 fills existing rows and keeps explicit values", %{mask: mask} do
-    [map | _] = Mapping.list_maps_for_mask(mask.id)
-
     legacy =
       Repo.insert!(%Mapping.MapSystem{
-        map_id: map.id,
+        mask_id: mask.id,
         solar_system_id: 31_001_663,
         name: "J231710"
       })
 
     overridden =
       Repo.insert!(%Mapping.MapSystem{
-        map_id: map.id,
+        mask_id: mask.id,
         solar_system_id: 31_002_580,
         name: "J000895",
         sys_class: "C5",
@@ -292,11 +360,11 @@ defmodule Ztripwire.MappingTest do
     {:ok, mask} = Masks.create_mask(%{name: "Empty Corp", kind: "corporation"})
     {:ok, map} = Mapping.create_map(%{name: "Home", mask_id: mask.id})
 
-    assert Mapping.list_systems(map.id) == []
+    assert Mapping.list_systems(map.mask_id) == []
 
     Mapping.seed_jita_systems()
 
-    assert [jita] = Mapping.list_systems(map.id)
+    assert [jita] = Mapping.list_systems(map.mask_id)
     assert jita.name == "Jita"
     assert [%{body: shortcuts}, %{body: markdown}] = Mapping.list_comments(jita.id)
     assert shortcuts =~ "# Shortcuts"
@@ -386,7 +454,7 @@ defmodule Ztripwire.MappingTest do
       )
 
     {:ok, conn, _new?} =
-      Mapping.upsert_connection(map.id, from.id, to.id, %{hole_type: "B274"})
+      Mapping.upsert_connection(map.mask_id, from.id, to.id, %{hole_type: "B274"})
 
     {:ok, conn} = Mapping.update_connection(conn, %{time_status: "critical"})
     :ok = Mapping.sync_connection_life(conn)
@@ -432,7 +500,7 @@ defmodule Ztripwire.MappingTest do
       )
 
     {:ok, conn, _new?} =
-      Mapping.upsert_connection(map.id, from.id, to.id, %{hole_type: "B274"})
+      Mapping.upsert_connection(map.mask_id, from.id, to.id, %{hole_type: "B274"})
 
     original = Mapping.get_signature!(sig.id).expires_at
 
@@ -453,7 +521,7 @@ defmodule Ztripwire.MappingTest do
     {:ok, b} =
       Mapping.add_system_to_map(map, %{solar_system_id: 31_000_202, name: "J100202"})
 
-    {:ok, conn, _new?} = Mapping.upsert_connection(map.id, a.id, b.id, %{})
+    {:ok, conn, _new?} = Mapping.upsert_connection(map.mask_id, a.id, b.id, %{})
     assert conn.hole_type in [nil, ""]
 
     :ok = Mapping.sync_signature_to_connections(map, a, nil, "B274")
@@ -466,7 +534,7 @@ defmodule Ztripwire.MappingTest do
       Mapping.add_system_to_map(map, %{solar_system_id: 31_000_203, name: "J100203"})
 
     {:ok, other, _new?} =
-      Mapping.upsert_connection(map.id, a.id, c.id, %{hole_type: "K162"})
+      Mapping.upsert_connection(map.mask_id, a.id, c.id, %{hole_type: "K162"})
 
     :ok = Mapping.sync_signature_to_connections(map, a, nil, "B274")
     assert Mapping.get_connection!(other.id).hole_type == "K162"
@@ -482,7 +550,7 @@ defmodule Ztripwire.MappingTest do
 
     {:ok, _} = Mapping.upsert_system_stat(system, %{jumps: 12, kills: 3, visits: 0})
 
-    stats = Mapping.list_system_stats(map.id)
+    stats = Mapping.list_system_stats(map.mask_id)
     assert stats[system.id].jumps == 12
     assert stats[system.id].kills == 3
   end
@@ -518,14 +586,25 @@ defmodule Ztripwire.MappingTest do
 
   test "delete_map_full/1 removes systems, connections, and signatures", %{mask: mask} do
     [map] = Mapping.list_maps_for_mask(mask.id)
-    [system | _] = Mapping.list_systems(map.id)
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_099, name: "Delete Map"})
+
+    {:ok, system} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_099, name: "J999999"})
+
+    {:ok, _sig} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "AAA-999", kind: "signature", site_type: "unknown"},
+        character
+      )
+
     assert Mapping.list_signatures(system.id) != []
 
     {:ok, deleted} = Mapping.delete_map_full(map)
 
     assert Mapping.list_maps_for_mask(mask.id) == []
-    assert Mapping.list_systems(deleted.id) == []
-    assert Mapping.list_connections(deleted.id) == []
+    assert Mapping.list_systems(deleted.mask_id) == []
+    assert Mapping.list_connections(deleted.mask_id) == []
     assert Mapping.list_signatures(system.id) == []
   end
 
@@ -539,7 +618,7 @@ defmodule Ztripwire.MappingTest do
     {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_502, name: "J500002"})
     {:ok, _c} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_503, name: "J500003"})
 
-    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "N770"})
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, a.id, b.id, %{hole_type: "N770"})
 
     {:ok, _} =
       Mapping.create_signature(
@@ -558,9 +637,9 @@ defmodule Ztripwire.MappingTest do
 
     assert {1, 0, 2} = Mapping.sync_map_after_signature_change(a, deleted)
 
-    assert Mapping.connection_between(map.id, a.id, b.id) == nil
-    assert length(Mapping.list_systems(map.id)) == 3
-    assert Enum.map(Mapping.list_visible_systems(map.id), & &1.name) == ["J500003"]
+    assert Mapping.connection_between(map.mask_id, a.id, b.id) == nil
+    assert length(Mapping.list_systems(map.mask_id)) == 3
+    assert Enum.map(Mapping.list_visible_systems(map.mask_id), & &1.name) == ["J500003"]
   end
 
   test "sync_map_after_signature_change/2 hides chains detached from the home system", %{
@@ -579,8 +658,8 @@ defmodule Ztripwire.MappingTest do
         home_name: home.name
       })
 
-    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, a.id, %{hole_type: "N770"})
-    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "B274"})
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, home.id, a.id, %{hole_type: "N770"})
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, a.id, b.id, %{hole_type: "B274"})
 
     {:ok, sig} =
       Mapping.create_signature(
@@ -597,7 +676,7 @@ defmodule Ztripwire.MappingTest do
     {:ok, _deleted} = Mapping.delete_signature(sig, character)
     assert {1, 0, 2} = Mapping.sync_map_after_signature_change(a, [sig])
 
-    assert Enum.map(Mapping.list_visible_systems(map.id), & &1.name) == ["J500031"]
+    assert Enum.map(Mapping.list_visible_systems(map.mask_id), & &1.name) == ["J500031"]
     assert is_nil(Mapping.get_system!(home.id).hidden_at)
 
     assert Enum.map(Mapping.list_chain_systems(map, true), & &1.name) |> Enum.sort() ==
@@ -613,7 +692,7 @@ defmodule Ztripwire.MappingTest do
     {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_541, name: "J500041"})
     {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_542, name: "J500042"})
 
-    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "N770"})
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, a.id, b.id, %{hole_type: "N770"})
 
     {:ok, sig_a} =
       Mapping.create_signature(
@@ -665,7 +744,7 @@ defmodule Ztripwire.MappingTest do
     assert 1 = Mapping.ensure_unknown_nodes(a)
     assert 0 = Mapping.ensure_unknown_nodes(a)
 
-    assert [%{id: a_id}, placeholder] = Mapping.list_systems(map.id)
+    assert [%{id: a_id}, placeholder] = Mapping.list_systems(map.mask_id)
     assert a_id == a.id
     assert placeholder.unknown
     assert placeholder.name == "unknown"
@@ -673,7 +752,7 @@ defmodule Ztripwire.MappingTest do
     assert is_nil(placeholder.sys_class)
     assert is_nil(Ztripwire.Systems.display_class(placeholder))
 
-    assert [conn] = Mapping.list_connections(map.id)
+    assert [conn] = Mapping.list_connections(map.mask_id)
     assert conn.hole_type == "N770"
     assert conn.from_system_id in [a.id, placeholder.id]
     assert conn.to_system_id in [a.id, placeholder.id]
@@ -699,12 +778,12 @@ defmodule Ztripwire.MappingTest do
       )
 
     assert 1 = Mapping.ensure_unknown_nodes(a)
-    [conn] = Mapping.list_connections(map.id)
+    [conn] = Mapping.list_connections(map.mask_id)
 
     {:ok, _} = Mapping.delete_connection(conn)
-    assert :ok = Mapping.delete_unlinked_unknowns(map.id)
+    assert :ok = Mapping.delete_unlinked_unknowns(map.mask_id)
 
-    assert Enum.map(Mapping.list_systems(map.id), & &1.name) == ["J500052"]
+    assert Enum.map(Mapping.list_systems(map.mask_id), & &1.name) == ["J500052"]
   end
 
   test "auto_link_wormholes/2 reuses the placeholder connection for a real target", %{mask: mask} do
@@ -727,7 +806,7 @@ defmodule Ztripwire.MappingTest do
       )
 
     assert 1 = Mapping.ensure_unknown_nodes(a)
-    [placeholder] = Enum.filter(Mapping.list_systems(map.id), & &1.unknown)
+    [placeholder] = Enum.filter(Mapping.list_systems(map.mask_id), & &1.unknown)
 
     {:ok, _sig_b} =
       Mapping.create_signature(
@@ -746,9 +825,9 @@ defmodule Ztripwire.MappingTest do
     assert Mapping.get_system(placeholder.id) == nil
 
     assert %Mapping.MapConnection{hole_type: "N770"} =
-             Mapping.connection_between(map.id, a.id, b.id)
+             Mapping.connection_between(map.mask_id, a.id, b.id)
 
-    assert length(Mapping.list_connections(map.id)) == 1
+    assert length(Mapping.list_connections(map.mask_id)) == 1
   end
 
   test "tree_layout/5 roots detached chains at level 0 beside the home tree" do
@@ -803,7 +882,7 @@ defmodule Ztripwire.MappingTest do
 
     {:ok, map} = Mapping.update_map(map, %{home_solar_system_id: home.solar_system_id})
 
-    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, a.id, %{})
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, home.id, a.id, %{})
 
     assert Enum.map(Mapping.list_chain_systems(map, false), & &1.name) == ["J500041", "J500042"]
 
@@ -819,7 +898,7 @@ defmodule Ztripwire.MappingTest do
     {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_522, name: "J500022"})
     {:ok, c} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_523, name: "J500023"})
 
-    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "N770"})
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, a.id, b.id, %{hole_type: "N770"})
 
     {:ok, sig} =
       Mapping.create_signature(
@@ -835,7 +914,7 @@ defmodule Ztripwire.MappingTest do
 
     {:ok, _deleted} = Mapping.delete_signature(sig, character)
     assert {1, 0, 2} = Mapping.sync_map_after_signature_change(a, [sig])
-    assert Enum.map(Mapping.list_visible_systems(map.id), & &1.name) == ["J500023"]
+    assert Enum.map(Mapping.list_visible_systems(map.mask_id), & &1.name) == ["J500023"]
     assert Enum.map(Mapping.list_chain_systems(map, false), & &1.name) == ["J500023"]
 
     assert Enum.map(Mapping.list_chain_systems(map, true), & &1.name) |> Enum.sort() ==
@@ -953,7 +1032,7 @@ defmodule Ztripwire.MappingTest do
     {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_512, name: "J500012"})
     {:ok, c} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_513, name: "J500013"})
 
-    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "N770"})
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, a.id, b.id, %{hole_type: "N770"})
 
     {:ok, sig} =
       Mapping.create_signature(
@@ -970,9 +1049,9 @@ defmodule Ztripwire.MappingTest do
     {:ok, _deleted} = Mapping.delete_signature(sig, character)
     {1, 0, 2} = Mapping.sync_map_after_signature_change(a, [sig])
 
-    {:ok, _, true} = Mapping.upsert_connection(map.id, a.id, c.id, %{})
+    {:ok, _, true} = Mapping.upsert_connection(map.mask_id, a.id, c.id, %{})
 
-    names = Mapping.list_visible_systems(map.id) |> Enum.map(& &1.name) |> Enum.sort()
+    names = Mapping.list_visible_systems(map.mask_id) |> Enum.map(& &1.name) |> Enum.sort()
     assert names == ["J500011", "J500013"]
   end
 
@@ -1050,9 +1129,9 @@ defmodule Ztripwire.MappingTest do
     assert {0, 1, 0} = Mapping.sync_map_after_signature_change(p, [])
 
     assert %Mapping.MapConnection{hole_type: "Z123"} =
-             Mapping.connection_between(map.id, p.id, q.id)
+             Mapping.connection_between(map.mask_id, p.id, q.id)
 
-    assert Mapping.connection_between(map.id, p.id, r.id) == nil
+    assert Mapping.connection_between(map.mask_id, p.id, r.id) == nil
   end
 
   test "prune_expired_signatures/1 drops connections backed by expired wormholes", %{mask: mask} do
@@ -1062,7 +1141,7 @@ defmodule Ztripwire.MappingTest do
     {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_701, name: "J700001"})
     {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 31_000_702, name: "J700002"})
 
-    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "E175"})
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, a.id, b.id, %{hole_type: "E175"})
 
     {:ok, sig} =
       Mapping.create_signature(
@@ -1081,8 +1160,8 @@ defmodule Ztripwire.MappingTest do
 
     assert {:ok, 1} = Mapping.prune_expired_signatures()
 
-    assert Mapping.connection_between(map.id, a.id, b.id) == nil
-    assert Mapping.list_visible_systems(map.id) == []
-    assert length(Mapping.list_systems(map.id)) == 2
+    assert Mapping.connection_between(map.mask_id, a.id, b.id) == nil
+    assert Mapping.list_visible_systems(map.mask_id) == []
+    assert length(Mapping.list_systems(map.mask_id)) == 2
   end
 end

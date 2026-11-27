@@ -7,6 +7,7 @@ defmodule Ztripwire.Demo.State do
             signatures: [],
             comments: [],
             stats: [],
+            positions: %{},
             members: %{},
             settings: nil,
             layouts: [],

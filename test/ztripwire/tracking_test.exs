@@ -23,7 +23,7 @@ defmodule Ztripwire.TrackingTest do
 
     assert system.name == "SYS-30000014"
     refute connection
-    assert [%Mapping.MapSystem{}] = Mapping.list_systems(map.id)
+    assert [%Mapping.MapSystem{}] = Mapping.list_systems(map.mask_id)
   end
 
   test "apply_location_change/4 links consecutive systems with a connection", %{
@@ -46,9 +46,9 @@ defmodule Ztripwire.TrackingTest do
 
     assert reversed.id == connection.id
 
-    systems = Mapping.list_systems(map.id)
+    systems = Mapping.list_systems(map.mask_id)
     assert length(systems) == 2
-    assert length(Mapping.list_connections(map.id)) == 1
+    assert length(Mapping.list_connections(map.mask_id)) == 1
   end
 
   test "a jump converts the unknown placeholder for the scanned hole in place", %{
@@ -70,8 +70,8 @@ defmodule Ztripwire.TrackingTest do
       )
 
     assert 1 = Mapping.ensure_unknown_nodes(from)
-    [placeholder] = Enum.filter(Mapping.list_systems(map.id), & &1.unknown)
-    [connection] = Mapping.list_connections(map.id)
+    [placeholder] = Enum.filter(Mapping.list_systems(map.mask_id), & &1.unknown)
+    [connection] = Mapping.list_connections(map.mask_id)
 
     {:ok, %{system: system, connection: jumped}} =
       Tracking.apply_location_change(map, character.name, from, 32_000_431, name_fetcher: nf())
@@ -81,8 +81,8 @@ defmodule Ztripwire.TrackingTest do
     assert system.name == "SYS-32000431"
     assert system.solar_system_id == 32_000_431
     assert jumped.id == connection.id
-    assert length(Mapping.list_systems(map.id)) == 2
-    assert length(Mapping.list_connections(map.id)) == 1
+    assert length(Mapping.list_systems(map.mask_id)) == 2
+    assert length(Mapping.list_connections(map.mask_id)) == 1
   end
 
   defp hole_system(map, solar, class) do
@@ -156,7 +156,10 @@ defmodule Ztripwire.TrackingTest do
   test "an existing hole type is not relabeled by a jump", %{map: map, character: character} do
     from = hole_system(map, 31_000_427, "C4")
     to = hole_system(map, 31_000_428, "C2")
-    {:ok, _conn, true} = Mapping.upsert_connection(map.id, from.id, to.id, %{hole_type: "B274"})
+
+    {:ok, _conn, true} =
+      Mapping.upsert_connection(map.mask_id, from.id, to.id, %{hole_type: "B274"})
+
     hole_signature(from, character, "ABC-105", "N766")
 
     {:ok, %{connection: connection}} =
@@ -203,14 +206,14 @@ defmodule Ztripwire.TrackingTest do
   end
 
   test "broadcasts map updates to subscribers", %{map: map, character: character} do
-    Phoenix.PubSub.subscribe(Ztripwire.PubSub, Tracking.map_topic(map.id))
+    Phoenix.PubSub.subscribe(Ztripwire.PubSub, Tracking.mask_topic(map.mask_id))
 
     Tracking.apply_location_change(map, character.name, nil, 33_000_003, name_fetcher: nf())
 
     assert_receive {:system_changed, %{character: "Tracker"}}, 500
 
-    map_id = map.id
-    assert_receive {:map_updated, ^map_id}, 500
+    mask_id = map.mask_id
+    assert_receive {:map_updated, ^mask_id}, 500
   end
 
   test "apply_location_change/4 counts a system visit for the character", %{

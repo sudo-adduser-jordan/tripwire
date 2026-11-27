@@ -2,7 +2,8 @@ defmodule Ztripwire.Mapping.MapSystem do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ztripwire.Mapping.{Comment, Map, Signature}
+  alias Ztripwire.Mapping.{Comment, MapViewSystem, Signature}
+  alias Ztripwire.Masks.Mask
 
   schema "map_systems" do
     field :solar_system_id, :integer
@@ -18,8 +19,9 @@ defmodule Ztripwire.Mapping.MapSystem do
     field :x, :float, default: 0.0
     field :y, :float, default: 0.0
 
-    belongs_to :map, Map
+    belongs_to :mask, Mask
 
+    has_many :view_systems, MapViewSystem, on_delete: :delete_all
     has_many :signatures, Signature, on_delete: :delete_all
     has_many :comments, Comment, on_delete: :delete_all
 
@@ -29,7 +31,7 @@ defmodule Ztripwire.Mapping.MapSystem do
   def changeset(map_system, attrs) do
     map_system
     |> cast(attrs, [
-      :map_id,
+      :mask_id,
       :solar_system_id,
       :name,
       :alias,
@@ -43,7 +45,7 @@ defmodule Ztripwire.Mapping.MapSystem do
       :x,
       :y
     ])
-    |> validate_required([:map_id])
+    |> validate_required([:mask_id])
     |> require_known_fields()
     |> validate_number(:security, greater_than_or_equal_to: -1.0, less_than_or_equal_to: 1.0)
     |> validate_inclusion(:sys_class, Ztripwire.Systems.classes() ++ [nil])

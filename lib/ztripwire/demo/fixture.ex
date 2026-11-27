@@ -564,12 +564,18 @@ defmodule Ztripwire.Demo.Fixture do
     {signatures, state} = build_signatures(state, systems, character, now)
     {comments, state} = build_comments(state, systems, mask, character, now)
 
+    positions =
+      Map.new(systems, fn system ->
+        {{map.id, system.id}, %{x: system.x, y: system.y}}
+      end)
+
     %{
       state
       | systems: systems,
         connections: connections,
         signatures: signatures,
-        comments: comments
+        comments: comments,
+        positions: positions
     }
   end
 
@@ -579,7 +585,7 @@ defmodule Ztripwire.Demo.Fixture do
 
       system = %MapSystem{
         id: id,
-        map_id: map.id,
+        mask_id: map.mask_id,
         solar_system_id: attrs[:solar_system_id],
         name: attrs[:name],
         alias: attrs[:alias],
@@ -607,7 +613,7 @@ defmodule Ztripwire.Demo.Fixture do
 
       connection = %MapConnection{
         id: id,
-        map_id: map.id,
+        mask_id: map.mask_id,
         from_system_id: from.id,
         to_system_id: to.id,
         from_system: from,

@@ -8,13 +8,13 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
   def update(assigns, socket) do
     systems =
       case Map.get(assigns, :systems) do
-        nil -> Mapping.list_systems(assigns.map_id)
+        nil -> Mapping.list_systems(assigns.mask_id)
         systems -> systems
       end
 
     connections =
       Map.get_lazy(assigns, :connections, fn ->
-        Mapping.list_connections_with_endpoints(assigns.map_id)
+        Mapping.list_connections_with_endpoints(assigns.mask_id)
       end)
 
     chart_system = Map.get(assigns, :chart_system)

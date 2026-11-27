@@ -54,7 +54,7 @@ defmodule Ztripwire.MasksTest do
         y: 50.0
       })
 
-    assert [%Mapping.MapSystem{} = loaded] = Mapping.list_systems(map.id)
+    assert [%Mapping.MapSystem{} = loaded] = Mapping.list_systems(map.mask_id)
     assert loaded.id == system.id
     assert loaded.name == "J150321"
   end
@@ -91,7 +91,7 @@ defmodule Ztripwire.MasksTest do
 
     assert Masks.list_masks_for_character(character.id) == []
     assert Mapping.list_maps_for_mask(mask.id) == []
-    assert Mapping.list_systems(map.id) == []
+    assert Mapping.list_systems(map.mask_id) == []
     assert Mapping.list_signatures(system.id) == []
   end
 

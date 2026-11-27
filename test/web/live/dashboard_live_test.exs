@@ -152,7 +152,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
   test "the demo map hints the closing loop edge without drawing it", %{conn: conn} do
     state = Demo.fixture()
     map = hd(state.maps)
-    connections = Demo.list_connections_with_endpoints(state, map.id)
+    connections = Demo.list_connections_with_endpoints(state, map.mask_id)
     cycle = Mapping.cycle_connection_ids(connections)
 
     {closing, from, to} =
@@ -440,7 +440,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     [map] = Repo.all(Mapping.Map)
-    [system] = Mapping.list_systems(map.id)
+    [system] = Mapping.list_systems(map.mask_id)
     on_exit(fn -> Ztripwire.Tracking.stop_poller(character) end)
 
     {:ok, _} =
@@ -878,7 +878,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     [map] = Mapping.list_maps_for_mask(mask.id)
     systems = map |> Mapping.list_chain_systems(Settings.get().show_all)
 
-    home = Enum.find(Mapping.list_systems(map.id), &(&1.name == "Jita"))
+    home = Enum.find(Mapping.list_systems(map.mask_id), &(&1.name == "Jita"))
 
     node = view |> element("#node-#{home.id}") |> render()
 
@@ -1040,6 +1040,10 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {mask, map, system}
   end
 
+  defp view_pos(map, system_id) do
+    Map.fetch!(Mapping.view_positions(map), system_id)
+  end
+
   defp seed_catalog(entries) do
     Systems.Catalog.put_systems(entries)
     on_exit(fn -> Systems.Catalog.clear() end)
@@ -1069,7 +1073,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, placeholder} = Mapping.add_unknown_system(map)
 
     {:ok, _, _} =
-      Mapping.upsert_connection(map.id, system.id, placeholder.id, %{hole_type: "N770"})
+      Mapping.upsert_connection(map.mask_id, system.id, placeholder.id, %{hole_type: "N770"})
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -1173,7 +1177,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, far} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
 
     {:ok, _connection, true} =
-      Mapping.upsert_connection(map.id, system.id, far.id, %{hole_type: "K162"})
+      Mapping.upsert_connection(map.mask_id, system.id, far.id, %{hole_type: "K162"})
 
     {:ok, sig} =
       Mapping.create_signature(
@@ -1220,7 +1224,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert NaiveDateTime.diff(updated.expires_at, updated.inserted_at) == 14_400
     assert updated.type_name == "Unstable Wormhole (K162)"
 
-    connection = Mapping.connection_between(map.id, system.id, far.id)
+    connection = Mapping.connection_between(map.mask_id, system.id, far.id)
     assert connection.mass_status == "critical"
     assert connection.time_status == "critical"
 
@@ -1251,6 +1255,48 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert [%Mapping.Signature{} = sig] = Mapping.list_signatures(system.id)
     assert sig.sig_id == "ABC-123"
     assert sig.type_name == "Unstable Wormhole (Z647)"
+  end
+
+  test "signatures pasted on one tab show on every tab of the mask", %{
+    conn: conn,
+    character: character
+  } do
+    {mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, _map} =
+      Mapping.update_map(map, %{
+        home_solar_system_id: system.solar_system_id,
+        home_name: system.name
+      })
+
+    {:ok, _second} =
+      Mapping.create_map(%{
+        name: "Chain 2",
+        mask_id: mask.id,
+        home_solar_system_id: system.solar_system_id,
+        home_name: system.name
+      })
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    view
+    |> render_click("global-paste", %{
+      "text" => "ABC-123\tCosmic Signature\tUnstable Wormhole (Z647)"
+    })
+
+    view |> element("#chainTabs button[title='Chain 2']") |> render_click()
+
+    view
+    |> element("#system-container button[title='Select system J150321']")
+    |> render_click()
+
+    assert render(view) =~ "ABC-123"
+    assert render(view) =~ "Unstable Wormhole (Z647)"
+    assert [%Mapping.Signature{}] = Mapping.list_signatures(system.id)
   end
 
   test "global paste offers to delete signatures missing from the paste", %{
@@ -1296,7 +1342,8 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, neighbour} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
     {:ok, lone} = Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323"})
 
-    {:ok, _, _} = Mapping.upsert_connection(map.id, system.id, neighbour.id, %{hole_type: "O477"})
+    {:ok, _, _} =
+      Mapping.upsert_connection(map.mask_id, system.id, neighbour.id, %{hole_type: "O477"})
 
     {:ok, _} =
       Mapping.create_signature(
@@ -1329,7 +1376,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     refute html =~ "stale-toast"
     refute html =~ "ABC-123"
 
-    assert Mapping.connection_between(map.id, system.id, neighbour.id) == nil
+    assert Mapping.connection_between(map.mask_id, system.id, neighbour.id) == nil
 
     assert %Mapping.MapSystem{hidden_at: hidden} = Mapping.get_system!(neighbour.id)
     refute is_nil(hidden)
@@ -1349,10 +1396,10 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, leaf} = Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323"})
 
     {:ok, home_link, _} =
-      Mapping.upsert_connection(map.id, home.id, branch.id, %{hole_type: "N770"})
+      Mapping.upsert_connection(map.mask_id, home.id, branch.id, %{hole_type: "N770"})
 
     {:ok, branch_link, _} =
-      Mapping.upsert_connection(map.id, branch.id, leaf.id, %{hole_type: "B274"})
+      Mapping.upsert_connection(map.mask_id, branch.id, leaf.id, %{hole_type: "B274"})
 
     {:ok, _} =
       Mapping.create_signature(
@@ -1393,8 +1440,8 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     view |> element("#stale-toast button[phx-click='delete-stale']") |> render_click()
 
-    assert Mapping.connection_between(map.id, home.id, branch.id) == nil
-    assert Mapping.connection_between(map.id, branch.id, leaf.id) != nil
+    assert Mapping.connection_between(map.mask_id, home.id, branch.id) == nil
+    assert Mapping.connection_between(map.mask_id, branch.id, leaf.id) != nil
     refute is_nil(Mapping.get_system!(branch.id).hidden_at)
     assert is_nil(Mapping.get_system!(home.id).hidden_at)
     assert Mapping.list_signatures(home.id) |> Enum.map(& &1.sig_id) == ["NEW-002"]
@@ -1417,13 +1464,13 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, a} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
     {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323"})
 
-    {:ok, first, _} = Mapping.upsert_connection(map.id, home.id, a.id)
-    {:ok, second, _} = Mapping.upsert_connection(map.id, a.id, b.id)
-    {:ok, closing, _} = Mapping.upsert_connection(map.id, b.id, home.id)
+    {:ok, first, _} = Mapping.upsert_connection(map.mask_id, home.id, a.id)
+    {:ok, second, _} = Mapping.upsert_connection(map.mask_id, a.id, b.id)
+    {:ok, closing, _} = Mapping.upsert_connection(map.mask_id, b.id, home.id)
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    connections = Mapping.list_connections_with_endpoints(map.id)
+    connections = Mapping.list_connections_with_endpoints(map.mask_id)
     assert [cycle_id] = Mapping.cycle_connection_ids(connections) |> MapSet.to_list()
     assert cycle_id == closing.id
     assert cycle_id > first.id and cycle_id > second.id
@@ -1448,9 +1495,9 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, b} = Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323"})
     {:ok, jita} = Mapping.add_system_to_map(map, %{solar_system_id: 4, name: "J150324"})
 
-    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, a.id, %{hole_type: "N770"})
-    {:ok, _, _} = Mapping.upsert_connection(map.id, a.id, b.id, %{hole_type: "B274"})
-    {:ok, _, _} = Mapping.upsert_connection(map.id, b.id, jita.id, %{hole_type: "A641"})
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, home.id, a.id, %{hole_type: "N770"})
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, a.id, b.id, %{hole_type: "B274"})
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, b.id, jita.id, %{hole_type: "A641"})
 
     {:ok, _} =
       Mapping.create_signature(
@@ -1482,7 +1529,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
       assert {system.x, system.y} == {before[id].x, before[id].y}
     end
 
-    link = Mapping.connection_between(map.id, home.id, jita.id)
+    link = Mapping.connection_between(map.mask_id, home.id, jita.id)
     assert %Mapping.MapConnection{} = link
     refute has_element?(view, "#connection-#{link.id}")
 
@@ -1524,7 +1571,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     assert %Mapping.MapConnection{hole_type: "M555"} =
              connection =
-             Mapping.connection_between(map.id, system.id, jita.id)
+             Mapping.connection_between(map.mask_id, system.id, jita.id)
 
     assert render(view) =~ "connection-#{connection.id}"
   end
@@ -1585,7 +1632,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, other} =
       Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 880.0, y: 612.0})
 
-    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.mask_id, system.id, other.id)
 
     {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
 
@@ -1596,7 +1643,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     |> element("#chain-zoom-reset")
     |> render_click()
 
-    systems = Mapping.list_systems(map.id)
+    systems = Mapping.list_chain_systems(map, true)
     {pan_x, pan_y} = Mapping.home_center(systems, map)
 
     assert_push_event(view, "reset-pan", %{x: x, y: y, zoom: zoom})
@@ -1637,12 +1684,13 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     |> element("#chain-zoom-reset")
     |> render_click()
 
-    [system] = map.id |> Mapping.list_systems()
+    [system] = map.mask_id |> Mapping.list_systems()
     {node_w, _node_h} = Mapping.node_size()
+    {system_x, system_y} = view_pos(map, system.id)
 
     assert_push_event(view, "reset-pan", %{x: x, y: y})
-    assert_in_delta x, system.x + node_w / 2 - 625.0, 0.001
-    assert_in_delta y, system.y - 40.0, 0.001
+    assert_in_delta x, system_x + node_w / 2 - 625.0, 0.001
+    assert_in_delta y, system_y - 40.0, 0.001
   end
 
   test "header lock button toggles server-side and yellows when locked", %{
@@ -1675,7 +1723,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, other} =
       Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 200.0})
 
-    {:ok, link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
+    {:ok, link, _new?} = Mapping.upsert_connection(map.mask_id, system.id, other.id)
 
     {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
 
@@ -1703,7 +1751,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
       Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 200.0})
 
     {:ok, _link, _new?} =
-      Mapping.upsert_connection(map.id, system.id, other.id, %{hole_type: "K162"})
+      Mapping.upsert_connection(map.mask_id, system.id, other.id, %{hole_type: "K162"})
 
     {:ok, _} =
       Mapping.create_signature(
@@ -1738,7 +1786,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, unknown} = Mapping.add_unknown_system(map)
 
     {:ok, _connection, _new?} =
-      Mapping.upsert_connection(map.id, system.id, unknown.id, %{hole_type: "K162"})
+      Mapping.upsert_connection(map.mask_id, system.id, unknown.id, %{hole_type: "K162"})
 
     {:ok, sig} =
       Mapping.create_signature(
@@ -1789,7 +1837,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, unknown} = Mapping.add_unknown_system(map)
 
     {:ok, _connection, _new?} =
-      Mapping.upsert_connection(map.id, system.id, unknown.id, %{hole_type: "K162"})
+      Mapping.upsert_connection(map.mask_id, system.id, unknown.id, %{hole_type: "K162"})
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -1895,7 +1943,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, unknown} = Mapping.add_unknown_system(map)
 
     {:ok, _connection, _new?} =
-      Mapping.upsert_connection(map.id, system.id, unknown.id, %{hole_type: "K162"})
+      Mapping.upsert_connection(map.mask_id, system.id, unknown.id, %{hole_type: "K162"})
 
     {:ok, sig} =
       Mapping.create_signature(
@@ -1936,7 +1984,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     refute reloaded.unknown
     assert reloaded.name == "Class-5"
     assert reloaded.sys_class == "C5"
-    assert Mapping.connection_between(map.id, system.id, unknown.id)
+    assert Mapping.connection_between(map.mask_id, system.id, unknown.id)
   end
 
   test "j-space nodes show static badges on the bottom edge", %{
@@ -2043,7 +2091,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, _other} =
       Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323", x: 600.0, y: 200.0})
 
-    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, first.id, second.id)
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.mask_id, first.id, second.id)
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -2129,7 +2177,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     assert view |> element("#system-container") |> render() =~ "Perimeter"
     assert view |> element("#topbar-system") |> render() =~ "Perimeter"
-    assert length(Mapping.list_systems(map.id)) == 2
+    assert length(Mapping.list_systems(map.mask_id)) == 2
   end
 
   test "system widget lists no gate neighbours without gate data", %{
@@ -2164,7 +2212,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, other} =
       Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 0.0, y: 300.0})
 
-    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.mask_id, system.id, other.id)
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -2176,8 +2224,8 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     |> element(~s|#settings-widget form[phx-change="map-layout"]|)
     |> render_change(%{"layout" => "default"})
 
-    assert Mapping.get_system!(system.id).y == 60.0
-    assert Mapping.get_system!(other.id).y == 220.0
+    assert elem(view_pos(map, system.id), 1) == 60.0
+    assert elem(view_pos(map, other.id), 1) == 220.0
     assert Settings.get().map_layout == "top"
   end
 
@@ -2216,7 +2264,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
       Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
 
     {:ok, _link, _new?} =
-      Mapping.upsert_connection(map.id, system.id, other.id, %{hole_type: "B274"})
+      Mapping.upsert_connection(map.mask_id, system.id, other.id, %{hole_type: "B274"})
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -2254,11 +2302,11 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, other} =
       Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322", x: 300.0, y: 200.0})
 
-    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.mask_id, system.id, other.id)
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
-    assert Mapping.get_system!(other.id).y == 220.0
+    assert elem(view_pos(map, other.id), 1) == 220.0
 
     view |> element("#settings-button") |> render_click()
 
@@ -2266,7 +2314,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     |> element(~s|#settings-widget form[phx-change="node-spacing"]|)
     |> render_change(%{spacing: "200"})
 
-    assert Mapping.get_system!(other.id).y == 380.0
+    assert elem(view_pos(map, other.id), 1) == 380.0
     assert Settings.get().node_spacing == 200
   end
 
@@ -2379,7 +2427,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert_patch(view, "/Rancer")
     assert view |> element("#topbar-system") |> render() =~ "Rancer"
     assert view |> element("#system-container") |> render() =~ "Rancer"
-    assert length(Mapping.list_systems(map.id)) == 1
+    assert length(Mapping.list_systems(map.mask_id)) == 1
     assert view |> element("#system-search") |> render() =~ ~s|value=""|
   end
 
@@ -2399,7 +2447,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert_patch(view, "/Rancer")
     assert view |> element("#topbar-system") |> render() =~ "Rancer"
     assert view |> element("#system-container") |> render() =~ "Rancer"
-    assert length(Mapping.list_systems(map.id)) == 1
+    assert length(Mapping.list_systems(map.mask_id)) == 1
   end
 
   test "typing in system search sends nothing until submit", %{conn: conn} do
@@ -2418,7 +2466,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, other} =
       Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
 
-    {:ok, _link, _new?} = Mapping.upsert_connection(map.id, system.id, other.id)
+    {:ok, _link, _new?} = Mapping.upsert_connection(map.mask_id, system.id, other.id)
 
     {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
 
@@ -2481,7 +2529,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
   test "adding a note leaves signatures untouched", %{conn: conn, character: character} do
     {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
 
-    {:ok, sig} = Mapping.create_signature(system, %{sig_id: "ABC-123"}, character)
+    {:ok, _sig} = Mapping.create_signature(system, %{sig_id: "ABC-123"}, character)
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -2552,7 +2600,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, detached} = Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323"})
     {:ok, lone} = Mapping.add_system_to_map(map, %{solar_system_id: 4, name: "J150324"})
 
-    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, child.id, %{hole_type: "ABC"})
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, home.id, child.id, %{hole_type: "ABC"})
 
     hidden_at = DateTime.utc_now() |> DateTime.truncate(:second)
     {:ok, _} = Mapping.update_system(detached, %{hidden_at: hidden_at})
@@ -2576,12 +2624,12 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert html =~ "J150324"
     assert Settings.get().show_all
 
-    assert Mapping.get_system!(home.id).y == 60.0
-    assert Mapping.get_system!(child.id).y == 220.0
-    assert Mapping.get_system!(detached.id).y == 60.0
-    assert Mapping.get_system!(lone.id).y == 60.0
+    assert elem(view_pos(map, home.id), 1) == 60.0
+    assert elem(view_pos(map, child.id), 1) == 220.0
+    assert elem(view_pos(map, detached.id), 1) == 60.0
+    assert elem(view_pos(map, lone.id), 1) == 60.0
 
-    xs = Enum.map([home, detached, lone], &Mapping.get_system!(&1.id).x)
+    xs = Enum.map([home, detached, lone], &elem(view_pos(map, &1.id), 0))
     assert xs == Enum.uniq(xs)
   end
 
@@ -2627,6 +2675,32 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert Mapping.get_map!(map.id).name == "Home"
   end
 
+  test "a new tab shares the mask chain and gets its own layout", %{
+    conn: conn,
+    character: character
+  } do
+    {mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, map} =
+      Mapping.update_map(map, %{
+        home_solar_system_id: system.solar_system_id,
+        home_name: system.name
+      })
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    view |> element("#newTab") |> render_click()
+
+    assert has_element?(view, "#chainTabs button[title='Chain 2']")
+    assert render(view) =~ "J150321"
+
+    second = mask.id |> Mapping.list_maps_for_mask() |> List.last()
+    assert second.id != map.id
+    assert Enum.any?(Mapping.list_systems(second.mask_id), &(&1.id == system.id))
+    assert Map.has_key?(Mapping.view_positions(second), system.id)
+    assert Map.has_key?(Mapping.view_positions(map), system.id)
+  end
+
   test "the edit map modal deletes the selected map and opens the next one", %{
     conn: conn,
     character: character
@@ -2644,7 +2718,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     assert [remaining] = Mapping.list_maps_for_mask(mask.id)
     assert remaining.id == second.id
-    assert Mapping.get_system(system.id) == nil
+    assert Mapping.get_system(system.id)
     assert Mapping.get_system(other.id)
 
     html = render(view)
@@ -2693,7 +2767,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert [restored] = Mapping.list_maps_for_mask(mask.id)
     assert restored.id != map.id
     assert restored.name == "Home"
-    assert Enum.any?(Mapping.list_systems(restored.id), &(&1.name == "Jita"))
+    assert Enum.any?(Mapping.list_systems(restored.mask_id), &(&1.name == "Jita"))
 
     html = render(view)
     assert html =~ "Deleted Home"
@@ -2743,7 +2817,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     {:ok, child} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
     {:ok, orphan} = Mapping.add_system_to_map(map, %{solar_system_id: 3, name: "J150323"})
-    {:ok, _, _} = Mapping.upsert_connection(map.id, home.id, child.id)
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, home.id, child.id)
 
     {:ok, view, html} = live(login(conn, character), ~p"/dashboard")
 
@@ -2767,7 +2841,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
   } do
     {_mask, map, home} = setup_with_system(%{character: character}, "J150321")
     {:ok, child} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
-    {:ok, link, _} = Mapping.upsert_connection(map.id, home.id, child.id)
+    {:ok, link, _} = Mapping.upsert_connection(map.mask_id, home.id, child.id)
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -2777,14 +2851,14 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     |> element(~s|#settings-widget form[phx-change="map-layout"]|)
     |> render_change(%{layout: "bottom"})
 
-    home = Mapping.get_system!(home.id)
-    child = Mapping.get_system!(child.id)
+    {home_x, home_y} = view_pos(map, home.id)
+    {child_x, child_y} = view_pos(map, child.id)
 
     path = view |> element("#connection-#{link.id}") |> render()
     {node_w, node_h} = Mapping.node_size()
 
-    assert path =~ "M #{home.x + node_w / 2} #{home.y + node_h / 2}"
-    assert path =~ "L #{child.x + node_w / 2} #{child.y + node_h / 2}"
+    assert path =~ "M #{home_x + node_w / 2} #{home_y + node_h / 2}"
+    assert path =~ "L #{child_x + node_w / 2} #{child_y + node_h / 2}"
   end
 
   test "map-layout rearranges the tree", %{conn: conn, character: character} do
@@ -2799,7 +2873,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, mask} = Masks.ensure_personal_mask(character)
     [map] = Mapping.list_maps_for_mask(mask.id)
 
-    home = Enum.find(Mapping.list_systems(map.id), &(&1.name == "Jita"))
+    home = Enum.find(Mapping.list_systems(map.mask_id), &(&1.name == "Jita"))
 
     node = view |> element("#node-#{home.id}") |> render()
 
@@ -2987,7 +3061,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, target} = Mapping.add_system_to_map(map, %{solar_system_id: 2, name: "J150322"})
 
     {:ok, _, _} =
-      Mapping.upsert_connection(map.id, system.id, target.id, %{
+      Mapping.upsert_connection(map.mask_id, system.id, target.id, %{
         hole_type: "N770",
         mass_status: "destab"
       })
@@ -3086,7 +3160,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     conn: conn,
     character: character
   } do
-    {_mask, _map, system} = setup_with_system(%{character: character}, "J000000")
+    {_mask, map, system} = setup_with_system(%{character: character}, "J000000")
 
     {:ok, _} =
       Mapping.create_signature(
@@ -3103,12 +3177,12 @@ defmodule ZtripwireWeb.DashboardLiveTest do
       )
 
     {:ok, other} =
-      Mapping.add_system_to_map(Mapping.get_map!(system.map_id), %{
+      Mapping.add_system_to_map(map, %{
         solar_system_id: 2,
         name: "J000001"
       })
 
-    {:ok, _, _} = Mapping.upsert_connection(system.map_id, system.id, other.id, %{})
+    {:ok, _, _} = Mapping.upsert_connection(map.mask_id, system.id, other.id, %{})
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -3462,7 +3536,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     |> render_click()
 
     [map] = Mapping.list_maps_for_mask(mask.id)
-    jita = Enum.find(Mapping.list_systems(map.id), &(&1.name == "Jita"))
+    jita = Enum.find(Mapping.list_systems(map.mask_id), &(&1.name == "Jita"))
 
     assert jita
     assert [%{body: shortcuts}, %{body: markdown}] = Mapping.list_comments(jita.id)
@@ -3484,7 +3558,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     |> element(~s|button[phx-click="switch-mask"][phx-value-id="#{mask.id}"]|)
     |> render_click()
 
-    jita = Enum.find(Mapping.list_systems(map.id), &(&1.name == "Jita"))
+    jita = Enum.find(Mapping.list_systems(map.mask_id), &(&1.name == "Jita"))
 
     assert jita
     assert [%{body: shortcuts}, %{body: markdown}] = Mapping.list_comments(jita.id)
@@ -3868,7 +3942,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     assert view |> element("#topbar-mask") |> render() =~ "Persisted Corp"
     assert [map] = Mapping.list_maps_for_mask(mask.id)
-    assert Enum.any?(Mapping.list_systems(map.id), &(&1.name == "Jita"))
+    assert Enum.any?(Mapping.list_systems(map.mask_id), &(&1.name == "Jita"))
   end
 
   test "switching masks stores the choice in the session", %{

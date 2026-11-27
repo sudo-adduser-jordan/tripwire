@@ -14,7 +14,7 @@ defmodule Ztripwire.DemoTest do
     assert map.home_solar_system_id == 31_000_001
     assert map.home_name == "J150321"
 
-    systems = Demo.list_systems(state, map.id)
+    systems = Demo.list_systems(state, map.mask_id)
     assert length(systems) == 27
     assert length(Demo.list_chain_systems(state, map, false)) == 27
     assert Enum.count(systems, & &1.unknown) == 2
@@ -28,7 +28,7 @@ defmodule Ztripwire.DemoTest do
   test "the fixture loops one hole between the C6 and Amarr" do
     state = Demo.fixture()
     map = hd(state.maps)
-    connections = Demo.list_connections_with_endpoints(state, map.id)
+    connections = Demo.list_connections_with_endpoints(state, map.mask_id)
 
     assert length(connections) == 27
 
@@ -45,7 +45,7 @@ defmodule Ztripwire.DemoTest do
     state = Demo.fixture()
     map = hd(state.maps)
     systems = Demo.list_chain_systems(state, map, false)
-    connections = Demo.list_connections_with_endpoints(state, map.id)
+    connections = Demo.list_connections_with_endpoints(state, map.mask_id)
     home = Enum.find(systems, &(&1.alias == "Home"))
 
     positions =
@@ -60,7 +60,7 @@ defmodule Ztripwire.DemoTest do
   test "demo occupants stack at home and the trade hubs and spread through the chain" do
     state = Demo.fixture()
     map = hd(state.maps)
-    occupants = Demo.occupants(state, map.id)
+    occupants = Demo.occupants(state, map.mask_id)
 
     assert length(occupants) == 11
 
@@ -93,15 +93,15 @@ defmodule Ztripwire.DemoTest do
     {{:ok, _}, state} =
       Demo.update_character(state, state.character.id, fn _ -> %{character_on_chain: false} end)
 
-    occupants = Demo.occupants(state, map.id)
+    occupants = Demo.occupants(state, map.mask_id)
     assert length(occupants) == 10
     refute Enum.any?(occupants, &(&1.character_name == "Demo User"))
 
     {_result, state} = Demo.set_tracking(state, false)
-    assert Demo.occupants(state, map.id) == []
+    assert Demo.occupants(state, map.mask_id) == []
 
     {_result, state} = Demo.set_tracking(state, true)
-    assert Demo.occupants(state, map.id + 1) == []
+    assert Demo.occupants(state, map.mask_id + 1) == []
   end
 
   test "paste sync updates signatures and hides detached branches" do
@@ -158,7 +158,7 @@ defmodule Ztripwire.DemoTest do
     [fresh] = state.maps
 
     assert fresh.name == "Demo"
-    assert length(Demo.list_systems(state, fresh.id)) == 27
+    assert length(Demo.list_systems(state, fresh.mask_id)) == 27
   end
 
   test "saved demo layouts apply and delete" do
@@ -208,6 +208,6 @@ defmodule Ztripwire.DemoTest do
     assert converted.sys_class == "C4"
     assert converted.effect == "Magnetar"
     assert converted.statics == ["C247", "H900"]
-    assert length(Demo.list_systems(state, unknown.map_id)) == 27
+    assert length(Demo.list_systems(state, unknown.mask_id)) == 27
   end
 end

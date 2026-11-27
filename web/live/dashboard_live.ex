@@ -91,7 +91,7 @@ defmodule ZtripwireWeb.DashboardLive do
           []
 
         map ->
-          Data.occupants(data(socket), map.id, socket.assigns[:mask])
+          Data.occupants(data(socket), map.mask_id, socket.assigns[:mask])
           |> Enum.filter(&mask_member?(&1, socket.assigns[:mask]))
           |> Enum.map(&put_ship_type_name(&1, presences))
       end
@@ -168,7 +168,7 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(settings)
     |> assign_layouts()
     |> assign(:systems, Demo.list_chain_systems(state, map, settings.show_all))
-    |> assign(:connections, Demo.list_connections_with_endpoints(state, map.id))
+    |> assign(:connections, Demo.list_connections_with_endpoints(state, map.mask_id))
     |> refresh_occupants()
     |> apply_tree_layout(settings.map_layout)
     |> assign_blank_view()
@@ -219,8 +219,8 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   @impl true
-  def handle_info({:map_updated, map_id}, %{assigns: %{map: map}} = socket)
-      when not is_nil(map) and map_id == map.id do
+  def handle_info({:map_updated, mask_id}, %{assigns: %{map: map}} = socket)
+      when not is_nil(map) and mask_id == map.mask_id do
     {:noreply,
      socket
      |> apply_tree_layout(socket.assigns.map_layout || "top")}
@@ -263,12 +263,12 @@ defmodule ZtripwireWeb.DashboardLive do
     {:noreply, toggle_favorite(socket)}
   end
 
-  def handle_info({:systems_updated, map_id}, %{assigns: %{map: map}} = socket)
-      when not is_nil(map) and map_id == map.id do
+  def handle_info({:systems_updated, mask_id}, %{assigns: %{map: map}} = socket)
+      when not is_nil(map) and mask_id == map.mask_id do
     {:noreply,
      socket
      |> assign(:systems, chain_systems(socket, map))
-     |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map_id))}
+     |> assign(:connections, Data.list_connections_with_endpoints(data(socket), mask_id))}
   end
 
   def handle_info({:comments_updated, system_id}, socket) do
@@ -1394,10 +1394,10 @@ defmodule ZtripwireWeb.DashboardLive do
 
         Phoenix.PubSub.unsubscribe(
           Ztripwire.PubSub,
-          Ztripwire.Tracking.map_topic(socket.assigns.map.id)
+          Ztripwire.Tracking.mask_topic(socket.assigns.map.mask_id)
         )
 
-        Phoenix.PubSub.subscribe(Ztripwire.PubSub, Ztripwire.Tracking.map_topic(map.id))
+        Phoenix.PubSub.subscribe(Ztripwire.PubSub, Ztripwire.Tracking.mask_topic(map.mask_id))
 
         {:noreply,
          socket
@@ -1405,7 +1405,7 @@ defmodule ZtripwireWeb.DashboardLive do
          |> assign(:map, map)
          |> assign(:maps, Data.list_maps_for_mask(data(socket), mask.id))
          |> assign(:systems, chain_systems(socket, map))
-         |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.id))
+         |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.mask_id))
          |> assign(:selected_system_id, nil)
          |> assign(:selected_system_name, nil)
          |> assign(:chart_system, nil)
@@ -1427,8 +1427,22 @@ defmodule ZtripwireWeb.DashboardLive do
       mask = socket.assigns.mask
       count = length(Data.list_maps_for_mask(data(socket), mask.id))
       name = "Chain #{count + 1}"
+      current = socket.assigns.map
 
-      case Data.create_map(data(socket), %{name: name, mask_id: mask.id}) do
+      attrs =
+        %{name: name, mask_id: mask.id}
+        |> then(fn attrs ->
+          if current do
+            Map.merge(attrs, %{
+              home_solar_system_id: current.home_solar_system_id,
+              home_name: current.home_name
+            })
+          else
+            attrs
+          end
+        end)
+
+      case Data.create_map(data(socket), attrs) do
         {{:ok, map}, data} ->
           socket = put_data(socket, data)
 
@@ -1436,6 +1450,7 @@ defmodule ZtripwireWeb.DashboardLive do
            socket
            |> assign(:maps, Data.list_maps_for_mask(data(socket), mask.id))
            |> assign_active_map(map)
+           |> apply_tree_layout(socket.assigns.map_layout || "top")
            |> put_flash(:info, "Created #{name}")}
 
         {{:error, changeset}, data} ->
@@ -1527,7 +1542,7 @@ defmodule ZtripwireWeb.DashboardLive do
          |> assign(:systems, chain_systems(socket))
          |> assign(
            :connections,
-           Data.list_connections_with_endpoints(data(socket), socket.assigns.map.id)
+           Data.list_connections_with_endpoints(data(socket), socket.assigns.map.mask_id)
          )
          |> select_system(system.id)
          |> push_patch(to: "/" <> system.name)
@@ -1692,24 +1707,17 @@ defmodule ZtripwireWeb.DashboardLive do
   defp apply_tree_layout_with_home(%{assigns: assigns} = socket, layout, map) do
     spacing = spacing_factor(assigns[:node_spacing])
     systems = chain_systems(socket, map)
-    connections = Data.list_connections_with_endpoints(data(socket), map.id)
+    connections = Data.list_connections_with_endpoints(data(socket), map.mask_id)
     home_id = home_root_id(systems, map)
 
     positions = layout_positions(systems, connections, layout, spacing, home_id)
 
-    {_socket, data} =
-      Enum.reduce(systems, {socket, data(socket)}, fn system, {socket, data} ->
-        pos = positions[system.id]
-        stored = Data.get_system!(data, system.id)
-        {{:ok, _}, data} = Data.update_system_position(data, stored, pos.x, pos.y)
-        {socket, data}
-      end)
-
+    {{:ok, _}, data} = Data.put_view_positions(data(socket), map, positions)
     socket = put_data(socket, data)
 
     socket
     |> assign(:systems, chain_systems(socket, map))
-    |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.id))
+    |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.mask_id))
   end
 
   defp home_root_id(systems, %{home_solar_system_id: solar}) when is_integer(solar) do
@@ -1854,14 +1862,14 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(settings)
     |> assign_layouts()
     |> assign(:systems, Data.list_chain_systems(data(socket), map, settings.show_all))
-    |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.id))
+    |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.mask_id))
     |> apply_tree_layout(settings.map_layout)
     |> assign_blank_view()
     |> assign(:demo?, false)
     |> assign_claim_admin(character)
     |> assign(:branding, Accounts.branding())
     |> assign(:sso_configured?, Ztripwire.SSO.configured?())
-    |> subscribe_to_map(map.id)
+    |> subscribe_to_mask(map.mask_id)
     |> schedule_topbar_load()
     |> schedule_chart_refresh()
   end
@@ -1947,8 +1955,11 @@ defmodule ZtripwireWeb.DashboardLive do
 
   defp assign_active_map(socket, map) do
     unless demo?(socket) do
-      if socket.assigns[:map], do: unsubscribe_from_map(socket.assigns.map.id)
-      _ = subscribe_to_map(socket, map.id)
+      if socket.assigns[:map] do
+        unsubscribe_from_mask(socket.assigns.map.mask_id)
+      end
+
+      _ = subscribe_to_mask(socket, map.mask_id)
     end
 
     systems = chain_systems(socket, map)
@@ -1956,7 +1967,7 @@ defmodule ZtripwireWeb.DashboardLive do
     socket
     |> assign(:map, map)
     |> assign(:systems, systems)
-    |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.id))
+    |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.mask_id))
     |> assign(:selected_system_id, nil)
     |> assign(:selected_system_name, nil)
     |> assign(:chart_system, nil)
@@ -2014,10 +2025,10 @@ defmodule ZtripwireWeb.DashboardLive do
 
     Phoenix.PubSub.unsubscribe(
       Ztripwire.PubSub,
-      Ztripwire.Tracking.map_topic(socket.assigns.map.id)
+      Ztripwire.Tracking.mask_topic(socket.assigns.map.mask_id)
     )
 
-    Phoenix.PubSub.subscribe(Ztripwire.PubSub, Ztripwire.Tracking.map_topic(map.id))
+    Phoenix.PubSub.subscribe(Ztripwire.PubSub, Ztripwire.Tracking.mask_topic(map.mask_id))
 
     socket
     |> assign(:character, character)
@@ -2222,7 +2233,7 @@ defmodule ZtripwireWeb.DashboardLive do
     else
       chain_systems = socket.assigns.systems || []
       chain_solar = MapSet.new(chain_systems, & &1.solar_system_id)
-      candidates = Data.list_favorite_candidates(data(socket), mask.id, map.id)
+      candidates = Data.list_favorite_candidates(data(socket), mask.id)
       candidates = Enum.reject(candidates, &MapSet.member?(chain_solar, &1.solar_system_id))
 
       route_fn =
@@ -2233,7 +2244,7 @@ defmodule ZtripwireWeb.DashboardLive do
           chain_for_check =
             if socket.assigns.systems == chain_systems,
               do: chain_systems,
-              else: Data.list_systems(data(socket), map.id)
+              else: Data.list_systems(data(socket), map.mask_id)
 
           current_solar = MapSet.new(chain_for_check, & &1.solar_system_id)
 
@@ -2265,7 +2276,7 @@ defmodule ZtripwireWeb.DashboardLive do
                   socket = put_data(socket, data)
 
                   {{:ok, _, _}, data} =
-                    Data.upsert_connection(data(socket), map.id, fresh.id, target.id, %{
+                    Data.upsert_connection(data(socket), map.mask_id, fresh.id, target.id, %{
                       hole_type: hole_type,
                       jumps: jumps
                     })
@@ -2281,7 +2292,7 @@ defmodule ZtripwireWeb.DashboardLive do
       socket =
         socket
         |> assign(:systems, chain_systems(socket, map))
-        |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.id))
+        |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.mask_id))
         |> apply_tree_layout(socket.assigns.map_layout || "top")
 
       zoom = map_zoom(socket)
@@ -2449,19 +2460,14 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   defp system_name_for_solar(socket, solar) do
-    mask_maps = Data.list_maps_for_mask(data(socket), socket.assigns.mask.id)
-    map_ids = Enum.map(mask_maps, & &1.id)
-
-    Enum.find_value(map_ids, fn _ -> nil end)
-
-    found =
-      Enum.find(socket.assigns.systems || [], &(&1.solar_system_id == solar))
-
-    if found, do: found.name, else: nil
+    case Enum.find(socket.assigns.systems || [], &(&1.solar_system_id == solar)) do
+      %{name: name} -> name
+      nil -> nil
+    end
   end
 
   defp ensure_home_node(socket, map, solar, name) do
-    case Enum.find(Data.list_systems(data(socket), map.id), &(&1.solar_system_id == solar)) do
+    case Enum.find(Data.list_systems(data(socket), map.mask_id), &(&1.solar_system_id == solar)) do
       %{id: id} ->
         {{:ok, _}, data} = Data.unhide_systems(data(socket), [id])
         put_data(socket, data)
@@ -2524,7 +2530,7 @@ defmodule ZtripwireWeb.DashboardLive do
 
           if link_target do
             {{:ok, _, _}, data} =
-              Data.upsert_connection(data(socket), map.id, thera.id, link_target.id, %{})
+              Data.upsert_connection(data(socket), map.mask_id, thera.id, link_target.id, %{})
 
             put_data(socket, data)
           else
@@ -2561,12 +2567,15 @@ defmodule ZtripwireWeb.DashboardLive do
           )
 
         socket = put_data(socket, data)
-        unless demo?(socket), do: Ztripwire.Tracking.broadcast_map_update(socket.assigns.map.id)
+
+        unless demo?(socket) do
+          Ztripwire.Tracking.broadcast_map_update(socket.assigns.map.mask_id)
+        end
 
         assign(
           socket,
           :connections,
-          Data.list_connections_with_endpoints(data(socket), socket.assigns.map.id)
+          Data.list_connections_with_endpoints(data(socket), socket.assigns.map.mask_id)
         )
     end
   end
@@ -3207,7 +3216,7 @@ defmodule ZtripwireWeb.DashboardLive do
 
     socket
     |> assign(:systems, chain_systems(socket, map))
-    |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.id))
+    |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.mask_id))
   end
 
   defp sync_flash(socket, dropped, linked, hidden) do
@@ -3241,7 +3250,7 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   defp ensure_jita_system(socket, map) do
-    case Data.list_systems(data(socket), map.id) do
+    case Data.list_systems(data(socket), map.mask_id) do
       [] ->
         attrs = %{
           solar_system_id: 30_000_142,
@@ -3311,13 +3320,13 @@ defmodule ZtripwireWeb.DashboardLive do
 
   defp autoselect_first_system(socket), do: socket
 
-  defp subscribe_to_map(socket, map_id) do
-    Phoenix.PubSub.subscribe(Ztripwire.PubSub, Ztripwire.Tracking.map_topic(map_id))
+  defp subscribe_to_mask(socket, mask_id) do
+    Phoenix.PubSub.subscribe(Ztripwire.PubSub, Ztripwire.Tracking.mask_topic(mask_id))
     socket
   end
 
-  defp unsubscribe_from_map(map_id) do
-    Phoenix.PubSub.unsubscribe(Ztripwire.PubSub, Ztripwire.Tracking.map_topic(map_id))
+  defp unsubscribe_from_mask(mask_id) do
+    Phoenix.PubSub.unsubscribe(Ztripwire.PubSub, Ztripwire.Tracking.mask_topic(mask_id))
   end
 
   defp assign_topbar_defaults(socket) do

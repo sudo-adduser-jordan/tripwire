@@ -20,14 +20,15 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
   @map_width 1000.0
 
   def update(assigns, socket) do
-    map_id = Map.get(assigns, :map_id)
+    mask_id = Map.get(assigns, :mask_id)
     data = Map.get(assigns, :demo_state) || :db
-    systems = Map.get_lazy(assigns, :systems, fn -> Data.list_visible_systems(data, map_id) end)
+    systems = Map.get_lazy(assigns, :systems, fn -> Data.list_visible_systems(data, mask_id) end)
 
     connections =
       Map.get_lazy(assigns, :connections, fn ->
-        Data.list_connections_with_endpoints(data, map_id)
+        Data.list_connections_with_endpoints(data, mask_id)
       end)
+      |> with_system_positions(systems)
 
     collapsed = collapse_set(assigns, systems)
     root_id = Mapping.chain_home_id(systems, Map.get(assigns, :map))
@@ -35,7 +36,7 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
     counts = Mapping.collapse_hidden_counts(systems, connections, collapsed, root_id: root_id)
     visible = Enum.reject(systems, &Elixir.MapSet.member?(hidden, &1.id))
 
-    stats = Map.get_lazy(assigns, :stats, fn -> Data.list_system_stats(data, map_id) end)
+    stats = Map.get_lazy(assigns, :stats, fn -> Data.list_system_stats(data, mask_id) end)
     occupants = Map.get(assigns, :occupants, [])
     zoom = map_zoom(Map.get(assigns, :map_scale))
     {pan_x, pan_y} = Mapping.home_center(visible, Map.get(assigns, :map), zoom)
@@ -56,7 +57,7 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
      |> assign(:node_w, node_w)
      |> assign(:node_h, node_h)
      |> assign(:node_radius, node_radius(Map.get(assigns, :node_roundness), node_h))
-     |> assign(:wh_sigs, wormhole_sigs(data, map_id))
+     |> assign(:wh_sigs, wormhole_sigs(data, mask_id))
      |> assign_new(:pan_x, fn -> pan_x end)
      |> assign_new(:pan_y, fn -> pan_y end)
      |> assign_new(:view_w, fn -> view_w end)
@@ -205,7 +206,7 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
                 :for={tab <- Map.get(assigns, :maps, [])}
                 class={[
                   "join-item btn btn-xs",
-                  if(@map_id == tab.id, do: "btn-primary", else: "btn-ghost")
+                  if(@map && @map.id == tab.id, do: "btn-primary", else: "btn-ghost")
                 ]}
                 title={tab.name}
                 phx-click="switch-map"
@@ -638,7 +639,15 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
 
   defp wormhole_sigs(_data, nil), do: []
 
-  defp wormhole_sigs(data, map_id), do: Data.list_wormhole_signatures(data, map_id)
+  defp wormhole_sigs(data, mask_id), do: Data.list_wormhole_signatures(data, mask_id)
+
+  defp with_system_positions(connections, systems) do
+    by_id = Map.new(systems, &{&1.id, &1})
+
+    Enum.map(connections, fn {conn, from, to} ->
+      {conn, Map.get(by_id, from.id, from), Map.get(by_id, to.id, to)}
+    end)
+  end
 
   defp selected_name(_systems, nil), do: nil
 

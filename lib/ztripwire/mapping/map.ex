@@ -3,7 +3,7 @@ defmodule Ztripwire.Mapping.Map do
   import Ecto.Changeset
 
   alias Ztripwire.Masks.Mask
-  alias Ztripwire.Mapping.MapSystem
+  alias Ztripwire.Mapping.MapViewSystem
 
   schema "maps" do
     field :name, :string
@@ -11,7 +11,7 @@ defmodule Ztripwire.Mapping.Map do
     field :home_name, :string
 
     belongs_to :mask, Mask
-    has_many :systems, MapSystem, on_delete: :delete_all
+    has_many :view_systems, MapViewSystem, on_delete: :delete_all
 
     timestamps(type: :utc_datetime)
   end

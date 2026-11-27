@@ -12,11 +12,13 @@ defmodule Ztripwire.Data do
   def get_map!(:db, id), do: Mapping.get_map!(id)
   def get_map!(%State{} = state, id), do: Demo.get_map!(state, id)
 
-  def list_systems(:db, map_id), do: Mapping.list_systems(map_id)
-  def list_systems(%State{} = state, map_id), do: Demo.list_systems(state, map_id)
+  def list_systems(:db, mask_id), do: Mapping.list_systems(mask_id)
+  def list_systems(%State{} = state, mask_id), do: Demo.list_systems(state, mask_id)
 
-  def list_visible_systems(:db, map_id), do: Mapping.list_visible_systems(map_id)
-  def list_visible_systems(%State{} = state, map_id), do: Demo.list_visible_systems(state, map_id)
+  def list_visible_systems(:db, mask_id), do: Mapping.list_visible_systems(mask_id)
+
+  def list_visible_systems(%State{} = state, mask_id),
+    do: Demo.list_visible_systems(state, mask_id)
 
   def list_chain_systems(:db, map, show_all), do: Mapping.list_chain_systems(map, show_all)
 
@@ -29,19 +31,19 @@ defmodule Ztripwire.Data do
   def get_system!(:db, id), do: Mapping.get_system!(id)
   def get_system!(%State{} = state, id), do: Demo.get_system!(state, id)
 
-  def list_connections_with_endpoints(:db, map_id),
-    do: Mapping.list_connections_with_endpoints(map_id)
+  def list_connections_with_endpoints(:db, mask_id),
+    do: Mapping.list_connections_with_endpoints(mask_id)
 
-  def list_connections_with_endpoints(%State{} = state, map_id),
-    do: Demo.list_connections_with_endpoints(state, map_id)
+  def list_connections_with_endpoints(%State{} = state, mask_id),
+    do: Demo.list_connections_with_endpoints(state, mask_id)
 
   def list_signatures(:db, system_id), do: Mapping.list_signatures(system_id)
   def list_signatures(%State{} = state, system_id), do: Demo.list_signatures(state, system_id)
 
-  def list_wormhole_signatures(:db, map_id), do: Mapping.list_wormhole_signatures(map_id)
+  def list_wormhole_signatures(:db, mask_id), do: Mapping.list_wormhole_signatures(mask_id)
 
-  def list_wormhole_signatures(%State{} = state, map_id),
-    do: Demo.list_wormhole_signatures(state, map_id)
+  def list_wormhole_signatures(%State{} = state, mask_id),
+    do: Demo.list_wormhole_signatures(state, mask_id)
 
   def get_signature(:db, id), do: Mapping.get_signature(id)
   def get_signature(%State{} = state, id), do: Demo.get_signature(state, id)
@@ -55,14 +57,14 @@ defmodule Ztripwire.Data do
   def get_comment!(:db, id), do: Mapping.get_comment!(id)
   def get_comment!(%State{} = state, id), do: Demo.get_comment!(state, id)
 
-  def list_system_stats(:db, map_id), do: Mapping.list_system_stats(map_id)
-  def list_system_stats(%State{} = state, map_id), do: Demo.list_system_stats(state, map_id)
+  def list_system_stats(:db, mask_id), do: Mapping.list_system_stats(mask_id)
+  def list_system_stats(%State{} = state, mask_id), do: Demo.list_system_stats(state, mask_id)
 
-  def list_favorite_candidates(:db, mask_id, exclude_map_id),
-    do: Mapping.list_favorite_candidates(mask_id, exclude_map_id)
+  def list_favorite_candidates(:db, mask_id),
+    do: Mapping.list_favorite_candidates(mask_id)
 
-  def list_favorite_candidates(%State{} = state, mask_id, exclude_map_id),
-    do: Demo.list_favorite_candidates(state, mask_id, exclude_map_id)
+  def list_favorite_candidates(%State{} = state, mask_id),
+    do: Demo.list_favorite_candidates(state, mask_id)
 
   def wormhole_link_target(:db, mask_id, solar, chain),
     do: Mapping.wormhole_link_target(mask_id, solar, chain)
@@ -70,11 +72,11 @@ defmodule Ztripwire.Data do
   def wormhole_link_target(%State{} = state, mask_id, solar, chain),
     do: Demo.wormhole_link_target(state, mask_id, solar, chain)
 
-  def occupants(:db, map_id, mask), do: db_occupants(map_id, mask)
-  def occupants(%State{} = state, map_id, _mask), do: Demo.occupants(state, map_id)
+  def occupants(:db, mask_id, mask), do: db_occupants(mask_id, mask)
+  def occupants(%State{} = state, mask_id, _mask), do: Demo.occupants(state, mask_id)
 
-  defp db_occupants(map_id, mask) do
-    map_id
+  defp db_occupants(mask_id, mask) do
+    mask_id
     |> Ztripwire.Tracking.list_occupants()
     |> Enum.filter(fn occupant ->
       case mask do
@@ -179,11 +181,11 @@ defmodule Ztripwire.Data do
   def update_system(:db, system, attrs), do: {Mapping.update_system(system, attrs), :db}
   def update_system(%State{} = state, system, attrs), do: Demo.update_system(state, system, attrs)
 
-  def update_system_position(:db, system, x, y),
-    do: {Mapping.update_system_position(system, x, y), :db}
+  def put_view_positions(:db, view, positions),
+    do: {Mapping.put_view_positions(view, positions), :db}
 
-  def update_system_position(%State{} = state, system, x, y),
-    do: Demo.update_system_position(state, system, x, y)
+  def put_view_positions(%State{} = state, view, positions),
+    do: Demo.put_view_positions(state, view, positions)
 
   def delete_system(:db, system), do: {Mapping.delete_system(system), :db}
   def delete_system(%State{} = state, system), do: Demo.delete_system(state, system)
@@ -195,13 +197,13 @@ defmodule Ztripwire.Data do
 
   def unhide_systems(%State{} = state, ids), do: Demo.unhide_systems(state, ids)
 
-  def upsert_connection(data, map_id, a, b, attrs \\ %{})
+  def upsert_connection(data, mask_id, a, b, attrs \\ %{})
 
-  def upsert_connection(:db, map_id, a, b, attrs),
-    do: {Mapping.upsert_connection(map_id, a, b, attrs), :db}
+  def upsert_connection(:db, mask_id, a, b, attrs),
+    do: {Mapping.upsert_connection(mask_id, a, b, attrs), :db}
 
-  def upsert_connection(%State{} = state, map_id, a, b, attrs),
-    do: Demo.upsert_connection(state, map_id, a, b, attrs)
+  def upsert_connection(%State{} = state, mask_id, a, b, attrs),
+    do: Demo.upsert_connection(state, mask_id, a, b, attrs)
 
   def update_connection(:db, connection, attrs),
     do: {Mapping.update_connection(connection, attrs), :db}

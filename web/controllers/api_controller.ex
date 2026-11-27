@@ -6,9 +6,8 @@ defmodule ZtripwireWeb.ApiController do
   plug :require_api_token
 
   def signatures(conn, %{"mask_id" => mask_id}) do
-    with {mask_id, ""} <- Integer.parse(mask_id),
-         [%{id: map_id} | _] <- Mapping.list_maps_for_mask(mask_id) do
-      systems = Mapping.list_systems(map_id)
+    with {mask_id, ""} <- Integer.parse(mask_id) do
+      systems = Mapping.list_systems(mask_id)
 
       data =
         Enum.flat_map(systems, fn s ->
@@ -22,10 +21,9 @@ defmodule ZtripwireWeb.ApiController do
   end
 
   def wormholes(conn, %{"mask_id" => mask_id}) do
-    with {mask_id, ""} <- Integer.parse(mask_id),
-         [map | _] <- Mapping.list_maps_for_mask(mask_id) do
+    with {mask_id, ""} <- Integer.parse(mask_id) do
       data =
-        Enum.map(Mapping.list_connections_with_endpoints(map.id), fn {c, from, to} ->
+        Enum.map(Mapping.list_connections_with_endpoints(mask_id), fn {c, from, to} ->
           wormhole_json(c, from, to)
         end)
 
@@ -36,9 +34,8 @@ defmodule ZtripwireWeb.ApiController do
   end
 
   def comments(conn, %{"mask_id" => mask_id}) do
-    with {mask_id, ""} <- Integer.parse(mask_id),
-         [map | _] <- Mapping.list_maps_for_mask(mask_id) do
-      systems = Mapping.list_systems(map.id)
+    with {mask_id, ""} <- Integer.parse(mask_id) do
+      systems = Mapping.list_systems(mask_id)
 
       data =
         Enum.flat_map(systems, fn s ->
@@ -52,9 +49,8 @@ defmodule ZtripwireWeb.ApiController do
   end
 
   def statistics(conn, %{"mask_id" => mask_id}) do
-    with {mask_id, ""} <- Integer.parse(mask_id),
-         [map | _] <- Mapping.list_maps_for_mask(mask_id) do
-      json(conn, Mapping.map_statistics(map.id))
+    with {mask_id, ""} <- Integer.parse(mask_id) do
+      json(conn, Mapping.map_statistics(mask_id))
     else
       _ -> conn |> put_status(:bad_request) |> json(%{error: "mask_id required"})
     end

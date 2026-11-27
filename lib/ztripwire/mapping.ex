@@ -3,7 +3,7 @@ defmodule Ztripwire.Mapping do
 
   alias Ztripwire.Accounts
   alias Ztripwire.Accounts.Character
-  alias Ztripwire.Mapping.{Map, MapConnection, MapSystem, Signature}
+  alias Ztripwire.Mapping.{Map, MapConnection, MapSystem, MapViewSystem, Signature}
   alias Ztripwire.Repo
   alias Ztripwire.Signatures, as: SigParser
   alias Ztripwire.Systems
@@ -11,7 +11,7 @@ defmodule Ztripwire.Mapping do
   def get_map!(id), do: Repo.get!(Map, id)
 
   def list_maps_for_mask(mask_id) do
-    Repo.all(from(m in Map, where: m.mask_id == ^mask_id))
+    Repo.all(from(m in Map, where: m.mask_id == ^mask_id, order_by: [asc: m.id]))
   end
 
   def create_map(attrs) do
@@ -51,13 +51,10 @@ defmodule Ztripwire.Mapping do
   def thera_solar_system_id, do: @thera_solar_system_id
   def thera_name, do: @thera_name
 
-  def list_favorite_candidates(mask_id, exclude_map_id) do
-    map_ids =
-      from(m in Map, where: m.mask_id == ^mask_id and m.id != ^exclude_map_id, select: m.id)
-
+  def list_favorite_candidates(mask_id) do
     Repo.all(
       from(s in MapSystem,
-        where: s.map_id in subquery(map_ids) and s.favorite == true,
+        where: s.mask_id == ^mask_id and s.favorite == true,
         order_by: [asc: s.id]
       )
     )
@@ -66,12 +63,11 @@ defmodule Ztripwire.Mapping do
   def wormhole_link_target(mask_id, candidate_solar_id, chain_systems) do
     by_solar = Elixir.Map.new(chain_systems, &{&1.solar_system_id, &1})
     chain_set = Elixir.MapSet.new(Elixir.Map.keys(by_solar))
-    map_ids = from(m in Map, where: m.mask_id == ^mask_id, select: m.id)
 
     links =
       Repo.all(
         from(c in MapConnection,
-          where: c.map_id in subquery(map_ids),
+          where: c.mask_id == ^mask_id,
           preload: [:from_system, :to_system]
         )
       )
@@ -93,67 +89,157 @@ defmodule Ztripwire.Mapping do
     end)
   end
 
-  def ensure_chain_system(%Map{} = map, attrs) do
+  def ensure_chain_system(%Map{} = view, attrs) do
     solar_id = attrs[:solar_system_id] || attrs["solar_system_id"]
 
-    case Repo.get_by(MapSystem, map_id: map.id, solar_system_id: solar_id) do
+    case Repo.get_by(MapSystem, mask_id: view.mask_id, solar_system_id: solar_id) do
       %MapSystem{} = system ->
-        {:ok, system, false}
+        unhide_systems([system.id])
+        ensure_view_position(view, system)
+        {:ok, %{system | hidden_at: nil}, false}
 
       nil ->
         position = %{x: 460.0, y: 300.0}
 
-        case add_system_to_map(map, Elixir.Map.merge(%{x: position.x, y: position.y}, attrs)) do
+        case add_system_to_map(view, Elixir.Map.merge(%{x: position.x, y: position.y}, attrs)) do
           {:ok, system} -> {:ok, system, true}
           error -> error
         end
     end
   end
 
-  def list_systems(map_id) do
-    Repo.all(from(s in MapSystem, where: s.map_id == ^map_id, order_by: [asc: s.id]))
+  def list_systems(mask_id) do
+    Repo.all(from(s in MapSystem, where: s.mask_id == ^mask_id, order_by: [asc: s.id]))
   end
 
-  def list_visible_systems(map_id) do
+  def list_visible_systems(mask_id) do
     Repo.all(
       from(s in MapSystem,
-        where: s.map_id == ^map_id and is_nil(s.hidden_at),
+        where: s.mask_id == ^mask_id and is_nil(s.hidden_at),
         order_by: [asc: s.id]
       )
     )
   end
 
-  def list_chain_systems(%Map{} = map, true), do: list_systems(map.id)
+  def list_chain_systems(%Map{} = view, true) do
+    view
+    |> view_systems(false)
+    |> with_view_positions(view)
+  end
 
-  def list_chain_systems(%Map{} = map, _show_all) do
-    systems = list_visible_systems(map.id)
+  def list_chain_systems(%Map{} = view, _show_all) do
+    systems = view |> view_systems(true) |> with_view_positions(view)
 
-    case home_system_id(map) do
+    case home_system_id(view) do
       nil ->
         systems
 
       home_id ->
-        reachable = reachable_system_ids(map.id, home_id)
+        reachable = reachable_system_ids(view.mask_id, home_id)
         Enum.filter(systems, &Elixir.MapSet.member?(reachable, &1.id))
     end
+  end
+
+  defp view_systems(%Map{} = view, visible_only?) do
+    query =
+      from(s in MapSystem,
+        where: s.mask_id == ^view.mask_id,
+        order_by: [asc: s.id]
+      )
+
+    query =
+      if visible_only? do
+        from(s in query, where: is_nil(s.hidden_at))
+      else
+        query
+      end
+
+    Repo.all(query)
+  end
+
+  defp with_view_positions(systems, %Map{} = view) do
+    positions =
+      Repo.all(
+        from(p in MapViewSystem,
+          where: p.map_id == ^view.id,
+          select: {p.map_system_id, p.x, p.y}
+        )
+      )
+      |> Elixir.Map.new(fn {id, x, y} -> {id, {x, y}} end)
+
+    Enum.map(systems, fn system ->
+      case Elixir.Map.get(positions, system.id) do
+        {x, y} -> %{system | x: x, y: y}
+        nil -> system
+      end
+    end)
+  end
+
+  def view_positions(%Map{} = view) do
+    Repo.all(
+      from(p in MapViewSystem,
+        where: p.map_id == ^view.id,
+        select: {p.map_system_id, p.x, p.y}
+      )
+    )
+    |> Elixir.Map.new(fn {id, x, y} -> {id, {x, y}} end)
+  end
+
+  def put_view_positions(%Map{} = view, positions) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    Enum.each(positions, fn {system_id, %{x: x, y: y}} ->
+      attrs = %{map_id: view.id, map_system_id: system_id, x: x, y: y}
+
+      case Repo.get_by(MapViewSystem, map_id: view.id, map_system_id: system_id) do
+        nil ->
+          %MapViewSystem{}
+          |> MapViewSystem.changeset(attrs)
+          |> Repo.insert(on_conflict: :nothing, conflict_target: [:map_id, :map_system_id])
+
+        %MapViewSystem{} = position ->
+          position
+          |> Ecto.Changeset.change(x: x, y: y, updated_at: now)
+          |> Repo.update()
+      end
+    end)
+
+    {:ok, nil}
+  end
+
+  defp ensure_view_position(%Map{} = view, %MapSystem{} = system) do
+    if Repo.get_by(MapViewSystem, map_id: view.id, map_system_id: system.id) do
+      :ok
+    else
+      %MapViewSystem{}
+      |> MapViewSystem.changeset(%{
+        map_id: view.id,
+        map_system_id: system.id,
+        x: system.x,
+        y: system.y
+      })
+      |> Repo.insert(on_conflict: :nothing, conflict_target: [:map_id, :map_system_id])
+    end
+
+    :ok
   end
 
   def get_system!(id), do: Repo.get!(MapSystem, id)
 
   def get_system(id), do: Repo.get(MapSystem, id)
 
-  def list_connections(map_id) do
+  def list_connections(mask_id) do
     Repo.all(
       from(c in MapConnection,
-        where: c.map_id == ^map_id,
+        where: c.mask_id == ^mask_id,
         preload: [:from_system, :to_system],
         order_by: [asc: c.id]
       )
     )
   end
 
-  def list_connections_with_endpoints(map_id) do
-    map_id
+  def list_connections_with_endpoints(mask_id) do
+    mask_id
     |> list_connections()
     |> Enum.map(fn conn -> {conn, conn.from_system, conn.to_system} end)
   end
@@ -499,8 +585,8 @@ defmodule Ztripwire.Mapping do
     end
   end
 
-  def upsert_connection(map_id, system_a_id, system_b_id, attrs \\ %{}) do
-    case do_upsert_connection(map_id, system_a_id, system_b_id, attrs) do
+  def upsert_connection(mask_id, system_a_id, system_b_id, attrs \\ %{}) do
+    case do_upsert_connection(mask_id, system_a_id, system_b_id, attrs) do
       {:ok, _, _} = ok ->
         unhide_systems([system_a_id, system_b_id])
         ok
@@ -510,12 +596,12 @@ defmodule Ztripwire.Mapping do
     end
   end
 
-  defp do_upsert_connection(map_id, system_a_id, system_b_id, attrs) do
+  defp do_upsert_connection(mask_id, system_a_id, system_b_id, attrs) do
     connection =
       Repo.one(
         from(c in MapConnection,
           where:
-            c.map_id == ^map_id and
+            c.mask_id == ^mask_id and
               ((c.from_system_id == ^system_a_id and c.to_system_id == ^system_b_id) or
                  (c.from_system_id == ^system_b_id and c.to_system_id == ^system_a_id))
         )
@@ -525,7 +611,7 @@ defmodule Ztripwire.Mapping do
       %MapConnection{} = conn ->
         {:ok, conn} =
           conn
-          |> MapConnection.changeset(merge_attrs(attrs, %{map_id: conn.map_id}))
+          |> MapConnection.changeset(merge_attrs(attrs, %{mask_id: conn.mask_id}))
           |> Repo.update()
 
         {:ok, conn, false}
@@ -535,7 +621,7 @@ defmodule Ztripwire.Mapping do
           %MapConnection{}
           |> MapConnection.changeset(
             merge_attrs(attrs, %{
-              map_id: map_id,
+              mask_id: mask_id,
               from_system_id: system_a_id,
               to_system_id: system_b_id
             })
@@ -548,11 +634,11 @@ defmodule Ztripwire.Mapping do
     end
   end
 
-  def connection_between(map_id, system_a_id, system_b_id) do
+  def connection_between(mask_id, system_a_id, system_b_id) do
     Repo.one(
       from(c in MapConnection,
         where:
-          c.map_id == ^map_id and
+          c.mask_id == ^mask_id and
             ((c.from_system_id == ^system_a_id and c.to_system_id == ^system_b_id) or
                (c.from_system_id == ^system_b_id and c.to_system_id == ^system_a_id))
       )
@@ -564,20 +650,43 @@ defmodule Ztripwire.Mapping do
     :ok
   end
 
-  def add_system_to_map(%Map{} = map, attrs, opts \\ []) do
+  def add_system_to_map(%Map{} = view, attrs, opts \\ []) do
     attrs = if Keyword.get(opts, :fill?, true), do: put_system_data(attrs), else: attrs
+    solar_id = solar_system_id(attrs)
+    unknown? = attrs[:unknown] == true or attrs["unknown"] in [true, "true"]
 
-    %MapSystem{map_id: map.id}
-    |> MapSystem.changeset(attrs)
-    |> Repo.insert()
-    |> case do
-      {:ok, system} = ok ->
-        if jita?(system), do: ensure_welcome_notes(system)
-        ok
+    case existing_system(view, solar_id, unknown?) do
+      %MapSystem{} = system ->
+        unhide_systems([system.id])
+        ensure_view_position(view, system)
+        {:ok, %{system | hidden_at: nil}}
 
-      error ->
-        error
+      nil ->
+        %MapSystem{mask_id: view.mask_id}
+        |> MapSystem.changeset(attrs)
+        |> Repo.insert()
+        |> case do
+          {:ok, system} = ok ->
+            ensure_view_position(view, system)
+            if jita?(system), do: ensure_welcome_notes(system)
+            ok
+
+          error ->
+            error
+        end
     end
+  end
+
+  defp existing_system(_view, nil, _unknown?), do: nil
+  defp existing_system(_view, _solar_id, true), do: nil
+  defp existing_system(_view, solar_id, _unknown?) when solar_id <= 0, do: nil
+
+  defp existing_system(%Map{} = view, solar_id, _unknown?) do
+    Repo.get_by(MapSystem, mask_id: view.mask_id, solar_system_id: solar_id)
+  end
+
+  def first_map_for_mask(mask_id) do
+    Repo.one(from(m in Map, where: m.mask_id == ^mask_id, order_by: [asc: m.id], limit: 1))
   end
 
   defp jita?(%MapSystem{unknown: true}), do: false
@@ -587,8 +696,8 @@ defmodule Ztripwire.Mapping do
       String.downcase(system.name || "") == "jita"
   end
 
-  def add_jita_system(%Map{} = map) do
-    add_system_to_map(map, %{
+  def add_jita_system(%Map{} = view) do
+    add_system_to_map(view, %{
       solar_system_id: @jita_solar_system_id,
       name: "Jita",
       security: 0.9,
@@ -601,23 +710,23 @@ defmodule Ztripwire.Mapping do
     from(m in Map, order_by: [asc: m.id])
     |> Repo.all()
     |> Enum.uniq_by(& &1.mask_id)
-    |> Enum.each(fn map ->
-      if list_systems(map.id) == [] do
-        {:ok, _} = add_jita_system(map)
+    |> Enum.each(fn view ->
+      if list_systems(view.mask_id) == [] do
+        {:ok, _} = add_jita_system(view)
       end
     end)
   end
 
-  def add_unknown_system(%Map{} = map, attrs \\ %{}) do
+  def add_unknown_system(%Map{} = view, attrs \\ %{}) do
     add_system_to_map(
-      map,
+      view,
       Elixir.Map.merge(%{unknown: true, solar_system_id: 0, name: "unknown"}, attrs)
     )
   end
 
   def ensure_unknown_nodes(%MapSystem{} = system) do
+    view = first_map_for_mask(system.mask_id)
     linked = connection_codes(system)
-    map = get_map!(system.map_id)
 
     system.id
     |> list_signatures()
@@ -627,9 +736,9 @@ defmodule Ztripwire.Mapping do
     |> Enum.uniq()
     |> Enum.reject(&Elixir.MapSet.member?(linked, &1))
     |> Enum.reduce(0, fn code, count ->
-      case add_unknown_system(map) do
+      case view && add_unknown_system(view) do
         {:ok, placeholder} ->
-          case upsert_connection(map.id, system.id, placeholder.id, %{hole_type: code}) do
+          case upsert_connection(system.mask_id, system.id, placeholder.id, %{hole_type: code}) do
             {:ok, _conn, _created?} -> count + 1
             _error -> count
           end
@@ -641,19 +750,19 @@ defmodule Ztripwire.Mapping do
   end
 
   defp connection_codes(%MapSystem{} = system) do
-    system.map_id
+    system.mask_id
     |> list_connections()
     |> Enum.filter(&(&1.from_system_id == system.id or &1.to_system_id == system.id))
     |> Enum.map(&(&1.hole_type || ""))
     |> Elixir.MapSet.new()
   end
 
-  def delete_unlinked_unknowns(map_id) do
+  def delete_unlinked_unknowns(mask_id) do
     Repo.delete_all(
       from(s in MapSystem,
         where:
-          s.map_id == ^map_id and s.unknown and
-            s.id not in ^connected_system_ids(map_id)
+          s.mask_id == ^mask_id and s.unknown and
+            s.id not in ^connected_system_ids(mask_id)
       )
     )
 
@@ -661,17 +770,155 @@ defmodule Ztripwire.Mapping do
   end
 
   def convert_unknown_system(%MapSystem{unknown: true} = system, attrs) do
-    system
-    |> MapSystem.changeset(attrs |> fill_system_data() |> Elixir.Map.put(:unknown, false))
-    |> Repo.update()
-    |> case do
-      {:ok, converted} = ok ->
-        if jita?(converted), do: ensure_welcome_notes(converted)
-        ok
+    attrs = attrs |> fill_system_data() |> Elixir.Map.put(:unknown, false)
+    solar_id = solar_system_id(attrs)
 
-      error ->
-        error
+    existing =
+      if is_integer(solar_id) and solar_id > 0 do
+        Repo.get_by(MapSystem, mask_id: system.mask_id, solar_system_id: solar_id)
+      end
+
+    if is_struct(existing, MapSystem) and existing.id != system.id do
+      merge_system(system, existing)
+      broadcast_map_update(existing.mask_id)
+      {:ok, existing}
+    else
+      system
+      |> MapSystem.changeset(attrs)
+      |> Repo.update()
+      |> case do
+        {:ok, converted} = ok ->
+          if jita?(converted), do: ensure_welcome_notes(converted)
+          ok
+
+        error ->
+          error
+      end
     end
+  end
+
+  defp merge_system(%MapSystem{} = source, %MapSystem{} = target) do
+    merge_signatures(source, target)
+    merge_comments_and_flares(source, target)
+    merge_stats(source, target)
+    merge_connections(source, target)
+    merge_positions(source, target)
+    delete_system(source)
+    :ok
+  end
+
+  defp merge_signatures(source, target) do
+    Repo.all(from(s in Signature, where: s.map_system_id == ^source.id))
+    |> Enum.each(fn signature ->
+      case Repo.get_by(Signature, map_system_id: target.id, sig_id: signature.sig_id) do
+        nil -> Repo.update(Ecto.Changeset.change(signature, map_system_id: target.id))
+        _ -> Repo.delete(signature)
+      end
+    end)
+  end
+
+  defp merge_comments_and_flares(source, target) do
+    Repo.update_all(
+      from(c in Ztripwire.Mapping.Comment, where: c.map_system_id == ^source.id),
+      set: [map_system_id: target.id]
+    )
+
+    Repo.update_all(
+      from(f in Ztripwire.Mapping.Flare, where: f.map_system_id == ^source.id),
+      set: [map_system_id: target.id]
+    )
+  end
+
+  defp merge_stats(source, target) do
+    case Repo.get_by(Ztripwire.Mapping.SystemStat, map_system_id: source.id) do
+      nil ->
+        :ok
+
+      source_stat ->
+        case Repo.get_by(Ztripwire.Mapping.SystemStat, map_system_id: target.id) do
+          nil ->
+            source_stat
+            |> Ecto.Changeset.change(map_system_id: target.id)
+            |> Repo.update()
+
+          target_stat ->
+            target_stat
+            |> Ecto.Changeset.change(
+              jumps: (target_stat.jumps || 0) + (source_stat.jumps || 0),
+              kills: (target_stat.kills || 0) + (source_stat.kills || 0),
+              visits: (target_stat.visits || 0) + (source_stat.visits || 0),
+              recorded_at: max_datetime(target_stat.recorded_at, source_stat.recorded_at)
+            )
+            |> Repo.update()
+
+            Repo.delete(source_stat)
+        end
+    end
+  end
+
+  defp max_datetime(nil, other), do: other
+  defp max_datetime(other, nil), do: other
+  defp max_datetime(a, b), do: if(NaiveDateTime.compare(a, b) == :lt, do: b, else: a)
+
+  defp merge_connections(source, target) do
+    Repo.all(
+      from(c in MapConnection,
+        where:
+          c.mask_id == ^source.mask_id and
+            (c.from_system_id == ^source.id or c.to_system_id == ^source.id)
+      )
+    )
+    |> Enum.each(fn conn ->
+      from_id = if conn.from_system_id == source.id, do: target.id, else: conn.from_system_id
+      to_id = if conn.to_system_id == source.id, do: target.id, else: conn.to_system_id
+
+      cond do
+        from_id == to_id ->
+          Repo.delete(conn)
+
+        true ->
+          existing =
+            Repo.one(
+              from(c in MapConnection,
+                where:
+                  c.mask_id == ^source.mask_id and c.id != ^conn.id and
+                    ((c.from_system_id == ^from_id and c.to_system_id == ^to_id) or
+                       (c.from_system_id == ^to_id and c.to_system_id == ^from_id))
+              )
+            )
+
+          case existing do
+            nil ->
+              conn
+              |> MapConnection.changeset(%{from_system_id: from_id, to_system_id: to_id})
+              |> Repo.update()
+
+            %MapConnection{} = survivor ->
+              Repo.update_all(
+                from(j in Ztripwire.Mapping.ConnectionJump,
+                  where: j.map_connection_id == ^conn.id
+                ),
+                set: [map_connection_id: survivor.id]
+              )
+
+              Repo.delete(conn)
+          end
+      end
+    end)
+  end
+
+  defp merge_positions(source, target) do
+    Repo.all(from(p in MapViewSystem, where: p.map_system_id == ^source.id))
+    |> Enum.each(fn position ->
+      %MapViewSystem{}
+      |> MapViewSystem.changeset(%{
+        map_id: position.map_id,
+        map_system_id: target.id,
+        x: position.x,
+        y: position.y
+      })
+      |> Repo.insert(on_conflict: :nothing, conflict_target: [:map_id, :map_system_id])
+    end)
   end
 
   defp fill_system_data(attrs), do: attrs |> drop_empty() |> put_system_data()
@@ -696,12 +943,6 @@ defmodule Ztripwire.Mapping do
   end
 
   defp solar_system_id(attrs), do: attrs[:solar_system_id] || attrs["solar_system_id"]
-
-  def update_system_position(%MapSystem{} = system, x, y) do
-    system
-    |> Ecto.Changeset.change(x: x, y: y)
-    |> Repo.update()
-  end
 
   def update_system(%MapSystem{unknown: true} = system, attrs) do
     convert_unknown_system(system, attrs)
@@ -730,11 +971,21 @@ defmodule Ztripwire.Mapping do
     Repo.delete(system)
   end
 
-  def delete_map_full(%Map{id: map_id} = map) do
-    system_ids = from(s in MapSystem, where: s.map_id == ^map_id, select: s.id)
+  def delete_map_full(%Map{} = map) do
+    last? = length(list_maps_for_mask(map.mask_id)) <= 1
+
+    if last? do
+      delete_mask_chain(map.mask_id)
+    end
+
+    Repo.delete(map)
+  end
+
+  def delete_mask_chain(mask_id) do
+    system_ids = from(s in MapSystem, where: s.mask_id == ^mask_id, select: s.id)
 
     connection_ids =
-      from(c in MapConnection, where: c.map_id == ^map_id, select: c.id)
+      from(c in MapConnection, where: c.mask_id == ^mask_id, select: c.id)
 
     Repo.delete_all(
       from(j in Ztripwire.Mapping.ConnectionJump,
@@ -756,9 +1007,9 @@ defmodule Ztripwire.Mapping do
       from(s in Ztripwire.Mapping.SystemStat, where: s.map_system_id in subquery(system_ids))
     )
 
-    Repo.delete_all(from(c in MapConnection, where: c.map_id == ^map_id))
-    Repo.delete_all(from(s in MapSystem, where: s.map_id == ^map_id))
-    Repo.delete(map)
+    Repo.delete_all(from(c in MapConnection, where: c.mask_id == ^mask_id))
+    Repo.delete_all(from(s in MapSystem, where: s.mask_id == ^mask_id))
+    :ok
   end
 
   def get_connection!(id),
@@ -786,14 +1037,14 @@ defmodule Ztripwire.Mapping do
     linked = auto_link_wormholes(system, dropped_pair_keys(dropped))
 
     _ = ensure_unknown_nodes(system)
-    delete_unlinked_unknowns(system.map_id)
+    delete_unlinked_unknowns(system.mask_id)
 
     candidates =
       (dropped |> Enum.flat_map(fn {conn, _, _} -> [conn.from_system_id, conn.to_system_id] end)) ++
         (linked |> Enum.flat_map(fn conn -> [conn.from_system_id, conn.to_system_id] end))
 
-    orphans = hide_orphan_systems(system.map_id, Enum.uniq(candidates))
-    hidden = orphans + hide_detached_systems(system.map_id)
+    orphans = hide_orphan_systems(system.mask_id, Enum.uniq(candidates))
+    hidden = orphans + hide_detached_systems(system.mask_id)
 
     {length(dropped), length(linked), hidden}
   end
@@ -804,7 +1055,7 @@ defmodule Ztripwire.Mapping do
     if Elixir.MapSet.size(codes) == 0 do
       []
     else
-      system.map_id
+      system.mask_id
       |> list_connections_with_endpoints()
       |> Enum.filter(fn {conn, from, to} ->
         (from.id == system.id or to.id == system.id) and
@@ -816,7 +1067,7 @@ defmodule Ztripwire.Mapping do
 
   def auto_link_wormholes(%MapSystem{} = system, excluded_pairs \\ Elixir.MapSet.new()) do
     others =
-      system.map_id
+      system.mask_id
       |> list_wormhole_signatures()
       |> Enum.reject(&(&1.map_system_id == system.id))
 
@@ -832,7 +1083,7 @@ defmodule Ztripwire.Mapping do
       )
     end)
     |> Enum.filter(fn target ->
-      case connection_between(system.map_id, system.id, target.map_system_id) do
+      case connection_between(system.mask_id, system.id, target.map_system_id) do
         nil -> true
         conn -> conn.hole_type in [nil, ""]
       end
@@ -841,9 +1092,9 @@ defmodule Ztripwire.Mapping do
       code = SigParser.wormhole_code(target.type_name)
 
       cond do
-        connection_between(system.map_id, system.id, target.map_system_id) != nil ->
+        connection_between(system.mask_id, system.id, target.map_system_id) != nil ->
           {:ok, conn, _created?} =
-            upsert_connection(system.map_id, system.id, target.map_system_id, %{hole_type: code})
+            upsert_connection(system.mask_id, system.id, target.map_system_id, %{hole_type: code})
 
           conn
 
@@ -853,7 +1104,7 @@ defmodule Ztripwire.Mapping do
 
         true ->
           {:ok, conn, _created?} =
-            upsert_connection(system.map_id, system.id, target.map_system_id, %{hole_type: code})
+            upsert_connection(system.mask_id, system.id, target.map_system_id, %{hole_type: code})
 
           conn
       end
@@ -861,7 +1112,7 @@ defmodule Ztripwire.Mapping do
   end
 
   defp placeholder_connection(%MapSystem{} = system, code) when is_binary(code) do
-    system.map_id
+    system.mask_id
     |> list_connections()
     |> Enum.find(fn conn ->
       conn.hole_type == code and
@@ -898,19 +1149,28 @@ defmodule Ztripwire.Mapping do
     Ztripwire.Mapping.Links.pair_key(system_a_id, system_b_id, code)
   end
 
-  def hide_orphan_systems(map_id, candidate_ids) do
-    query =
-      from(s in MapSystem,
-        where:
-          s.map_id == ^map_id and is_nil(s.hidden_at) and
-            s.id in ^candidate_ids and
-            s.id not in ^connected_system_ids(map_id)
+  def hide_orphan_systems(mask_id, candidate_ids) do
+    home_solars =
+      Repo.all(
+        from(m in Map,
+          where: m.mask_id == ^mask_id and not is_nil(m.home_solar_system_id),
+          select: m.home_solar_system_id
+        )
       )
 
     query =
-      case home_system_id(get_map!(map_id)) do
-        nil -> query
-        home_id -> from(s in query, where: s.id != ^home_id)
+      from(s in MapSystem,
+        where:
+          s.mask_id == ^mask_id and is_nil(s.hidden_at) and
+            s.id in ^candidate_ids and
+            s.id not in ^connected_system_ids(mask_id)
+      )
+
+    query =
+      if home_solars == [] do
+        query
+      else
+        from(s in query, where: s.solar_system_id not in ^home_solars)
       end
 
     {count, _} =
@@ -919,56 +1179,62 @@ defmodule Ztripwire.Mapping do
     count
   end
 
-  defp connected_system_ids(map_id) do
+  defp connected_system_ids(mask_id) do
     from_ids =
-      Repo.all(from(c in MapConnection, where: c.map_id == ^map_id, select: c.from_system_id))
+      Repo.all(from(c in MapConnection, where: c.mask_id == ^mask_id, select: c.from_system_id))
 
     to_ids =
-      Repo.all(from(c in MapConnection, where: c.map_id == ^map_id, select: c.to_system_id))
+      Repo.all(from(c in MapConnection, where: c.mask_id == ^mask_id, select: c.to_system_id))
 
     Elixir.MapSet.new(from_ids ++ to_ids) |> Elixir.MapSet.to_list()
   end
 
-  def hide_detached_systems(map_id) do
-    map = get_map!(map_id)
+  def hide_detached_systems(mask_id) do
+    homes =
+      mask_id
+      |> list_maps_for_mask()
+      |> Enum.map(&home_system_id/1)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
 
-    case home_system_id(map) do
-      nil ->
-        0
+    if homes == [] do
+      0
+    else
+      reachable =
+        Enum.reduce(homes, Elixir.MapSet.new(), fn home_id, acc ->
+          Elixir.MapSet.union(acc, reachable_system_ids(mask_id, home_id))
+        end)
 
-      home_id ->
-        reachable = reachable_system_ids(map.id, home_id)
+      {count, _} =
+        Repo.update_all(
+          from(s in MapSystem,
+            where:
+              s.mask_id == ^mask_id and is_nil(s.hidden_at) and
+                s.id not in ^Elixir.MapSet.to_list(reachable)
+          ),
+          set: [hidden_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+        )
 
-        {count, _} =
-          Repo.update_all(
-            from(s in MapSystem,
-              where:
-                s.map_id == ^map.id and is_nil(s.hidden_at) and
-                  s.id not in ^Elixir.MapSet.to_list(reachable)
-            ),
-            set: [hidden_at: DateTime.utc_now() |> DateTime.truncate(:second)]
-          )
-
-        count
+      count
     end
   end
 
   defp home_system_id(%Map{home_solar_system_id: nil}), do: nil
 
-  defp home_system_id(%Map{home_solar_system_id: solar} = map) do
+  defp home_system_id(%Map{home_solar_system_id: solar, mask_id: mask_id}) do
     case Repo.one(
-           from(s in MapSystem, where: s.map_id == ^map.id and s.solar_system_id == ^solar)
+           from(s in MapSystem, where: s.mask_id == ^mask_id and s.solar_system_id == ^solar)
          ) do
       %MapSystem{id: id} -> id
       nil -> nil
     end
   end
 
-  defp reachable_system_ids(map_id, home_id) do
+  defp reachable_system_ids(mask_id, home_id) do
     adj =
       Repo.all(
         from(c in MapConnection,
-          where: c.map_id == ^map_id,
+          where: c.mask_id == ^mask_id,
           select: {c.from_system_id, c.to_system_id}
         )
       )
@@ -1060,19 +1326,19 @@ defmodule Ztripwire.Mapping do
         |> Enum.flat_map(fn {conn, _, _} -> [conn.from_system_id, conn.to_system_id] end)
         |> Enum.uniq()
 
-      hide_orphan_systems(system.map_id, candidates)
-      hide_detached_systems(system.map_id)
-      broadcast_map_update(system.map_id)
+      hide_orphan_systems(system.mask_id, candidates)
+      hide_detached_systems(system.mask_id)
+      broadcast_map_update(system.mask_id)
     end)
 
     {:ok, count}
   end
 
-  defp broadcast_map_update(map_id) do
+  defp broadcast_map_update(mask_id) do
     Phoenix.PubSub.broadcast(
       Ztripwire.PubSub,
-      Ztripwire.Tracking.map_topic(map_id),
-      {:map_updated, map_id}
+      Ztripwire.Tracking.mask_topic(mask_id),
+      {:map_updated, mask_id}
     )
   end
 
@@ -1243,7 +1509,7 @@ defmodule Ztripwire.Mapping do
     Repo.one(
       from(c in MapConnection,
         where:
-          c.map_id == ^system.map_id and c.hole_type == ^code and
+          c.mask_id == ^system.mask_id and c.hole_type == ^code and
             (c.from_system_id == ^system.id or c.to_system_id == ^system.id)
       )
     )
@@ -1272,8 +1538,8 @@ defmodule Ztripwire.Mapping do
 
   def get_signature(id), do: Repo.get(Signature, id)
 
-  def list_wormhole_signatures(map_id) do
-    system_ids = from(s in MapSystem, where: s.map_id == ^map_id, select: s.id)
+  def list_wormhole_signatures(mask_id) do
+    system_ids = from(s in MapSystem, where: s.mask_id == ^mask_id, select: s.id)
 
     Repo.all(
       from(sig in Signature,
@@ -1329,7 +1595,7 @@ defmodule Ztripwire.Mapping do
 
   def sync_signature_to_connections(%Map{} = map, %MapSystem{} = system, old_code, new_code)
       when is_binary(new_code) do
-    map.id
+    map.mask_id
     |> list_connections_with_endpoints()
     |> Enum.filter(fn {conn, from, to} ->
       (from.id == system.id or to.id == system.id) and
@@ -1355,7 +1621,7 @@ defmodule Ztripwire.Mapping do
   def welcome_notes, do: [@welcome_shortcuts, @welcome_markdown]
 
   def ensure_welcome_notes(%MapSystem{} = system) do
-    mask_id = get_map!(system.map_id).mask_id
+    mask_id = system.mask_id
     existing = system.id |> list_comments() |> Enum.map(& &1.body)
 
     welcome_notes()
@@ -1487,8 +1753,8 @@ defmodule Ztripwire.Mapping do
   def get_system_stat(system_id),
     do: Repo.get_by(Ztripwire.Mapping.SystemStat, map_system_id: system_id)
 
-  def list_system_stats(map_id) do
-    system_ids = from(s in MapSystem, where: s.map_id == ^map_id, select: s.id)
+  def list_system_stats(mask_id) do
+    system_ids = from(s in MapSystem, where: s.mask_id == ^mask_id, select: s.id)
 
     Repo.all(
       from(st in Ztripwire.Mapping.SystemStat, where: st.map_system_id in subquery(system_ids))
@@ -1512,8 +1778,8 @@ defmodule Ztripwire.Mapping do
     end
   end
 
-  def map_statistics(map_id) do
-    systems = list_systems(map_id)
+  def map_statistics(mask_id) do
+    systems = list_systems(mask_id)
     system_ids = Enum.map(systems, & &1.id)
 
     signatures =
@@ -1521,7 +1787,7 @@ defmodule Ztripwire.Mapping do
         do: 0,
         else: Repo.aggregate(from(s in Signature, where: s.map_system_id in ^system_ids), :count)
 
-    connections = length(list_connections(map_id))
+    connections = length(list_connections(mask_id))
 
     comments =
       if system_ids == [],

@@ -76,11 +76,11 @@ flowchart TD
   demo["<b>Demo</b><br/>3 files"]:::violet
   background["<b>Background</b><br/>4 files"]:::orange
   contexts["<b>Contexts</b><br/>17 files"]:::cyan
-  persistence["<b>Persistence</b><br/>23 files"]:::yellow
+  persistence["<b>Persistence</b><br/>24 files"]:::yellow
   integrations["<b>Integrations</b><br/>8 files"]:::green
   presentation -->|2| data_access
   presentation -->|2| demo
-  presentation -->|37| contexts
+  presentation -->|38| contexts
   presentation -->|3| persistence
   presentation -->|9| integrations
   tooling -->|2| contexts
@@ -94,7 +94,7 @@ flowchart TD
   background -->|6| integrations
   contexts -.->|1| demo
   contexts -.->|2| background
-  contexts -->|35| persistence
+  contexts -->|37| persistence
   contexts -->|4| integrations
   persistence -.->|2| contexts
   persistence -->|1| integrations
@@ -117,7 +117,7 @@ flowchart TD
 | Demo | 3 | `lib/ztripwire/demo.ex`, `lib/ztripwire/demo/` |
 | Background | 4 | `lib/application.ex`, `lib/ztripwire/sync_server.ex`, `lib/ztripwire/tracking/poller.ex`, `lib/ztripwire/tracking/poller_supervisor.ex` |
 | Contexts | 17 | `lib/` |
-| Persistence | 23 | `lib/repo.ex`, `lib/ztripwire/ecto_types/` |
+| Persistence | 24 | `lib/repo.ex`, `lib/ztripwire/ecto_types/` |
 | Integrations | 8 | `lib/mailer.ex`, `lib/ztripwire/esi.ex`, `lib/ztripwire/esi/`, `lib/ztripwire/sso.ex`, `lib/ztripwire/systems/catalog.ex`, `lib/ztripwire/systems/gates.ex`, `lib/ztripwire/vault.ex`, `lib/ztripwire/zkill.ex` |
 
 ## External services

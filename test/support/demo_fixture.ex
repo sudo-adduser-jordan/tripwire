@@ -43,7 +43,7 @@ defmodule Ztripwire.TestFixtures do
     Enum.each(state.connections, fn conn ->
       {:ok, _, _} =
         Mapping.upsert_connection(
-          map.id,
+          map.mask_id,
           Map.fetch!(ids, conn.from_system_id),
           Map.fetch!(ids, conn.to_system_id),
           %{

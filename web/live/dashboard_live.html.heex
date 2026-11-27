@@ -128,7 +128,7 @@
         :if={@widget_system}
         module={ZtripwireWeb.LiveComponents.SystemLive}
         id="system-live"
-        map_id={@map && @map.id}
+        mask_id={@mask && @mask.id}
         systems={@systems}
         connections={@connections}
         selected_system_id={@selected_system_id}
@@ -170,7 +170,7 @@
         :if={@widget_map}
         module={ZtripwireWeb.LiveComponents.MapLive}
         id="map-live"
-        map_id={@map && @map.id}
+        mask_id={@mask && @mask.id}
         map={@map}
         maps={Map.get(assigns, :maps, [])}
         systems={@systems}

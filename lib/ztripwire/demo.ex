@@ -122,6 +122,7 @@ defmodule Ztripwire.Demo do
         connections: fresh.connections,
         signatures: fresh.signatures,
         comments: fresh.comments,
+        positions: fresh.positions,
         next_id: max(state.next_id, fresh.next_id)
     }
   end
@@ -136,33 +137,44 @@ defmodule Ztripwire.Demo do
     get_map(state, id) || raise ArgumentError, "map not found"
   end
 
-  def list_systems(%State{} = state, map_id) do
+  def list_systems(%State{} = state, mask_id) do
     state.systems
-    |> Enum.filter(&(&1.map_id == map_id))
+    |> Enum.filter(&(&1.mask_id == mask_id))
     |> Enum.sort_by(& &1.id)
   end
 
-  def list_visible_systems(%State{} = state, map_id) do
+  def list_visible_systems(%State{} = state, mask_id) do
     state.systems
-    |> Enum.filter(&(&1.map_id == map_id and is_nil(&1.hidden_at)))
+    |> Enum.filter(&(&1.mask_id == mask_id and is_nil(&1.hidden_at)))
     |> Enum.sort_by(& &1.id)
   end
 
-  def list_chain_systems(%State{} = state, %ChainMap{} = map, true) do
-    list_systems(state, map.id)
+  def list_chain_systems(%State{} = state, %ChainMap{} = view, true) do
+    state
+    |> list_systems(view.mask_id)
+    |> with_positions(state, view)
   end
 
-  def list_chain_systems(%State{} = state, %ChainMap{} = map, _show_all) do
-    systems = list_visible_systems(state, map.id)
+  def list_chain_systems(%State{} = state, %ChainMap{} = view, _show_all) do
+    systems = state |> list_visible_systems(view.mask_id) |> with_positions(state, view)
 
-    case home_system_id(state, map) do
+    case home_system_id(state, view) do
       nil ->
         systems
 
       home_id ->
-        reachable = reachable_ids(state, map.id, home_id)
+        reachable = reachable_ids(state, view.mask_id, home_id)
         Enum.filter(systems, &MapSet.member?(reachable, &1.id))
     end
+  end
+
+  defp with_positions(systems, %State{} = state, %ChainMap{} = view) do
+    Enum.map(systems, fn system ->
+      case Map.get(state.positions, {view.id, system.id}) do
+        %{x: x, y: y} -> %{system | x: x, y: y}
+        _ -> system
+      end
+    end)
   end
 
   def get_system(%State{} = state, id), do: Enum.find(state.systems, &(&1.id == id))
@@ -171,27 +183,27 @@ defmodule Ztripwire.Demo do
     get_system(state, id) || raise ArgumentError, "system not found"
   end
 
-  def get_system_by_solar(%State{} = state, map_id, solar) do
-    Enum.find(state.systems, &(&1.map_id == map_id and &1.solar_system_id == solar))
+  def get_system_by_solar(%State{} = state, mask_id, solar) do
+    Enum.find(state.systems, &(&1.mask_id == mask_id and &1.solar_system_id == solar))
   end
 
-  def list_connections(%State{} = state, map_id) do
+  def list_connections(%State{} = state, mask_id) do
     state.connections
-    |> Enum.filter(&(&1.map_id == map_id))
+    |> Enum.filter(&(&1.mask_id == mask_id))
     |> Enum.sort_by(& &1.id)
   end
 
-  def list_connections_with_endpoints(%State{} = state, map_id) do
+  def list_connections_with_endpoints(%State{} = state, mask_id) do
     state
-    |> list_connections(map_id)
+    |> list_connections(mask_id)
     |> Enum.map(fn conn ->
       {conn, get_system(state, conn.from_system_id), get_system(state, conn.to_system_id)}
     end)
   end
 
-  def connection_between(%State{} = state, map_id, from_id, to_id) do
+  def connection_between(%State{} = state, mask_id, from_id, to_id) do
     Enum.find(state.connections, fn conn ->
-      conn.map_id == map_id and
+      conn.mask_id == mask_id and
         ((conn.from_system_id == from_id and conn.to_system_id == to_id) or
            (conn.from_system_id == to_id and conn.to_system_id == from_id))
     end)
@@ -203,9 +215,9 @@ defmodule Ztripwire.Demo do
     |> Enum.sort_by(& &1.sig_id)
   end
 
-  def list_wormhole_signatures(%State{} = state, map_id) do
+  def list_wormhole_signatures(%State{} = state, mask_id) do
     ids =
-      state.systems |> Enum.filter(&(&1.map_id == map_id)) |> Enum.map(& &1.id) |> MapSet.new()
+      state.systems |> Enum.filter(&(&1.mask_id == mask_id)) |> Enum.map(& &1.id) |> MapSet.new()
 
     state.signatures
     |> Enum.filter(&(&1.site_type == "wormhole" and MapSet.member?(ids, &1.map_system_id)))
@@ -232,9 +244,9 @@ defmodule Ztripwire.Demo do
     get_comment(state, id) || raise ArgumentError, "comment not found"
   end
 
-  def list_system_stats(%State{} = state, map_id) do
+  def list_system_stats(%State{} = state, mask_id) do
     ids =
-      state.systems |> Enum.filter(&(&1.map_id == map_id)) |> Enum.map(& &1.id) |> MapSet.new()
+      state.systems |> Enum.filter(&(&1.mask_id == mask_id)) |> Enum.map(& &1.id) |> MapSet.new()
 
     state.stats
     |> Enum.filter(&MapSet.member?(ids, &1.map_system_id))
@@ -262,26 +274,18 @@ defmodule Ztripwire.Demo do
     }
   end
 
-  def list_favorite_candidates(%State{} = state, mask_id, exclude_map_id) do
-    map_ids =
-      state.maps
-      |> Enum.filter(&(&1.mask_id == mask_id and &1.id != exclude_map_id))
-      |> Enum.map(& &1.id)
-      |> MapSet.new()
-
+  def list_favorite_candidates(%State{} = state, mask_id) do
     state.systems
-    |> Enum.filter(&(&1.favorite and MapSet.member?(map_ids, &1.map_id)))
+    |> Enum.filter(&(&1.mask_id == mask_id and &1.favorite))
     |> Enum.sort_by(& &1.id)
   end
 
   def wormhole_link_target(%State{} = state, mask_id, candidate_solar_id, chain_systems) do
     by_solar = Map.new(chain_systems, &{&1.solar_system_id, &1})
     chain_set = MapSet.new(Map.keys(by_solar))
-    map_ids = state.maps |> Enum.filter(&(&1.mask_id == mask_id)) |> Enum.map(& &1.id)
-    id_set = MapSet.new(map_ids)
 
     state.connections
-    |> Enum.filter(&MapSet.member?(id_set, &1.map_id))
+    |> Enum.filter(&(&1.mask_id == mask_id))
     |> Enum.find_value(fn conn ->
       from_solar = system_solar(state, conn.from_system_id)
       to_solar = system_solar(state, conn.to_system_id)
@@ -299,16 +303,16 @@ defmodule Ztripwire.Demo do
     end)
   end
 
-  def occupants(%State{} = state, map_id) do
+  def occupants(%State{} = state, mask_id) do
     if state.tracking? do
-      demo_occupant(state, map_id) ++ Enum.flat_map(@mates, &mate_occupant(state, map_id, &1))
+      demo_occupant(state, mask_id) ++ Enum.flat_map(@mates, &mate_occupant(state, mask_id, &1))
     else
       []
     end
   end
 
-  defp demo_occupant(%State{character: %Character{} = character} = state, map_id) do
-    case character.character_on_chain && system_by_alias(state, map_id, @home_alias) do
+  defp demo_occupant(%State{character: %Character{} = character} = state, mask_id) do
+    case character.character_on_chain && system_by_alias(state, mask_id, @home_alias) do
       %MapSystem{} = home ->
         ship? = character.ship_on_chain
 
@@ -330,10 +334,10 @@ defmodule Ztripwire.Demo do
     end
   end
 
-  defp demo_occupant(%State{}, _map_id), do: []
+  defp demo_occupant(%State{}, _mask_id), do: []
 
-  defp mate_occupant(state, map_id, mate) do
-    case mate_system(state, map_id, mate) do
+  defp mate_occupant(state, mask_id, mate) do
+    case mate_system(state, mask_id, mate) do
       %MapSystem{} = system ->
         [
           presence(
@@ -353,11 +357,11 @@ defmodule Ztripwire.Demo do
     end
   end
 
-  defp mate_system(state, map_id, %{system_alias: alias_name}),
-    do: system_by_alias(state, map_id, alias_name)
+  defp mate_system(state, mask_id, %{system_alias: alias_name}),
+    do: system_by_alias(state, mask_id, alias_name)
 
-  defp mate_system(state, map_id, %{system_name: name}),
-    do: system_by_name(state, map_id, name)
+  defp mate_system(state, mask_id, %{system_name: name}),
+    do: system_by_name(state, mask_id, name)
 
   defp presence(
          name,
@@ -383,12 +387,12 @@ defmodule Ztripwire.Demo do
     }
   end
 
-  defp system_by_alias(%State{} = state, map_id, alias_name) do
-    Enum.find(state.systems, &(&1.map_id == map_id and &1.alias == alias_name))
+  defp system_by_alias(%State{} = state, mask_id, alias_name) do
+    Enum.find(state.systems, &(&1.mask_id == mask_id and &1.alias == alias_name))
   end
 
-  defp system_by_name(%State{} = state, map_id, name) do
-    Enum.find(state.systems, &(&1.map_id == map_id and &1.name == name))
+  defp system_by_name(%State{} = state, mask_id, name) do
+    Enum.find(state.systems, &(&1.mask_id == mask_id and &1.name == name))
   end
 
   def set_tracking(%State{} = state, tracking?),
@@ -579,25 +583,41 @@ defmodule Ztripwire.Demo do
   end
 
   def delete_map_full(%State{} = state, %ChainMap{} = map) do
-    system_ids =
-      state.systems |> Enum.filter(&(&1.map_id == map.id)) |> Enum.map(& &1.id) |> MapSet.new()
+    last? = state.maps |> Enum.filter(&(&1.mask_id == map.mask_id)) |> length() <= 1
 
-    connection_ids =
-      state.connections
-      |> Enum.filter(&(&1.map_id == map.id))
-      |> Enum.map(& &1.id)
-      |> MapSet.new()
+    state =
+      if last? do
+        system_ids =
+          state.systems
+          |> Enum.filter(&(&1.mask_id == map.mask_id))
+          |> Enum.map(& &1.id)
+          |> MapSet.new()
 
-    %{
-      state
-      | maps: Enum.reject(state.maps, &(&1.id == map.id)),
-        systems: Enum.reject(state.systems, &MapSet.member?(system_ids, &1.id)),
-        connections: Enum.reject(state.connections, &MapSet.member?(connection_ids, &1.id)),
-        signatures: Enum.reject(state.signatures, &MapSet.member?(system_ids, &1.map_system_id)),
-        comments: Enum.reject(state.comments, &MapSet.member?(system_ids, &1.map_system_id)),
-        stats: Enum.reject(state.stats, &MapSet.member?(system_ids, &1.map_system_id))
-    }
-    |> then(&{{:ok, map}, &1})
+        %{
+          state
+          | systems: Enum.reject(state.systems, &MapSet.member?(system_ids, &1.id)),
+            connections: Enum.reject(state.connections, &(&1.mask_id == map.mask_id)),
+            signatures:
+              Enum.reject(state.signatures, &MapSet.member?(system_ids, &1.map_system_id)),
+            comments: Enum.reject(state.comments, &MapSet.member?(system_ids, &1.map_system_id)),
+            stats: Enum.reject(state.stats, &MapSet.member?(system_ids, &1.map_system_id)),
+            positions:
+              Enum.reject(state.positions, fn {{view_id, _system_id}, _} ->
+                Enum.any?(state.maps, &(&1.id == view_id and &1.mask_id == map.mask_id))
+              end)
+        }
+      else
+        %{state | positions: Map.drop(state.positions, positions_for(state, map.id))}
+      end
+
+    state = %{state | maps: Enum.reject(state.maps, &(&1.id == map.id))}
+    {{:ok, map}, state}
+  end
+
+  defp positions_for(%State{} = state, view_id) do
+    state.positions
+    |> Map.keys()
+    |> Enum.filter(fn {id, _system_id} -> id == view_id end)
   end
 
   def add_system_to_map(%State{} = state, %ChainMap{} = map, attrs, opts \\ []) do
@@ -608,27 +628,59 @@ defmodule Ztripwire.Demo do
         attrs
       end
 
-    case Ecto.Changeset.apply_action(
-           MapSystem.changeset(%MapSystem{map_id: map.id}, attrs),
-           :insert
-         ) do
-      {:ok, system} ->
-        {id, state} = State.take_id(state)
-        now = now()
-        system = %{system | id: id, inserted_at: now, updated_at: now}
-        {state, system} = ensure_jita_notes(state, system)
-        {{:ok, system}, %{state | systems: state.systems ++ [system]}}
+    solar = solar_system_id(attrs)
+    unknown? = attrs[:unknown] || attrs["unknown"] || false
 
-      {:error, changeset} ->
-        {{:error, changeset}, state}
+    existing =
+      if is_integer(solar) and solar > 0 and not unknown? do
+        get_system_by_solar(state, map.mask_id, solar)
+      end
+
+    case existing do
+      %MapSystem{} = system ->
+        {_, state} = unhide_systems(state, [system.id])
+        system = %{system | hidden_at: nil}
+        {state, _system} = ensure_view_position(state, map, system)
+        {{:ok, system}, state}
+
+      nil ->
+        case Ecto.Changeset.apply_action(
+               MapSystem.changeset(%MapSystem{mask_id: map.mask_id}, attrs),
+               :insert
+             ) do
+          {:ok, system} ->
+            {id, state} = State.take_id(state)
+            now = now()
+            system = %{system | id: id, inserted_at: now, updated_at: now}
+            {state, system} = ensure_jita_notes(state, system)
+            {state, system} = ensure_view_position(state, map, system)
+            {{:ok, system}, %{state | systems: state.systems ++ [system]}}
+
+          {:error, changeset} ->
+            {{:error, changeset}, state}
+        end
+    end
+  end
+
+  defp ensure_view_position(%State{} = state, %ChainMap{} = view, %MapSystem{} = system) do
+    key = {view.id, system.id}
+
+    if Map.has_key?(state.positions, key) do
+      {state, system}
+    else
+      positions = Map.put(state.positions, key, %{x: system.x, y: system.y})
+      {%{state | positions: positions}, system}
     end
   end
 
   def ensure_chain_system(%State{} = state, %ChainMap{} = map, attrs) do
     solar = attrs[:solar_system_id] || attrs["solar_system_id"]
 
-    case get_system_by_solar(state, map.id, solar) do
+    case get_system_by_solar(state, map.mask_id, solar) do
       %MapSystem{} = system ->
+        {_, state} = unhide_systems(state, [system.id])
+        system = %{system | hidden_at: nil}
+        {state, system} = ensure_view_position(state, map, system)
         {{:ok, system, false}, state}
 
       nil ->
@@ -642,7 +694,19 @@ defmodule Ztripwire.Demo do
   end
 
   def update_system(%State{} = state, %MapSystem{unknown: true} = system, attrs) do
-    apply_system_update(state, system, fill_system_data(attrs) |> Map.put(:unknown, false))
+    attrs = fill_system_data(attrs) |> Map.put(:unknown, false)
+    solar = solar_system_id(attrs)
+
+    target =
+      if is_integer(solar) and solar > 0 do
+        get_system_by_solar(state, system.mask_id, solar)
+      end
+
+    if is_struct(target, MapSystem) and target.id != system.id do
+      {{:ok, target}, merge_demo_system(state, system, target)}
+    else
+      apply_system_update(state, system, attrs)
+    end
   end
 
   def update_system(%State{} = state, %MapSystem{} = system, attrs) do
@@ -667,9 +731,102 @@ defmodule Ztripwire.Demo do
     is_integer(solar) and solar > 0 and solar != system.solar_system_id
   end
 
-  def update_system_position(%State{} = state, %MapSystem{} = system, x, y) do
-    updated = %{system | x: x, y: y, updated_at: now()}
-    {{:ok, updated}, replace_system(state, updated)}
+  defp merge_demo_system(%State{} = state, %MapSystem{} = source, %MapSystem{} = target) do
+    signatures =
+      state.signatures
+      |> Enum.reduce([], fn signature, acc ->
+        cond do
+          signature.map_system_id != source.id ->
+            [signature | acc]
+
+          Enum.any?(
+            state.signatures,
+            &(&1.map_system_id == target.id and &1.sig_id == signature.sig_id)
+          ) ->
+            acc
+
+          true ->
+            [%{signature | map_system_id: target.id} | acc]
+        end
+      end)
+      |> Enum.reverse()
+
+    comments =
+      Enum.map(state.comments, fn comment ->
+        if comment.map_system_id == source.id,
+          do: %{comment | map_system_id: target.id},
+          else: comment
+      end)
+
+    connections =
+      state.connections
+      |> Enum.reject(fn conn ->
+        conn.from_system_id == source.id or conn.to_system_id == source.id
+      end)
+      |> then(fn kept ->
+        Enum.reduce(state.connections, kept, fn conn, acc ->
+          if conn.from_system_id != source.id and conn.to_system_id != source.id do
+            acc
+          else
+            from_id =
+              if conn.from_system_id == source.id, do: target.id, else: conn.from_system_id
+
+            to_id = if conn.to_system_id == source.id, do: target.id, else: conn.to_system_id
+
+            duplicate? =
+              from_id == to_id or
+                Enum.any?(acc, fn other ->
+                  other.mask_id == conn.mask_id and
+                    ((other.from_system_id == from_id and other.to_system_id == to_id) or
+                       (other.from_system_id == to_id and other.to_system_id == from_id))
+                end)
+
+            if duplicate? do
+              acc
+            else
+              [
+                %{
+                  conn
+                  | from_system_id: from_id,
+                    to_system_id: to_id,
+                    from_system: get_system(state, from_id),
+                    to_system: get_system(state, to_id)
+                }
+                | acc
+              ]
+            end
+          end
+        end)
+      end)
+
+    positions =
+      state.positions
+      |> Enum.reduce(%{}, fn
+        {{view_id, system_id}, position}, acc when system_id == source.id ->
+          Map.put_new(acc, {view_id, target.id}, position)
+
+        {key, position}, acc ->
+          Map.put(acc, key, position)
+      end)
+
+    %{
+      state
+      | systems: Enum.reject(state.systems, &(&1.id == source.id)),
+        signatures: signatures,
+        comments: comments,
+        connections: connections,
+        positions: positions,
+        stats: Enum.reject(state.stats, &(&1.map_system_id == source.id))
+    }
+  end
+
+  def put_view_positions(%State{} = state, %ChainMap{} = view, positions) do
+    updated =
+      Enum.reduce(positions, state.positions, fn {system_id, %{x: x, y: y}}, acc ->
+        Map.put(acc, {view.id, system_id}, %{x: x, y: y})
+      end)
+
+    {{:ok, nil}, %{state | positions: updated}}
   end
 
   def unhide_systems(%State{} = state, ids) do
@@ -705,10 +862,10 @@ defmodule Ztripwire.Demo do
     {{:ok, system}, state}
   end
 
-  def upsert_connection(%State{} = state, map_id, system_a_id, system_b_id, attrs \\ %{}) do
-    case connection_between(state, map_id, system_a_id, system_b_id) do
+  def upsert_connection(%State{} = state, mask_id, system_a_id, system_b_id, attrs \\ %{}) do
+    case connection_between(state, mask_id, system_a_id, system_b_id) do
       %MapConnection{} = conn ->
-        attrs = Map.merge(attrs, %{map_id: map_id})
+        attrs = Map.merge(attrs, %{mask_id: mask_id})
 
         case Ecto.Changeset.apply_action(MapConnection.changeset(conn, attrs), :update) do
           {:ok, updated} ->
@@ -723,7 +880,7 @@ defmodule Ztripwire.Demo do
       nil ->
         attrs =
           Map.merge(attrs, %{
-            map_id: map_id,
+            mask_id: mask_id,
             from_system_id: system_a_id,
             to_system_id: system_b_id
           })
@@ -782,7 +939,7 @@ defmodule Ztripwire.Demo do
 
     connections =
       Enum.map(state.connections, fn conn ->
-        if conn.map_id == map.id and
+        if conn.mask_id == map.mask_id and
              (conn.from_system_id == system.id or conn.to_system_id == system.id) and
              (conn.hole_type in [nil, ""] or (not is_nil(old_code) and conn.hole_type == old_code)) do
           %{conn | hole_type: new_code, updated_at: now}
@@ -903,14 +1060,14 @@ defmodule Ztripwire.Demo do
     {dropped, state} = drop_connections_for_codes(state, system, codes)
     {linked, state} = auto_link_wormholes(state, system, dropped_pair_keys(dropped))
     {state, _} = ensure_unknown_nodes(state, system)
-    state = delete_unlinked_unknowns(state, system.map_id)
+    state = delete_unlinked_unknowns(state, system.mask_id)
 
     candidates =
       (dropped |> Enum.flat_map(fn {conn, _, _} -> [conn.from_system_id, conn.to_system_id] end)) ++
         (linked |> Enum.flat_map(fn conn -> [conn.from_system_id, conn.to_system_id] end))
 
-    {orphans, state} = hide_orphan_systems(state, system.map_id, Enum.uniq(candidates))
-    {detached, state} = hide_detached_systems(state, system.map_id)
+    {orphans, state} = hide_orphan_systems(state, system.mask_id, Enum.uniq(candidates))
+    {detached, state} = hide_detached_systems(state, system.mask_id)
 
     {{length(dropped), length(linked), orphans + detached}, state}
   end
@@ -1047,7 +1204,7 @@ defmodule Ztripwire.Demo do
 
   defp connection_for_code(state, system, code) do
     Enum.find(state.connections, fn conn ->
-      conn.map_id == system.map_id and conn.hole_type == code and
+      conn.mask_id == system.mask_id and conn.hole_type == code and
         (conn.from_system_id == system.id or conn.to_system_id == system.id)
     end)
   end
@@ -1059,7 +1216,7 @@ defmodule Ztripwire.Demo do
       dropped =
         state.connections
         |> Enum.filter(fn conn ->
-          conn.map_id == system.map_id and
+          conn.mask_id == system.mask_id and
             (conn.from_system_id == system.id or conn.to_system_id == system.id) and
             MapSet.member?(codes, String.upcase(to_string(conn.hole_type || "")))
         end)
@@ -1080,7 +1237,7 @@ defmodule Ztripwire.Demo do
       |> Enum.filter(
         &(&1.site_type == "wormhole" and
             &1.map_system_id != system.id and
-            (get_system(state, &1.map_system_id) || %{map_id: nil}).map_id == system.map_id)
+            (get_system(state, &1.map_system_id) || %{mask_id: nil}).mask_id == system.mask_id)
       )
 
     targets =
@@ -1099,7 +1256,7 @@ defmodule Ztripwire.Demo do
         )
       end)
       |> Enum.filter(fn target ->
-        case connection_between(state, system.map_id, system.id, target.map_system_id) do
+        case connection_between(state, system.mask_id, system.id, target.map_system_id) do
           nil -> true
           conn -> conn.hole_type in [nil, ""]
         end
@@ -1109,9 +1266,9 @@ defmodule Ztripwire.Demo do
       code = SigParser.wormhole_code(target.type_name)
 
       cond do
-        connection_between(state, system.map_id, system.id, target.map_system_id) != nil ->
+        connection_between(state, system.mask_id, system.id, target.map_system_id) != nil ->
           {{:ok, conn, _created?}, state} =
-            upsert_connection(state, system.map_id, system.id, target.map_system_id, %{
+            upsert_connection(state, system.mask_id, system.id, target.map_system_id, %{
               hole_type: code
             })
 
@@ -1131,7 +1288,7 @@ defmodule Ztripwire.Demo do
 
         true ->
           {{:ok, conn, _created?}, state} =
-            upsert_connection(state, system.map_id, system.id, target.map_system_id, %{
+            upsert_connection(state, system.mask_id, system.id, target.map_system_id, %{
               hole_type: code
             })
 
@@ -1168,6 +1325,7 @@ defmodule Ztripwire.Demo do
   end
 
   defp ensure_unknown_nodes(state, %MapSystem{} = system) do
+    view = List.first(state.maps)
     linked = connection_codes(state, system)
 
     codes =
@@ -1179,10 +1337,10 @@ defmodule Ztripwire.Demo do
       |> Enum.reject(&MapSet.member?(linked, &1))
 
     Enum.reduce(codes, {state, 0}, fn code, {state, count} ->
-      {placeholder, state} = add_unknown_system(state, system.map_id)
+      {placeholder, state} = add_unknown_system(state, view)
 
       {{:ok, _conn, _created?}, state} =
-        upsert_connection(state, system.map_id, system.id, placeholder.id, %{hole_type: code})
+        upsert_connection(state, system.mask_id, system.id, placeholder.id, %{hole_type: code})
 
       {state, count + 1}
     end)
@@ -1191,19 +1349,17 @@ defmodule Ztripwire.Demo do
   defp connection_codes(state, system) do
     state.connections
     |> Enum.filter(
-      &(&1.map_id == system.map_id and
+      &(&1.mask_id == system.mask_id and
           (&1.from_system_id == system.id or &1.to_system_id == system.id))
     )
     |> Enum.map(&(&1.hole_type || ""))
     |> MapSet.new()
   end
 
-  defp add_unknown_system(state, map_id) do
-    map = get_map(state, map_id)
-
+  defp add_unknown_system(state, view) do
     add_system_to_map(
       state,
-      map,
+      view,
       %{unknown: true, solar_system_id: 0, name: "unknown", x: 460.0, y: 300.0},
       fill?: false
     )
@@ -1213,29 +1369,32 @@ defmodule Ztripwire.Demo do
     end
   end
 
-  defp delete_unlinked_unknowns(state, map_id) do
-    connected = connected_system_ids(state, map_id)
+  defp delete_unlinked_unknowns(state, mask_id) do
+    connected = connected_system_ids(state, mask_id)
 
     %{
       state
       | systems:
           Enum.reject(
             state.systems,
-            &(&1.map_id == map_id and &1.unknown and not MapSet.member?(connected, &1.id))
+            &(&1.mask_id == mask_id and &1.unknown and not MapSet.member?(connected, &1.id))
           )
     }
   end
 
-  defp hide_orphan_systems(state, map_id, candidate_ids) do
-    connected = connected_system_ids(state, map_id)
-    map = get_map(state, map_id)
-    home = home_system_id(state, map)
+  defp hide_orphan_systems(state, mask_id, candidate_ids) do
+    connected = connected_system_ids(state, mask_id)
+
+    home_solars =
+      state.maps
+      |> Enum.filter(&(&1.mask_id == mask_id and not is_nil(&1.home_solar_system_id)))
+      |> Enum.map(& &1.home_solar_system_id)
 
     hide =
       state.systems
       |> Enum.filter(
-        &(&1.map_id == map_id and is_nil(&1.hidden_at) and &1.id in candidate_ids and
-            not MapSet.member?(connected, &1.id) and &1.id != home)
+        &(&1.mask_id == mask_id and is_nil(&1.hidden_at) and &1.id in candidate_ids and
+            not MapSet.member?(connected, &1.id) and &1.solar_system_id not in home_solars)
       )
 
     ids = MapSet.new(hide, & &1.id)
@@ -1251,52 +1410,55 @@ defmodule Ztripwire.Demo do
     {length(hide), %{state | systems: systems}}
   end
 
-  defp hide_detached_systems(state, map_id) do
-    case get_map(state, map_id) do
-      nil ->
-        {0, state}
+  defp hide_detached_systems(state, mask_id) do
+    homes =
+      state.maps
+      |> Enum.filter(&(&1.mask_id == mask_id))
+      |> Enum.map(&home_system_id(state, &1))
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
 
-      map ->
-        case home_system_id(state, map) do
-          nil ->
-            {0, state}
+    if homes == [] do
+      {0, state}
+    else
+      reachable =
+        Enum.reduce(homes, MapSet.new(), fn home_id, acc ->
+          MapSet.union(acc, reachable_ids(state, mask_id, home_id))
+        end)
 
-          home_id ->
-            reachable = reachable_ids(state, map_id, home_id)
-            now = now()
+      now = now()
 
-            hide =
-              state.systems
-              |> Enum.filter(
-                &(&1.map_id == map_id and is_nil(&1.hidden_at) and
-                    not MapSet.member?(reachable, &1.id))
-              )
+      hide =
+        state.systems
+        |> Enum.filter(
+          &(&1.mask_id == mask_id and is_nil(&1.hidden_at) and
+              not MapSet.member?(reachable, &1.id))
+        )
 
-            ids = MapSet.new(hide, & &1.id)
+      ids = MapSet.new(hide, & &1.id)
 
-            systems =
-              Enum.map(state.systems, fn system ->
-                if MapSet.member?(ids, system.id),
-                  do: %{system | hidden_at: now, updated_at: now},
-                  else: system
-              end)
+      systems =
+        Enum.map(state.systems, fn system ->
+          if MapSet.member?(ids, system.id),
+            do: %{system | hidden_at: now, updated_at: now},
+            else: system
+        end)
 
-            {length(hide), %{state | systems: systems}}
-        end
+      {length(hide), %{state | systems: systems}}
     end
   end
 
-  defp connected_system_ids(state, map_id) do
+  defp connected_system_ids(state, mask_id) do
     state.connections
-    |> Enum.filter(&(&1.map_id == map_id))
+    |> Enum.filter(&(&1.mask_id == mask_id))
     |> Enum.flat_map(fn conn -> [conn.from_system_id, conn.to_system_id] end)
     |> MapSet.new()
   end
 
-  defp reachable_ids(state, map_id, home_id) do
+  defp reachable_ids(state, mask_id, home_id) do
     adjacency =
       state.connections
-      |> Enum.filter(&(&1.map_id == map_id))
+      |> Enum.filter(&(&1.mask_id == mask_id))
       |> Enum.reduce(%{}, fn conn, acc ->
         acc
         |> Map.update(conn.from_system_id, [conn.to_system_id], &[conn.to_system_id | &1])
@@ -1327,8 +1489,8 @@ defmodule Ztripwire.Demo do
 
   defp home_system_id(_state, %ChainMap{home_solar_system_id: nil}), do: nil
 
-  defp home_system_id(%State{} = state, %ChainMap{home_solar_system_id: solar} = map) do
-    case get_system_by_solar(state, map.id, solar) do
+  defp home_system_id(%State{} = state, %ChainMap{home_solar_system_id: solar, mask_id: mask_id}) do
+    case get_system_by_solar(state, mask_id, solar) do
       %MapSystem{id: id} -> id
       nil -> nil
     end

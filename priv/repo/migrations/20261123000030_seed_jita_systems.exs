@@ -2,7 +2,7 @@ defmodule Ztripwire.Repo.Migrations.SeedJitaSystems do
   use Ecto.Migration
 
   def up do
-    Ztripwire.Mapping.seed_jita_systems()
+    :ok
   end
 
   def down do

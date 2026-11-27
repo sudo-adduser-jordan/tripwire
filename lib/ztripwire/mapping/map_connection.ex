@@ -2,8 +2,8 @@ defmodule Ztripwire.Mapping.MapConnection do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ztripwire.Mapping.Map
   alias Ztripwire.Mapping.MapSystem
+  alias Ztripwire.Masks.Mask
 
   @mass_statuses ~w(stable destab critical)
   @time_statuses ~w(stable critical <1h)
@@ -17,7 +17,7 @@ defmodule Ztripwire.Mapping.MapConnection do
     field :parent, :string
     field :jumps, :integer
 
-    belongs_to :map, Map
+    belongs_to :mask, Mask
     belongs_to :from_system, MapSystem, foreign_key: :from_system_id
     belongs_to :to_system, MapSystem, foreign_key: :to_system_id
 
@@ -27,7 +27,7 @@ defmodule Ztripwire.Mapping.MapConnection do
   def changeset(connection, attrs) do
     connection
     |> cast(attrs, [
-      :map_id,
+      :mask_id,
       :from_system_id,
       :to_system_id,
       :hole_type,
@@ -37,7 +37,7 @@ defmodule Ztripwire.Mapping.MapConnection do
       :parent,
       :jumps
     ])
-    |> validate_required([:map_id, :from_system_id, :to_system_id])
+    |> validate_required([:mask_id, :from_system_id, :to_system_id])
     |> validate_number(:jumps, greater_than_or_equal_to: 0)
     |> validate_inclusion(:mass_status, @mass_statuses)
     |> validate_inclusion(:time_status, @time_statuses)

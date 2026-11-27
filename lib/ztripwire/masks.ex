@@ -63,10 +63,8 @@ defmodule Ztripwire.Masks do
   def get_mask(id), do: Repo.get(Mask, id)
 
   def delete_mask_full(%Mask{id: mask_id} = mask) do
-    mask_id
-    |> Mapping.list_maps_for_mask()
-    |> Enum.each(&Mapping.delete_map_full/1)
-
+    Repo.delete_all(from(m in Mapping.Map, where: m.mask_id == ^mask_id))
+    :ok = Mapping.delete_mask_chain(mask_id)
     Repo.delete_all(from(mm in MaskMembership, where: mm.mask_id == ^mask_id))
     Repo.delete(mask)
   end

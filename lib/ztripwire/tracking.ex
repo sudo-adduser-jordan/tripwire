@@ -10,9 +10,9 @@ defmodule Ztripwire.Tracking do
   alias Ztripwire.Wormholes
   alias Phoenix.PubSub
 
-  @topic_prefix "map"
+  @topic_prefix "mask"
 
-  def map_topic(map_id), do: "#{@topic_prefix}:#{map_id}"
+  def mask_topic(mask_id), do: "#{@topic_prefix}:#{mask_id}"
 
   def ensure_poller(character, opts \\ []) do
     case Registry.lookup(Ztripwire.TrackingRegistry, character.eve_id) do
@@ -56,9 +56,9 @@ defmodule Ztripwire.Tracking do
       connection_result =
         if is_struct(prev_system, MapSystem) and prev_system.id != system.id do
           jumps = jump_count(prev_system, system, route_fn)
-          attrs = jump_connection_attrs(map.id, prev_system, system, jumps)
+          attrs = jump_connection_attrs(map.mask_id, prev_system, system, jumps)
 
-          case Mapping.upsert_connection(map.id, prev_system.id, system.id, attrs) do
+          case Mapping.upsert_connection(map.mask_id, prev_system.id, system.id, attrs) do
             {:ok, conn, _new?} -> conn
             _other -> nil
           end
@@ -75,8 +75,8 @@ defmodule Ztripwire.Tracking do
         end
       end
 
-      broadcast_system_change(map.id, character_name, system)
-      broadcast_map_update(map.id)
+      broadcast_system_change(map.mask_id, character_name, system)
+      broadcast_map_update(map.mask_id)
 
       {:ok, %{system: system, connection: connection_result}}
     end
@@ -94,11 +94,11 @@ defmodule Ztripwire.Tracking do
     end)
   end
 
-  defp jump_connection_attrs(map_id, from_system, to_system, jumps) do
+  defp jump_connection_attrs(mask_id, from_system, to_system, jumps) do
     attrs = %{jumps: jumps}
 
     unlabeled? =
-      case Mapping.connection_between(map_id, from_system.id, to_system.id) do
+      case Mapping.connection_between(mask_id, from_system.id, to_system.id) do
         nil -> true
         conn -> conn.hole_type in [nil, ""]
       end
@@ -131,15 +131,15 @@ defmodule Ztripwire.Tracking do
 
   defp blank_wormhole?(_), do: false
 
-  def broadcast_map_update(map_id) do
-    PubSub.broadcast(Ztripwire.PubSub, map_topic(map_id), {:map_updated, map_id})
+  def broadcast_map_update(mask_id) do
+    PubSub.broadcast(Ztripwire.PubSub, mask_topic(mask_id), {:map_updated, mask_id})
   end
 
-  def list_occupants(map_id) do
+  def list_occupants(mask_id) do
     systems =
       Repo.all(
         from(s in MapSystem,
-          where: s.map_id == ^map_id,
+          where: s.mask_id == ^mask_id,
           select: {s.solar_system_id, s.id, s.name}
         )
       )
@@ -215,10 +215,10 @@ defmodule Ztripwire.Tracking do
     _, _ -> []
   end
 
-  defp broadcast_system_change(map_id, character_name, system) do
+  defp broadcast_system_change(mask_id, character_name, system) do
     PubSub.broadcast(
       Ztripwire.PubSub,
-      map_topic(map_id),
+      mask_topic(mask_id),
       {:system_changed, %{character: character_name, system: system}}
     )
   end
@@ -227,7 +227,7 @@ defmodule Ztripwire.Tracking do
     existing =
       Repo.one(
         from(s in MapSystem,
-          where: s.map_id == ^map.id and s.solar_system_id == ^solar_system_id
+          where: s.mask_id == ^map.mask_id and s.solar_system_id == ^solar_system_id
         )
       )
 
@@ -257,8 +257,8 @@ defmodule Ztripwire.Tracking do
     end
   end
 
-  defp unknown_placeholder(%MapSystem{id: id, map_id: map_id}) do
-    map_id
+  defp unknown_placeholder(%MapSystem{id: id, mask_id: mask_id}) do
+    mask_id
     |> then(&Mapping.list_connections/1)
     |> Enum.filter(&(&1.from_system_id == id or &1.to_system_id == id))
     |> Enum.map(fn conn ->
@@ -277,7 +277,7 @@ defmodule Ztripwire.Tracking do
   @placement_radius 170.0
 
   defp next_position(map, prev_system) do
-    count = Repo.aggregate(from(s in MapSystem, where: s.map_id == ^map.id), :count)
+    count = Repo.aggregate(from(s in MapSystem, where: s.mask_id == ^map.mask_id), :count)
 
     case prev_system do
       %MapSystem{x: x, y: y} ->
