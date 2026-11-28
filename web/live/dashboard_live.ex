@@ -512,7 +512,7 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   def handle_event("apply-layout", %{"id" => id}, socket) do
-    case Data.get_layout(data(socket), id) do
+    case Data.get_layout(data(socket), socket.assigns.character, id) do
       nil ->
         {:noreply, put_flash(socket, :error, "Layout not found")}
 
@@ -549,13 +549,18 @@ defmodule ZtripwireWeb.DashboardLive do
   def handle_event("layout-captured", %{"widgets" => widgets}, socket) do
     widgets = Layouts.with_visibility(widgets, socket.assigns)
 
-    case Data.save_layout(data(socket), socket.assigns[:layout_name], widgets) do
+    case Data.save_layout(
+           data(socket),
+           socket.assigns.character,
+           socket.assigns[:layout_name],
+           widgets
+         ) do
       {{:ok, layout}, data} ->
         socket =
           socket
           |> put_data(data)
           |> save_arrangement(widgets, "saved:#{layout.id}")
-          |> assign(:layouts, Data.list_layouts(data))
+          |> assign(:layouts, Data.list_layouts(data, socket.assigns.character))
           |> assign(:active_layout, "saved:#{layout.id}")
           |> assign(:layout_name, "")
           |> assign(:layout_errors, [])
@@ -573,15 +578,15 @@ defmodule ZtripwireWeb.DashboardLive do
   def handle_event("layout-captured", _params, socket), do: {:noreply, socket}
 
   def handle_event("delete-layout", %{"id" => id}, socket) do
-    case Data.delete_layout(data(socket), id) do
+    case Data.delete_layout(data(socket), socket.assigns.character, id) do
       {{:ok, layout}, data} ->
         socket =
           socket
           |> put_data(data)
-          |> assign(:layouts, Data.list_layouts(data))
+          |> assign(:layouts, Data.list_layouts(data, socket.assigns.character))
 
         if socket.assigns[:active_layout] == id do
-          {_result, data} = Data.reset_arrangement(data)
+          {_result, data} = Data.reset_arrangement(data, socket.assigns.character)
           widgets = Layouts.default_widgets()
 
           socket =
@@ -624,7 +629,7 @@ defmodule ZtripwireWeb.DashboardLive do
     widgets = Layouts.default_widgets()
     visibility = Map.new(@widgets, fn {_key, assign_key} -> {assign_key, true} end)
 
-    case Data.reset_layout(data(socket), visibility) do
+    case Data.reset_layout(data(socket), socket.assigns.character, visibility) do
       {{:ok, _}, data} ->
         put_data(socket, data)
 
@@ -1827,14 +1832,15 @@ defmodule ZtripwireWeb.DashboardLive do
 
   defp assign_layouts(socket) do
     data = data(socket)
-    layouts = Data.list_layouts(data)
+    character = socket.assigns.character
+    layouts = Data.list_layouts(data, character)
 
-    case Data.resolve_active(data) do
+    case Data.resolve_active(data, character) do
       nil ->
         socket
         |> assign(:layouts, layouts)
         |> assign(:active_layout, nil)
-        |> assign_widget_positions(Data.arrangement(data))
+        |> assign_widget_positions(Data.arrangement(data, character))
 
       layout ->
         socket
@@ -1859,7 +1865,7 @@ defmodule ZtripwireWeb.DashboardLive do
 
   defp clear_active_layout(socket) do
     if socket.assigns[:active_layout] do
-      {_result, data} = Data.clear_active(data(socket))
+      {_result, data} = Data.clear_active(data(socket), socket.assigns.character)
       socket |> put_data(data) |> assign(:active_layout, nil)
     else
       socket
@@ -1867,7 +1873,7 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   defp save_arrangement(socket, widgets, active_id) do
-    case Data.put_arrangement(data(socket), widgets, active_id) do
+    case Data.put_arrangement(data(socket), socket.assigns.character, widgets, active_id) do
       {{:ok, _}, data} ->
         put_data(socket, data)
 
@@ -1884,7 +1890,7 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   defp put_setting(socket, key, value) do
-    case Data.put_setting(data(socket), key, value) do
+    case Data.put_setting(data(socket), socket.assigns.character, key, value) do
       {{:ok, _}, data} ->
         put_data(socket, data) |> assign(key, value)
 
@@ -1923,7 +1929,7 @@ defmodule ZtripwireWeb.DashboardLive do
 
     admin_masks = Masks.list_masks_for_character(character.id)
     socket = ensure_jita_system(socket, map)
-    settings = Settings.assigns()
+    settings = Settings.assigns(character)
 
     socket
     |> assign(:current_user, %{id: character.eve_id, name: character.name})
@@ -2089,8 +2095,8 @@ defmodule ZtripwireWeb.DashboardLive do
     mask = ensure_character_masks(character)
     {map, socket} = personal_map(socket, mask)
     socket = ensure_jita_system(socket, map)
-    settings = socket.assigns
-    claim_admin_modal? = settings[:claim_admin_modal?]
+    settings = Settings.assigns(character)
+    claim_admin_modal? = socket.assigns[:claim_admin_modal?]
 
     Phoenix.PubSub.unsubscribe(
       Ztripwire.PubSub,
@@ -2102,11 +2108,13 @@ defmodule ZtripwireWeb.DashboardLive do
     socket
     |> assign(:character, character)
     |> assign(:current_user, %{id: character.eve_id, name: character.name})
+    |> assign(settings)
     |> assign(:mask, mask)
     |> assign(:masks, Masks.list_masks_for_characters(socket.assigns.characters))
     |> assign(:admin_masks, Masks.list_masks_for_character(character.id))
     |> assign(:map, map)
     |> assign(:maps, Data.list_maps_for_mask(data(socket), mask.id))
+    |> assign_layouts()
     |> apply_tree_layout_with_home(settings.map_layout, map)
     |> assign(:selected_system_id, nil)
     |> assign(:selected_system_name, nil)

@@ -673,7 +673,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     end
   end
 
-  test "settings are shared across characters", %{conn: conn, character: character} do
+  test "settings are per character", %{conn: conn, character: character} do
     {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
@@ -683,16 +683,18 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     view |> element("#toggle-widget-notes") |> render_click()
 
     refute has_element?(view, "#notes")
-    refute Settings.get().widget_notes
+    refute Settings.get(character).widget_notes
 
     {:ok, other} = Accounts.upsert_character(%{eve_id: 43_100, name: "Alt Character"})
+    assert Settings.get(other).widget_notes
+
     {:ok, other_view, _html} = live(login(conn, other), ~p"/dashboard")
 
-    refute has_element?(other_view, "#notes")
+    assert has_element?(other_view, "#notes")
 
     other_view |> element("#settings-button") |> render_click()
     render_click(other_view, "settings-tab", %{"tab" => "widgets"})
-    refute has_element?(other_view, "#toggle-widget-notes[checked]")
+    assert has_element?(other_view, "#toggle-widget-notes[checked]")
   end
 
   test "layouts settings tab lists core layouts without remove controls", %{
@@ -733,7 +735,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     assert has_element?(view, "#map[gs-y='0']")
     refute has_element?(view, "#signatures")
-    assert Layouts.active_layout() == "core:map-focus"
+    assert Layouts.active_layout(character) == "core:map-focus"
     assert render(view) =~ "Active"
 
     {:ok, reloaded, _html} = live(login(conn, character), ~p"/dashboard")
@@ -764,12 +766,12 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     view |> element("#grid-stack") |> render_hook("layout-captured", %{"widgets" => widgets})
 
-    assert [layout] = Layouts.list_saved()
+    assert [layout] = Layouts.list_saved(character)
     assert layout.name == "Wide"
     assert has_element?(view, "#layout-saved-#{layout.id}")
     assert has_element?(view, "#apply-layout-saved-#{layout.id}")
     assert has_element?(view, "#remove-layout-saved-#{layout.id}")
-    assert Layouts.active_layout() == "saved:#{layout.id}"
+    assert Layouts.active_layout(character) == "saved:#{layout.id}"
     assert render(view) =~ "Active"
   end
 
@@ -778,7 +780,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     character: character
   } do
     {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
-    {:ok, _layout} = Layouts.save_layout("Wide", Layouts.default_widgets())
+    {:ok, _layout} = Layouts.save_layout(character, "Wide", Layouts.default_widgets())
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -788,12 +790,12 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     view |> element("#grid-stack") |> render_hook("layout-captured", %{"widgets" => %{}})
 
     assert render(view) =~ "name has already been taken"
-    assert length(Layouts.list_saved()) == 1
+    assert length(Layouts.list_saved(character)) == 1
   end
 
   test "only saved layouts can be removed", %{conn: conn, character: character} do
     {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
-    {:ok, layout} = Layouts.save_layout("Wide", Layouts.default_widgets())
+    {:ok, layout} = Layouts.save_layout(character, "Wide", Layouts.default_widgets())
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -802,7 +804,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     view |> element("#remove-layout-saved-#{layout.id}") |> render_click()
 
-    assert Layouts.list_saved() == []
+    assert Layouts.list_saved(character) == []
     assert has_element?(view, "#no-saved-layouts")
 
     render_click(view, "delete-layout", %{"id" => "core:default"})
@@ -819,12 +821,12 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     view |> element("#settings-button") |> render_click()
     render_click(view, "settings-tab", %{"tab" => "layouts"})
     view |> element("#apply-layout-core-map-focus") |> render_click()
-    assert Layouts.active_layout() == "core:map-focus"
+    assert Layouts.active_layout(character) == "core:map-focus"
 
     render_click(view, "settings-tab", %{"tab" => "widgets"})
     view |> element("#toggle-widget-signatures") |> render_click()
 
-    assert Layouts.active_layout() == nil
+    assert Layouts.active_layout(character) == nil
   end
 
   test "dragging and resizing widgets remembers the arrangement across reloads", %{
@@ -838,7 +840,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     view |> element("#settings-button") |> render_click()
     render_click(view, "settings-tab", %{"tab" => "layouts"})
     view |> element("#apply-layout-core-map-focus") |> render_click()
-    assert Layouts.active_layout() == "core:map-focus"
+    assert Layouts.active_layout(character) == "core:map-focus"
 
     widgets = %{
       "system" => %{"x" => 0, "y" => 0, "w" => 6, "h" => 5},
@@ -849,8 +851,8 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     view |> element("#grid-stack") |> render_hook("layout-changed", %{"widgets" => widgets})
 
-    assert Layouts.active_layout() == nil
-    stored = Settings.get().widget_layout
+    assert Layouts.active_layout(character) == nil
+    stored = Settings.get(character).widget_layout
     assert stored["system"]["x"] == 0
     assert stored["system"]["h"] == 5
     assert stored["signatures"]["h"] == 7
@@ -884,9 +886,9 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert has_element?(view, "#system-container[gs-x='1'][gs-w='5']")
     assert has_element?(view, "#signatures[gs-x='1'][gs-y='6']")
     assert has_element?(view, "#map[gs-y='12']")
-    assert Settings.get().widget_layout == nil
-    assert Layouts.active_layout() == nil
-    assert Settings.get().widget_signatures
+    assert Settings.get(character).widget_layout == nil
+    assert Layouts.active_layout(character) == nil
+    assert Settings.get(character).widget_signatures
     assert render(view) =~ "Layout reset to Default"
     refute render(view) =~ "Active"
   end
@@ -917,17 +919,18 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     |> render_click()
 
     refute has_element?(view, "#chain-map")
-    refute Settings.get().widget_map
+    refute Settings.get(character).widget_map
   end
 
   test "persisted layout and scale apply on the next mount", %{conn: conn, character: character} do
-    {:ok, _} = Settings.update(%{map_layout: "bottom", map_scale: 150, widget_notes: false})
+    {:ok, _} =
+      Settings.update(character, %{map_layout: "bottom", map_scale: 150, widget_notes: false})
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     {:ok, mask} = Masks.ensure_personal_mask(character)
     [map] = Mapping.list_maps_for_mask(mask.id)
-    systems = map |> Mapping.list_chain_systems(Settings.get().show_all)
+    systems = map |> Mapping.list_chain_systems(Settings.get(character).show_all)
 
     home = Enum.find(Mapping.list_systems(map.mask_id), &(&1.name == "Jita"))
 
@@ -1682,7 +1685,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     character: character
   } do
     {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
-    {:ok, _} = Settings.update(%{map_scale: 150})
+    {:ok, _} = Settings.update(character, %{map_scale: 150})
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -1691,7 +1694,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     |> render_click()
 
     render(view)
-    assert Settings.get().map_scale == 100
+    assert Settings.get(character).map_scale == 100
 
     assert_push_event(view, "reset-pan", %{zoom: zoom})
     assert_in_delta zoom, Mapping.default_zoom(), 0.001
@@ -2328,7 +2331,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     assert elem(view_pos(map, system.id), 1) == 60.0
     assert elem(view_pos(map, other.id), 1) == 220.0
-    assert Settings.get().map_layout == "top"
+    assert Settings.get(character).map_layout == "top"
   end
 
   test "map settings toggles jump lines and node badges", %{conn: conn, character: character} do
@@ -2355,8 +2358,8 @@ defmodule ZtripwireWeb.DashboardLiveTest do
       |> render_click()
 
     refute html =~ "Static wormhole:"
-    refute Settings.get().show_jump_lines
-    refute Settings.get().show_node_badges
+    refute Settings.get(character).show_jump_lines
+    refute Settings.get(character).show_node_badges
   end
 
   test "map settings line weight changes edge width", %{conn: conn, character: character} do
@@ -2378,7 +2381,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
       |> render_change(%{weight: "4"})
 
     assert html =~ ~s|stroke-width="5"|
-    assert Settings.get().line_weight == 4
+    assert Settings.get(character).line_weight == 4
   end
 
   test "map settings background sets the map backdrop", %{conn: conn, character: character} do
@@ -2395,7 +2398,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     assert html =~ "background-image"
     assert html =~ "https://example.com/map-bg.jpg"
-    assert Settings.get().map_background == "https://example.com/map-bg.jpg"
+    assert Settings.get(character).map_background == "https://example.com/map-bg.jpg"
   end
 
   test "map settings node spacing relays out the tree", %{conn: conn, character: character} do
@@ -2417,7 +2420,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     |> render_change(%{spacing: "200"})
 
     assert elem(view_pos(map, other.id), 1) == 380.0
-    assert Settings.get().node_spacing == 200
+    assert Settings.get(character).node_spacing == 200
   end
 
   test "map settings node corners change the node rounding", %{conn: conn, character: character} do
@@ -2435,7 +2438,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
       |> render_change(%{roundness: "square"})
 
     assert html =~ ~s|rx="0.0"|
-    assert Settings.get().node_roundness == "square"
+    assert Settings.get(character).node_roundness == "square"
 
     html =
       view
@@ -2443,7 +2446,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
       |> render_change(%{roundness: "rounded"})
 
     assert html =~ ~s|rx="22.0"|
-    assert Settings.get().node_roundness == "rounded"
+    assert Settings.get(character).node_roundness == "rounded"
   end
 
   test "map settings scale pushes a zoom event", %{conn: conn, character: character} do
@@ -2458,7 +2461,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     |> render_change(%{scale: "150"})
 
     assert_push_event(view, "map-zoom", %{zoom: 1.5})
-    assert Settings.get().map_scale == 150
+    assert Settings.get(character).map_scale == 150
   end
 
   test "top bar renders ESI fallbacks and grid lock toggles", %{conn: conn} do
@@ -2718,7 +2721,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     html = render(view)
     assert html =~ "J150323"
     assert html =~ "J150324"
-    assert Settings.get().show_all
+    assert Settings.get(character).show_all
 
     assert elem(view_pos(map, home.id), 1) == 60.0
     assert elem(view_pos(map, child.id), 1) == 220.0
@@ -2923,7 +2926,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert has_element?(view, "#node-#{child.id}")
     refute has_element?(view, "#node-#{orphan.id}")
 
-    {:ok, _} = Settings.update(%{show_all: true})
+    {:ok, _} = Settings.update(character, %{show_all: true})
 
     {:ok, all_view, _html} = live(login(conn, character), ~p"/dashboard")
 
@@ -2975,7 +2978,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     assert node =~ ", 590.0)"
     refute node =~ ", 60.0)"
-    assert Settings.get().map_layout == "bottom"
+    assert Settings.get(character).map_layout == "bottom"
   end
 
   test "demo user is admin and sees the Admin settings tab", %{conn: conn} do

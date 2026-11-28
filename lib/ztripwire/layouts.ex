@@ -1,6 +1,7 @@
 defmodule Ztripwire.Layouts do
   import Ecto.Query
 
+  alias Ztripwire.Accounts.Character
   alias Ztripwire.Layouts.Layout
   alias Ztripwire.Repo
   alias Ztripwire.Settings
@@ -64,73 +65,85 @@ defmodule Ztripwire.Layouts do
 
   def default_widgets, do: hd(@core_layouts).widgets
 
-  def list_layouts do
-    @core_layouts ++ Enum.map(list_saved(), &normalize_layout/1)
+  def list_layouts(%Character{} = character) do
+    @core_layouts ++ Enum.map(list_saved(character), &normalize_layout/1)
   end
 
-  def list_saved do
-    Repo.all(from(l in Layout, order_by: [desc: l.id]))
+  def list_saved(%Character{id: owner_id}) do
+    Repo.all(
+      from(l in Layout,
+        where: l.owner_character_id == ^owner_id,
+        order_by: [desc: l.id]
+      )
+    )
   end
 
-  def get_layout(nil), do: nil
+  def get_layout(%Character{}, nil), do: nil
 
-  def get_layout("core:" <> _ = id) do
+  def get_layout(%Character{}, "core:" <> _ = id) do
     Enum.find(@core_layouts, &(&1.id == id))
   end
 
-  def get_layout("saved:" <> raw_id) do
+  def get_layout(%Character{id: owner_id}, "saved:" <> raw_id) do
     with {id, ""} <- Integer.parse(raw_id),
-         %Layout{} = layout <- Repo.get(Layout, id) do
+         %Layout{owner_character_id: ^owner_id} = layout <- Repo.get(Layout, id) do
       normalize_layout(layout)
     else
       _ -> nil
     end
   end
 
-  def get_layout(_id), do: nil
+  def get_layout(%Character{}, _id), do: nil
 
-  def save_layout(name, widgets) do
+  def save_layout(%Character{id: owner_id}, name, widgets) do
     %Layout{}
-    |> Layout.changeset(%{name: name, widgets: normalize_widgets(widgets)})
+    |> Layout.changeset(%{
+      name: name,
+      widgets: normalize_widgets(widgets),
+      owner_character_id: owner_id
+    })
     |> Repo.insert()
   end
 
-  def delete_layout("core:" <> _), do: {:error, :core}
+  def delete_layout(%Character{}, "core:" <> _), do: {:error, :core}
 
-  def delete_layout("saved:" <> raw_id) do
+  def delete_layout(%Character{id: owner_id}, "saved:" <> raw_id) do
     with {id, ""} <- Integer.parse(raw_id),
-         %Layout{} = layout <- Repo.get(Layout, id) do
+         %Layout{owner_character_id: ^owner_id} = layout <- Repo.get(Layout, id) do
       Repo.delete(layout)
     else
       _ -> {:error, :not_found}
     end
   end
 
-  def delete_layout(_id), do: {:error, :not_found}
+  def delete_layout(%Character{}, _id), do: {:error, :not_found}
 
-  def active_layout, do: Settings.get().active_layout
+  def active_layout(%Character{} = character), do: Settings.get(character).active_layout
 
-  def set_active(id), do: Settings.update(%{active_layout: id})
+  def set_active(%Character{} = character, id),
+    do: Settings.update(character, %{active_layout: id})
 
-  def clear_active, do: set_active(nil)
+  def clear_active(%Character{} = character), do: set_active(character, nil)
 
-  def resolve_active do
-    get_layout(active_layout())
-  end
+  def resolve_active(%Character{} = character),
+    do: get_layout(character, active_layout(character))
 
-  def arrangement do
-    case Settings.get().widget_layout do
+  def arrangement(%Character{} = character) do
+    case Settings.get(character).widget_layout do
       %{} = widgets -> normalize_widgets(widgets)
       _ -> default_widgets()
     end
   end
 
-  def put_arrangement(widgets, active_id \\ nil) do
-    Settings.update(%{widget_layout: merge_arrangement(widgets), active_layout: active_id})
+  def put_arrangement(%Character{} = character, widgets, active_id \\ nil) do
+    Settings.update(character, %{
+      widget_layout: merge_arrangement(character, widgets),
+      active_layout: active_id
+    })
   end
 
-  def reset_arrangement do
-    Settings.update(%{widget_layout: nil, active_layout: nil})
+  def reset_arrangement(%Character{} = character) do
+    Settings.update(character, %{widget_layout: nil, active_layout: nil})
   end
 
   def with_visibility(widgets, assigns) do
@@ -188,8 +201,8 @@ defmodule Ztripwire.Layouts do
 
   def valid_widgets?(_widgets), do: false
 
-  defp merge_arrangement(widgets) when is_map(widgets) do
-    current = arrangement()
+  defp merge_arrangement(%Character{} = character, widgets) when is_map(widgets) do
+    current = arrangement(character)
     defaults = default_widgets()
 
     Map.new(@widget_ids, fn key ->
@@ -200,7 +213,7 @@ defmodule Ztripwire.Layouts do
     |> normalize_widgets()
   end
 
-  defp merge_arrangement(_widgets), do: default_widgets()
+  defp merge_arrangement(_character, _widgets), do: default_widgets()
 
   defp normalize_layout(%Layout{} = layout) do
     %{

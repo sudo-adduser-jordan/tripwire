@@ -7,6 +7,7 @@ defmodule Ztripwire.Settings.UserSettings do
   @node_roundness ~w(square rounded oval)
 
   schema "user_settings" do
+    field :character_id, :integer
     field :map_layout, :string, default: "top"
     field :show_row_guides, :boolean, default: true
     field :show_row_counts, :boolean, default: true
@@ -37,6 +38,7 @@ defmodule Ztripwire.Settings.UserSettings do
   def changeset(settings, attrs) do
     settings
     |> cast(attrs, [
+      :character_id,
       :map_layout,
       :show_row_guides,
       :show_row_counts,
@@ -67,6 +69,7 @@ defmodule Ztripwire.Settings.UserSettings do
     |> validate_number(:line_weight, greater_than_or_equal_to: 1, less_than_or_equal_to: 5)
     |> validate_number(:node_spacing, greater_than_or_equal_to: 50, less_than_or_equal_to: 200)
     |> validate_number(:map_scale, greater_than_or_equal_to: 50, less_than_or_equal_to: 200)
+    |> validate_format(:map_background, ~r{^https://\S+$}, message: "must be an https URL")
     |> validate_length(:map_background, max: 2048)
   end
 end

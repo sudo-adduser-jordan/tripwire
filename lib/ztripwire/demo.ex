@@ -413,7 +413,9 @@ defmodule Ztripwire.Demo do
 
   def get_layout(%State{}, nil), do: nil
 
-  def get_layout(%State{}, "core:" <> _ = id), do: Layouts.get_layout(id)
+  def get_layout(%State{}, "core:" <> _ = id) do
+    Enum.find(Layouts.core_layouts(), &(&1.id == id))
+  end
 
   def get_layout(%State{} = state, "saved:" <> raw_id) do
     with {id, ""} <- Integer.parse(raw_id),

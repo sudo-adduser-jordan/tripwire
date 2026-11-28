@@ -1,8 +1,8 @@
 defmodule Ztripwire.Settings do
+  alias Ztripwire.Accounts.Character
   alias Ztripwire.Repo
   alias Ztripwire.Settings.UserSettings
 
-  @id 1
   @assign_keys [
     :map_layout,
     :show_row_guides,
@@ -27,14 +27,20 @@ defmodule Ztripwire.Settings do
     :active_layout
   ]
 
-  def get do
-    case Repo.get(UserSettings, @id) do
+  def get(%Character{id: id}), do: get(id)
+
+  def get(id) when is_integer(id) do
+    case Repo.get_by(UserSettings, character_id: id) do
       %UserSettings{} = settings ->
         settings
 
       nil ->
-        Repo.insert!(%UserSettings{id: @id}, on_conflict: :nothing)
-        Repo.get!(UserSettings, @id)
+        %UserSettings{character_id: id}
+        |> Repo.insert(on_conflict: :nothing)
+        |> case do
+          {:ok, settings} -> settings
+          {:error, _changeset} -> Repo.get_by!(UserSettings, character_id: id)
+        end
     end
   end
 
@@ -44,11 +50,13 @@ defmodule Ztripwire.Settings do
     |> Repo.update()
   end
 
-  def update(attrs) when is_map(attrs), do: update(get(), attrs)
+  def update(%Character{} = character, attrs), do: update(get(character), attrs)
 
-  def assigns do
-    assigns(get())
-  end
+  def update(id, attrs) when is_integer(id), do: update(get(id), attrs)
+
+  def assigns(%Character{} = character), do: assigns(get(character))
+
+  def assigns(id) when is_integer(id), do: assigns(get(id))
 
   def assigns(%UserSettings{} = settings) do
     settings
@@ -63,7 +71,7 @@ defmodule Ztripwire.Settings do
     |> Ecto.Changeset.apply_action(:update)
   end
 
-  def change(attrs) when is_map(attrs), do: change(get(), attrs)
+  def change(%Character{} = character, attrs), do: change(get(character), attrs)
 
   defp normalize(%{chart_hidden: %MapSet{} = hidden} = attrs),
     do: Map.put(attrs, :chart_hidden, MapSet.to_list(hidden))

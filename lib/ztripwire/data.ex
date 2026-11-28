@@ -92,40 +92,44 @@ defmodule Ztripwire.Data do
     end)
   end
 
-  def put_setting(:db, key, value), do: {Settings.update(%{key => value}), :db}
+  def put_setting(:db, character, key, value),
+    do: {Settings.update(character, %{key => value}), :db}
 
-  def put_setting(%State{} = state, key, value), do: Demo.put_setting(state, key, value)
+  def put_setting(%State{} = state, _character, key, value),
+    do: Demo.put_setting(state, key, value)
 
-  def list_layouts(:db), do: Layouts.list_layouts()
-  def list_layouts(%State{} = state), do: Demo.list_layouts(state)
+  def list_layouts(:db, character), do: Layouts.list_layouts(character)
+  def list_layouts(%State{} = state, _character), do: Demo.list_layouts(state)
 
-  def get_layout(:db, id), do: Layouts.get_layout(id)
-  def get_layout(%State{} = state, id), do: Demo.get_layout(state, id)
+  def get_layout(:db, character, id), do: Layouts.get_layout(character, id)
+  def get_layout(%State{} = state, _character, id), do: Demo.get_layout(state, id)
 
-  def arrangement(:db), do: Layouts.arrangement()
-  def arrangement(%State{} = state), do: Demo.arrangement(state)
+  def arrangement(:db, character), do: Layouts.arrangement(character)
+  def arrangement(%State{} = state, _character), do: Demo.arrangement(state)
 
-  def resolve_active(:db), do: Layouts.resolve_active()
-  def resolve_active(%State{} = state), do: Demo.resolve_active(state)
+  def resolve_active(:db, character), do: Layouts.resolve_active(character)
+  def resolve_active(%State{} = state, _character), do: Demo.resolve_active(state)
 
-  def put_arrangement(:db, widgets, active_id),
-    do: {Layouts.put_arrangement(widgets, active_id), :db}
+  def put_arrangement(:db, character, widgets, active_id),
+    do: {Layouts.put_arrangement(character, widgets, active_id), :db}
 
-  def put_arrangement(%State{} = state, widgets, active_id),
+  def put_arrangement(%State{} = state, _character, widgets, active_id),
     do: Demo.put_arrangement(state, widgets, active_id)
 
-  def reset_arrangement(:db), do: {Layouts.reset_arrangement(), :db}
-  def reset_arrangement(%State{} = state), do: Demo.reset_arrangement(state)
+  def reset_arrangement(:db, character), do: {Layouts.reset_arrangement(character), :db}
+  def reset_arrangement(%State{} = state, _character), do: Demo.reset_arrangement(state)
 
-  def clear_active(:db), do: {Layouts.clear_active(), :db}
+  def clear_active(:db, character), do: {Layouts.clear_active(character), :db}
 
-  def clear_active(%State{} = state), do: Demo.put_setting(state, :active_layout, nil)
+  def clear_active(%State{} = state, _character),
+    do: Demo.put_setting(state, :active_layout, nil)
 
-  def reset_layout(:db, visibility) do
-    {Settings.update(Map.merge(%{widget_layout: nil, active_layout: nil}, visibility)), :db}
+  def reset_layout(:db, character, visibility) do
+    {Settings.update(character, Map.merge(%{widget_layout: nil, active_layout: nil}, visibility)),
+     :db}
   end
 
-  def reset_layout(%State{} = state, visibility) do
+  def reset_layout(%State{} = state, _character, visibility) do
     attrs = Map.merge(%{widget_layout: nil, active_layout: nil}, visibility)
 
     Enum.reduce(attrs, {{:ok, nil}, state}, fn {key, value}, {_result, state} ->
@@ -133,11 +137,14 @@ defmodule Ztripwire.Data do
     end)
   end
 
-  def save_layout(:db, name, widgets), do: {Layouts.save_layout(name, widgets), :db}
-  def save_layout(%State{} = state, name, widgets), do: Demo.save_layout(state, name, widgets)
+  def save_layout(:db, character, name, widgets),
+    do: {Layouts.save_layout(character, name, widgets), :db}
 
-  def delete_layout(:db, id), do: {Layouts.delete_layout(id), :db}
-  def delete_layout(%State{} = state, id), do: Demo.delete_layout(state, id)
+  def save_layout(%State{} = state, _character, name, widgets),
+    do: Demo.save_layout(state, name, widgets)
+
+  def delete_layout(:db, character, id), do: {Layouts.delete_layout(character, id), :db}
+  def delete_layout(%State{} = state, _character, id), do: Demo.delete_layout(state, id)
 
   def update_character(:db, id, attrs_fn) do
     result =
