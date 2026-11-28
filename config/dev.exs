@@ -12,12 +12,29 @@ config :ztripwire, Ztripwire.Repo,
   journal_mode: :wal,
   busy_timeout: 5000
 
+config :ztripwire, Ztripwire.Vault,
+  ciphers: [
+    default: {
+      Cloak.Ciphers.AES.GCM,
+      tag: "AES.GCM.V1", key: Base.decode64!("u2KOwkvRL9KJwyer7hu1+QYL89dFoMWivjrj+UNnd3I=")
+    }
+  ]
+
+secret_key_base =
+  case System.get_env("PHX_SECRET_KEY_BASE") do
+    value when value in [nil, ""] ->
+      "d6Em9Z/PYa9kQOeMPRR/ChECGgNrfYgyGu61Rji27OuX/XAsGgxPDe0tIYyx8djf"
+
+    value ->
+      value
+  end
+
 config :ztripwire, ZtripwireWeb.Endpoint,
   http: [ip: {0, 0, 0, 0}],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "vMF19d7PFCEnoNpB3YLYvvB6tdFNlj/Hp7UgubbvgYsmhmztIDM/GtMMscbKlBds",
+  secret_key_base: secret_key_base,
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:ztripwire, ~w(--sourcemap=inline --watch)]},
     tailwind: {Tailwind, :install_and_run, [:ztripwire, ~w(--watch)]}

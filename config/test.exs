@@ -7,10 +7,27 @@ config :ztripwire, Ztripwire.Repo,
   journal_mode: :wal,
   busy_timeout: 5000
 
+secret_key_base =
+  case System.get_env("PHX_SECRET_KEY_BASE") do
+    value when value in [nil, ""] ->
+      "8nwSJ80OFl6XkdKMV0Q/wsYTQ6W5inMjGlvXAy/T+dISRRj59zttctVr7Vh+gRU8"
+
+    value ->
+      value
+  end
+
 config :ztripwire, ZtripwireWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "oRmSSMd12xHQZCytekL1JqwYNt5SvFEvz4TUqidiRwOjk8odehw2oxVq8kwp9C8g",
+  secret_key_base: secret_key_base,
   server: false
+
+config :ztripwire, Ztripwire.Vault,
+  ciphers: [
+    default: {
+      Cloak.Ciphers.AES.GCM,
+      tag: "AES.GCM.V1", key: Base.decode64!("u2KOwkvRL9KJwyer7hu1+QYL89dFoMWivjrj+UNnd3I=")
+    }
+  ]
 
 config :ztripwire, Ztripwire.Systems.Catalog, path: nil
 config :ztripwire, Ztripwire.Systems.Gates, path: nil

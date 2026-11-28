@@ -77,6 +77,8 @@ Deploys run the server in `MIX_ENV=prod` and are driven by the `start` and `stop
    | Variable | Required | Description |
    |---|---|---|
    | `DATABASE_PATH` | yes | SQLite file on a persistent volume, e.g. `/data/ztripwire-prod.db` |
+   | `PHX_SECRET_KEY_BASE` | yes | Cookie/session signing secret; generate with `mix phx.gen.secret`. Changing it invalidates existing sessions |
+   | `ZTRIPWIRE_CLOAK_KEY` | yes | Base64 32-byte key encrypting ESI refresh tokens at rest; generate with `openssl rand -base64 32`. Changing it makes stored tokens unreadable |
    | `PORT` | no | HTTP port, defaults to `4000` |
    | `POOL_SIZE` | no | Database pool size, defaults to `10` |
    | `PHX_HOST` | no | Public host used for generated URLs, defaults to `example.com` |

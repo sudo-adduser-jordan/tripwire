@@ -25,7 +25,44 @@ if callback_url = System.get_env("EVESSO_CALLBACK_URL") do
   end
 end
 
+cloak_key =
+  case System.get_env("ZTRIPWIRE_CLOAK_KEY") do
+    value when value in [nil, ""] -> nil
+    value -> value
+  end
+
+if cloak_key do
+  config :ztripwire, Ztripwire.Vault,
+    ciphers: [
+      default: {
+        Cloak.Ciphers.AES.GCM,
+        tag: "AES.GCM.V1", key: Base.decode64!(cloak_key)
+      }
+    ]
+end
+
 if config_env() == :prod do
+  cloak_key = System.get_env("ZTRIPWIRE_CLOAK_KEY")
+
+  if cloak_key in [nil, ""] do
+    raise """
+    environment variable ZTRIPWIRE_CLOAK_KEY is missing.
+    Set it to the base64-encoded 32-byte key used to encrypt ESI refresh tokens.
+    For example: openssl rand -base64 32
+    """
+  end
+
+  secret_key_base = System.get_env("PHX_SECRET_KEY_BASE")
+
+  if secret_key_base in [nil, ""] do
+    raise """
+    environment variable PHX_SECRET_KEY_BASE is missing.
+    Generate one with: mix phx.gen.secret
+    """
+  end
+
+  config :ztripwire, ZtripwireWeb.Endpoint, secret_key_base: secret_key_base
+
   database_path = System.get_env("DATABASE_PATH")
 
   if database_path in [nil, ""] do

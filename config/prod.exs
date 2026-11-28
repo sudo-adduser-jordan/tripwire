@@ -1,8 +1,6 @@
 import Config
 
-config :ztripwire, ZtripwireWeb.Endpoint,
-  cache_static_manifest: "priv/static/cache_manifest.json",
-  secret_key_base: "vMF19d7PFCEnoNpB3YLYvvB6tdFNlj/Hp7UgubbvgYsmhmztIDM/GtMMscbKlBds"
+config :ztripwire, ZtripwireWeb.Endpoint, cache_static_manifest: "priv/static/cache_manifest.json"
 
 config :ztripwire, ZtripwireWeb.Endpoint, force_ssl: [rewrite_on: [:x_forwarded_proto]]
 config :phoenix, :plug_init_mode, :runtime

@@ -22,14 +22,6 @@ config :ztripwire,
   ecto_repos: [Ztripwire.Repo],
   generators: [timestamp_type: :utc_datetime]
 
-config :ztripwire, Ztripwire.Vault,
-  ciphers: [
-    default: {
-      Cloak.Ciphers.AES.GCM,
-      tag: "AES.GCM.V1", key: Base.decode64!("pd2umDJ8tuldw5vzB3bdUQnIK1cFI6FaHaNILBXCiUE=")
-    }
-  ]
-
 config :ztripwire, ZtripwireWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
