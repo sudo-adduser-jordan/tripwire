@@ -8,8 +8,8 @@ defmodule Ztripwire.Settings.UserSettings do
 
   schema "user_settings" do
     field :map_layout, :string, default: "top"
-    field :show_row_guides, :boolean, default: false
-    field :show_row_counts, :boolean, default: false
+    field :show_row_guides, :boolean, default: true
+    field :show_row_counts, :boolean, default: true
     field :angled_lines, :boolean, default: true
     field :show_jump_lines, :boolean, default: true
     field :show_line_glow, :boolean, default: true

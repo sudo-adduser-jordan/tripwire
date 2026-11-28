@@ -22,8 +22,8 @@ defmodule Ztripwire.SettingsTest do
     assert settings.show_jump_lines
     assert settings.show_line_glow
     assert settings.show_node_badges
-    refute settings.show_row_guides
-    refute settings.show_row_counts
+    assert settings.show_row_guides
+    assert settings.show_row_counts
     refute settings.include_thera
     refute settings.show_all
     assert settings.chart_range == "24h"

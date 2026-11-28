@@ -10,8 +10,8 @@ defmodule ZtripwireWeb.LiveComponents.SettingsLive do
   alias ZtripwireWeb.LiveComponents.Settings.WidgetsLive
 
   attr :map_layout, :string, default: "top"
-  attr :show_row_guides, :boolean, default: false
-  attr :show_row_counts, :boolean, default: false
+  attr :show_row_guides, :boolean, default: true
+  attr :show_row_counts, :boolean, default: true
   attr :angled_lines, :boolean, default: true
   attr :show_jump_lines, :boolean, default: true
   attr :show_line_glow, :boolean, default: true

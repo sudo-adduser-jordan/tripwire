@@ -100,8 +100,6 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     {:ok, view, _html} = live(conn, ~p"/dashboard")
 
     view |> element("#settings-button") |> render_click()
-    view |> element("#toggle-row-guides") |> render_click()
-    view |> element("#toggle-row-counts") |> render_click()
 
     map_html = view |> element("#map") |> render()
 
