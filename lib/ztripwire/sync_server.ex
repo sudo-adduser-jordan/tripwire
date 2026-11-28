@@ -50,10 +50,10 @@ defmodule Ztripwire.SyncServer do
   end
 
   def sync_character(%Ztripwire.Accounts.Character{} = character) do
-    case ESI.get_character(character.eve_id) do
+    case ESI.get_character(character.eve_id, refresh: true) do
       {:ok, %{"corporation_id" => corporation_id} = body} ->
         corporation_name =
-          case ESI.get_corporation(corporation_id) do
+          case ESI.get_corporation(corporation_id, refresh: true) do
             {:ok, %{"name" => name}} -> name
             _ -> character.corporation_name
           end

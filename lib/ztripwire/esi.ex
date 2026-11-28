@@ -28,9 +28,11 @@ defmodule Ztripwire.ESI do
     do:
       authorized_get("/characters/#{character_id}/online/", character_id, access_token, character)
 
-  def get_character(character_id), do: public_get("/characters/#{character_id}/")
+  def get_character(character_id, opts \\ []),
+    do: public_get("/characters/#{character_id}/", opts)
 
-  def get_corporation(corporation_id), do: public_get("/corporations/#{corporation_id}/")
+  def get_corporation(corporation_id, opts \\ []),
+    do: public_get("/corporations/#{corporation_id}/", opts)
 
   def get_alliance(alliance_id), do: public_get("/alliances/#{alliance_id}/")
 
@@ -234,8 +236,8 @@ defmodule Ztripwire.ESI do
     end
   end
 
-  defp public_get(path) do
-    Client.get(path, subject: :public)
+  defp public_get(path, opts \\ []) do
+    Client.get(path, Keyword.put(opts, :subject, :public))
   end
 
   defp public_post(path, body) do

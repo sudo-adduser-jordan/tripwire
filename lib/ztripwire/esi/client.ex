@@ -282,13 +282,25 @@ defmodule Ztripwire.ESI.Client do
             error_limit_allows?(now)
 
           group ->
-            if blocked_until({:blocked, {:group, group}}) > now do
-              {:error,
-               {:rate_limited, seconds_until(blocked_until({:blocked, {:group, group}}), now)}}
-            else
-              error_limit_allows?(now)
+            cond do
+              blocked_until({:blocked, {:group, group}}) > now ->
+                {:error,
+                 {:rate_limited, seconds_until(blocked_until({:blocked, {:group, group}}), now)}}
+
+              group_exhausted?(group, now) ->
+                {:error, {:rate_limited, seconds_until(budget({:group, group}).reset_at, now)}}
+
+              true ->
+                error_limit_allows?(now)
             end
         end
+    end
+  end
+
+  defp group_exhausted?(group, now) do
+    case budget({:group, group}) do
+      %{remaining: remaining, reset_at: reset_at} when remaining <= 0 and reset_at > now -> true
+      _ -> false
     end
   end
 
