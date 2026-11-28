@@ -74,4 +74,12 @@ defmodule Ztripwire.MarkdownTest do
     assert Markdown.to_html("   \n  ") == ""
     assert Markdown.to_html(nil) == ""
   end
+
+  test "to_html/1 strips null bytes instead of crashing on fence tokens" do
+    assert Markdown.to_html("\0F0\0") == "<p>F0</p>"
+    assert Markdown.to_html("note \0F0\0 body") == "<p>note F0 body</p>"
+
+    assert Markdown.to_html("```\ncode\n```\n\0F0\0") ==
+             "<pre><code>code</code></pre><p>F0</p>"
+  end
 end

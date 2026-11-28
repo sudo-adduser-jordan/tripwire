@@ -2,6 +2,7 @@ defmodule Ztripwire.Markdown do
   def to_html(text) do
     text
     |> to_string()
+    |> String.replace(<<0>>, "")
     |> String.trim()
     |> case do
       "" -> ""
@@ -96,9 +97,11 @@ defmodule Ztripwire.Markdown do
   end
 
   defp restore_fenced(html, fenced) do
-    Regex.replace(~r/\0F(\d+)\0/, html, fn _, i ->
-      code = fenced |> Map.fetch!("\0F#{i}\0") |> String.trim_trailing("\n")
-      "<pre><code>#{code}</code></pre>"
+    Regex.replace(~r/\0F(\d+)\0/, html, fn token, i ->
+      case Map.fetch(fenced, "\0F#{i}\0") do
+        {:ok, code} -> "<pre><code>#{String.trim_trailing(code, "\n")}</code></pre>"
+        :error -> token
+      end
     end)
   end
 

@@ -19,5 +19,6 @@ defmodule Ztripwire.Mapping.Comment do
     comment
     |> cast(attrs, [:map_system_id, :character_id, :mask_id, :body])
     |> validate_required([:map_system_id, :body])
+    |> validate_length(:body, max: 20_000)
   end
 end
