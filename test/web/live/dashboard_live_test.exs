@@ -301,6 +301,46 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert map_html =~ ~r|>\s*2\s*</text>|
   end
 
+  test "only corporation mates show as occupants on a personal chain", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, character} =
+      Accounts.update_character(character, %{
+        corporation_id: 98_000_201,
+        corporation_name: "Home Corp"
+      })
+
+    {_mask, map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, mate} =
+      Accounts.upsert_character(%{
+        eve_id: 42_610,
+        name: "Corp Mate",
+        corporation_id: 98_000_201,
+        corporation_name: "Home Corp"
+      })
+
+    {:ok, foreign} =
+      Accounts.upsert_character(%{
+        eve_id: 42_620,
+        name: "Foreign Pilot",
+        corporation_id: 98_000_202,
+        corporation_name: "Foreign Corp"
+      })
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    {:ok, _} = Ztripwire.Tracking.TestPresence.ensure_started(mate, map, system)
+    {:ok, _} = Ztripwire.Tracking.TestPresence.ensure_started(foreign, map, system)
+
+    render_click(view, "refresh-occupants", %{})
+
+    map_html = view |> element("#chain-map") |> render()
+    assert map_html =~ "Corp Mate"
+    refute map_html =~ "Foreign Pilot"
+  end
+
   test "the tooltip prefers the ship type name and hides raw ship names", %{
     conn: conn,
     character: character

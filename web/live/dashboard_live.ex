@@ -111,9 +111,16 @@ defmodule ZtripwireWeb.DashboardLive do
           []
 
         map ->
-          Data.occupants(data(socket), map.mask_id, socket.assigns[:mask])
-          |> Enum.filter(&mask_member?(&1, socket.assigns[:mask]))
-          |> Enum.map(&put_ship_type_name(&1, presences))
+          occupants =
+            Data.occupants(data(socket), map.mask_id, socket.assigns[:mask])
+            |> Enum.filter(&mask_member?(&1, socket.assigns[:mask]))
+
+          occupants =
+            if demo?(socket),
+              do: occupants,
+              else: Enum.filter(occupants, &visible_occupant?(socket.assigns[:characters], &1))
+
+          Enum.map(occupants, &put_ship_type_name(&1, presences))
       end
 
     assign(socket, :occupants, occupants)
@@ -138,6 +145,22 @@ defmodule ZtripwireWeb.DashboardLive do
        do: occupant.alliance_id == alliance_id
 
   defp mask_member?(_occupant, _mask), do: true
+
+  defp visible_occupant?(characters, occupant) do
+    case Map.get(occupant, :corporation_id) do
+      nil -> characters != []
+      _corporation_id -> own_or_mate?(characters, occupant)
+    end
+  end
+
+  defp own_or_mate?(characters, occupant) do
+    Enum.any?(characters, fn character ->
+      character.eve_id == occupant.eve_id or
+        (is_integer(character.corporation_id) and
+           character.corporation_id == occupant.corporation_id) or
+        (is_integer(character.alliance_id) and character.alliance_id == occupant.alliance_id)
+    end)
+  end
 
   defp demo_mask_members(%{demo?: true, mask: mask, demo_state: state}) do
     %{mask.id => Demo.members(state, mask.id)}
