@@ -10,47 +10,69 @@ defmodule Ztripwire.Tracking.Presence do
   end
 
   def put(eve_id, presence) when is_integer(eve_id) and is_map(presence) do
-    entry = Map.put(presence, :updated_at, now_ms())
-    :ets.insert(@table, {{:presence, eve_id}, entry})
+    if table?() do
+      entry = Map.put(presence, :updated_at, now_ms())
+      :ets.insert(@table, {{:presence, eve_id}, entry})
+    end
+
     :ok
   end
 
   def get(eve_id) when is_integer(eve_id) do
-    case :ets.lookup(@table, {:presence, eve_id}) do
-      [{_key, presence}] -> presence
-      [] -> nil
+    if table?() do
+      case :ets.lookup(@table, {:presence, eve_id}) do
+        [{_key, presence}] -> presence
+        [] -> nil
+      end
     end
   end
 
   def delete(eve_id) when is_integer(eve_id) do
-    :ets.delete(@table, {:presence, eve_id})
-    :ets.delete(@table, {:viewers, eve_id})
+    if table?() do
+      :ets.delete(@table, {:presence, eve_id})
+      :ets.delete(@table, {:viewers, eve_id})
+    end
+
     :ok
   end
 
   def all do
-    :ets.select(@table, [{{{:presence, :"$1"}, :"$2"}, [], [{{:"$1", :"$2"}}]}])
+    if table?() do
+      :ets.select(@table, [{{{:presence, :"$1"}, :"$2"}, [], [{{:"$1", :"$2"}}]}])
+    else
+      []
+    end
   end
 
   def add_viewer(eve_id) when is_integer(eve_id) do
-    :ets.update_counter(@table, {:viewers, eve_id}, 1, {{:viewers, eve_id}, 0})
+    if table?() do
+      :ets.update_counter(@table, {:viewers, eve_id}, 1, {{:viewers, eve_id}, 0})
+    end
+
     :ok
   end
 
   def remove_viewer(eve_id) when is_integer(eve_id) do
-    :ets.update_counter(@table, {:viewers, eve_id}, -1, {{:viewers, eve_id}, 0})
+    if table?() do
+      :ets.update_counter(@table, {:viewers, eve_id}, -1, {{:viewers, eve_id}, 0})
+    end
+
     :ok
   end
 
   def viewers(eve_id) when is_integer(eve_id) do
-    case :ets.lookup(@table, {:viewers, eve_id}) do
-      [{_key, count}] -> max(count, 0)
-      [] -> 0
+    if table?() do
+      case :ets.lookup(@table, {:viewers, eve_id}) do
+        [{_key, count}] -> max(count, 0)
+        [] -> 0
+      end
+    else
+      0
     end
   end
 
   def clear do
-    :ets.delete_all_objects(@table)
+    if table?(), do: :ets.delete_all_objects(@table)
     :ok
   end
 
@@ -95,6 +117,8 @@ defmodule Ztripwire.Tracking.Presence do
   end
 
   defp schedule_sweep, do: Process.send_after(self(), :sweep, @sweep_interval)
+
+  defp table?, do: :ets.whereis(@table) != :undefined
 
   defp now_ms, do: System.system_time(:millisecond)
 end
