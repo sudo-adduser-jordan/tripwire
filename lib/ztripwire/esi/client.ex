@@ -36,9 +36,11 @@ defmodule Ztripwire.ESI.Client do
   end
 
   def clear do
-    if table?(@cache_table), do: :ets.delete_all_objects(@cache_table)
-    if table?(@budget_table), do: :ets.delete_all_objects(@budget_table)
-    :ok
+    if Process.whereis(__MODULE__) do
+      GenServer.call(__MODULE__, :clear)
+    else
+      :ok
+    end
   end
 
   def cached?(method, path, subject) do
@@ -47,8 +49,41 @@ defmodule Ztripwire.ESI.Client do
   end
 
   def expire(method, path, subject) do
-    key = {method, path, subject}
+    if Process.whereis(__MODULE__) do
+      GenServer.call(__MODULE__, {:expire, {method, path, subject}})
+    else
+      :ok
+    end
+  end
 
+  @impl true
+  def init(_opts) do
+    :ets.new(@cache_table, [
+      :named_table,
+      :protected,
+      :set,
+      read_concurrency: true
+    ])
+
+    :ets.new(@budget_table, [
+      :named_table,
+      :protected,
+      :set,
+      read_concurrency: true
+    ])
+
+    schedule_sweep()
+    {:ok, %{}}
+  end
+
+  @impl true
+  def handle_call(:clear, _from, state) do
+    if table?(@cache_table), do: :ets.delete_all_objects(@cache_table)
+    if table?(@budget_table), do: :ets.delete_all_objects(@budget_table)
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:expire, key}, _from, state) do
     if table?(@cache_table) do
       case :ets.lookup(@cache_table, key) do
         [{^key, entry}] -> :ets.insert(@cache_table, {key, %{entry | expires_at: 0}})
@@ -56,29 +91,47 @@ defmodule Ztripwire.ESI.Client do
       end
     end
 
-    :ok
+    {:reply, :ok, state}
   end
 
-  @impl true
-  def init(_opts) do
-    :ets.new(@cache_table, [
-      :named_table,
-      :public,
-      :set,
-      read_concurrency: true,
-      write_concurrency: true
-    ])
+  def handle_call({:store, key, body, etag, ttl}, _from, state) do
+    if table?(@cache_table) do
+      :ets.insert(@cache_table, {key, cache_entry(body, etag, ttl)})
+    end
 
-    :ets.new(@budget_table, [
-      :named_table,
-      :public,
-      :set,
-      read_concurrency: true,
-      write_concurrency: true
-    ])
+    {:reply, :ok, state}
+  end
 
-    schedule_sweep()
-    {:ok, %{}}
+  def handle_call({:refresh, key, entry, etag, ttl}, _from, state) do
+    if table?(@cache_table) do
+      updated = %{
+        entry
+        | etag: etag || entry.etag,
+          ttl: ttl,
+          expires_at: now_ms() + ttl * 1000
+      }
+
+      :ets.insert(@cache_table, {key, updated})
+    end
+
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:record_budget, path, resp}, _from, state) do
+    do_record_budget(path, resp)
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:quota, source, bucket}, _from, state) do
+    count =
+      if table?(@budget_table) do
+        key = {:quota, source, bucket}
+        :ets.update_counter(@budget_table, key, 1, {key, 0})
+      else
+        0
+      end
+
+    {:reply, count, state}
   end
 
   @impl true
@@ -193,42 +246,32 @@ defmodule Ztripwire.ESI.Client do
   end
 
   defp store(key, body, resp) do
-    if cache_enabled?() and table?(@cache_table) do
+    if cache_enabled?() do
       ttl = ttl_seconds(resp, key)
 
-      if ttl > 0 do
-        entry = %{
-          body: body,
-          etag: header(resp, "etag"),
-          ttl: ttl,
-          expires_at: now_ms() + ttl * 1000
-        }
-
-        :ets.insert(@cache_table, {key, entry})
+      if ttl > 0 and Process.whereis(__MODULE__) do
+        GenServer.call(__MODULE__, {:store, key, body, header(resp, "etag"), ttl})
       end
     end
 
     :ok
   end
 
+  defp cache_entry(body, etag, ttl) do
+    %{body: body, etag: etag, ttl: ttl, expires_at: now_ms() + ttl * 1000}
+  end
+
   defp refresh_entry(_key, nil, _resp), do: :ok
 
   defp refresh_entry(key, entry, resp) do
-    if table?(@cache_table) do
-      ttl =
-        case ttl_seconds(resp, key) do
-          0 -> entry.ttl
-          value -> value
-        end
+    ttl =
+      case ttl_seconds(resp, key) do
+        0 -> entry.ttl
+        value -> value
+      end
 
-      updated = %{
-        entry
-        | etag: header(resp, "etag") || entry.etag,
-          ttl: ttl,
-          expires_at: now_ms() + ttl * 1000
-      }
-
-      :ets.insert(@cache_table, {key, updated})
+    if Process.whereis(__MODULE__) do
+      GenServer.call(__MODULE__, {:refresh, key, entry, header(resp, "etag"), ttl})
     end
 
     :ok
@@ -321,11 +364,10 @@ defmodule Ztripwire.ESI.Client do
   defp quota_allows?(source, now) do
     quota = quota_for(source)
     bucket = div(now, @quota_window_ms)
-    key = {:quota, source, bucket}
 
     count =
-      if table?(@budget_table) do
-        :ets.update_counter(@budget_table, key, 1, {key, 0})
+      if Process.whereis(__MODULE__) do
+        GenServer.call(__MODULE__, {:quota, source, bucket})
       else
         0
       end
@@ -349,6 +391,14 @@ defmodule Ztripwire.ESI.Client do
   end
 
   defp record_budget(path, resp) do
+    if Process.whereis(__MODULE__) do
+      GenServer.call(__MODULE__, {:record_budget, path, resp})
+    end
+
+    :ok
+  end
+
+  defp do_record_budget(path, resp) do
     group = header(resp, "x-ratelimit-group")
 
     if group && table?(@budget_table) do

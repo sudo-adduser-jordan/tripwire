@@ -10,12 +10,7 @@ defmodule Ztripwire.Tracking.Presence do
   end
 
   def put(eve_id, presence) when is_integer(eve_id) and is_map(presence) do
-    if table?() do
-      entry = Map.put(presence, :updated_at, now_ms())
-      :ets.insert(@table, {{:presence, eve_id}, entry})
-    end
-
-    :ok
+    call({:put, eve_id, presence})
   end
 
   def get(eve_id) when is_integer(eve_id) do
@@ -27,14 +22,7 @@ defmodule Ztripwire.Tracking.Presence do
     end
   end
 
-  def delete(eve_id) when is_integer(eve_id) do
-    if table?() do
-      :ets.delete(@table, {:presence, eve_id})
-      :ets.delete(@table, {:viewers, eve_id})
-    end
-
-    :ok
-  end
+  def delete(eve_id) when is_integer(eve_id), do: call({:delete, eve_id})
 
   def all do
     if table?() do
@@ -44,21 +32,9 @@ defmodule Ztripwire.Tracking.Presence do
     end
   end
 
-  def add_viewer(eve_id) when is_integer(eve_id) do
-    if table?() do
-      :ets.update_counter(@table, {:viewers, eve_id}, 1, {{:viewers, eve_id}, 0})
-    end
+  def add_viewer(eve_id) when is_integer(eve_id), do: call({:viewer, eve_id, 1})
 
-    :ok
-  end
-
-  def remove_viewer(eve_id) when is_integer(eve_id) do
-    if table?() do
-      :ets.update_counter(@table, {:viewers, eve_id}, -1, {{:viewers, eve_id}, 0})
-    end
-
-    :ok
-  end
+  def remove_viewer(eve_id) when is_integer(eve_id), do: call({:viewer, eve_id, -1})
 
   def viewers(eve_id) when is_integer(eve_id) do
     if table?() do
@@ -72,22 +48,51 @@ defmodule Ztripwire.Tracking.Presence do
   end
 
   def clear do
-    if table?(), do: :ets.delete_all_objects(@table)
-    :ok
+    if Process.whereis(__MODULE__), do: GenServer.call(__MODULE__, :clear), else: :ok
   end
 
   @impl true
   def init(_opts) do
     :ets.new(@table, [
       :named_table,
-      :public,
+      :protected,
       :set,
-      read_concurrency: true,
-      write_concurrency: true
+      read_concurrency: true
     ])
 
     schedule_sweep()
     {:ok, %{}}
+  end
+
+  @impl true
+  def handle_call({:put, eve_id, presence}, _from, state) do
+    if table?() do
+      :ets.insert(@table, {{:presence, eve_id}, Map.put(presence, :updated_at, now_ms())})
+    end
+
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:delete, eve_id}, _from, state) do
+    if table?() do
+      :ets.delete(@table, {:presence, eve_id})
+      :ets.delete(@table, {:viewers, eve_id})
+    end
+
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:viewer, eve_id, delta}, _from, state) do
+    if table?() do
+      :ets.update_counter(@table, {:viewers, eve_id}, delta, {{:viewers, eve_id}, 0})
+    end
+
+    {:reply, :ok, state}
+  end
+
+  def handle_call(:clear, _from, state) do
+    if table?(), do: :ets.delete_all_objects(@table)
+    {:reply, :ok, state}
   end
 
   @impl true
@@ -114,6 +119,10 @@ defmodule Ztripwire.Tracking.Presence do
       :ok,
       @table
     )
+  end
+
+  defp call(message) do
+    if Process.whereis(__MODULE__), do: GenServer.call(__MODULE__, message), else: :ok
   end
 
   defp schedule_sweep, do: Process.send_after(self(), :sweep, @sweep_interval)
