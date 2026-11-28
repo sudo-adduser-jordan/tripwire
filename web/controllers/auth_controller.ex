@@ -103,7 +103,10 @@ defmodule ZtripwireWeb.AuthController do
   end
 
   defp login(conn, auth) do
+    previous = Ztripwire.Accounts.get_character_by_eve_id(auth.uid)
     {:ok, character} = Ztripwire.Accounts.upsert_character_from_ueberauth(auth)
+    character = handle_owner_change(previous, character)
+
     Task.start(fn -> Ztripwire.SyncServer.sync_character(character) end)
     {:ok, _pid} = Ztripwire.Tracking.ensure_poller(character)
 
@@ -113,6 +116,23 @@ defmodule ZtripwireWeb.AuthController do
     conn
     |> SessionUser.put(character)
     |> redirect(to: "/Jita")
+  end
+
+  defp handle_owner_change(previous, character) do
+    if Ztripwire.Accounts.owner_changed?(previous, character) do
+      Ztripwire.Log.emit(:warning, %{
+        event: "sso_owner_changed",
+        eve_id: character.eve_id,
+        name: character.name
+      })
+
+      case Ztripwire.Accounts.revoke_admin(character) do
+        {:ok, updated} -> updated
+        _ -> character
+      end
+    else
+      character
+    end
   end
 
   defp sync_admin(character) do

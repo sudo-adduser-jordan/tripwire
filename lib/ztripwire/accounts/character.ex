@@ -13,6 +13,7 @@ defmodule Ztripwire.Accounts.Character do
     field :alliance_name, :string
     field :scopes, {:array, :string}, default: []
     field :refresh_token, EncryptedBinary
+    field :owner_hash, :string
     field :last_login_at, :utc_datetime
     field :is_admin, :boolean, default: false
     field :ship_on_chain, :boolean, default: true
@@ -43,6 +44,7 @@ defmodule Ztripwire.Accounts.Character do
       :alliance_name,
       :scopes,
       :refresh_token,
+      :owner_hash,
       :last_login_at,
       :is_admin,
       :ship_on_chain,

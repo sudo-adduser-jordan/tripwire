@@ -100,6 +100,33 @@ defmodule Ztripwire.AccountsTest do
     assert attrs.name == "Daimian Mercer"
     assert attrs.refresh_token == "rt"
     assert attrs.scopes == ["scope-a"]
+    assert is_nil(attrs.owner_hash)
+  end
+
+  test "attrs_from_ueberauth/1 carries the owner hash" do
+    auth = %Ueberauth.Auth{
+      uid: 9877,
+      info: %Ueberauth.Auth.Info{name: "Owned Character"},
+      credentials: %Ueberauth.Auth.Credentials{refresh_token: "rt"},
+      extra: %Ueberauth.Auth.Extra{raw_info: %{user: %{owner_hash: "owner-hash"}}}
+    }
+
+    assert Accounts.attrs_from_ueberauth(auth).owner_hash == "owner-hash"
+  end
+
+  test "owner_changed?/2 detects a transferred character" do
+    {:ok, character} =
+      Accounts.upsert_character(%{eve_id: 8100, name: "Owned", owner_hash: "hash-1"})
+
+    assert Accounts.owner_changed?(character, %{character | owner_hash: "hash-2"})
+    refute Accounts.owner_changed?(character, %{character | owner_hash: "hash-1"})
+
+    refute Accounts.owner_changed?(%{character | owner_hash: nil}, %{
+             character
+             | owner_hash: "hash-2"
+           })
+
+    refute Accounts.owner_changed?(nil, character)
   end
 
   test "admin_exists?/0 ignores the demo character" do

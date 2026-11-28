@@ -65,14 +65,27 @@ defmodule Ztripwire.Accounts do
       eve_id: auth.uid,
       name: auth.info.name,
       refresh_token: auth.credentials.refresh_token,
+      owner_hash: owner_hash(auth),
       scopes: auth.credentials.scopes || [],
       last_login_at: DateTime.utc_now() |> DateTime.truncate(:second)
     }
   end
 
+  defp owner_hash(%Ueberauth.Auth{extra: %{raw_info: %{user: %{owner_hash: hash}}}})
+       when is_binary(hash),
+       do: hash
+
+  defp owner_hash(_auth), do: nil
+
   def upsert_character_from_ueberauth(%Ueberauth.Auth{} = auth) do
     auth |> attrs_from_ueberauth() |> upsert_character()
   end
+
+  def owner_changed?(%Character{owner_hash: previous}, %Character{owner_hash: current}) do
+    is_binary(previous) and previous != current
+  end
+
+  def owner_changed?(_previous, _current), do: false
 
   def admin_exists? do
     Repo.exists?(
