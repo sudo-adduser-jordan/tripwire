@@ -84,14 +84,6 @@ defmodule Ztripwire.AccountsTest do
     assert reloaded.systems_visited == 2
   end
 
-  test "admin_grant?/2 mirrors official Tripwire corp roles" do
-    assert Accounts.admin_grant?(["Director"], [])
-    assert Accounts.admin_grant?(["CEO"], [])
-    assert Accounts.admin_grant?([], ["Ztripwire Admin"])
-    refute Accounts.admin_grant?(["Member"], [])
-    refute Accounts.admin_grant?([], [])
-  end
-
   test "attrs_from_ueberauth/1 builds attributes from an auth struct" do
     auth = %Ueberauth.Auth{
       uid: 9876,
@@ -143,5 +135,46 @@ defmodule Ztripwire.AccountsTest do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 1111, name: "Admin", is_admin: true})
 
     assert {:ok, ^character} = Accounts.claim_admin(character)
+  end
+
+  test "admin_allowlisted?/1 reads character and corporation ids from the environment" do
+    {:ok, character} =
+      Accounts.upsert_character(%{
+        eve_id: 7001,
+        name: "Allowed Char",
+        corporation_id: 98_000_101
+      })
+
+    System.put_env("ZTRIPWIRE_ADMIN_CHARACTER_IDS", "7001")
+    on_exit(fn -> System.delete_env("ZTRIPWIRE_ADMIN_CHARACTER_IDS") end)
+
+    assert Accounts.admin_allowlisted?(character)
+    assert Accounts.admin_allowlist_configured?()
+  end
+
+  test "ensure_admin/1 only promotes allowlisted characters" do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 7002, name: "Not Allowed"})
+
+    {:ok, corp} =
+      Accounts.upsert_character(%{
+        eve_id: 7003,
+        name: "Corp Allowed",
+        corporation_id: 98_000_102
+      })
+
+    System.put_env("ZTRIPWIRE_ADMIN_CORPORATION_IDS", "98000102")
+    on_exit(fn -> System.delete_env("ZTRIPWIRE_ADMIN_CORPORATION_IDS") end)
+
+    assert {:error, :not_allowlisted} = Accounts.ensure_admin(character)
+    assert {:ok, admin} = Accounts.ensure_admin(corp)
+    assert admin.is_admin
+  end
+
+  test "revoke_admin/1 demotes an admin" do
+    {:ok, character} =
+      Accounts.upsert_character(%{eve_id: 7004, name: "Demoted", is_admin: true})
+
+    assert {:ok, updated} = Accounts.revoke_admin(character)
+    refute updated.is_admin
   end
 end

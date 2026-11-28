@@ -107,12 +107,40 @@ defmodule ZtripwireWeb.AuthController do
     Task.start(fn -> Ztripwire.SyncServer.sync_character(character) end)
     {:ok, _pid} = Ztripwire.Tracking.ensure_poller(character)
 
-    character = maybe_grant_admin(character, auth)
+    character = sync_admin(character)
     Ztripwire.Accounts.bump_stats(character.id, login_count: 1)
 
     conn
     |> SessionUser.put(character)
     |> redirect(to: "/Jita")
+  end
+
+  defp sync_admin(character) do
+    cond do
+      Ztripwire.Accounts.admin_allowlisted?(character) ->
+        case Ztripwire.Accounts.ensure_admin(character) do
+          {:ok, updated} -> updated
+          _ -> character
+        end
+
+      character.is_admin and Ztripwire.Accounts.admin_allowlist_configured?() ->
+        case Ztripwire.Accounts.revoke_admin(character) do
+          {:ok, updated} ->
+            Ztripwire.Log.emit(:warning, %{
+              event: "admin_revoked",
+              eve_id: character.eve_id,
+              name: character.name
+            })
+
+            updated
+
+          _ ->
+            character
+        end
+
+      true ->
+        character
+    end
   end
 
   def switch(conn, %{"eve_id" => eve_id}) do
@@ -211,19 +239,6 @@ defmodule ZtripwireWeb.AuthController do
       String.slice(message, 0, @detail_limit) <> "..."
     else
       message
-    end
-  end
-
-  defp maybe_grant_admin(character, auth) do
-    token = auth.credentials && auth.credentials.token
-
-    with token when is_binary(token) and token != "" <- token,
-         {:ok, true} <- Ztripwire.Accounts.esi_admin?(auth.uid, token),
-         {:ok, updated} <-
-           Ztripwire.Accounts.upsert_character(%{eve_id: character.eve_id, is_admin: true}) do
-      updated
-    else
-      _ -> character
     end
   end
 end

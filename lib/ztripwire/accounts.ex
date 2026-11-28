@@ -70,31 +70,6 @@ defmodule Ztripwire.Accounts do
     }
   end
 
-  @admin_roles ~w(CEO Director)
-  @admin_titles ["Ztripwire Admin"]
-
-  def admin_grant?(roles, titles) when is_list(roles) and is_list(titles) do
-    Enum.any?(roles, &(&1 in @admin_roles)) or Enum.any?(titles, &(&1 in @admin_titles))
-  end
-
-  def esi_admin?(eve_id, access_token) do
-    roles =
-      case Ztripwire.ESI.get_character_roles(eve_id, access_token) do
-        {:ok, %{"roles" => roles}} when is_list(roles) -> roles
-        _ -> []
-      end
-
-    titles =
-      case Ztripwire.ESI.get_character_titles(eve_id, access_token) do
-        {:ok, titles} when is_list(titles) -> titles
-        _ -> []
-      end
-
-    {:ok, admin_grant?(roles, titles)}
-  rescue
-    _ -> {:ok, false}
-  end
-
   def upsert_character_from_ueberauth(%Ueberauth.Auth{} = auth) do
     auth |> attrs_from_ueberauth() |> upsert_character()
   end
@@ -107,14 +82,65 @@ defmodule Ztripwire.Accounts do
     )
   end
 
+  def admin_allowlisted?(%Character{} = character) do
+    character.eve_id in admin_character_ids() or
+      (is_integer(character.corporation_id) and
+         character.corporation_id in admin_corporation_ids())
+  end
+
+  def admin_allowlist_configured? do
+    admin_character_ids() != [] or admin_corporation_ids() != []
+  end
+
+  def ensure_admin(%Character{is_admin: true} = character), do: {:ok, character}
+
+  def ensure_admin(%Character{} = character) do
+    if admin_allowlisted?(character) do
+      update_character(character, %{is_admin: true})
+    else
+      {:error, :not_allowlisted}
+    end
+  end
+
+  def revoke_admin(%Character{is_admin: true} = character) do
+    update_character(character, %{is_admin: false})
+  end
+
+  def revoke_admin(%Character{} = character), do: {:ok, character}
+
   def claim_admin(%Character{is_admin: true} = character), do: {:ok, character}
 
   def claim_admin(%Character{} = character) do
-    if admin_exists?() do
-      {:error, :admin_exists}
-    else
-      update_character(character, %{is_admin: true})
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    query =
+      from(c in Character,
+        where:
+          c.id == ^character.id and c.is_admin == false and
+            fragment("NOT EXISTS (SELECT 1 FROM characters WHERE is_admin = 1)")
+      )
+
+    case Repo.update_all(query, set: [is_admin: true, updated_at: now]) do
+      {1, _} -> {:ok, Repo.get!(Character, character.id)}
+      {0, _} -> {:error, :admin_exists}
     end
+  end
+
+  defp admin_character_ids, do: env_ids("ZTRIPWIRE_ADMIN_CHARACTER_IDS")
+  defp admin_corporation_ids, do: env_ids("ZTRIPWIRE_ADMIN_CORPORATION_IDS")
+
+  defp env_ids(key) do
+    key
+    |> System.get_env()
+    |> to_string()
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.flat_map(fn value ->
+      case Integer.parse(value) do
+        {id, ""} -> [id]
+        _ -> []
+      end
+    end)
   end
 
   def branding do
