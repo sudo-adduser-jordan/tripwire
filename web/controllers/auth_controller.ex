@@ -135,15 +135,38 @@ defmodule ZtripwireWeb.AuthController do
   end
 
   def mask_session(conn, %{"id" => id}) do
-    case Ztripwire.Masks.get_mask(id) do
-      %{id: mask_id, kind: kind} when kind != "demo" ->
-        conn
-        |> SessionUser.put_mask(mask_id)
-        |> send_resp(:no_content, "")
-
-      _ ->
-        send_resp(conn, :not_found, "")
+    with {mask_id, ""} <- Integer.parse(to_string(id)),
+         %{} = mask <- find_session_mask(conn, mask_id) do
+      conn
+      |> SessionUser.put_mask(mask.id)
+      |> send_resp(:no_content, "")
+    else
+      _ -> send_resp(conn, :not_found, "")
     end
+  end
+
+  defp find_session_mask(conn, mask_id) do
+    conn
+    |> session_characters()
+    |> Ztripwire.Masks.list_masks_for_characters()
+    |> Enum.find(&(&1.id == mask_id))
+  end
+
+  defp session_characters(conn) do
+    session = get_session(conn)
+
+    current =
+      case SessionUser.get(session) do
+        %{id: eve_id} -> Ztripwire.Accounts.get_character_by_eve_id(eve_id)
+        _ -> nil
+      end
+
+    session
+    |> SessionUser.ids()
+    |> Enum.map(&Ztripwire.Accounts.get_character_by_eve_id/1)
+    |> then(&[current | &1])
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq_by(& &1.id)
   end
 
   defp put_character_session(conn, eve_id) do

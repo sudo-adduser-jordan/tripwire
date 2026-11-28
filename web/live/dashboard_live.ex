@@ -37,7 +37,6 @@ defmodule ZtripwireWeb.DashboardLive do
         {:ok,
          socket
          |> provision(character, session)
-         |> assign_characters(session)
          |> ensure_character_pollers()
          |> track_viewer()}
 
@@ -48,7 +47,7 @@ defmodule ZtripwireWeb.DashboardLive do
          |> redirect(to: "/")}
 
       :anonymous ->
-        {:ok, socket |> mount_demo() |> assign_characters(session)}
+        {:ok, socket |> mount_demo()}
     end
   end
 
@@ -74,12 +73,6 @@ defmodule ZtripwireWeb.DashboardLive do
       nil ->
         :anonymous
     end
-  end
-
-  defp assign_characters(%{assigns: %{demo?: true}} = socket, _session), do: socket
-
-  defp assign_characters(socket, session) do
-    assign(socket, :characters, session_characters(session, socket.assigns.character))
   end
 
   defp ensure_character_pollers(%{assigns: %{demo?: true}} = socket), do: socket
@@ -1656,7 +1649,9 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   defp mask_options(socket) do
-    if demo?(socket), do: socket.assigns.masks, else: Masks.list_masks()
+    if demo?(socket),
+      do: socket.assigns.masks,
+      else: Masks.list_masks_for_characters(socket.assigns.characters)
   end
 
   defp assign_masks(socket) do
@@ -1716,8 +1711,7 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   defp find_mask(socket, mask_id) do
-    Enum.find(socket.assigns.masks, &(&1.id == mask_id)) ||
-      Ztripwire.Repo.get(Ztripwire.Masks.Mask, mask_id)
+    Enum.find(socket.assigns.masks, &(&1.id == mask_id))
   end
 
   defp scoped_member?(socket, mask, member) do
@@ -1888,10 +1882,12 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   defp provision(socket, character, session) do
-    mask = character |> ensure_character_masks() |> restore_mask(session)
+    characters = session_characters(session, character)
+    default_mask = ensure_character_masks(character)
+    masks = Masks.list_masks_for_characters(characters)
+    mask = restore_mask(default_mask, session, masks)
     {map, socket} = personal_map(socket, mask)
 
-    masks = Masks.list_masks()
     admin_masks = Masks.list_masks_for_character(character.id)
     socket = ensure_jita_system(socket, map)
     settings = Settings.assigns()
@@ -1899,7 +1895,7 @@ defmodule ZtripwireWeb.DashboardLive do
     socket
     |> assign(:current_user, %{id: character.eve_id, name: character.name})
     |> assign(:character, character)
-    |> assign(:characters, [character])
+    |> assign(:characters, characters)
     |> assign(:mask, mask)
     |> assign(:masks, masks)
     |> assign(:admin_masks, admin_masks)
@@ -1952,17 +1948,10 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(:stale_system_id, nil)
   end
 
-  defp restore_mask(default, session) do
+  defp restore_mask(default, session, masks) do
     case ZtripwireWeb.SessionUser.mask_id(session) do
-      nil ->
-        default
-
-      id ->
-        case Masks.get_mask(id) do
-          %{kind: "demo"} -> default
-          %{} = mask -> mask
-          nil -> default
-        end
+      nil -> default
+      id -> Enum.find(masks, &(&1.id == id)) || default
     end
   end
 
@@ -2081,7 +2070,7 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(:character, character)
     |> assign(:current_user, %{id: character.eve_id, name: character.name})
     |> assign(:mask, mask)
-    |> assign(:masks, Masks.list_masks())
+    |> assign(:masks, Masks.list_masks_for_characters(socket.assigns.characters))
     |> assign(:admin_masks, Masks.list_masks_for_character(character.id))
     |> assign(:map, map)
     |> assign(:maps, Data.list_maps_for_mask(data(socket), mask.id))

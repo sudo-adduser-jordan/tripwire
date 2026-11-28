@@ -40,6 +40,57 @@ defmodule Ztripwire.MasksTest do
     refute Enum.any?(masks, &(&1.kind == "demo"))
   end
 
+  test "list_masks_for_characters/1 keeps personal, owned corp/alliance and member masks" do
+    {:ok, character} =
+      Accounts.upsert_character(%{
+        eve_id: 21,
+        name: "Visible Tester",
+        corporation_id: 98_100_001,
+        corporation_name: "Visible Corp",
+        alliance_id: 99_100_001,
+        alliance_name: "Visible Alliance"
+      })
+
+    {:ok, other} =
+      Accounts.upsert_character(%{
+        eve_id: 22,
+        name: "Hidden Tester",
+        corporation_id: 98_100_002
+      })
+
+    {:ok, personal} = Masks.ensure_personal_mask(character)
+    {:ok, corp} = Masks.ensure_corporation_mask(character)
+    {:ok, alliance} = Masks.ensure_alliance_mask(character)
+    {:ok, foreign} = Masks.ensure_corporation_mask(other)
+    {:ok, granted} = Masks.create_mask(%{name: "Granted", kind: "corporation"})
+    {:ok, _} = Masks.add_membership(granted, character)
+    _demo = Ztripwire.TestFixtures.demo_mask()
+
+    ids = [character] |> Masks.list_masks_for_characters() |> Enum.map(& &1.id)
+
+    assert personal.id in ids
+    assert corp.id in ids
+    assert alliance.id in ids
+    assert granted.id in ids
+    refute foreign.id in ids
+  end
+
+  test "list_masks_for_characters/1 unions the session characters" do
+    {:ok, one} =
+      Accounts.upsert_character(%{eve_id: 23, name: "One", corporation_id: 98_100_003})
+
+    {:ok, two} =
+      Accounts.upsert_character(%{eve_id: 24, name: "Two", corporation_id: 98_100_004})
+
+    {:ok, one_mask} = Masks.ensure_corporation_mask(one)
+    {:ok, two_mask} = Masks.ensure_corporation_mask(two)
+
+    ids = [one, two] |> Masks.list_masks_for_characters() |> Enum.map(& &1.id)
+
+    assert one_mask.id in ids
+    assert two_mask.id in ids
+  end
+
   test "a map can be created under a personal mask and systems added to it" do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 3, name: "Tester Three"})
     {:ok, mask} = Masks.ensure_personal_mask(character)

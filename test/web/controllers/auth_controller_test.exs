@@ -133,13 +133,43 @@ defmodule ZtripwireWeb.AuthControllerTest do
     assert get_session(conn, "current_user") == nil
   end
 
-  test "mask session endpoint stores the mask without redirecting", %{conn: conn} do
-    {:ok, mask} = Ztripwire.Masks.create_mask(%{name: "Session Corp", kind: "corporation"})
+  test "mask session endpoint stores a visible mask without redirecting", %{conn: conn} do
+    {:ok, character} =
+      Ztripwire.Accounts.upsert_character(%{
+        eve_id: 77_100,
+        name: "Mask Char",
+        corporation_id: 98_700_001,
+        corporation_name: "Mask Corp"
+      })
 
-    conn = get(conn, "/auth/session/mask/#{mask.id}")
+    {:ok, mask} = Ztripwire.Masks.ensure_corporation_mask(character)
+
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{
+        "current_user" => %{"id" => character.eve_id, "name" => character.name}
+      })
+      |> get("/auth/session/mask/#{mask.id}")
 
     assert conn.status == 204
     assert get_session(conn, "mask_id") == mask.id
+  end
+
+  test "mask session endpoint rejects a mask the session cannot see", %{conn: conn} do
+    {:ok, character} =
+      Ztripwire.Accounts.upsert_character(%{eve_id: 77_200, name: "Outsider Char"})
+
+    {:ok, foreign} = Ztripwire.Masks.create_mask(%{name: "Foreign Corp", kind: "corporation"})
+
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{
+        "current_user" => %{"id" => character.eve_id, "name" => character.name}
+      })
+      |> get("/auth/session/mask/#{foreign.id}")
+
+    assert conn.status == 404
+    assert get_session(conn, "mask_id") == nil
   end
 
   test "mask session endpoint rejects the demo mask and unknown ids", %{conn: conn} do

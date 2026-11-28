@@ -93,6 +93,26 @@ defmodule Ztripwire.Masks do
     |> Repo.insert(on_conflict: :nothing)
   end
 
+  def list_masks_for_characters(characters) when is_list(characters) do
+    character_ids = Enum.map(characters, & &1.id)
+    corporation_ids = characters |> Enum.map(& &1.corporation_id) |> Enum.reject(&is_nil/1)
+    alliance_ids = characters |> Enum.map(& &1.alliance_id) |> Enum.reject(&is_nil/1)
+
+    member_mask_ids =
+      from(mm in MaskMembership, where: mm.character_id in ^character_ids, select: mm.mask_id)
+
+    from(m in Mask,
+      where: m.kind != "demo",
+      where:
+        m.kind == "personal" or
+          (m.kind == "corporation" and m.eve_owner_id in ^corporation_ids) or
+          (m.kind == "alliance" and m.eve_owner_id in ^alliance_ids) or
+          m.id in subquery(member_mask_ids)
+    )
+    |> Repo.all()
+    |> Enum.sort_by(&{kind_rank(&1.kind), &1.name})
+  end
+
   def list_masks_for_character(character_id) do
     Repo.all(
       from(m in Mask,

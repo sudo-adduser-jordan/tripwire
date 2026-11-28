@@ -3649,18 +3649,24 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert view |> element("#topbar-mask") |> render() =~ "Test Corp"
   end
 
-  test "topbar mask dropdown lists every mask but the demo mask", %{
+  test "topbar mask dropdown hides masks the session does not own", %{
     conn: conn,
     character: character
   } do
-    {:ok, other_mask} = Masks.create_mask(%{name: "Other Corp", kind: "corporation"})
+    {:ok, other_mask} =
+      Masks.create_mask(%{
+        name: "Other Corp",
+        kind: "corporation",
+        eve_owner_id: 98_999_999
+      })
+
     demo_mask = Ztripwire.TestFixtures.demo_mask()
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
     refute Enum.any?(Masks.list_masks_for_character(character.id), &(&1.id == other_mask.id))
 
-    assert has_element?(
+    refute has_element?(
              view,
              ~s|button[phx-click="switch-mask"][phx-value-id="#{other_mask.id}"]|
            )
@@ -3670,14 +3676,13 @@ defmodule ZtripwireWeb.DashboardLiveTest do
              ~s|button[phx-click="switch-mask"][phx-value-id="#{demo_mask.id}"]|
            )
 
-    view
-    |> element(~s|button[phx-click="switch-mask"][phx-value-id="#{other_mask.id}"]|)
-    |> render_click()
+    render_click(view, "switch-mask", %{"id" => to_string(other_mask.id)})
 
-    assert view |> element("#topbar-mask") |> render() =~ "Other Corp"
+    assert render(view) =~ "Mask not found"
+    assert view |> element("#topbar-mask") |> render() =~ "Private"
 
     view |> element("#settings-button") |> render_click()
-    assert has_element?(view, "#mask-card-#{other_mask.id}")
+    refute has_element?(view, "#mask-card-#{other_mask.id}")
     refute has_element?(view, "#mask-card-#{demo_mask.id}")
   end
 
@@ -4161,6 +4166,8 @@ defmodule ZtripwireWeb.DashboardLiveTest do
         kind: "corporation",
         eve_owner_id: 98_000_002
       })
+
+    {:ok, _} = Masks.add_membership(corp, character)
 
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
