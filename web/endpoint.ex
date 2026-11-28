@@ -5,7 +5,10 @@ defmodule ZtripwireWeb.Endpoint do
     store: :cookie,
     key: "_ztripwire_key",
     signing_salt: "QM3KL2rn",
-    same_site: "Lax"
+    encryption_salt: "ztripwire-session",
+    same_site: "Lax",
+    secure: Application.compile_env(:ztripwire, :secure_session, false),
+    max_age: 14 * 24 * 60 * 60
   ]
 
   socket "/live", Phoenix.LiveView.Socket,
