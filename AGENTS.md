@@ -64,9 +64,11 @@ fix:
 
 # End User Generated
 
-# Project Reference
+# References
 
-- similar to https://bitbucket.org/daimian/tripwire
+- https://bitbucket.org/daimian/tripwire
+- https://developers.eveonline.com/docs/
+- https://developers.eveonline.com/docs/services/esi/best-practices/
 
 ## Stack
 
