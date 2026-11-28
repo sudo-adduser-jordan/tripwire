@@ -110,7 +110,9 @@ defmodule Ztripwire.Masks do
     |> Enum.sort_by(&{kind_rank(&1.kind), &1.name})
   end
 
-  def prune_orphan_masks do
+  def prune_orphan_masks, do: prune_orphan_masks(nil)
+
+  def prune_orphan_masks(owner_ids) when is_list(owner_ids) or is_nil(owner_ids) do
     if unknown_corporations?() do
       []
     else
@@ -121,21 +123,35 @@ defmodule Ztripwire.Masks do
         Repo.all(from c in Character, where: not is_nil(c.alliance_id), select: c.alliance_id)
 
       orphaned =
-        Repo.all(
-          from(m in Mask,
-            where:
-              (m.kind == "corporation" and not is_nil(m.eve_owner_id) and
-                 m.eve_owner_id not in ^corporation_ids) or
-                (m.kind == "alliance" and not is_nil(m.eve_owner_id) and
-                   m.eve_owner_id not in ^alliance_ids)
-          )
-        )
+        Mask
+        |> orphaned_masks_query(corporation_ids, alliance_ids, owner_ids)
+        |> Repo.all()
 
       Enum.map(orphaned, fn mask ->
         {:ok, _} = delete_mask_full(mask)
         mask
       end)
     end
+  end
+
+  defp orphaned_masks_query(query, corporation_ids, alliance_ids, nil) do
+    from(m in query,
+      where:
+        (m.kind == "corporation" and not is_nil(m.eve_owner_id) and
+           m.eve_owner_id not in ^corporation_ids) or
+          (m.kind == "alliance" and not is_nil(m.eve_owner_id) and
+             m.eve_owner_id not in ^alliance_ids)
+    )
+  end
+
+  defp orphaned_masks_query(query, corporation_ids, alliance_ids, owner_ids) do
+    from(m in query,
+      where:
+        (m.kind == "corporation" and not is_nil(m.eve_owner_id) and
+           m.eve_owner_id in ^owner_ids and m.eve_owner_id not in ^corporation_ids) or
+          (m.kind == "alliance" and not is_nil(m.eve_owner_id) and
+             m.eve_owner_id in ^owner_ids and m.eve_owner_id not in ^alliance_ids)
+    )
   end
 
   defp unknown_corporations? do

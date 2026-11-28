@@ -797,10 +797,16 @@ defmodule ZtripwireWeb.DashboardLive do
 
   def handle_event("remove-character", %{"id" => id}, socket) do
     with {char_id, ""} <- Integer.parse(to_string(id)),
-         %{} = character <- Accounts.get_character(char_id),
+         %{} = character <- Enum.find(socket.assigns.characters, &(&1.id == char_id)),
          {:ok, _} <- Accounts.delete_character(character) do
       Tracking.stop_poller(character)
-      pruned_ids = Masks.prune_orphan_masks() |> MapSet.new(& &1.id)
+
+      pruned_ids =
+        [character.corporation_id, character.alliance_id]
+        |> Enum.reject(&is_nil/1)
+        |> Masks.prune_orphan_masks()
+        |> MapSet.new(& &1.id)
+
       remaining = Enum.reject(socket.assigns.characters, &(&1.id == character.id))
       socket = assign(socket, :characters, remaining)
 

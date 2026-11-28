@@ -3553,6 +3553,66 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     end
   end
 
+  test "removing a character outside the session is rejected", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, other} = Accounts.upsert_character(%{eve_id: 43_200, name: "Foreign Char"})
+
+    session =
+      Plug.Test.init_test_session(conn, %{
+        "current_user" => %{"id" => character.eve_id, "name" => character.name},
+        "character_ids" => [character.eve_id]
+      })
+
+    {:ok, view, _html} = live(session, ~p"/dashboard")
+
+    render_click(view, "remove-character", %{"id" => other.id})
+
+    assert Accounts.get_character(other.id) != nil
+  end
+
+  test "removing a character only prunes its own corporation mask", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, character} =
+      Accounts.update_character(character, %{
+        corporation_id: 98_400_002,
+        corporation_name: "Staying Corp"
+      })
+
+    {:ok, other} =
+      Accounts.upsert_character(%{
+        eve_id: 43_300,
+        name: "Corp Mate",
+        corporation_id: 98_400_001,
+        corporation_name: "Leaving Corp"
+      })
+
+    {:ok, staying_mask} = Masks.ensure_corporation_mask(character)
+    {:ok, leaving_mask} = Masks.ensure_corporation_mask(other)
+
+    session =
+      Plug.Test.init_test_session(conn, %{
+        "current_user" => %{"id" => character.eve_id, "name" => character.name},
+        "character_ids" => [character.eve_id, other.eve_id]
+      })
+
+    {:ok, view, _html} = live(session, ~p"/dashboard")
+
+    view |> element("#settings-button") |> render_click()
+    render_click(view, "settings-tab", %{"tab" => "account"})
+
+    view
+    |> element(~s|#character-card-#{other.id} button[title="Remove Corp Mate"]|)
+    |> render_click()
+
+    assert Accounts.get_character(other.id) == nil
+    assert Masks.get_mask(leaving_mask.id) == nil
+    assert Masks.get_mask(staying_mask.id) != nil
+  end
+
   test "manage masks opens settings on the account tab", %{conn: conn, character: character} do
     {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
 
