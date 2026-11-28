@@ -3686,6 +3686,61 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     refute has_element?(view, "#mask-card-#{demo_mask.id}")
   end
 
+  test "selecting a system outside the chain is ignored", %{conn: conn, character: character} do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, foreign_mask} = Masks.create_mask(%{name: "Foreign", kind: "corporation"})
+    {:ok, foreign_map} = Mapping.create_map(%{name: "Foreign", mask_id: foreign_mask.id})
+
+    {:ok, foreign_system} =
+      Mapping.add_system_to_map(foreign_map, %{solar_system_id: 31_000_777, name: "J199999"})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    html = render_click(view, "select-system", %{"id" => foreign_system.id})
+
+    refute html =~ "J199999"
+  end
+
+  test "deleting a signature outside the selection is ignored", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, foreign_mask} = Masks.create_mask(%{name: "Foreign", kind: "corporation"})
+    {:ok, foreign_map} = Mapping.create_map(%{name: "Foreign", mask_id: foreign_mask.id})
+
+    {:ok, foreign_system} =
+      Mapping.add_system_to_map(foreign_map, %{solar_system_id: 31_000_778, name: "J188888"})
+
+    {:ok, foreign_sig} =
+      Mapping.create_signature(
+        foreign_system,
+        %{sig_id: "ZZZ-999", site_type: "unknown"},
+        character
+      )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    render_click(view, "delete-signature", %{"id" => foreign_sig.id})
+
+    assert Mapping.get_signature(foreign_sig.id) != nil
+  end
+
+  test "toggling a character outside the session is ignored", %{
+    conn: conn,
+    character: character
+  } do
+    {:ok, other} = Accounts.upsert_character(%{eve_id: 45_100, name: "Foreign Vis"})
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    render_click(view, "toggle-ship-visibility", %{"id" => other.id})
+
+    assert Accounts.get_character(other.id).ship_on_chain
+  end
+
   test "a new mask map starts with a Jita node holding the welcome notes", %{
     conn: conn,
     character: character

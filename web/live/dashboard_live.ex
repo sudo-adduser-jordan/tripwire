@@ -281,8 +281,8 @@ defmodule ZtripwireWeb.DashboardLive do
 
       socket =
         case signature_id && Data.get_signature(data(socket), signature_id) do
-          nil -> open_signature_add(socket)
-          signature -> open_signature_edit(socket, signature)
+          %{map_system_id: ^system_id} = signature -> open_signature_edit(socket, signature)
+          _ -> open_signature_add(socket)
         end
 
       {:noreply, socket}
@@ -835,7 +835,17 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   def handle_event("select-system", %{"id" => id}, socket) do
-    {:noreply, select_system_and_patch(socket, String.to_integer(id))}
+    case Integer.parse(to_string(id)) do
+      {system_id, ""} ->
+        if Enum.any?(socket.assigns[:systems] || [], &(&1.id == system_id)) do
+          {:noreply, select_system_and_patch(socket, system_id)}
+        else
+          {:noreply, socket}
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("select-gate-system", %{"solar" => solar}, socket) do
@@ -1234,7 +1244,7 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   def handle_event("open-edit", %{"id" => id}, socket) do
-    case Data.get_signature(data(socket), id) do
+    case selected_signature(socket, id) do
       nil ->
         {:noreply, put_flash(socket, :error, "Signature not found")}
 
@@ -1252,7 +1262,7 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   def handle_event("delete-signature", %{"id" => id}, socket) do
-    case Data.get_signature(data(socket), id) do
+    case selected_signature(socket, id) do
       nil ->
         {:noreply, socket}
 
@@ -2105,6 +2115,20 @@ defmodule ZtripwireWeb.DashboardLive do
     case Enum.find(systems, &(&1.id == id)) do
       %{name: name} -> name
       nil -> nil
+    end
+  end
+
+  defp selected_signature(socket, id) do
+    case socket.assigns[:selected_system_id] do
+      nil ->
+        nil
+
+      system_id ->
+        socket.assigns[:signatures]
+        |> List.wrap()
+        |> Enum.find(fn signature ->
+          signature.map_system_id == system_id and to_string(signature.id) == to_string(id)
+        end)
     end
   end
 
@@ -3438,31 +3462,27 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   defp toggle_visibility(socket, id, attrs_fn) do
-    with {char_id, ""} <- Integer.parse(to_string(id)) do
-      case Data.update_character(data(socket), char_id, attrs_fn) do
-        {{:ok, updated}, data} ->
-          socket = put_data(socket, data)
+    with {char_id, ""} <- Integer.parse(to_string(id)),
+         %{} = character <- Enum.find(socket.assigns.characters, &(&1.id == char_id)),
+         {{:ok, updated}, data} <- Data.update_character(data(socket), character.id, attrs_fn) do
+      socket = put_data(socket, data)
 
-          characters =
-            Enum.map(socket.assigns.characters, fn c ->
-              if c.id == updated.id, do: updated, else: c
-            end)
+      characters =
+        Enum.map(socket.assigns.characters, fn c ->
+          if c.id == updated.id, do: updated, else: c
+        end)
 
-          character =
-            if socket.assigns.character && socket.assigns.character.id == updated.id,
-              do: updated,
-              else: socket.assigns.character
+      character =
+        if socket.assigns.character && socket.assigns.character.id == updated.id,
+          do: updated,
+          else: socket.assigns.character
 
-          {:noreply,
-           socket
-           |> assign(:character, character)
-           |> assign(:characters, characters)
-           |> refresh_occupants()
-           |> put_flash(:info, visibility_flash(updated))}
-
-        {{:error, _}, data} ->
-          {:noreply, socket |> put_data(data) |> put_flash(:error, "Character not found")}
-      end
+      {:noreply,
+       socket
+       |> assign(:character, character)
+       |> assign(:characters, characters)
+       |> refresh_occupants()
+       |> put_flash(:info, visibility_flash(updated))}
     else
       _ -> {:noreply, put_flash(socket, :error, "Character not found")}
     end

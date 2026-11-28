@@ -162,13 +162,18 @@ defmodule ZtripwireWeb.LiveComponents.NotesLive do
   end
 
   def handle_event("comment-delete", %{"id" => id}, socket) do
-    comment = Mapping.get_comment!(id)
-    {:ok, _} = Mapping.delete_comment(comment, socket.assigns.character)
-    send(self(), {:comments_updated, comment.map_system_id})
+    case Enum.find(socket.assigns.comments, &(to_string(&1.id) == to_string(id))) do
+      nil ->
+        {:noreply, socket}
 
-    socket = close_editor(socket, comment)
+      comment ->
+        {:ok, _} = Mapping.delete_comment(comment, socket.assigns.character)
+        send(self(), {:comments_updated, comment.map_system_id})
 
-    {:noreply, assign(socket, :comments, Mapping.list_comments(comment.map_system_id))}
+        socket = close_editor(socket, comment)
+
+        {:noreply, assign(socket, :comments, Mapping.list_comments(comment.map_system_id))}
+    end
   end
 
   attr :position, :map, default: %{"x" => 6, "y" => 0, "w" => 6, "h" => 6}
