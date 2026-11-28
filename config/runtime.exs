@@ -25,6 +25,17 @@ if callback_url = System.get_env("EVESSO_CALLBACK_URL") do
   end
 end
 
+esi_user_agent = System.get_env("ZTRIPWIRE_USER_AGENT")
+esi_compatibility_date = System.get_env("ZTRIPWIRE_ESI_COMPATIBILITY_DATE")
+
+if esi_user_agent do
+  config :ztripwire, Ztripwire.ESI, user_agent: esi_user_agent
+end
+
+if esi_compatibility_date do
+  config :ztripwire, Ztripwire.ESI, compatibility_date: esi_compatibility_date
+end
+
 cloak_key =
   case System.get_env("ZTRIPWIRE_CLOAK_KEY") do
     value when value in [nil, ""] -> nil

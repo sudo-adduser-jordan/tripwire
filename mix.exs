@@ -63,6 +63,7 @@ defmodule Ztripwire.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:ueberauth_eve_online, "~> 1.0"},
+      {:jose, "~> 1.11"},
       {:cloak, "~> 1.1"},
       {:cloak_ecto, "~> 1.3"}
     ]

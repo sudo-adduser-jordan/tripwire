@@ -38,7 +38,8 @@ defmodule ZtripwireWeb.DashboardLive do
          socket
          |> provision(character, session)
          |> assign_characters(session)
-         |> ensure_character_pollers()}
+         |> ensure_character_pollers()
+         |> track_viewer()}
 
       :expired ->
         {:ok,
@@ -49,6 +50,17 @@ defmodule ZtripwireWeb.DashboardLive do
       :anonymous ->
         {:ok, socket |> mount_demo() |> assign_characters(session)}
     end
+  end
+
+  @impl true
+  def terminate(_reason, socket) do
+    if socket.assigns[:viewer_tracked?] do
+      socket.assigns[:characters]
+      |> List.wrap()
+      |> Enum.each(&Tracking.remove_viewer/1)
+    end
+
+    :ok
   end
 
   defp session_character(session) do
@@ -80,6 +92,21 @@ defmodule ZtripwireWeb.DashboardLive do
     |> Enum.each(&Tracking.ensure_poller/1)
 
     socket
+  end
+
+  defp track_viewer(%{assigns: %{demo?: true}} = socket), do: socket
+
+  defp track_viewer(socket) do
+    if connected?(socket) do
+      socket.assigns[:characters]
+      |> List.wrap()
+      |> Enum.reject(&is_nil(&1.refresh_token))
+      |> Enum.each(&Tracking.add_viewer/1)
+
+      assign(socket, :viewer_tracked?, true)
+    else
+      socket
+    end
   end
 
   defp refresh_occupants(socket) do
@@ -137,13 +164,23 @@ defmodule ZtripwireWeb.DashboardLive do
   defp put_data(socket, %Ztripwire.Demo.State{} = state), do: assign(socket, :demo_state, state)
 
   defp assign_demo_presence(socket) do
-    presence = fetch_character_presence(socket.assigns.character)
+    presence = demo_presence()
     presences = Map.new(socket.assigns.characters, &{&1.eve_id, presence})
 
     socket
     |> assign(:current_system_name, presence.system_name)
     |> assign(:character_online, presence.online)
     |> assign(:presences, presences)
+  end
+
+  defp demo_presence do
+    %{
+      system_name: "J150321",
+      online: true,
+      ship_name: @demo_ship_name,
+      ship_type_id: @demo_ship_type_id,
+      ship_type_name: @demo_ship_name
+    }
   end
 
   defp mount_demo(socket) do
@@ -1528,7 +1565,11 @@ defmodule ZtripwireWeb.DashboardLive do
       with %{refresh_token: token} when not is_nil(token) <- socket.assigns.character,
            {:ok, access} <- ESI.valid_access_token(socket.assigns.character),
            {:ok, %{"solar_system_id" => solar_system_id}} <-
-             ESI.get_character_location(socket.assigns.character.eve_id, access),
+             ESI.get_character_location(
+               socket.assigns.character.eve_id,
+               access,
+               socket.assigns.character
+             ),
            prev = selected_system(socket),
            {:ok, %{system: system}} <-
              Ztripwire.Tracking.apply_location_change(
@@ -2466,9 +2507,15 @@ defmodule ZtripwireWeb.DashboardLive do
             {:ok, existing.solar_system_id, existing.name}
 
           true ->
-            case ESI.resolve_system_id(input) do
-              {:ok, solar} -> {:ok, solar, input}
-              :error -> {:error, "Home system not found: #{input}"}
+            case Systems.Catalog.find(input) do
+              %{solar_system_id: solar} ->
+                {:ok, solar, input}
+
+              nil ->
+                case ESI.resolve_system_id(input) do
+                  {:ok, solar} -> {:ok, solar, input}
+                  :error -> {:error, "Home system not found: #{input}"}
+                end
             end
         end
     end
@@ -3438,7 +3485,10 @@ defmodule ZtripwireWeb.DashboardLive do
   defp visibility_flash(%{name: name}), do: "#{name} is visible on chain"
 
   defp schedule_topbar_load(socket) do
-    if connected?(socket), do: send(self(), :load_topbar)
+    if connected?(socket) and topbar_esi_enabled?() do
+      send(self(), :load_topbar)
+    end
+
     socket
   end
 
@@ -3476,8 +3526,12 @@ defmodule ZtripwireWeb.DashboardLive do
         _ -> {false, nil}
       end
 
-    presences = fetch_presences(characters)
-    presence = Map.get(presences, character.eve_id, empty_presence())
+    presences = Tracking.presences(characters)
+
+    presence =
+      presences
+      |> Map.get(character.eve_id, %{})
+      |> then(&Map.merge(empty_presence(), &1))
 
     %{
       tq_online: tq_online,
@@ -3490,98 +3544,8 @@ defmodule ZtripwireWeb.DashboardLive do
     }
   end
 
-  defp fetch_presences(characters) do
-    characters
-    |> Task.async_stream(
-      fn character -> {character.eve_id, fetch_character_presence(character)} end,
-      max_concurrency: 4,
-      timeout: 20_000,
-      on_timeout: :kill_task
-    )
-    |> Enum.reduce(%{}, fn
-      {:ok, {eve_id, presence}}, acc -> Map.put(acc, eve_id, presence)
-      _other, acc -> acc
-    end)
-  end
-
   defp empty_presence,
     do: %{system_name: nil, online: nil, ship_name: nil, ship_type_id: nil, ship_type_name: nil}
-
-  defp fetch_character_presence(nil), do: empty_presence()
-
-  defp fetch_character_presence(%{eve_id: @demo_character_eve_id}) do
-    %{
-      system_name: "J150321",
-      online: true,
-      ship_name: @demo_ship_name,
-      ship_type_id: @demo_ship_type_id,
-      ship_type_name: @demo_ship_name
-    }
-  end
-
-  defp fetch_character_presence(%{refresh_token: nil}), do: empty_presence()
-
-  defp fetch_character_presence(character) do
-    case ESI.valid_access_token(character) do
-      {:ok, token} ->
-        {ship_name, ship_type_id, ship_type_name} = fetch_character_ship(character.eve_id, token)
-
-        %{
-          system_name: fetch_character_system(character.eve_id, token),
-          online: fetch_character_online(character.eve_id, token),
-          ship_name: ship_name,
-          ship_type_id: ship_type_id,
-          ship_type_name: ship_type_name
-        }
-
-      {:error, _reason} ->
-        empty_presence()
-    end
-  rescue
-    exception ->
-      Ztripwire.Log.emit(:warning, %{
-        event: "character_presence_failed",
-        eve_id: character.eve_id,
-        error: Exception.message(exception)
-      })
-
-      empty_presence()
-  end
-
-  defp fetch_character_online(eve_id, token) do
-    case ESI.get_character_online(eve_id, token) do
-      {:ok, %{"online" => online}} -> online
-      _ -> nil
-    end
-  end
-
-  defp fetch_character_ship(eve_id, token) do
-    case ESI.get_character_ship(eve_id, token) do
-      {:ok, %{"ship_type_id" => type_id} = ship} ->
-        {ship["ship_name"], type_id, fetch_type_name(type_id)}
-
-      _ ->
-        {nil, nil, nil}
-    end
-  end
-
-  defp fetch_type_name(type_id) when is_integer(type_id) do
-    case ESI.get_type(type_id) do
-      {:ok, %{"name" => name}} -> name
-      _ -> nil
-    end
-  end
-
-  defp fetch_type_name(_type_id), do: nil
-
-  defp fetch_character_system(eve_id, token) do
-    with {:ok, %{"solar_system_id" => system_id}} <- ESI.get_character_location(eve_id, token),
-         {:ok, %{"name" => name}} <- ESI.get_system(system_id) do
-      name
-    else
-      _ -> nil
-    end
-  end
 
   defp schedule_system_detail(socket, nil), do: socket
 
@@ -3591,8 +3555,19 @@ defmodule ZtripwireWeb.DashboardLive do
       solar_system_id = system.solar_system_id
       range = socket.assigns[:chart_range] || "24h"
 
+      sde_info =
+        if socket.assigns[:demo?] == true do
+          :error
+        else
+          Ztripwire.Systems.sde_info(system)
+        end
+
       Task.start(fn ->
-        send(pid, {:system_info_loaded, solar_system_id, Ztripwire.Systems.fetch_info(system)})
+        send(
+          pid,
+          {:system_info_loaded, solar_system_id,
+           Ztripwire.Systems.fetch_info(system, sde_info: sde_info)}
+        )
       end)
 
       Task.start(fn ->

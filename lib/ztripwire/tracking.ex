@@ -6,7 +6,7 @@ defmodule Ztripwire.Tracking do
   alias Ztripwire.Mapping.MapSystem
   alias Ztripwire.Repo
   alias Ztripwire.Signatures, as: SigParser
-  alias Ztripwire.Tracking.Poller
+  alias Ztripwire.Tracking.{Poller, Presence}
   alias Ztripwire.Wormholes
   alias Phoenix.PubSub
 
@@ -15,8 +15,17 @@ defmodule Ztripwire.Tracking do
   def mask_topic(mask_id), do: "#{@topic_prefix}:#{mask_id}"
 
   def ensure_poller(character, opts \\ []) do
+    if Application.get_env(:ztripwire, :pollers_enabled, true) do
+      do_ensure_poller(character, opts)
+    else
+      {:ok, :disabled}
+    end
+  end
+
+  defp do_ensure_poller(character, opts) do
     case Registry.lookup(Ztripwire.TrackingRegistry, character.eve_id) do
       [{pid, _}] ->
+        _ = safe_update_character(pid, character)
         {:ok, pid}
 
       [] ->
@@ -30,11 +39,35 @@ defmodule Ztripwire.Tracking do
     end
   end
 
+  defp safe_update_character(pid, character) do
+    GenServer.call(pid, {:update_character, character}, 5_000)
+  catch
+    :exit, _ -> :ok
+  end
+
+  def presence(eve_id), do: Presence.get(eve_id)
+
+  def presences(characters) when is_list(characters) do
+    Map.new(characters, fn character -> {character.eve_id, presence(character.eve_id) || %{}} end)
+  end
+
+  def add_viewer(%{eve_id: eve_id}), do: Presence.add_viewer(eve_id)
+  def remove_viewer(%{eve_id: eve_id}), do: Presence.remove_viewer(eve_id)
+
   def stop_poller(%{eve_id: eve_id}) do
     case Registry.lookup(Ztripwire.TrackingRegistry, eve_id) do
       [{pid, _}] -> DynamicSupervisor.terminate_child(Ztripwire.Tracking.PollerSupervisor, pid)
       [] -> :ok
     end
+  end
+
+  def stop_all_pollers do
+    Registry.select(Ztripwire.TrackingRegistry, [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
+    |> Enum.each(fn {_eve_id, pid} ->
+      DynamicSupervisor.terminate_child(Ztripwire.Tracking.PollerSupervisor, pid)
+    end)
+
+    :ok
   end
 
   def tracking?(%{eve_id: eve_id}) when is_integer(eve_id) do
@@ -145,74 +178,53 @@ defmodule Ztripwire.Tracking do
       )
       |> Map.new(fn {solar_system_id, id, name} -> {solar_system_id, {id, name}} end)
 
-    tracked_occupants()
-    |> Enum.flat_map(fn occupant ->
-      case Map.get(systems, occupant.solar_system_id) do
-        nil ->
-          []
+    characters =
+      Accounts.list_characters()
+      |> Map.new(fn character -> {character.eve_id, character} end)
 
-        {system_id, system_name} ->
-          [Map.merge(occupant, %{system_id: system_id, system_name: system_name})]
+    Presence.all()
+    |> Enum.flat_map(fn {eve_id, presence} ->
+      with %{character_on_chain: true} = character <- Map.get(characters, eve_id),
+           solar when is_integer(solar) <- Map.get(presence, :solar_system_id),
+           {system_id, system_name} <- Map.get(systems, solar) do
+        [
+          %{
+            character_name: character.name,
+            eve_id: character.eve_id,
+            corporation_id: character.corporation_id,
+            alliance_id: character.alliance_id,
+            solar_system_id: solar,
+            system_id: system_id,
+            system_name: system_name,
+            ship_name: occupant_ship_name(character, presence),
+            ship_type_id: occupant_ship_type_id(character, presence)
+          }
+        ]
+      else
+        _ -> []
       end
     end)
   end
 
-  defp tracked_occupants do
-    Registry.select(Ztripwire.TrackingRegistry, [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
-    |> Enum.flat_map(fn {_eve_id, pid} ->
-      case GenServer.call(pid, :state) do
-        %{character: character, last_system_row: %{solar_system_id: solar}} = state
-        when is_integer(solar) ->
-          case Accounts.get_character_by_eve_id(character.eve_id) do
-            %{character_on_chain: true} = character ->
-              [
-                %{
-                  character_name: character.name,
-                  eve_id: character.eve_id,
-                  corporation_id: character.corporation_id,
-                  alliance_id: character.alliance_id,
-                  solar_system_id: solar,
-                  ship_name: occupant_ship_name(character, state),
-                  ship_type_id: occupant_ship_type_id(character, state)
-                }
-              ]
+  defp occupant_ship_name(%{ship_on_chain: false}, _presence), do: nil
+  defp occupant_ship_name(_character, presence), do: Map.get(presence, :ship_name)
 
-            _ ->
-              []
-          end
-
-        _ ->
-          []
-      end
-    end)
-  rescue
-    _ -> []
-  catch
-    _, _ -> []
-  end
-
-  defp occupant_ship_name(%{ship_on_chain: false}, _state), do: nil
-  defp occupant_ship_name(_character, state), do: Map.get(state, :ship_name)
-
-  defp occupant_ship_type_id(%{ship_on_chain: false}, _state), do: nil
-  defp occupant_ship_type_id(_character, state), do: Map.get(state, :ship_type_id)
+  defp occupant_ship_type_id(%{ship_on_chain: false}, _presence), do: nil
+  defp occupant_ship_type_id(_character, presence), do: Map.get(presence, :ship_type_id)
 
   def list_tracked_characters do
-    Registry.select(Ztripwire.TrackingRegistry, [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
-    |> Enum.flat_map(fn {_eve_id, pid} ->
-      case GenServer.call(pid, :state) do
-        %{character: %Ztripwire.Accounts.Character{} = character, online: online} ->
-          [%{eve_id: character.eve_id, name: character.name, online: online}]
+    characters =
+      Accounts.list_characters()
+      |> Map.new(fn character -> {character.eve_id, character} end)
 
-        _ ->
-          []
+    Presence.all()
+    |> Enum.flat_map(fn {eve_id, presence} ->
+      case Map.get(characters, eve_id) do
+        %{name: name} -> [%{eve_id: eve_id, name: name, online: Map.get(presence, :online)}]
+        _ -> []
       end
     end)
     |> Enum.sort_by(& &1.name)
-  rescue
-    _ -> []
-  catch
-    _, _ -> []
   end
 
   defp broadcast_system_change(mask_id, character_name, system) do
@@ -294,9 +306,15 @@ defmodule Ztripwire.Tracking do
   end
 
   defp fetch_system_info(solar_system_id) do
-    case ESI.get_system(solar_system_id) do
-      {:ok, %{"name" => name} = body} -> {name, body["security_status"]}
-      _ -> {"System ##{solar_system_id}", nil}
+    case Ztripwire.Sde.system(solar_system_id) do
+      %{name: name, security: security} ->
+        {name, security}
+
+      _ ->
+        case ESI.get_system(solar_system_id) do
+          {:ok, %{"name" => name} = body} -> {name, body["security_status"]}
+          _ -> {"System ##{solar_system_id}", nil}
+        end
     end
   end
 

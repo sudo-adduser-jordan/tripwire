@@ -54,7 +54,7 @@ defmodule Ztripwire.Tracking.TestPresence do
   end
 
   @impl true
-  def init(state), do: {:ok, state}
+  def init(state), do: publish(state)
 
   @impl true
   def handle_call(:state, _from, state) do
@@ -75,7 +75,38 @@ defmodule Ztripwire.Tracking.TestPresence do
 
   @impl true
   def handle_call({:set_state, map, system, ship_name, ship_type_id}, _from, state) do
-    {:reply, :ok,
-     %{state | map: map, system: system, ship_name: ship_name, ship_type_id: ship_type_id}}
+    state = %{state | map: map, system: system, ship_name: ship_name, ship_type_id: ship_type_id}
+    {:reply, :ok, publish(state)}
+  end
+
+  @impl true
+  def handle_call({:update_character, character}, _from, state) do
+    {:reply, :ok, %{state | character: character}}
+  end
+
+  @impl true
+  def terminate(_reason, state) do
+    Ztripwire.Tracking.Presence.delete(state.character.eve_id)
+    :ok
+  end
+
+  defp publish(state) do
+    character = state.character
+
+    Ztripwire.Tracking.Presence.put(character.eve_id, %{
+      name: character.name,
+      corporation_id: character.corporation_id,
+      alliance_id: character.alliance_id,
+      character_on_chain: Map.get(character, :character_on_chain, true),
+      ship_on_chain: Map.get(character, :ship_on_chain, true),
+      online: true,
+      solar_system_id: state.system && state.system.solar_system_id,
+      system_name: state.system && state.system.name,
+      ship_name: state.ship_name,
+      ship_type_id: state.ship_type_id,
+      ship_type_name: nil
+    })
+
+    {:ok, state}
   end
 end

@@ -3,9 +3,9 @@ import Config
 config :ztripwire, Ztripwire.Repo,
   database: Path.expand("../priv/db/ztripwire-test.db", __DIR__),
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2,
+  pool_size: 1,
   journal_mode: :wal,
-  busy_timeout: 5000
+  busy_timeout: 15_000
 
 secret_key_base =
   case System.get_env("PHX_SECRET_KEY_BASE") do
@@ -31,10 +31,20 @@ config :ztripwire, Ztripwire.Vault,
 
 config :ztripwire, Ztripwire.Systems.Catalog, path: nil
 config :ztripwire, Ztripwire.Systems.Gates, path: nil
+
+config :ztripwire, Ztripwire.ESI,
+  req_options: [plug: Ztripwire.ESIStub],
+  cache: false,
+  compatibility_date: "2026-05-18",
+  user_agent: "Ztripwire/0.1.0 (test)"
+
 config :ztripwire, Ztripwire.SyncServer, prune_on_start: false
 config :ztripwire, Ztripwire.Mailer, adapter: Swoosh.Adapters.Test
 config :swoosh, :api_client, false
 config :ztripwire, :topbar_esi, false
+config :ztripwire, :pollers_enabled, false
+config :ztripwire, :sde_enabled, false
+config :ztripwire, Ztripwire.Log, sample_rate: 0.0
 config :logger, level: :warning
 config :phoenix, :plug_init_mode, :runtime
 

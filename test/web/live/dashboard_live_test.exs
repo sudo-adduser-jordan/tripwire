@@ -12,6 +12,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
   alias Ztripwire.Systems.Gates
 
   setup do
+    Ztripwire.Tracking.Presence.clear()
     {:ok, character} = Accounts.upsert_character(%{eve_id: 42_000, name: "Kariyo Astrien"})
     on_exit(fn -> stop_trackers() end)
     %{character: character}
@@ -33,6 +34,16 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     Plug.Test.init_test_session(conn, %{
       current_user: %{id: character.eve_id, name: character.name}
     })
+  end
+
+  defp enable_pollers do
+    previous = Application.get_env(:ztripwire, :pollers_enabled)
+    Application.put_env(:ztripwire, :pollers_enabled, true)
+
+    on_exit(fn ->
+      Application.put_env(:ztripwire, :pollers_enabled, previous)
+      Ztripwire.Tracking.stop_all_pollers()
+    end)
   end
 
   test "anonymous visitors get the demo dashboard", %{conn: conn} do
@@ -375,6 +386,8 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     conn: conn,
     character: character
   } do
+    enable_pollers()
+
     {:ok, character} =
       Accounts.upsert_character(%{eve_id: character.eve_id, refresh_token: "one"})
 
@@ -3071,6 +3084,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     conn: conn,
     character: character
   } do
+    enable_pollers()
     System.put_env("EVESSO_CLIENT_ID", "test-id")
     System.put_env("EVESSO_CLIENT_SECRET", "test-secret")
 

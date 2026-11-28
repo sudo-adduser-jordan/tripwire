@@ -15,6 +15,18 @@ defmodule Ztripwire.Accounts do
     |> Repo.update()
   end
 
+  def clear_refresh_token(eve_id) do
+    case get_character_by_eve_id(eve_id) do
+      %Character{} = character ->
+        character
+        |> Character.changeset(%{refresh_token: nil})
+        |> Repo.update()
+
+      nil ->
+        {:error, :not_found}
+    end
+  end
+
   def list_characters, do: Repo.all(Character)
 
   def get_character_by_eve_id(eve_id) do

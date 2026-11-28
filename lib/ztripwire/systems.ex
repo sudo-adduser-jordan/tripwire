@@ -142,15 +142,55 @@ defmodule Ztripwire.Systems do
 
   def external_links(_), do: []
 
-  def fetch_info(%{solar_system_id: solar_id} = system) do
+  def fetch_info(system_or_id, opts \\ [])
+
+  def fetch_info(%{solar_system_id: solar_id} = system, opts) do
     if esi_resolvable?(system) do
-      fetch_info(solar_id)
+      fetch_info(solar_id, opts)
     else
       {:error, :wormhole}
     end
   end
 
-  def fetch_info(solar_id) when is_integer(solar_id) do
+  def fetch_info(solar_id, opts) when is_integer(solar_id) do
+    cond do
+      Keyword.has_key?(opts, :sde_info) ->
+        case Keyword.fetch!(opts, :sde_info) do
+          {:ok, info} -> {:ok, Map.put(info, :sovereignty, sovereignty_holder(solar_id))}
+          _ -> esi_info_result(solar_id)
+        end
+
+      Keyword.get(opts, :sde, true) ->
+        case sde_info(solar_id) do
+          {:ok, info} -> {:ok, Map.put(info, :sovereignty, sovereignty_holder(solar_id))}
+          :error -> esi_info_result(solar_id)
+        end
+
+      true ->
+        esi_info_result(solar_id)
+    end
+  end
+
+  def sde_info(%{solar_system_id: solar_id}), do: sde_info(solar_id)
+
+  def sde_info(solar_id) when is_integer(solar_id) do
+    with %{} = system <- Ztripwire.Sde.system(solar_id),
+         %{name: constellation} <- Ztripwire.Sde.constellation(system.constellation_id),
+         %{name: region} <- Ztripwire.Sde.region(system.region_id) do
+      {:ok, %{constellation: constellation, region: region, security: system.security}}
+    else
+      _ -> :error
+    end
+  end
+
+  defp esi_info_result(solar_id) do
+    case esi_info(solar_id) do
+      {:ok, info} -> {:ok, Map.put(info, :sovereignty, sovereignty_holder(solar_id))}
+      other -> other
+    end
+  end
+
+  defp esi_info(solar_id) do
     with {:ok, %{"constellation_id" => constellation_id} = sys} <-
            Ztripwire.ESI.get_system(solar_id),
          {:ok, %{"name" => constellation_name, "region_id" => region_id}} <-
@@ -161,7 +201,7 @@ defmodule Ztripwire.Systems do
          constellation: constellation_name,
          region: region_name,
          security: sys["security_status"],
-         sovereignty: sovereignty_holder(solar_id)
+         sovereignty: nil
        }}
     end
   end

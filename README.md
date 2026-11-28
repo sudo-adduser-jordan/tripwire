@@ -86,6 +86,8 @@ Deploys run the server in `MIX_ENV=prod` and are driven by the `start` and `stop
    | `EVESSO_CLIENT_SECRET` | no | EVE SSO client secret; login stays in demo mode when unset |
    | `EVESSO_CALLBACK_URL` | no | Public SSO callback URL, e.g. `https://example.com/auth/evesso/callback`; defaults to the request URL |
    | `EVESSO_SECRET_KEY` | no | Legacy alias for `EVESSO_CLIENT_SECRET` |
+   | `ZTRIPWIRE_USER_AGENT` | no | ESI `User-Agent`; set it to the app version plus a contact address and source URL, e.g. `Ztripwire/1.0 (ops@example.com; +https://example.com/repo)` |
+   | `ZTRIPWIRE_ESI_COMPATIBILITY_DATE` | no | ESI `X-Compatibility-Date`, defaults to `2026-05-18`; re-verify the routes when raising it |
 
 3. Start the server:
 

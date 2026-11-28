@@ -16,6 +16,12 @@ config :ueberauth, Ueberauth.Strategy.EVESSO.OAuth,
   client_id: {:system, "EVESSO_CLIENT_ID"},
   client_secret: {:system, "EVESSO_CLIENT_SECRET"}
 
+config :ztripwire, Ztripwire.ESI,
+  base_url: "https://esi.evetech.net/latest",
+  user_agent: "Ztripwire/0.1.0 (+https://bitbucket.org/daimian/tripwire)",
+  compatibility_date: "2026-05-18",
+  cache: true
+
 config :ztripwire, Ztripwire.Mailer, adapter: Swoosh.Adapters.Local
 
 config :ztripwire,

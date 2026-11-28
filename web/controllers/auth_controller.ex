@@ -38,15 +38,20 @@ defmodule ZtripwireWeb.AuthController do
   def request(conn, _params), do: conn
 
   def callback(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
-    {:ok, character} = Ztripwire.Accounts.upsert_character_from_ueberauth(auth)
-    {:ok, _pid} = Ztripwire.Tracking.ensure_poller(character)
+    case Ztripwire.SSO.JWT.verify(auth.credentials && auth.credentials.token) do
+      {:ok, _claims} ->
+        login(conn, auth)
 
-    character = maybe_grant_admin(character, auth)
-    Ztripwire.Accounts.bump_stats(character.id, login_count: 1)
+      {:error, reason} ->
+        Ztripwire.Log.emit(:warning, %{
+          event: "sso_token_invalid",
+          reason: inspect(reason)
+        })
 
-    conn
-    |> SessionUser.put(character)
-    |> redirect(to: "/Jita")
+        conn
+        |> put_flash(:error, "EVE SSO login failed: token verification failed")
+        |> redirect(to: "/")
+    end
   end
 
   def callback(%{assigns: %{ueberauth_failure: failure}} = conn, _params) do
@@ -68,6 +73,19 @@ defmodule ZtripwireWeb.AuthController do
     conn
     |> put_flash(:error, "EVE SSO login failed: #{details}")
     |> redirect(to: "/")
+  end
+
+  defp login(conn, auth) do
+    {:ok, character} = Ztripwire.Accounts.upsert_character_from_ueberauth(auth)
+    Task.start(fn -> Ztripwire.SyncServer.sync_character(character) end)
+    {:ok, _pid} = Ztripwire.Tracking.ensure_poller(character)
+
+    character = maybe_grant_admin(character, auth)
+    Ztripwire.Accounts.bump_stats(character.id, login_count: 1)
+
+    conn
+    |> SessionUser.put(character)
+    |> redirect(to: "/Jita")
   end
 
   def switch(conn, %{"eve_id" => eve_id}) do
