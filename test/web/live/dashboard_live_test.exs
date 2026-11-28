@@ -1172,7 +1172,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert [%Mapping.Signature{sig_id: "QWE-123"}] = Mapping.list_signatures(system.id)
   end
 
-  test "signature editor saves the hidden type id and bookmark and re-stamps the scan time", %{
+  test "signature editor saves the hidden type id and bookmark and keeps the scan time", %{
     conn: conn,
     character: character
   } do
@@ -1205,7 +1205,6 @@ defmodule ZtripwireWeb.DashboardLiveTest do
         "type_name" => "Unstable Wormhole (K162)",
         "type_id" => "30744",
         "life_length" => "259200",
-        "scanned_at" => "2026-01-01T08:00",
         "bookmark" => "Two"
       }
     })
@@ -1215,7 +1214,7 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     reloaded = Mapping.get_signature!(sig.id)
     assert reloaded.type_id == 30_744
     assert reloaded.bookmark == "Two"
-    assert NaiveDateTime.diff(NaiveDateTime.utc_now(), reloaded.inserted_at, :second) < 10
+    assert NaiveDateTime.compare(reloaded.inserted_at, sig.inserted_at) == :eq
     assert NaiveDateTime.diff(reloaded.expires_at, reloaded.inserted_at) == 259_200
   end
 
@@ -1269,7 +1268,10 @@ defmodule ZtripwireWeb.DashboardLiveTest do
 
     updated = Mapping.get_signature!(sig.id)
     assert updated.life_length == 86_400
-    assert NaiveDateTime.diff(updated.expires_at, updated.inserted_at) == 14_400
+    assert NaiveDateTime.compare(updated.inserted_at, sig.inserted_at) == :eq
+
+    assert NaiveDateTime.diff(updated.expires_at, NaiveDateTime.utc_now(), :second) in 14_390..14_400
+
     assert updated.type_name == "Unstable Wormhole (K162)"
 
     connection = Mapping.connection_between(map.mask_id, system.id, far.id)
@@ -2705,6 +2707,90 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert map_system_id == system.id
   end
 
+  test "wormhole statistics replace the chart with the kill stream", %{
+    conn: conn,
+    character: character
+  } do
+    {mask, _map, _system} = setup_with_system(%{character: character}, "J150321")
+    [map] = Mapping.list_maps_for_mask(mask.id)
+
+    {:ok, hole} =
+      Mapping.add_system_to_map(map, %{
+        solar_system_id: 31_000_999,
+        name: "J31000999",
+        sys_class: "C3"
+      })
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+    render_patch(view, "/" <> hole.name)
+
+    refute has_element?(view, "#system-chart")
+    assert render(view) =~ "Recent kills"
+  end
+
+  test "selected signatures can be copied and bulk deleted", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, first} =
+      Mapping.create_signature(system, %{sig_id: "AAA-111", type_name: "Forsaken Hub"}, character)
+
+    {:ok, second} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "BBB-222", type_name: "Ruined Data Site"},
+        character
+      )
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+    render_patch(view, "/J150321")
+
+    view |> element("#signature-#{first.id}") |> render_click(%{"id" => first.id})
+
+    view
+    |> element("#signature-#{second.id}")
+    |> render_click(%{"id" => second.id, "ctrlKey" => true})
+
+    view |> element("#copy-selected-signatures") |> render_click()
+    assert_push_event(view, "clipboard-write", %{text: text})
+    assert text =~ "AAA-111"
+    assert text =~ "BBB-222"
+
+    view |> element("#delete-selected-signatures") |> render_click()
+    assert Mapping.list_signatures(system.id) == []
+    assert render(view) =~ "Deleted 2 signatures"
+  end
+
+  test "notes can be pinned and sorted, and keep edit attribution", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+    {:ok, first} = Mapping.create_comment(system, %{body: "first"}, character)
+    {:ok, second} = Mapping.create_comment(system, %{body: "second"}, character)
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+    render_patch(view, "/J150321")
+
+    view |> element("#note-sticky-#{second.id}") |> render_click()
+    assert Mapping.get_comment!(second.id).sticky
+
+    view |> element("#note-edit-#{first.id}") |> render_click()
+
+    view
+    |> element("#comment-#{first.id} form[phx-submit='comment-edit-submit']")
+    |> render_submit(%{comment: "first edited"})
+
+    updated = Mapping.get_comment!(first.id)
+    assert updated.updated_by_id == character.id
+    assert render(view) =~ "edited by"
+
+    view |> element("#note-sort") |> render_click()
+    assert render(view) =~ "second"
+  end
+
   test "known space reveals detached chains at level 0", %{
     conn: conn,
     character: character
@@ -3056,8 +3142,16 @@ defmodule ZtripwireWeb.DashboardLiveTest do
   end
 
   test "admin can add and remove mask members", %{conn: conn, character: character} do
-    {:ok, admin} = Accounts.upsert_character(%{eve_id: character.eve_id, is_admin: true})
-    {:ok, mask} = Masks.ensure_personal_mask(admin)
+    {:ok, admin} =
+      Accounts.upsert_character(%{
+        eve_id: character.eve_id,
+        is_admin: true,
+        corporation_id: 123_001,
+        corporation_name: "Test Corp"
+      })
+
+    {:ok, mask} = Masks.ensure_corporation_mask(admin)
+    {:ok, _} = Masks.add_membership(mask, admin)
 
     {:ok, view, _html} = live(login(conn, admin), ~p"/dashboard")
 

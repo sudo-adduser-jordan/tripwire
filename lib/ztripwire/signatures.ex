@@ -4,7 +4,59 @@ defmodule Ztripwire.Signatures do
   @id_regex ~r/^([A-Za-z]{3}-[0-9]{3})\b/
   @wormhole_code_regex ~r/\b([A-Z][0-9]{3})\b/
 
-  @anomaly_label "cosmic anomaly"
+  @scan_groups %{
+    "cosmic signature" => :signature,
+    "cosmic anomaly" => :anomaly,
+    "signature cosmique" => :signature,
+    "anomalie cosmique" => :anomaly,
+    "kosmische signatur" => :signature,
+    "kosmische anomalie" => :anomaly,
+    "宇宙のシグネチャ" => :signature,
+    "宇宙の特異点" => :anomaly,
+    "코즈믹 시그니처" => :signature,
+    "코즈믹 어노말리" => :anomaly,
+    "скрытый сигнал" => :signature,
+    "космическая аномалия" => :anomaly
+  }
+
+  @site_types %{
+    "combat site" => :combat,
+    "data site" => :data,
+    "gas site" => :gas,
+    "ore site" => :ore,
+    "relic site" => :relic,
+    "wormhole" => :wormhole,
+    "site de combat" => :combat,
+    "site de données" => :data,
+    "site de collecte de gaz" => :gas,
+    "site de minerai" => :ore,
+    "site de reliques" => :relic,
+    "trou de ver" => :wormhole,
+    "kampfgebiet" => :combat,
+    "datengebiet" => :data,
+    "gasgebiet" => :gas,
+    "mineraliengebiet" => :ore,
+    "reliktgebiet" => :relic,
+    "wurmloch" => :wormhole,
+    "戦闘サイト" => :combat,
+    "データサイト" => :data,
+    "ガスサイト" => :gas,
+    "鉱石サイト" => :ore,
+    "遺物サイト" => :relic,
+    "ワームホール" => :wormhole,
+    "전투 사이트" => :combat,
+    "데이터 사이트" => :data,
+    "가스 사이트" => :gas,
+    "채광 사이트" => :ore,
+    "유물 사이트" => :relic,
+    "웜홀" => :wormhole,
+    "боевой район" => :combat,
+    "информационный район" => :data,
+    "газовый район" => :gas,
+    "астероидный район" => :ore,
+    "археологический район" => :relic,
+    "червоточина" => :wormhole
+  }
 
   @spec parse_paste(String.t()) :: [Parsed.t()]
   def parse_paste(text) when is_binary(text) do
@@ -23,25 +75,27 @@ defmodule Ztripwire.Signatures do
 
   @spec parse_line(String.t()) :: {:ok, Parsed.t()} | :error
   def parse_line(line) when is_binary(line) do
-    case Regex.run(@id_regex, String.trim(line)) do
+    trimmed = String.trim(line)
+
+    case Regex.run(@id_regex, trimmed) do
       [_full, raw_id] ->
         sig_id = String.upcase(raw_id)
 
-        {group_label, raw_name} =
-          String.trim(line)
+        columns =
+          trimmed
           |> columns_after_id(raw_id)
-          |> split_group_and_name()
+          |> classify_columns()
 
-        name = blank_to_nil(raw_name)
+        name = blank_to_nil(Enum.join(columns.names, " "))
         wormhole_type = extract_wormhole_type(name)
 
         {:ok,
          %Parsed{
            sig_id: sig_id,
-           kind: infer_kind(group_label),
+           kind: columns.kind || :signature,
            name: name,
            wormhole_type: wormhole_type,
-           category: infer_category(name, wormhole_type)
+           category: columns.site_type || infer_category(name, wormhole_type)
          }}
 
       nil ->
@@ -68,6 +122,61 @@ defmodule Ztripwire.Signatures do
   def life_status(seconds_left) when seconds_left < 3600, do: :critical
   def life_status(seconds_left) when seconds_left < 4 * 3600, do: :eol
   def life_status(_seconds_left), do: :stable
+
+  def scan_insert_attrs(entry, now \\ now_naive()) do
+    %{
+      sig_id: entry.sig_id,
+      kind: kind_string(entry.kind),
+      type_name: entry.name || entry.wormhole_type,
+      site_type: site_type_string(entry.category),
+      life_length: default_life_length(),
+      expires_at: NaiveDateTime.add(now, default_life_length(), :second)
+    }
+  end
+
+  def scan_update_attrs(existing, entry, now \\ now_naive()) do
+    site_type = site_type_string(entry.category)
+    kind = kind_string(entry.kind)
+    name = entry.name || entry.wormhole_type
+    existing_type = Map.get(existing, :site_type)
+    existing_name = Map.get(existing, :type_name)
+
+    cond do
+      existing_type == "wormhole" ->
+        :skip
+
+      site_type == "wormhole" ->
+        %{kind: kind, site_type: "wormhole", type_name: name || existing_name}
+
+      not scan_changed?(existing, name, site_type, kind) ->
+        :skip
+
+      true ->
+        %{
+          kind: kind,
+          site_type: if(site_type == "unknown", do: existing_type, else: site_type),
+          type_name: name || existing_name,
+          life_length: default_life_length(),
+          expires_at: NaiveDateTime.add(now, default_life_length(), :second)
+        }
+    end
+  end
+
+  defp scan_changed?(existing, name, site_type, kind) do
+    (is_binary(name) and name != (Map.get(existing, :type_name) || "")) or
+      (site_type != "unknown" and site_type != Map.get(existing, :site_type)) or
+      kind != Map.get(existing, :kind)
+  end
+
+  defp kind_string(nil), do: "signature"
+  defp kind_string(kind), do: to_string(kind)
+
+  defp site_type_string(nil), do: "unknown"
+  defp site_type_string(type), do: to_string(type)
+
+  defp now_naive do
+    NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+  end
 
   @known_sites [
     "Average Frontier Deposit",
@@ -251,13 +360,15 @@ defmodule Ztripwire.Signatures do
 
   def signature_life_status(_), do: "stable"
 
-  def expires_at_for("critical", _length), do: in_seconds(4 * 3600)
-  def expires_at_for("<1h", _length), do: in_seconds(3600)
+  def expires_at_for(status, length), do: expires_at_for(status, length, now_naive())
 
-  def expires_at_for(_status, length) when is_integer(length) and length > 0,
-    do: in_seconds(length)
+  def expires_at_for("critical", _length, _reference), do: in_seconds(4 * 3600)
+  def expires_at_for("<1h", _length, _reference), do: in_seconds(3600)
 
-  def expires_at_for(_status, _), do: in_seconds(default_life_length())
+  def expires_at_for(_status, length, reference) when is_integer(length) and length > 0,
+    do: NaiveDateTime.add(reference, length, :second)
+
+  def expires_at_for(_status, _, _reference), do: in_seconds(default_life_length())
 
   defp in_seconds(seconds) do
     NaiveDateTime.utc_now()
@@ -385,8 +496,7 @@ defmodule Ztripwire.Signatures do
   end
 
   defp columns_after_id(trimmed, raw_id) do
-    rest =
-      binary_part(trimmed, String.length(raw_id), String.length(trimmed) - String.length(raw_id))
+    rest = binary_part(trimmed, byte_size(raw_id), byte_size(trimmed) - byte_size(raw_id))
 
     if String.contains?(rest, "\t") do
       String.split(rest, "\t")
@@ -395,30 +505,41 @@ defmodule Ztripwire.Signatures do
     end
   end
 
-  defp split_group_and_name(columns) do
-    columns =
-      columns
-      |> Enum.map(&(String.trim(&1) |> strip_percent()))
-      |> Enum.reject(&(&1 == ""))
-      |> Enum.reject(&distance?/1)
+  defp classify_columns(columns) do
+    columns
+    |> Enum.map(&normalize_column/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.reject(&distance?/1)
+    |> Enum.reduce(%{kind: nil, site_type: nil, names: []}, fn column, acc ->
+      key = String.downcase(column)
 
-    {group_label, name_columns} =
-      case columns do
-        [first | rest] ->
-          if scan_group?(first), do: {first, rest}, else: {"", columns}
+      cond do
+        kind = Map.get(@scan_groups, key) ->
+          %{acc | kind: kind}
 
-        [] ->
-          {"", []}
+        type = Map.get(@site_types, key) ->
+          %{acc | site_type: type}
+
+        true ->
+          %{acc | names: [column | acc.names]}
       end
-
-    {group_label, Enum.join(name_columns, " ") |> String.trim()}
+    end)
+    |> then(fn acc -> %{acc | names: Enum.reverse(acc.names)} end)
   end
 
-  defp scan_group?(column), do: String.downcase(column) =~ "cosmic"
+  defp normalize_column(value) do
+    value
+    |> String.trim()
+    |> String.replace(~r/^\d+(?:[.,]\d+)?\s*%$/, "")
+    |> String.trim()
+  end
 
-  defp distance?(column), do: Regex.match?(~r/^\d+(\.\d+)?\s*(AU|au|m|km)$/i, column)
-
-  defp strip_percent(value), do: String.replace(value, ~r/^\d+(\.\d+)?%$/, "")
+  defp distance?(column) do
+    case Regex.run(~r/^(\d+(?:[.,]\d+)?)\s*(.*)$/, column) do
+      [_, _number, unit] -> String.downcase(unit) in ["au", "m", "km", "а.е.", "км", "м"]
+      _ -> false
+    end
+  end
 
   defp blank_to_nil(""), do: nil
   defp blank_to_nil(name), do: name
@@ -430,10 +551,6 @@ defmodule Ztripwire.Signatures do
       [_, code] -> code
       _ -> nil
     end
-  end
-
-  defp infer_kind(group_label) do
-    if String.downcase(group_label) == @anomaly_label, do: :anomaly, else: :signature
   end
 
   defp infer_category(_, type) when is_binary(type), do: :wormhole

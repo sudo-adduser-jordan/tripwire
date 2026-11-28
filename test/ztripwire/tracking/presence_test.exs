@@ -21,6 +21,37 @@ defmodule Ztripwire.Tracking.PresenceTest do
     assert Presence.viewers(101) == 0
   end
 
+  test "tracks one active mask/map per viewer and clears it on removal" do
+    Presence.add_viewer(104, self(), %{mask_id: 1, map_id: 10})
+    assert Presence.targets(104) == [%{mask_id: 1, map_id: 10}]
+
+    Presence.set_target(104, self(), %{mask_id: 1, map_id: 11})
+    assert Presence.targets(104) == [%{mask_id: 1, map_id: 11}]
+
+    Presence.remove_viewer(104, self())
+    assert Presence.targets(104) == []
+  end
+
+  test "deduplicates targets from several viewers" do
+    other =
+      spawn(fn ->
+        receive do
+          :stop -> :ok
+        end
+      end)
+
+    Presence.add_viewer(105, self(), %{mask_id: 1, map_id: 10})
+    Presence.add_viewer(105, other, %{mask_id: 1, map_id: 10})
+    Presence.add_viewer(105, other, %{mask_id: 1, map_id: 11})
+
+    assert Enum.sort(Presence.targets(105)) == [
+             %{mask_id: 1, map_id: 10},
+             %{mask_id: 1, map_id: 11}
+           ]
+
+    send(other, :stop)
+  end
+
   test "drops every viewer when the dashboard process dies" do
     pid =
       spawn(fn ->

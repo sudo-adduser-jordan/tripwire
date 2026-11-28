@@ -555,6 +555,51 @@ defmodule Ztripwire.MappingTest do
     assert stats[system.id].kills == 3
   end
 
+  test "bucket_activity/4 sums hourly history into chart buckets" do
+    now = ~N[2026-01-02 00:00:00]
+
+    rows = [
+      %Ztripwire.Mapping.SystemActivity{
+        recorded_at: ~N[2026-01-01 12:00:00],
+        ship_jumps: 3,
+        ship_kills: 1,
+        pod_kills: 0,
+        npc_kills: 2
+      },
+      %Ztripwire.Mapping.SystemActivity{
+        recorded_at: ~N[2026-01-01 23:00:00],
+        ship_jumps: 5,
+        ship_kills: 2,
+        pod_kills: 1,
+        npc_kills: 4
+      }
+    ]
+
+    {jumps, ships, pods, npcs} = Mapping.bucket_activity(rows, now, 3, 12)
+
+    assert jumps == [0, 3, 5]
+    assert ships == [0, 1, 2]
+    assert pods == [0, 0, 1]
+    assert npcs == [0, 2, 4]
+  end
+
+  test "record_system_activity/1 is idempotent for the same hour" do
+    attrs = %{
+      solar_system_id: 30_000_142,
+      recorded_at: ~N[2026-01-01 12:00:00],
+      ship_jumps: 4,
+      ship_kills: 1,
+      pod_kills: 0,
+      npc_kills: 2
+    }
+
+    assert {:ok, _} = Mapping.record_system_activity(attrs)
+    assert {:ok, _} = Mapping.record_system_activity(%{attrs | ship_jumps: 9})
+
+    assert [row] = Mapping.list_system_activity(30_000_142, ~N[2026-01-01 00:00:00])
+    assert row.ship_jumps == 4
+  end
+
   test "upsert_signatures counts pasted signatures and wormholes", %{mask: mask} do
     {:ok, character} = Accounts.upsert_character(%{eve_id: 99_002, name: "Paste Tracker"})
     {:ok, map} = Mapping.create_map(%{name: "Paste", mask_id: mask.id})
@@ -574,14 +619,73 @@ defmodule Ztripwire.MappingTest do
     ]
 
     assert {2, 0} = Mapping.upsert_signatures(system, entries, character)
-    assert {0, 2} = Mapping.upsert_signatures(system, entries, character)
+    assert {0, 0} = Mapping.upsert_signatures(system, entries, character)
 
     stats = Mapping.character_statistics(character)
 
     assert stats.signatures_added == 2
-    assert stats.signatures_updated == 2
+    assert stats.signatures_updated == 0
     assert stats.wormholes_added == 1
+    assert stats.wormholes_updated == 0
+  end
+
+  test "a pasted wormhole never loses its identified type or life", %{mask: mask} do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_003, name: "Paste Guard"})
+    {:ok, map} = Mapping.create_map(%{name: "Guard", mask_id: mask.id})
+
+    {:ok, system} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_097, name: "J999997"})
+
+    {:ok, sig} =
+      Mapping.create_signature(
+        system,
+        %{
+          sig_id: "ABC-123",
+          site_type: "wormhole",
+          type_name: "Unstable Wormhole (K162)",
+          life_length: 86_400
+        },
+        character
+      )
+
+    expired_at = DateTime.add(DateTime.utc_now(), -3600, :second) |> DateTime.truncate(:second)
+    {:ok, sig} = Mapping.update_signature(sig, %{expires_at: expired_at}, character)
+
+    parsed = Ztripwire.Signatures.parse_paste("ABC-123\tCosmic Signature\tWormhole\t\t100%")
+
+    assert {0, 0} = Mapping.upsert_signatures(system, parsed, character)
+
+    reloaded = Mapping.get_signature!(sig.id)
+    assert reloaded.type_name == "Unstable Wormhole (K162)"
+    assert reloaded.life_length == 86_400
+    assert NaiveDateTime.compare(reloaded.expires_at, DateTime.to_naive(expired_at)) == :eq
+  end
+
+  test "a non-wormhole can become a wormhole without losing its age", %{mask: mask} do
+    {:ok, character} = Accounts.upsert_character(%{eve_id: 99_004, name: "Paste Promote"})
+    {:ok, map} = Mapping.create_map(%{name: "Promote", mask_id: mask.id})
+
+    {:ok, system} =
+      Mapping.add_system_to_map(map, %{solar_system_id: 31_000_096, name: "J999996"})
+
+    {:ok, sig} =
+      Mapping.create_signature(
+        system,
+        %{sig_id: "ABC-124", site_type: "unknown"},
+        character
+      )
+
+    parsed = Ztripwire.Signatures.parse_paste("ABC-124\tCosmic Signature\tWormhole\t\t100%")
+
+    assert {0, 1} = Mapping.upsert_signatures(system, parsed, character)
+
+    reloaded = Mapping.get_signature!(sig.id)
+    assert reloaded.site_type == "wormhole"
+    assert NaiveDateTime.compare(reloaded.inserted_at, sig.inserted_at) == :eq
+
+    stats = Mapping.character_statistics(character)
     assert stats.wormholes_updated == 1
+    assert stats.signatures_updated == 1
   end
 
   test "delete_map_full/1 removes systems, connections, and signatures", %{mask: mask} do

@@ -125,6 +125,30 @@ defmodule Ztripwire.Systems do
   def esi_resolvable?(%{solar_system_id: id}) when is_integer(id), do: id < @w_space_min
   def esi_resolvable?(_), do: false
 
+  def special_region?(solar_system_id) when is_integer(solar_system_id) do
+    case Ztripwire.Sde.system(solar_system_id) do
+      %{region_id: region_id} when is_integer(region_id) -> region_id > 12_000_000
+      _ -> false
+    end
+  end
+
+  def special_region?(_), do: false
+
+  def name_for(solar_system_id) when is_integer(solar_system_id) do
+    Ztripwire.Sde.system_name(solar_system_id) ||
+      catalog_name(solar_system_id) ||
+      "System ##{solar_system_id}"
+  end
+
+  def name_for(_), do: nil
+
+  defp catalog_name(solar_system_id) do
+    case Ztripwire.Systems.Catalog.get(solar_system_id) do
+      %{name: name} -> name
+      _ -> nil
+    end
+  end
+
   def external_links(%{name: name, solar_system_id: solar_id} = system) do
     dotlan_name = name |> to_string() |> String.replace(" ", "_")
 

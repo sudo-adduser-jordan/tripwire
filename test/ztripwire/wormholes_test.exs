@@ -48,6 +48,30 @@ defmodule Ztripwire.WormholesTest do
     refute Enum.empty?(result.from)
   end
 
+  test "eligible_types/2 accepts system endpoints and specific destinations" do
+    c3 = %{solar_system_id: 31_001_031, name: "J123405", sys_class: "C3"}
+    turnur = %{solar_system_id: 30_002_086, name: "Turnur", security: 0.4}
+
+    from = Wormholes.eligible_types(c3, turnur).from
+    assert "J377" in from
+  end
+
+  test "eligible_types/2 matches Drifter and generic classes" do
+    drifter = %{solar_system_id: 32_000_001, name: "J3200001", sys_class: "Drifter"}
+
+    assert Wormholes.eligible_types(drifter, "C4").from != []
+    assert Wormholes.eligible_types("Drifter", "C4").from != []
+    assert Wormholes.eligible_types("C2", "Dangerous").from != []
+    assert Wormholes.eligible_types("C2", "Unknown").from != []
+    assert Wormholes.eligible_types("C2", "Unknown (small)").from != []
+  end
+
+  test "eligible_types/2 resolves Thera" do
+    thera = %{solar_system_id: 31_000_005, name: "Thera", sys_class: "Thera"}
+
+    assert Wormholes.eligible_types(thera, "HS").from != []
+  end
+
   test "all_codes/0 is non-empty and sorted" do
     codes = Wormholes.all_codes()
     assert Enum.count(codes) >= 90

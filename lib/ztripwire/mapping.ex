@@ -3,12 +3,23 @@ defmodule Ztripwire.Mapping do
 
   alias Ztripwire.Accounts
   alias Ztripwire.Accounts.Character
-  alias Ztripwire.Mapping.{Map, MapConnection, MapSystem, MapViewSystem, Signature}
+
+  alias Ztripwire.Mapping.{
+    Map,
+    MapConnection,
+    MapSystem,
+    MapViewSystem,
+    Signature,
+    SystemActivity
+  }
+
   alias Ztripwire.Repo
   alias Ztripwire.Signatures, as: SigParser
   alias Ztripwire.Systems
 
   def get_map!(id), do: Repo.get!(Map, id)
+
+  def get_map(id), do: Repo.get(Map, id)
 
   def list_maps_for_mask(mask_id) do
     Repo.all(from(m in Map, where: m.mask_id == ^mask_id, order_by: [asc: m.id]))
@@ -227,6 +238,14 @@ defmodule Ztripwire.Mapping do
   def get_system!(id), do: Repo.get!(MapSystem, id)
 
   def get_system(id), do: Repo.get(MapSystem, id)
+
+  def get_system_by_solar(mask_id, solar_system_id) do
+    Repo.one(
+      from(s in MapSystem,
+        where: s.mask_id == ^mask_id and s.solar_system_id == ^solar_system_id
+      )
+    )
+  end
 
   def list_connections(mask_id) do
     Repo.all(
@@ -1353,52 +1372,59 @@ defmodule Ztripwire.Mapping do
 
   def upsert_signatures(%MapSystem{} = system, entries, %Character{id: character_id})
       when is_list(entries) do
+    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+
     {added, updated, counts} =
       Enum.reduce(entries, {0, 0, %{}}, fn entry, {added, updated, counts} ->
-        life_length = 259_200
-
-        attrs = %{
-          map_system_id: system.id,
-          sig_id: entry.sig_id,
-          kind: to_string(entry.kind),
-          type_name: entry.name || entry.wormhole_type,
-          site_type: to_string(entry.category || :unknown),
-          life_length: life_length,
-          expires_at:
-            DateTime.add(DateTime.utc_now(), life_length, :second) |> DateTime.truncate(:second),
-          updated_by_id: character_id
-        }
-
         existing = Repo.get_by(Signature, map_system_id: system.id, sig_id: entry.sig_id)
 
-        result =
-          case existing do
-            %Signature{} = signature ->
-              signature
-              |> Signature.changeset(
-                merge_attrs(attrs, %{created_by_id: signature.created_by_id})
-              )
-              |> Repo.update()
+        case existing do
+          nil ->
+            attrs =
+              entry
+              |> SigParser.scan_insert_attrs(now)
+              |> Elixir.Map.merge(%{
+                map_system_id: system.id,
+                created_by_id: character_id,
+                updated_by_id: character_id
+              })
 
-            nil ->
-              %Signature{}
-              |> Signature.changeset(merge_attrs(attrs, %{created_by_id: character_id}))
-              |> Repo.insert()
-          end
+            case %Signature{} |> Signature.changeset(attrs) |> Repo.insert() do
+              {:ok, signature} ->
+                {added + 1, updated,
+                 bump_counts(
+                   counts,
+                   :signatures_added,
+                   :wormholes_added,
+                   signature.site_type == "wormhole"
+                 )}
 
-        wormhole? = to_string(entry.category || :unknown) == "wormhole"
+              {:error, _} ->
+                {added, updated, counts}
+            end
 
-        case {result, existing} do
-          {{:ok, _}, nil} ->
-            {added + 1, updated,
-             bump_counts(counts, :signatures_added, :wormholes_added, wormhole?)}
+          %Signature{} = signature ->
+            case SigParser.scan_update_attrs(signature, entry, now) do
+              :skip ->
+                {added, updated, counts}
 
-          {{:ok, _}, _signature} ->
-            {added, updated + 1,
-             bump_counts(counts, :signatures_updated, :wormholes_updated, wormhole?)}
+              attrs ->
+                attrs = Elixir.Map.put(attrs, :updated_by_id, character_id)
 
-          {{:error, _}, _} ->
-            {added, updated, counts}
+                case signature |> Signature.changeset(attrs) |> Repo.update() do
+                  {:ok, updated_signature} ->
+                    {added, updated + 1,
+                     bump_counts(
+                       counts,
+                       :signatures_updated,
+                       :wormholes_updated,
+                       updated_signature.site_type == "wormhole"
+                     )}
+
+                  {:error, _} ->
+                    {added, updated, counts}
+                end
+            end
         end
       end)
 
@@ -1612,8 +1638,8 @@ defmodule Ztripwire.Mapping do
     Repo.all(
       from(c in Ztripwire.Mapping.Comment,
         where: c.map_system_id == ^system_id,
-        order_by: [asc: c.id],
-        preload: [:character]
+        order_by: [desc: c.sticky, asc: c.id],
+        preload: [:character, :updated_by]
       )
     )
   end
@@ -1660,7 +1686,11 @@ defmodule Ztripwire.Mapping do
 
     case %Ztripwire.Mapping.Comment{}
          |> Ztripwire.Mapping.Comment.changeset(
-           merge_attrs(attrs, %{map_system_id: system.id, character_id: character_id})
+           merge_attrs(attrs, %{
+             map_system_id: system.id,
+             character_id: character_id,
+             updated_by_id: character_id
+           })
          )
          |> Repo.insert() do
       {:ok, _} = ok ->
@@ -1692,6 +1722,19 @@ defmodule Ztripwire.Mapping do
   def get_comment!(id), do: Repo.get!(Ztripwire.Mapping.Comment, id)
 
   def update_comment(%Ztripwire.Mapping.Comment{} = comment, attrs, character \\ nil) do
+    attrs =
+      attrs
+      |> then(fn attrs ->
+        if is_struct(character, Character),
+          do: Elixir.Map.put(attrs, :updated_by_id, character.id),
+          else: attrs
+      end)
+      |> then(fn attrs ->
+        if Elixir.Map.has_key?(attrs, :body) or Elixir.Map.has_key?(attrs, "body"),
+          do: Elixir.Map.put(attrs, :edited, true),
+          else: attrs
+      end)
+
     case comment
          |> Ztripwire.Mapping.Comment.changeset(attrs)
          |> Repo.update() do
@@ -1752,6 +1795,63 @@ defmodule Ztripwire.Mapping do
 
   def get_system_stat(system_id),
     do: Repo.get_by(Ztripwire.Mapping.SystemStat, map_system_id: system_id)
+
+  def map_solar_ids do
+    Repo.all(
+      from(s in MapSystem,
+        where: not is_nil(s.solar_system_id),
+        select: s.solar_system_id,
+        distinct: true
+      )
+    )
+  end
+
+  def record_system_activity(attrs) do
+    %SystemActivity{}
+    |> SystemActivity.changeset(attrs)
+    |> Repo.insert(on_conflict: :nothing)
+  end
+
+  def list_system_activity(solar_system_id, since) do
+    Repo.all(
+      from(a in SystemActivity,
+        where: a.solar_system_id == ^solar_system_id and a.recorded_at >= ^since,
+        order_by: [asc: a.recorded_at]
+      )
+    )
+  end
+
+  def prune_system_activity(before) do
+    Repo.delete_all(from(a in SystemActivity, where: a.recorded_at < ^before))
+  end
+
+  def bucket_activity(rows, now, count, width_hours) do
+    width_s = width_hours * 3600
+    empty = List.duplicate(0, count)
+    now = naive(now)
+
+    {jumps, ships, pods, npcs} =
+      Enum.reduce(rows, {empty, empty, empty, empty}, fn row, {jumps, ships, pods, npcs} ->
+        age_s = NaiveDateTime.diff(now, naive(row.recorded_at))
+        index = count - 1 - div(max(age_s, 0), width_s)
+
+        if index >= 0 and index < count do
+          {
+            List.update_at(jumps, index, &(&1 + (row.ship_jumps || 0))),
+            List.update_at(ships, index, &(&1 + (row.ship_kills || 0))),
+            List.update_at(pods, index, &(&1 + (row.pod_kills || 0))),
+            List.update_at(npcs, index, &(&1 + (row.npc_kills || 0)))
+          }
+        else
+          {jumps, ships, pods, npcs}
+        end
+      end)
+
+    {jumps, ships, pods, npcs}
+  end
+
+  defp naive(%NaiveDateTime{} = value), do: value
+  defp naive(%DateTime{} = value), do: DateTime.to_naive(value)
 
   def list_system_stats(mask_id) do
     system_ids = from(s in MapSystem, where: s.mask_id == ^mask_id, select: s.id)

@@ -38,6 +38,7 @@ config :ztripwire, Ztripwire.ESI,
   compatibility_date: "2026-05-18",
   user_agent: "Ztripwire/0.1.0 (test)"
 
+config :ztripwire, Ztripwire.ZKill, enabled: false
 config :ztripwire, Ztripwire.SyncServer, prune_on_start: false
 config :ztripwire, Ztripwire.Mailer, adapter: Swoosh.Adapters.Test
 config :swoosh, :api_client, false

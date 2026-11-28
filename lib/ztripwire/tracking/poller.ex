@@ -44,6 +44,7 @@ defmodule Ztripwire.Tracking.Poller do
       ship_type_name: nil,
       last_solar_system_id: nil,
       last_system_row: nil,
+      last_rows: %{},
       system_name: nil,
       last_online_ms: 0,
       reauth?: false,
@@ -121,7 +122,7 @@ defmodule Ztripwire.Tracking.Poller do
 
   defp follow_location(state) do
     case fetch_location(state.character) do
-      {:ok, solar_system_id} -> apply_change({:ok, solar_system_id}, state)
+      {:ok, location} -> apply_change({:ok, location}, state)
       :reauth -> %{state | reauth?: true}
       :offline -> %{state | online: false, last_online_ms: 0}
       {:rate_limited, seconds} -> cooldown(state, seconds)
@@ -167,9 +168,9 @@ defmodule Ztripwire.Tracking.Poller do
 
   defp fetch_location(character) do
     with {:ok, token} <- ESI.valid_access_token(character),
-         {:ok, %{"solar_system_id" => solar_system_id}} <-
+         {:ok, %{"solar_system_id" => _} = location} <-
            ESI.get_character_location(character.eve_id, token, character, source: :poller) do
-      {:ok, solar_system_id}
+      {:ok, location}
     else
       {:error, :no_refresh_token} -> :untracked
       {:error, :reauth_required} -> :reauth
@@ -204,26 +205,61 @@ defmodule Ztripwire.Tracking.Poller do
     :error
   end
 
-  defp apply_change({:ok, solar_system_id}, state)
+  defp apply_change({:ok, %{"solar_system_id" => solar_system_id}}, state)
        when solar_system_id == state.last_solar_system_id do
     state
   end
 
-  defp apply_change({:ok, solar_system_id}, state) do
+  defp apply_change({:ok, location}, state) do
+    solar_system_id = location["solar_system_id"]
+    docked? = not is_nil(location["station_id"] || location["structure_id"])
+
+    {state, first_system} =
+      state
+      |> target_maps()
+      |> Enum.reduce({state, nil}, fn map, {state, first_system} ->
+        prev = previous_row(state, map)
+
+        cond do
+          prev == nil and not wspace?(solar_system_id) ->
+            {put_last_row(state, map, Mapping.get_system_by_solar(map.mask_id, solar_system_id)),
+             first_system}
+
+          prev == nil ->
+            apply_to_map(state, map, nil, solar_system_id, first_system, docked?)
+
+          Tracking.automap_allowed?(map, prev, solar_system_id,
+            character: state.character,
+            docked: docked?,
+            ship_type_id: state.ship_type_id
+          ) ->
+            apply_to_map(state, map, prev, solar_system_id, first_system, docked?)
+
+          true ->
+            {put_last_row(state, map, Mapping.get_system_by_solar(map.mask_id, solar_system_id)),
+             first_system}
+        end
+      end)
+
+    %{
+      state
+      | last_solar_system_id: solar_system_id,
+        last_system_row: first_system || state.last_system_row,
+        system_name: system_name(first_system, solar_system_id),
+        online: true
+    }
+  end
+
+  defp apply_to_map(state, map, prev, solar_system_id, first_system, _docked?) do
     case Tracking.apply_location_change(
-           state.map,
+           map,
            state.character.name,
-           state.last_system_row,
-           solar_system_id
+           prev,
+           solar_system_id,
+           record_stats: first_system == nil
          ) do
       {:ok, %{system: system}} ->
-        %{
-          state
-          | last_solar_system_id: solar_system_id,
-            last_system_row: system,
-            system_name: system.name,
-            online: true
-        }
+        {put_last_row(state, map, system), first_system || system}
 
       error ->
         Ztripwire.Log.warning(%{
@@ -232,9 +268,39 @@ defmodule Ztripwire.Tracking.Poller do
           reason: inspect(error)
         })
 
-        state
+        {state, first_system}
     end
   end
+
+  defp target_maps(state) do
+    maps =
+      state.character.eve_id
+      |> Tracking.targets()
+      |> Enum.map(fn target -> Mapping.get_map(target[:map_id] || target["map_id"]) end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq_by(& &1.id)
+
+    case maps do
+      [] -> List.wrap(state.map)
+      maps -> maps
+    end
+  end
+
+  defp previous_row(state, map) do
+    Map.get(state.last_rows, map.id) ||
+      (state.last_solar_system_id &&
+         Mapping.get_system_by_solar(map.mask_id, state.last_solar_system_id))
+  end
+
+  defp put_last_row(state, map, row) do
+    %{state | last_rows: Map.put(state.last_rows, map.id, row)}
+  end
+
+  defp system_name(nil, solar_system_id), do: Tracking.system_name(solar_system_id)
+  defp system_name(%{name: name}, _solar_system_id), do: name
+
+  defp wspace?(id) when is_integer(id), do: id >= 31_000_000
+  defp wspace?(_), do: false
 
   defp publish(state) do
     character = state.character

@@ -86,7 +86,7 @@ defmodule Mix.Tasks.Ztripwire.Diagrams do
      "#e7f5ff"},
     {"Registry", ["name: Ztripwire.TrackingRegistry", "keys: :unique"], "#e7f5ff"},
     {"Ztripwire.SyncServer",
-     ["GenServer · corp sync every 6 h", "prune_orphan_masks · hourly zKill"], "#e7f5ff"},
+     ["GenServer · corp sync every 6 h", "prune_orphan_masks · hourly activity"], "#e7f5ff"},
     {"DNSCluster", ["query from :dns_cluster_query", ":ignore when unset"], "#f1f3f5"},
     {"ZtripwireWeb.Endpoint", ["Phoenix endpoint · Bandit", "LiveView · port 4000"], "#e7f5ff"}
   ]

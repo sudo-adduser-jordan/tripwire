@@ -87,34 +87,68 @@ defmodule Ztripwire.SyncServer do
   end
 
   defp run_activity_sync do
-    case Mapping.prune_expired_signatures() do
-      {:ok, 0} -> :ok
-      {:ok, count} -> Logger.info("Pruned #{count} expired signatures")
-    end
-
     case Mapping.prune_expired_flares() do
       {:ok, 0} -> :ok
       {:ok, count} -> Logger.info("Pruned #{count} expired flares")
     end
 
-    case ESI.get_system_jumps() do
-      {:ok, jumps} -> apply_system_activity(jumps, :jumps)
-      {:error, reason} -> Logger.debug("System jumps sync skipped: #{inspect(reason)}")
-    end
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
 
-    case ESI.get_system_kills() do
-      {:ok, kills} -> apply_system_activity(kills, :kills)
-      {:error, reason} -> Logger.debug("System kills sync skipped: #{inspect(reason)}")
-    end
+    jumps =
+      case ESI.get_system_jumps() do
+        {:ok, rows} when is_list(rows) ->
+          rows
+
+        {:error, reason} ->
+          Logger.debug("System jumps sync skipped: #{inspect(reason)}")
+          []
+      end
+
+    kills =
+      case ESI.get_system_kills() do
+        {:ok, rows} when is_list(rows) ->
+          rows
+
+        {:error, reason} ->
+          Logger.debug("System kills sync skipped: #{inspect(reason)}")
+          []
+      end
+
+    apply_system_activity(jumps, :jumps, now)
+    apply_system_activity(kills, :kills, now)
+    record_activity_history(jumps, kills, now)
+    _ = Mapping.prune_system_activity(DateTime.add(now, -8 * 86_400, :second))
 
     :ok
   end
 
-  defp apply_system_activity(rows, field) when is_list(rows) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
+  defp record_activity_history(jumps, kills, now) do
+    jumps_by_system =
+      Map.new(jumps, fn row -> {esi_solar_id(row), row["ship_jumps"] || 0} end)
 
+    kills_by_system =
+      Map.new(kills, fn row ->
+        {esi_solar_id(row),
+         {row["ship_kills"] || 0, row["pod_kills"] || 0, row["npc_kills"] || 0}}
+      end)
+
+    for solar_system_id <- Mapping.map_solar_ids() do
+      {ship_kills, pod_kills, npc_kills} = Map.get(kills_by_system, solar_system_id, {0, 0, 0})
+
+      Mapping.record_system_activity(%{
+        solar_system_id: solar_system_id,
+        recorded_at: now,
+        ship_jumps: Map.get(jumps_by_system, solar_system_id, 0),
+        ship_kills: ship_kills,
+        pod_kills: pod_kills,
+        npc_kills: npc_kills
+      })
+    end
+  end
+
+  defp apply_system_activity(rows, field, now) when is_list(rows) do
     for row <- rows do
-      esi_id = row["solar_system_id"] || row["system_id"]
+      esi_id = esi_solar_id(row)
       value = row["ship_jumps"] || row["ship_kills"] || row["kills"] || 0
 
       if esi_id do
@@ -137,7 +171,7 @@ defmodule Ztripwire.SyncServer do
     end
   end
 
-  defp apply_system_activity(_, _), do: :ok
+  defp esi_solar_id(row), do: row["solar_system_id"] || row["system_id"]
 
   defp schedule(job, interval), do: Process.send_after(self(), {:run, job}, interval)
 end

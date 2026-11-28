@@ -33,6 +33,7 @@ defmodule ZtripwireWeb.LiveComponents.Settings.AdminLive do
           <div class="flex flex-wrap items-center gap-2">
             <p class="text-sm font-semibold">{mask.name} ({mask.kind})</p>
             <button
+              :if={mask.kind != "personal"}
               type="button"
               class="btn btn-error btn-xs ml-auto"
               phx-click="delete-mask"

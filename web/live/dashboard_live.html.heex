@@ -137,6 +137,8 @@
         chart_range={@chart_range}
         chart_hidden={@chart_hidden}
         chart_data={@chart_data}
+        kill_stream={Map.get(assigns, :kill_stream, [])}
+        character={@character}
         position={@widget_positions["system"]}
       />
       <.live_component
@@ -162,6 +164,7 @@
         character={@character}
         demo?={@demo?}
         tracking?={Map.get(assigns, :tracking?)}
+        automapper?={Map.get(@character, :automapper) != false}
         undo_available={Map.get(@undo, @selected_system_id, []) != []}
         redo_available={Map.get(@redo, @selected_system_id, []) != []}
         position={@widget_positions["signatures"]}

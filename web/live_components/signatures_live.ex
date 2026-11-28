@@ -38,6 +38,7 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
      |> assign(:wh_mass, wh_mass(Map.get(assigns, :connections, [])))
      |> assign(:tracking?, tracking?(assigns))
      |> assign(:tracking_available?, tracking_available?(assigns))
+     |> assign(:automapper?, automapper?(assigns))
      |> assign_new(:sort, fn -> nil end)
      |> assign_new(:column_order, fn -> @column_keys end)
      |> assign_new(:selected_signature_ids, fn -> MapSet.new() end)
@@ -125,6 +126,15 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
     {:noreply, socket}
   end
 
+  def handle_event("toggle-automapper", _params, socket) do
+    if socket.assigns[:character] do
+      send(self(), :toggle_automapper)
+      {:noreply, assign(socket, :automapper?, !socket.assigns.automapper?)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("toggle-tracker", _params, socket) do
     case socket.assigns do
       %{character: %{} = character, tracking?: true} ->
@@ -170,6 +180,47 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
   def handle_event("select-all", _params, socket) do
     ids = MapSet.new(socket.assigns.signatures, &to_string(&1.id))
     {:noreply, assign(socket, :selected_signature_ids, ids)}
+  end
+
+  def handle_event("copy-selected", _params, socket) do
+    signatures = selected_signatures(socket)
+
+    if signatures == [] do
+      {:noreply, socket}
+    else
+      text = Enum.map_join(signatures, "\r\n", &clipboard_row(&1, socket.assigns))
+      {:noreply, push_event(socket, "clipboard-write", %{text: text})}
+    end
+  end
+
+  def handle_event("delete-selected", _params, socket) do
+    ids = MapSet.to_list(socket.assigns.selected_signature_ids)
+
+    if ids == [] do
+      {:noreply, socket}
+    else
+      send(self(), {:delete_selected, ids})
+      {:noreply, assign(socket, :selected_signature_ids, MapSet.new())}
+    end
+  end
+
+  defp selected_signatures(socket) do
+    selected = socket.assigns.selected_signature_ids
+
+    socket.assigns.signatures
+    |> Enum.filter(&MapSet.member?(selected, to_string(&1.id)))
+    |> sort_signatures(socket.assigns.sort, socket.assigns.wh_links, socket.assigns.wh_mass)
+  end
+
+  defp clipboard_row(sig, assigns) do
+    [
+      sig.sig_id || "",
+      site_label(sig),
+      sig.type_name || "",
+      life_label(life_status(sig)),
+      mass_label(mass_for(sig, assigns.wh_mass))
+    ]
+    |> Enum.join("\t")
   end
 
   defp toggle_selected(selected, id) do
@@ -221,9 +272,46 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
               >
                 <.icon name="hero-arrow-uturn-right" class="size-4" />
               </button>
+              <button
+                id="copy-selected-signatures"
+                class="btn btn-ghost btn-xs"
+                title="Copy selected signatures"
+                phx-click="copy-selected"
+                phx-target={@myself}
+                disabled={MapSet.size(@selected_signature_ids) == 0}
+              >
+                <.icon name="hero-clipboard" class="size-4" />
+              </button>
+              <button
+                id="delete-selected-signatures"
+                class="btn btn-ghost btn-xs"
+                title="Delete selected signatures"
+                phx-click="delete-selected"
+                phx-target={@myself}
+                data-confirm="Delete selected signatures?"
+                disabled={MapSet.size(@selected_signature_ids) == 0}
+              >
+                <.icon name="hero-trash" class="size-4" />
+              </button>
               <span class="ml-auto text-xs tabular-nums opacity-60">
                 {length(@signatures)} signatures
               </span>
+              <button
+                id="toggle-automapper"
+                class={[
+                  "btn btn-ghost btn-xs",
+                  if(@automapper?, do: "btn-primary")
+                ]}
+                title={
+                  if @automapper?,
+                    do: "Auto-mapper on: record this character's jumps",
+                    else: "Auto-mapper off: only track presence"
+                }
+                phx-click="toggle-automapper"
+                phx-target={@myself}
+              >
+                <.icon name="hero-map" class="size-4" />
+              </button>
               <button
                 class={[
                   "btn btn-ghost btn-xs",
@@ -540,6 +628,19 @@ defmodule ZtripwireWeb.LiveComponents.SignaturesLive do
     case Map.get(assigns, :character) do
       %{refresh_token: token} -> Ztripwire.SSO.configured?() and not is_nil(token)
       _ -> false
+    end
+  end
+
+  defp automapper?(assigns) do
+    case Map.get(assigns, :automapper?) do
+      nil ->
+        case Map.get(assigns, :character) do
+          %{} = character -> Map.get(character, :automapper) != false
+          _ -> false
+        end
+
+      automapper? ->
+        automapper?
     end
   end
 

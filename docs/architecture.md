@@ -30,7 +30,7 @@ flowchart LR
     ztripwire_tracking_presence["<b>Ztripwire.Tracking.Presence</b><br/>GenServer · public ETS<br/>presence and viewer counts"]:::blue
     tracking_pollersupervisor["<b>Tracking.PollerSupervisor</b><br/>DynamicSupervisor, :one_for_one<br/>one poller per character"]:::blue
     registry["<b>Registry</b><br/>name: Ztripwire.TrackingRegistry<br/>keys: :unique"]:::blue
-    ztripwire_syncserver["<b>Ztripwire.SyncServer</b><br/>GenServer · corp sync every 6 h<br/>prune_orphan_masks · hourly zKill"]:::blue
+    ztripwire_syncserver["<b>Ztripwire.SyncServer</b><br/>GenServer · corp sync every 6 h<br/>prune_orphan_masks · hourly activity"]:::blue
     dnscluster["<b>DNSCluster</b><br/>query from :dns_cluster_query<br/>:ignore when unset"]:::gray
     ztripwireweb_endpoint["<b>ZtripwireWeb.Endpoint</b><br/>Phoenix endpoint · Bandit<br/>LiveView · port 4000"]:::blue
   end
@@ -80,7 +80,7 @@ flowchart TD
   demo["<b>Demo</b><br/>3 files"]:::violet
   background["<b>Background</b><br/>4 files"]:::orange
   contexts["<b>Contexts</b><br/>20 files"]:::cyan
-  persistence["<b>Persistence</b><br/>24 files"]:::yellow
+  persistence["<b>Persistence</b><br/>25 files"]:::yellow
   integrations["<b>Integrations</b><br/>9 files"]:::green
   presentation -->|2| data_access
   presentation -->|2| demo
@@ -99,11 +99,11 @@ flowchart TD
   background -->|7| integrations
   contexts -.->|1| demo
   contexts -.->|2| background
-  contexts -->|43| persistence
+  contexts -->|44| persistence
   contexts -->|5| integrations
   persistence -.->|2| contexts
   persistence -->|1| integrations
-  integrations -.->|4| contexts
+  integrations -.->|5| contexts
   classDef blue fill:#e7f5ff,stroke:#1e1e1e,stroke-width:2px,color:#1e1e1e
   classDef gray fill:#f1f3f5,stroke:#1e1e1e,stroke-width:2px,color:#1e1e1e
   classDef rose fill:#ffe3e3,stroke:#1e1e1e,stroke-width:2px,color:#1e1e1e
@@ -122,7 +122,7 @@ flowchart TD
 | Demo | 3 | `lib/ztripwire/demo.ex`, `lib/ztripwire/demo/` |
 | Background | 4 | `lib/application.ex`, `lib/ztripwire/sync_server.ex`, `lib/ztripwire/tracking/poller.ex`, `lib/ztripwire/tracking/poller_supervisor.ex` |
 | Contexts | 20 | `lib/` |
-| Persistence | 24 | `lib/repo.ex`, `lib/ztripwire/ecto_types/` |
+| Persistence | 25 | `lib/repo.ex`, `lib/ztripwire/ecto_types/` |
 | Integrations | 9 | `lib/mailer.ex`, `lib/ztripwire/esi.ex`, `lib/ztripwire/esi/`, `lib/ztripwire/sso.ex`, `lib/ztripwire/systems/catalog.ex`, `lib/ztripwire/systems/gates.ex`, `lib/ztripwire/vault.ex`, `lib/ztripwire/zkill.ex` |
 
 ## External services

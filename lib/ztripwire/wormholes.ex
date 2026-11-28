@@ -127,21 +127,21 @@ defmodule Ztripwire.Wormholes do
   end
 
   def eligible_types(source, target) do
-    source = source |> to_string() |> class_short() |> blank_to_nil()
-    target = target |> to_string() |> class_short() |> blank_to_nil()
+    source = endpoint(source)
+    target = endpoint(target)
 
     Enum.reduce(@wormholes, %{from: [], to: []}, fn {code, wt}, acc ->
-      wt_from = wt |> Map.get("from") |> List.wrap() |> Enum.map(&class_short/1)
-      wt_leads = wt |> Map.get("leadsTo") |> List.wrap() |> Enum.map(&class_short/1)
+      wt_from = wt |> Map.get("from") |> List.wrap()
+      wt_leads = wt |> Map.get("leadsTo") |> List.wrap()
 
       %{
         from:
-          if(match_end?(wt_from, source) and match_end?(wt_leads, target),
+          if(endpoint_match?(wt_from, source) and endpoint_match?(wt_leads, target),
             do: [code | acc.from],
             else: acc.from
           ),
         to:
-          if(match_end?(wt_from, target) and match_end?(wt_leads, source),
+          if(endpoint_match?(wt_from, target) and endpoint_match?(wt_leads, source),
             do: [code | acc.to],
             else: acc.to
           )
@@ -151,9 +151,61 @@ defmodule Ztripwire.Wormholes do
     |> Map.update!(:to, &Enum.reverse/1)
   end
 
-  defp match_end?(_possible, nil), do: true
-  defp match_end?(nil, _system), do: false
-  defp match_end?(possible, system) when is_list(possible), do: system in possible
+  def endpoint(nil), do: nil
+  def endpoint(""), do: nil
+
+  def endpoint(value) when is_binary(value) do
+    %{
+      name: value,
+      class: value |> class_short() |> blank_to_nil(),
+      classes: endpoint_classes(value)
+    }
+  end
+
+  def endpoint(%{} = system) do
+    name = Map.get(system, :name) || Map.get(system, "name")
+    class = Map.get(system, :sys_class) || Map.get(system, "sys_class")
+
+    class =
+      cond do
+        is_binary(class) and class != "" -> class
+        Map.has_key?(system, :security) -> Ztripwire.Systems.display_class(system)
+        true -> nil
+      end
+
+    %{
+      name: name,
+      class: class,
+      classes: endpoint_classes(class),
+      solar: Map.get(system, :solar_system_id)
+    }
+  end
+
+  defp endpoint_match?(_possible, nil), do: true
+  defp endpoint_match?([], _endpoint), do: true
+
+  defp endpoint_match?(possible, endpoint) do
+    Enum.any?(possible, fn value ->
+      class = value |> class_short() |> blank_to_nil()
+      value_class = endpoint_classes(value)
+
+      endpoint.class == class or
+        (is_binary(endpoint.name) and endpoint.name == value) or
+        Enum.any?(value_class, &(&1 in endpoint.classes)) or
+        Enum.any?(endpoint.classes, &(&1 in value_class))
+    end)
+  end
+
+  defp endpoint_classes(value) do
+    case class_short(value) do
+      "Drifter" -> ~w(C14 C15 C16 C17 C18)
+      "Dangerous" -> ~w(C4 C5)
+      "Unknown" -> ~w(C2 C3)
+      "Unknown (small)" -> ~w(C1 C2 C3 C13)
+      nil -> []
+      class -> [class]
+    end
+  end
 
   defp k_space?(class), do: class in ["HS", "LS", "NS"]
 

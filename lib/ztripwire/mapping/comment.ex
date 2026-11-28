@@ -7,9 +7,12 @@ defmodule Ztripwire.Mapping.Comment do
 
   schema "comments" do
     field :body, :string
+    field :sticky, :boolean, default: false
+    field :edited, :boolean, default: false
 
     belongs_to :map_system, MapSystem
     belongs_to :character, Character
+    belongs_to :updated_by, Character, foreign_key: :updated_by_id
     belongs_to :mask, Ztripwire.Masks.Mask
 
     timestamps(type: :utc_datetime)
@@ -17,7 +20,15 @@ defmodule Ztripwire.Mapping.Comment do
 
   def changeset(comment, attrs) do
     comment
-    |> cast(attrs, [:map_system_id, :character_id, :mask_id, :body])
+    |> cast(attrs, [
+      :map_system_id,
+      :character_id,
+      :updated_by_id,
+      :mask_id,
+      :body,
+      :sticky,
+      :edited
+    ])
     |> validate_required([:map_system_id, :body])
     |> validate_length(:body, max: 20_000)
   end

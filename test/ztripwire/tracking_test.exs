@@ -231,6 +231,50 @@ defmodule Ztripwire.TrackingTest do
     assert Mapping.character_statistics(character).systems_visited == 2
   end
 
+  test "automap guards skip gates, pods, Jita and existing chain systems", %{
+    map: map,
+    character: character
+  } do
+    from = hole_system(map, 31_000_500, "C4")
+    to_solar = 31_000_501
+
+    assert Tracking.automap_allowed?(map, from, to_solar, character: character)
+
+    refute Tracking.automap_allowed?(map, from, to_solar,
+             character: character,
+             ship_type_id: 670
+           )
+
+    refute Tracking.automap_allowed?(map, from, to_solar,
+             character: character,
+             docked: true
+           )
+
+    refute Tracking.automap_allowed?(map, from, 30_000_142, character: character)
+    refute Tracking.automap_allowed?(map, from, 30_002_187, character: character)
+
+    gate_from = hole_system(map, 30_000_014, "HS")
+    gate_to = hole_system(map, 30_000_015, "HS")
+
+    refute Tracking.automap_allowed?(map, gate_from, gate_to.solar_system_id,
+             character: character
+           )
+
+    refute Tracking.automap_allowed?(map, from, to_solar,
+             character: %{character | automapper: false}
+           )
+  end
+
+  test "automap does not reconnect systems that are already on the chain", %{
+    map: map,
+    character: character
+  } do
+    from = hole_system(map, 31_000_510, "C4")
+    to = hole_system(map, 31_000_511, "C2")
+
+    refute Tracking.automap_allowed?(map, from, to.solar_system_id, character: character)
+  end
+
   test "tracking?/1 reports whether a poller is registered" do
     assert Tracking.tracking?(%{eve_id: 999_999}) == false
     assert Tracking.tracking?(nil) == false

@@ -235,7 +235,7 @@ defmodule Ztripwire.Demo do
   def list_comments(%State{} = state, system_id) do
     state.comments
     |> Enum.filter(&(&1.map_system_id == system_id))
-    |> Enum.sort_by(& &1.id)
+    |> Enum.sort_by(&{!Map.get(&1, :sticky, false), &1.id})
   end
 
   def get_comment(%State{} = state, id), do: Enum.find(state.comments, &(&1.id == id))
@@ -530,6 +530,7 @@ defmodule Ztripwire.Demo do
       is_admin: false,
       ship_on_chain: true,
       character_on_chain: true,
+      automapper: true,
       inserted_at: now,
       updated_at: now
     }
@@ -963,26 +964,23 @@ defmodule Ztripwire.Demo do
         entries,
         %Character{} = character
       ) do
+    now = now()
+
     Enum.reduce(entries, {0, 0, state}, fn entry, {added, updated, state} ->
-      life_length = 259_200
-      now = now()
-
-      attrs = %{
-        map_system_id: system.id,
-        sig_id: entry.sig_id,
-        kind: to_string(entry.kind),
-        type_name: entry.name || entry.wormhole_type,
-        site_type: to_string(entry.category || :unknown),
-        life_length: life_length,
-        expires_at: DateTime.add(now, life_length, :second),
-        updated_by_id: character.id
-      }
-
       case Enum.find(
              state.signatures,
              &(&1.map_system_id == system.id and &1.sig_id == entry.sig_id)
            ) do
         nil ->
+          attrs =
+            entry
+            |> SigParser.scan_insert_attrs(now)
+            |> Map.merge(%{
+              map_system_id: system.id,
+              created_by_id: character.id,
+              updated_by_id: character.id
+            })
+
           case build_signature(state, attrs, character) do
             {{:ok, signature}, state} ->
               {added + 1, updated, add_signature(state, signature)}
@@ -992,13 +990,21 @@ defmodule Ztripwire.Demo do
           end
 
         signature ->
-          case Ecto.Changeset.apply_action(Signature.changeset(signature, attrs), :update) do
-            {:ok, updated_signature} ->
-              {added, updated + 1,
-               replace_signature(state, %{updated_signature | updated_at: now})}
-
-            {:error, _changeset} ->
+          case SigParser.scan_update_attrs(signature, entry, now) do
+            :skip ->
               {added, updated, state}
+
+            attrs ->
+              attrs = Map.put(attrs, :updated_by_id, character.id)
+
+              case Ecto.Changeset.apply_action(Signature.changeset(signature, attrs), :update) do
+                {:ok, updated_signature} ->
+                  {added, updated + 1,
+                   replace_signature(state, %{updated_signature | updated_at: now})}
+
+                {:error, _changeset} ->
+                  {added, updated, state}
+              end
           end
       end
     end)
@@ -1083,6 +1089,7 @@ defmodule Ztripwire.Demo do
       |> Map.merge(%{
         map_system_id: system.id,
         character_id: character_id,
+        updated_by_id: character_id,
         mask_id: state.mask.id
       })
 
@@ -1095,6 +1102,7 @@ defmodule Ztripwire.Demo do
           comment
           | id: id,
             character: if(is_struct(character, Character), do: character),
+            updated_by: if(is_struct(character, Character), do: character),
             mask: state.mask,
             inserted_at: now,
             updated_at: now
@@ -1107,10 +1115,29 @@ defmodule Ztripwire.Demo do
     end
   end
 
-  def update_comment(%State{} = state, %Comment{} = comment, attrs, _character \\ nil) do
+  def update_comment(%State{} = state, %Comment{} = comment, attrs, character \\ nil) do
+    attrs =
+      attrs
+      |> then(fn attrs ->
+        if is_struct(character, Character),
+          do: Map.put(attrs, :updated_by_id, character.id),
+          else: attrs
+      end)
+      |> then(fn attrs ->
+        if Map.has_key?(attrs, :body) or Map.has_key?(attrs, "body"),
+          do: Map.put(attrs, :edited, true),
+          else: attrs
+      end)
+
     case Ecto.Changeset.apply_action(Comment.changeset(comment, attrs), :update) do
       {:ok, updated} ->
-        updated = %{updated | updated_at: now()}
+        updated = %{
+          updated
+          | updated_at: now(),
+            updated_by:
+              if(is_struct(character, Character), do: character, else: updated.updated_by)
+        }
+
         {{:ok, updated}, replace_comment(state, updated)}
 
       {:error, changeset} ->

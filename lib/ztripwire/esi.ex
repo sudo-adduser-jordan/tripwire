@@ -76,6 +76,35 @@ defmodule Ztripwire.ESI do
         opts
       )
 
+  def set_waypoint(character_id, destination_id, access_token, character \\ nil, opts \\ []) do
+    query =
+      URI.encode_query(%{
+        destination_id: destination_id,
+        clear_other_waypoints: Keyword.get(opts, :clear_other_waypoints, true),
+        add_to_beginning: Keyword.get(opts, :add_to_beginning, false)
+      })
+
+    authorized_post(
+      "/ui/autopilot/waypoint/?#{query}",
+      character_id,
+      access_token,
+      character,
+      opts
+    )
+  end
+
+  def open_window(character_id, target_id, access_token, character \\ nil, opts \\ []) do
+    query = URI.encode_query(%{target_id: target_id})
+
+    authorized_post(
+      "/ui/openwindow/information/?#{query}",
+      character_id,
+      access_token,
+      character,
+      opts
+    )
+  end
+
   def get_system_jumps, do: public_get("/universe/system_jumps/")
 
   def get_system_kills, do: public_get("/universe/system_kills/")
@@ -252,6 +281,30 @@ defmodule Ztripwire.ESI do
 
         with {:ok, token} <- valid_access_token(character) do
           Client.get(path, subject: character_id, token: token, source: source)
+        end
+
+      other ->
+        other
+    end
+  end
+
+  defp authorized_post(path, character_id, access_token, character, opts) do
+    source = Keyword.get(opts, :source, :interactive)
+
+    case Client.request(:post, path,
+           subject: character_id,
+           token: access_token,
+           source: source
+         ) do
+      {:error, {401, _}} when not is_nil(character) ->
+        TokenCache.delete(character.eve_id)
+
+        with {:ok, token} <- valid_access_token(character) do
+          Client.request(:post, path,
+            subject: character_id,
+            token: token,
+            source: source
+          )
         end
 
       other ->

@@ -3,11 +3,59 @@ defmodule Ztripwire.ZKill do
   @user_agent "Ztripwire/1.0 (system activity graph)"
   @capsule_type_id 670
   @page_size 200
+  @kill_stream_window 8 * 3600
+  @kill_stream_limit 5
+
+  def recent_kills(solar_system_id, opts \\ []) do
+    window = Keyword.get(opts, :window_seconds, @kill_stream_window)
+
+    case enabled?() && get("/kills/solarSystemID/#{solar_system_id}/pastSeconds/#{window}/") do
+      {:ok, body} when is_list(body) ->
+        body
+        |> Enum.map(&parse_kill_stream/1)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.sort_by(&DateTime.to_unix(&1.time), :desc)
+        |> Enum.take(@kill_stream_limit)
+
+      _ ->
+        []
+    end
+  end
+
+  defp parse_kill_stream(%{
+         "killmail_id" => id,
+         "killmail_time" => time,
+         "victim" => %{"ship_type_id" => ship_id},
+         "zkb" => zkb
+       }) do
+    case DateTime.from_iso8601(time) do
+      {:ok, dt, _} ->
+        %{
+          id: id,
+          time: dt,
+          ship_type_id: ship_id,
+          ship_name: Ztripwire.Sde.type_name(ship_id) || "Unknown hull",
+          value: zkb["totalValue"] || 0,
+          npc: zkb["npc"] == true,
+          solo: zkb["solo"] == true
+        }
+
+      _ ->
+        nil
+    end
+  end
+
+  defp parse_kill_stream(_), do: nil
 
   def kill_history(solar_system_id, opts \\ []) do
     since = Keyword.get(opts, :since, nil)
     max_pages = Keyword.get(opts, :max_pages, 3)
-    fetch_pages(solar_system_id, 1, max_pages, since, [])
+
+    if enabled?() do
+      fetch_pages(solar_system_id, 1, max_pages, since, [])
+    else
+      {:error, :disabled}
+    end
   end
 
   def bucket(kills, now, count, width_hours) do
@@ -75,6 +123,12 @@ defmodule Ztripwire.ZKill do
   end
 
   defp parse_kill(_), do: nil
+
+  defp enabled? do
+    :ztripwire
+    |> Application.get_env(__MODULE__, [])
+    |> Keyword.get(:enabled, true)
+  end
 
   defp get(path) do
     case Req.get(@api <> path,

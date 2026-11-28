@@ -524,6 +524,7 @@ defmodule Ztripwire.Demo.Fixture do
       is_admin: true,
       ship_on_chain: true,
       character_on_chain: true,
+      automapper: true,
       refresh_token: nil,
       last_login_at: now,
       inserted_at: now,

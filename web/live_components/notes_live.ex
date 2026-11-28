@@ -18,21 +18,41 @@ defmodule ZtripwireWeb.LiveComponents.NotesLive do
           if Map.get(assigns, :demo?), do: [], else: Mapping.list_comments(system_id)
       end
 
-    {:ok,
-     socket
-     |> assign(assigns)
-     |> assign(:comments, comments)
-     |> assign_new(:comment_body, fn -> "" end)
-     |> assign_new(:composer_open, fn -> false end)
-     |> assign_new(:editing_comment_id, fn -> nil end)
-     |> assign_new(:edit_body, fn -> "" end)
-     |> assign_new(:welcome_notes, fn -> Mapping.welcome_notes() end)
-     |> drop_stale_edit(comments)}
+    socket =
+      socket
+      |> assign(assigns)
+      |> assign_new(:comment_body, fn -> "" end)
+      |> assign_new(:composer_open, fn -> false end)
+      |> assign_new(:editing_comment_id, fn -> nil end)
+      |> assign_new(:edit_body, fn -> "" end)
+      |> assign_new(:comment_sort, fn -> :oldest end)
+      |> assign_new(:welcome_notes, fn -> Mapping.welcome_notes() end)
+      |> assign(
+        :comments,
+        sort_comments(comments, Map.get(socket.assigns, :comment_sort, :oldest))
+      )
+      |> drop_stale_edit(comments)
+
+    {:ok, socket}
   end
 
   def handle_event("comment-compose-toggle", _params, socket) do
     open? = !socket.assigns.composer_open
     {:noreply, socket |> assign(:composer_open, open?) |> assign(:comment_body, "")}
+  end
+
+  def handle_event("comment-sort", _params, socket) do
+    sort = if socket.assigns.comment_sort == :oldest, do: :newest, else: :oldest
+
+    {:noreply,
+     socket
+     |> assign(:comment_sort, sort)
+     |> assign(:comments, sort_comments(socket.assigns.comments, sort))}
+  end
+
+  def handle_event("comment-sticky", %{"id" => id}, socket) do
+    send(self(), {:toggle_note_sticky, id})
+    {:noreply, socket}
   end
 
   def handle_event("comment-submit", params, %{assigns: %{demo?: true}} = socket) do
@@ -208,6 +228,18 @@ defmodule ZtripwireWeb.LiveComponents.NotesLive do
               />
             </button>
             <span class="px-1 text-xs opacity-60">{length(@comments)} notes</span>
+            <button
+              id="note-sort"
+              type="button"
+              class="btn btn-ghost btn-xs p-1"
+              title={
+                if @comment_sort == :oldest, do: "Newest notes first", else: "Oldest notes first"
+              }
+              phx-click="comment-sort"
+              phx-target={@myself}
+            >
+              <.icon name="hero-arrows-up-down" class="size-4" />
+            </button>
             <span
               :if={Map.get(assigns, :selected_system_name)}
               class="badge badge-primary badge-sm ml-auto"
@@ -295,9 +327,29 @@ defmodule ZtripwireWeb.LiveComponents.NotesLive do
               <div class={markdown_class()}>
                 {Phoenix.HTML.raw(Ztripwire.Markdown.to_html(comment.body))}
               </div>
-              <div class="mt-1 flex items-center justify-between text-xs opacity-60">
-                <span>{comment.character && comment.character.name}</span>
+              <div class="mt-1 flex items-center justify-between gap-2 text-xs opacity-60">
+                <span class="truncate">
+                  {comment.character && comment.character.name} · {format_time(comment.inserted_at)}
+                  <span :if={edited?(comment)}>
+                    · edited by {comment.updated_by && comment.updated_by.name} · {format_time(
+                      comment.updated_at
+                    )}
+                  </span>
+                </span>
                 <div class="flex items-center gap-1">
+                  <button
+                    id={"note-sticky-#{comment.id}"}
+                    class={["btn btn-ghost btn-xs p-1", if(comment.sticky, do: "text-active-accent")]}
+                    title={if comment.sticky, do: "Unpin note", else: "Pin note"}
+                    phx-click="comment-sticky"
+                    phx-value-id={comment.id}
+                    phx-target={@myself}
+                  >
+                    <.icon
+                      name={"hero-map-pin" <> if(comment.sticky, do: "-solid", else: "")}
+                      class="size-3"
+                    />
+                  </button>
                   <button
                     id={"note-copy-#{comment.id}"}
                     class="group btn btn-ghost btn-xs p-1"
@@ -344,6 +396,20 @@ defmodule ZtripwireWeb.LiveComponents.NotesLive do
   defp markdown_class do
     "markdown space-y-1 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/40 [&_blockquote]:pl-2 [&_blockquote]:opacity-70 [&_code]:rounded [&_code]:bg-base-content/10 [&_code]:px-1 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h3]:text-sm [&_h3]:font-bold [&_h4]:font-bold [&_h5]:font-bold [&_h6]:font-bold [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-base-content/10 [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-5"
   end
+
+  defp sort_comments(comments, sort) do
+    direction = if sort == :newest, do: -1, else: 1
+
+    Enum.sort_by(comments, fn comment ->
+      {not Map.get(comment, :sticky, false), direction * (comment.id || 0)}
+    end)
+  end
+
+  defp edited?(comment), do: Map.get(comment, :edited, false)
+
+  defp format_time(%NaiveDateTime{} = time), do: Calendar.strftime(time, "%Y-%m-%d %H:%M")
+  defp format_time(%DateTime{} = time), do: Calendar.strftime(time, "%Y-%m-%d %H:%M")
+  defp format_time(_), do: ""
 
   defp close_editor(socket, comment) do
     if socket.assigns[:editing_comment_id] == comment.id do

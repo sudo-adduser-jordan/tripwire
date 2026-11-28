@@ -38,8 +38,8 @@ defmodule ZtripwireWeb.DashboardLive do
         {:ok,
          socket
          |> provision(character, session)
-         |> ensure_character_pollers()
-         |> track_viewer()}
+         |> track_viewer()
+         |> ensure_character_pollers()}
 
       :expired ->
         {:ok,
@@ -92,16 +92,36 @@ defmodule ZtripwireWeb.DashboardLive do
 
   defp track_viewer(socket) do
     if connected?(socket) do
+      target = viewer_target(socket)
+
       socket.assigns[:characters]
       |> List.wrap()
       |> Enum.reject(&is_nil(&1.refresh_token))
-      |> Enum.each(&Tracking.add_viewer/1)
+      |> Enum.each(&Tracking.add_viewer(&1, self(), target))
 
       assign(socket, :viewer_tracked?, true)
     else
       socket
     end
   end
+
+  defp update_viewer_targets(%{assigns: %{viewer_tracked?: true}} = socket) do
+    target = viewer_target(socket)
+
+    socket.assigns[:characters]
+    |> List.wrap()
+    |> Enum.reject(&is_nil(&1.refresh_token))
+    |> Enum.each(&Tracking.set_viewer_target(&1, target))
+
+    socket
+  end
+
+  defp update_viewer_targets(socket), do: socket
+
+  defp viewer_target(%{assigns: %{mask: %{id: mask_id}, map: %{id: map_id}}}),
+    do: %{mask_id: mask_id, map_id: map_id}
+
+  defp viewer_target(_socket), do: nil
 
   defp refresh_occupants(socket) do
     presences = socket.assigns[:presences] || %{}
@@ -336,11 +356,138 @@ defmodule ZtripwireWeb.DashboardLive do
     {:noreply, socket}
   end
 
+  def handle_info({:toggle_note_sticky, id}, socket) do
+    comment = Data.get_comment!(data(socket), id)
+
+    case Data.update_comment(
+           data(socket),
+           comment,
+           %{sticky: !Map.get(comment, :sticky, false)},
+           socket.assigns.character
+         ) do
+      {{:ok, _}, data} ->
+        socket = put_data(socket, data)
+
+        comments =
+          case socket.assigns.selected_system_id do
+            nil -> socket.assigns.comments
+            system_id -> Data.list_comments(data(socket), system_id)
+          end
+
+        {:noreply, assign(socket, :comments, comments)}
+
+      {{:error, _}, _data} ->
+        {:noreply, put_flash(socket, :error, "Could not update note")}
+    end
+  end
+
   def handle_info(:demo_toggle_tracker, socket) do
     tracking? = !Map.get(socket.assigns, :tracking?, true)
     {_result, data} = Demo.set_tracking(data(socket), tracking?)
 
     {:noreply, socket |> put_data(data) |> assign(:tracking?, tracking?) |> refresh_occupants()}
+  end
+
+  def handle_info({:set_destination, solar_system_id}, socket) do
+    case socket.assigns[:character] do
+      %{refresh_token: token} = character when not is_nil(token) ->
+        with {:ok, access} <- Ztripwire.ESI.valid_access_token(character),
+             {:ok, _} <-
+               Ztripwire.ESI.set_waypoint(character.eve_id, solar_system_id, access, character) do
+          {:noreply, put_flash(socket, :info, "Autopilot destination set")}
+        else
+          _ -> {:noreply, put_flash(socket, :error, "Could not set the destination")}
+        end
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "EVE SSO is required for autopilot")}
+    end
+  end
+
+  def handle_info({:open_window, solar_system_id}, socket) do
+    case socket.assigns[:character] do
+      %{refresh_token: token} = character when not is_nil(token) ->
+        with {:ok, access} <- Ztripwire.ESI.valid_access_token(character),
+             {:ok, _} <-
+               Ztripwire.ESI.open_window(character.eve_id, solar_system_id, access, character) do
+          {:noreply, put_flash(socket, :info, "Opened in the EVE client")}
+        else
+          _ -> {:noreply, put_flash(socket, :error, "Could not open the system")}
+        end
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "EVE SSO is required to open the client")}
+    end
+  end
+
+  def handle_info({:delete_selected, ids}, socket) do
+    case selected_system(socket) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Select a system first")}
+
+      system ->
+        selected = MapSet.new(ids)
+
+        signatures =
+          data(socket)
+          |> Data.list_signatures(system.id)
+          |> Enum.filter(&MapSet.member?(selected, to_string(&1.id)))
+
+        {deleted, socket} =
+          Enum.reduce(signatures, {[], socket}, fn signature, {deleted, socket} ->
+            case Data.delete_signature(data(socket), signature, socket.assigns.character) do
+              {{:ok, removed}, data} ->
+                {[removed | deleted], put_data(socket, data)}
+
+              {{:error, _}, data} ->
+                {deleted, put_data(socket, data)}
+            end
+          end)
+
+        {{dropped, linked, hidden}, data} =
+          Data.sync_map_after_signature_change(data(socket), system, deleted)
+
+        socket = put_data(socket, data)
+
+        ops = Enum.map(deleted, &{:delete, signature_history_attrs(&1)})
+
+        {:noreply,
+         socket
+         |> push_signature_history(system.id, {:batch, ops})
+         |> reload_map_from_sync(dropped, linked, hidden)
+         |> reload_signatures()
+         |> put_flash(:info, "Deleted #{length(deleted)} signatures")}
+    end
+  end
+
+  def handle_info(:toggle_automapper, socket) do
+    case socket.assigns[:character] do
+      %{} = character ->
+        enabled? = not (Map.get(character, :automapper) == false)
+
+        case Data.update_character(data(socket), character.id, fn _ ->
+               %{automapper: enabled?}
+             end) do
+          {{:ok, updated}, data} ->
+            characters =
+              Enum.map(socket.assigns[:characters] || [], fn other ->
+                if other.id == updated.id, do: updated, else: other
+              end)
+
+            {:noreply,
+             socket
+             |> put_data(data)
+             |> assign(:character, updated)
+             |> assign(:characters, characters)
+             |> put_flash(:info, automapper_flash(updated))}
+
+          _ ->
+            {:noreply, put_flash(socket, :error, "Character not found")}
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   def handle_info({:demo_comment_create, system_id, body}, socket) do
@@ -452,6 +599,14 @@ defmodule ZtripwireWeb.DashboardLive do
          "system-chart-data",
          chart_payload(data, socket.assigns[:chart_hidden] || MapSet.new())
        )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:kill_stream_loaded, solar_system_id, kills}, socket) do
+    if chart_solar(socket.assigns[:chart_system]) == solar_system_id do
+      {:noreply, assign(socket, :kill_stream, kills)}
     else
       {:noreply, socket}
     end
@@ -577,6 +732,7 @@ defmodule ZtripwireWeb.DashboardLive do
          |> assign(:redo, %{})
          |> refresh_occupants()
          |> patch_to_preferred(chain_systems(socket, map))
+         |> update_viewer_targets()
          |> push_event("mask-switched", %{mask_id: mask.id})}
     end
   end
@@ -1150,8 +1306,9 @@ defmodule ZtripwireWeb.DashboardLive do
 
   def handle_event("add-mask-member", params, socket) do
     with true <- admin?(socket),
-         {:ok, mask} <- scoped_mask(socket, params["mask_id"]),
+         {:ok, mask} <- scoped_admin_mask(socket, params["mask_id"]),
          {:ok, member} <- scoped_upsert_member(params),
+         true <- scoped_member?(socket, mask, member),
          {:ok, _} <- Masks.add_membership(mask, member) do
       {:noreply,
        socket
@@ -1159,10 +1316,14 @@ defmodule ZtripwireWeb.DashboardLive do
        |> put_flash(:info, "Added #{member.name} to #{mask.name}")}
     else
       false ->
-        {:noreply, put_flash(socket, :error, "Admin access required")}
+        {:noreply,
+         put_flash(socket, :error, "Member is outside this mask's corporation or alliance")}
 
       {:error, :forbidden} ->
         {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
+
+      {:error, :personal} ->
+        {:noreply, put_flash(socket, :error, "The personal mask cannot be administered")}
 
       {:error, :not_found} ->
         {:noreply, put_flash(socket, :error, "Mask not found")}
@@ -1203,7 +1364,7 @@ defmodule ZtripwireWeb.DashboardLive do
 
   def handle_event("remove-mask-member", params, socket) do
     with true <- admin?(socket),
-         {:ok, mask} <- scoped_mask(socket, params["mask_id"] || params["mask-id"]),
+         {:ok, mask} <- scoped_admin_mask(socket, params["mask_id"] || params["mask-id"]),
          member when not is_nil(member) <-
            Accounts.get_character(params["character_id"] || params["character-id"]),
          true <- scoped_member?(socket, mask, member),
@@ -1222,6 +1383,9 @@ defmodule ZtripwireWeb.DashboardLive do
       {:error, :forbidden} ->
         {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
 
+      {:error, :personal} ->
+        {:noreply, put_flash(socket, :error, "The personal mask cannot be administered")}
+
       {:error, :not_found} ->
         {:noreply, put_flash(socket, :error, "Mask not found")}
     end
@@ -1233,7 +1397,7 @@ defmodule ZtripwireWeb.DashboardLive do
 
   def handle_event("delete-mask", %{"id" => id}, socket) do
     with true <- admin?(socket),
-         {:ok, mask} <- scoped_mask(socket, id),
+         {:ok, mask} <- scoped_admin_mask(socket, id),
          {:ok, _} <- Masks.delete_mask_full(mask) do
       {:noreply,
        socket
@@ -1245,6 +1409,9 @@ defmodule ZtripwireWeb.DashboardLive do
 
       {:error, :forbidden} ->
         {:noreply, put_flash(socket, :error, "Demo admins are scoped to demo masks")}
+
+      {:error, :personal} ->
+        {:noreply, put_flash(socket, :error, "The personal mask cannot be deleted")}
 
       {:error, :not_found} ->
         {:noreply, put_flash(socket, :error, "Mask not found")}
@@ -1426,7 +1593,11 @@ defmodule ZtripwireWeb.DashboardLive do
         {:noreply, put_flash(socket, :error, "Select a system first")}
 
       system ->
-        attrs = signature_attrs(params)
+        existing =
+          socket.assigns.sig_edit_id &&
+            Data.get_signature(data(socket), socket.assigns.sig_edit_id)
+
+        attrs = signature_attrs(params, existing)
 
         case socket.assigns.sig_edit_id do
           nil ->
@@ -1696,11 +1867,13 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   defp masks_for_admin(socket) do
-    if demo?(socket) do
-      socket.assigns.masks
-    else
-      Masks.list_masks_for_character(socket.assigns.character.id)
-    end
+    if demo?(socket), do: socket.assigns.masks, else: admin_masks_for(socket.assigns.character)
+  end
+
+  defp admin_masks_for(character) do
+    character.id
+    |> Masks.list_masks_for_character()
+    |> Enum.reject(&(&1.kind == "personal"))
   end
 
   defp mask_options(socket) do
@@ -1748,34 +1921,30 @@ defmodule ZtripwireWeb.DashboardLive do
     end
   end
 
-  defp scoped_mask(socket, id) do
+  defp scoped_admin_mask(socket, id) do
     with {mask_id, ""} <- Integer.parse(to_string(id || "")),
-         %{} = mask <- find_mask(socket, mask_id) do
-      if demo?(socket) and mask.kind != "demo" do
-        {:error, :forbidden}
-      else
-        {:ok, mask}
+         %{} = mask <- Enum.find(socket.assigns[:admin_masks] || [], &(&1.id == mask_id)) do
+      cond do
+        demo?(socket) and mask.kind != "demo" -> {:error, :forbidden}
+        mask.kind == "personal" -> {:error, :personal}
+        true -> {:ok, mask}
       end
     else
       _ -> {:error, :not_found}
     end
   end
 
-  defp find_mask(%{assigns: %{demo?: true}} = socket, mask_id) do
-    Enum.find(socket.assigns.masks, &(&1.id == mask_id))
-  end
+  defp scoped_member?(_socket, %{kind: "corporation", eve_owner_id: owner}, member)
+       when is_integer(owner),
+       do: member.corporation_id in [nil, owner]
 
-  defp find_mask(socket, mask_id) do
-    Enum.find(socket.assigns.masks, &(&1.id == mask_id))
-  end
+  defp scoped_member?(_socket, %{kind: "alliance", eve_owner_id: owner}, member)
+       when is_integer(owner),
+       do: member.alliance_id in [nil, owner]
 
-  defp scoped_member?(socket, mask, member) do
-    if demo?(socket) do
-      mask.kind == "demo" and not is_nil(member)
-    else
-      not is_nil(member)
-    end
-  end
+  defp scoped_member?(_socket, %{kind: "demo"}, member), do: not is_nil(member)
+  defp scoped_member?(_socket, %{kind: "personal"}, _member), do: false
+  defp scoped_member?(_socket, _mask, member), do: not is_nil(member)
 
   defp scoped_create_corp_mask(socket) do
     if demo?(socket) do
@@ -1944,7 +2113,7 @@ defmodule ZtripwireWeb.DashboardLive do
     mask = restore_mask(default_mask, session, masks)
     {map, socket} = personal_map(socket, mask)
 
-    admin_masks = Masks.list_masks_for_character(character.id)
+    admin_masks = admin_masks_for(character)
     socket = ensure_jita_system(socket, map)
     settings = Settings.assigns(character)
 
@@ -1990,6 +2159,7 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(:sig_edit_id, nil)
     |> assign(:sig_form, SigParser.default_form())
     |> assign(:sig_errors, [])
+    |> assign(:kill_stream, [])
   end
 
   defp assign_selection_reset(socket) do
@@ -2000,6 +2170,7 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(:comments, [])
     |> assign(:system_info, nil)
     |> assign(:chart_data, empty_chart_data(socket.assigns[:chart_range] || "24h"))
+    |> assign(:kill_stream, [])
     |> assign(:stale_ids, [])
     |> assign(:stale_system_id, nil)
   end
@@ -2070,6 +2241,7 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(:redo, %{})
     |> patch_to_preferred(systems)
     |> refresh_occupants()
+    |> update_viewer_targets()
   end
 
   defp replacement_map(socket, mask) do
@@ -2128,7 +2300,7 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(settings)
     |> assign(:mask, mask)
     |> assign(:masks, Masks.list_masks_for_characters(socket.assigns.characters))
-    |> assign(:admin_masks, Masks.list_masks_for_character(character.id))
+    |> assign(:admin_masks, admin_masks_for(character))
     |> assign(:map, map)
     |> assign(:maps, Data.list_maps_for_mask(data(socket), mask.id))
     |> assign_layouts()
@@ -2143,6 +2315,7 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(:comments, [])
     |> assign(:system_info, nil)
     |> assign(:chart_data, empty_chart_data(settings[:chart_range] || "24h"))
+    |> assign(:kill_stream, [])
     |> assign(:stale_ids, [])
     |> assign(:stale_system_id, nil)
     |> assign(:presences, %{})
@@ -2151,6 +2324,7 @@ defmodule ZtripwireWeb.DashboardLive do
     |> ensure_character_pollers()
     |> request_topbar_data()
     |> patch_to_preferred(chain_systems(socket, map))
+    |> update_viewer_targets()
   end
 
   defp selected_system(%{assigns: %{selected_system_id: nil}}), do: nil
@@ -2712,7 +2886,7 @@ defmodule ZtripwireWeb.DashboardLive do
   defp sig_hole_code(%{site_type: "wormhole", type_name: name}), do: SigParser.wormhole_code(name)
   defp sig_hole_code(_), do: nil
 
-  defp signature_attrs(params) do
+  defp signature_attrs(params, existing \\ nil) do
     params =
       if params["site_type"] == "wormhole" do
         Map.put(
@@ -2726,10 +2900,14 @@ defmodule ZtripwireWeb.DashboardLive do
 
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
     attrs = SigParser.attrs_from_params(params)
+    inserted_at = attrs[:inserted_at] || (existing && existing.inserted_at) || now
 
     attrs
-    |> Map.put(:inserted_at, now)
-    |> Map.put(:expires_at, SigParser.expires_at_for(params["life_status"], attrs[:life_length]))
+    |> Map.put(:inserted_at, inserted_at)
+    |> Map.put(
+      :expires_at,
+      SigParser.expires_at_for(params["life_status"], attrs[:life_length], inserted_at)
+    )
   end
 
   defp signature_history_attrs(sig) do
@@ -3022,18 +3200,21 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   defp refresh_quick_types(form, socket) do
-    system = selected_system(socket)
-    source = system && Systems.display_class(system)
-    target = sig_leads_class(form["leads_to"])
+    source = selected_system(socket)
+    target = sig_leads_endpoint(socket, form["leads_to"])
     codes = Wormholes.eligible_types(source, target).from
 
     Map.put(form, "quick_types", if(length(codes) in 1..3, do: codes, else: []))
   end
 
-  defp sig_leads_class(value) do
-    case generic_target(value) do
-      nil -> nil
-      {_label, class} -> class
+  defp sig_leads_endpoint(_socket, value) when value in [nil, ""], do: nil
+
+  defp sig_leads_endpoint(socket, value) do
+    case sig_target(socket, value) do
+      {:system, system} -> system
+      {:class, _label, class} -> class
+      {:catalog, solar, name} -> %{solar_system_id: solar, name: name}
+      _ -> nil
     end
   end
 
@@ -3046,12 +3227,19 @@ defmodule ZtripwireWeb.DashboardLive do
       "class-5" -> {"Class-5", "C5"}
       "class-6" -> {"Class-6", "C6"}
       "class-13" -> {"Class-13", "C13"}
-      "thera" -> {"Thera", "Thera"}
+      "class-14" -> {"Class-14", "C14"}
+      "class-15" -> {"Class-15", "C15"}
+      "class-16" -> {"Class-16", "C16"}
+      "class-17" -> {"Class-17", "C17"}
+      "class-18" -> {"Class-18", "C18"}
       "high-sec" -> {"High-Sec", "HS"}
       "low-sec" -> {"Low-Sec", "LS"}
       "null-sec" -> {"Null-Sec", "NS"}
       "triglavian" -> {"Triglavian", "Trig"}
       "drifter" -> {"Drifter", "Drifter"}
+      "dangerous" -> {"Dangerous", "Dangerous"}
+      "unknown" -> {"Unknown", "Unknown"}
+      "unknown (small)" -> {"Unknown (small)", "Unknown (small)"}
       _ -> nil
     end
   end
@@ -3064,6 +3252,7 @@ defmodule ZtripwireWeb.DashboardLive do
       {"Class-4", "C4"},
       {"Class-5", "C5"},
       {"Class-6", "C6"},
+      {"Class-13", "C13"},
       {"High-Sec", "HS"},
       {"Low-Sec", "LS"},
       {"Null-Sec", "NS"},
@@ -3152,11 +3341,11 @@ defmodule ZtripwireWeb.DashboardLive do
           ) ->
         {:system, system}
 
-      target = generic_target(name) ->
-        {:class, elem(target, 0), elem(target, 1)}
-
       system = Systems.Catalog.find(name) ->
         {:catalog, system.solar_system_id, system.name}
+
+      target = generic_target(name) ->
+        {:class, elem(target, 0), elem(target, 1)}
 
       true ->
         :invalid
@@ -3495,6 +3684,7 @@ defmodule ZtripwireWeb.DashboardLive do
     |> assign(:chart_range, "24h")
     |> assign(:chart_hidden, MapSet.new())
     |> assign(:chart_data, %{labels: [], jumps: [], ship_kills: [], pod_kills: [], npc_kills: []})
+    |> assign(:kill_stream, [])
     |> assign(:map_locked, false)
     |> assign(:collapsed_by_map, %{})
     |> assign(:undo, %{})
@@ -3546,6 +3736,11 @@ defmodule ZtripwireWeb.DashboardLive do
     do: "#{name}'s ship is hidden on chain"
 
   defp visibility_flash(%{name: name}), do: "#{name} is visible on chain"
+
+  defp automapper_flash(%{name: name, automapper: false}),
+    do: "#{name}'s auto-mapper is off"
+
+  defp automapper_flash(%{name: name}), do: "#{name}'s auto-mapper is on"
 
   defp schedule_topbar_load(socket) do
     if connected?(socket) and topbar_esi_enabled?() do
@@ -3633,9 +3828,21 @@ defmodule ZtripwireWeb.DashboardLive do
         )
       end)
 
+      demo? = Map.get(socket.assigns, :demo?, false)
+
       Task.start(fn ->
-        send(pid, {:chart_data_loaded, solar_system_id, range, chart_data_for(system, range)})
+        data = if demo?, do: empty_chart_data(range), else: chart_data_for(system, range)
+        send(pid, {:chart_data_loaded, solar_system_id, range, data})
       end)
+
+      if not demo? and not Ztripwire.Systems.esi_resolvable?(system) do
+        Task.start(fn ->
+          send(
+            pid,
+            {:kill_stream_loaded, solar_system_id, Ztripwire.ZKill.recent_kills(solar_system_id)}
+          )
+        end)
+      end
     end
 
     socket
@@ -3648,8 +3855,11 @@ defmodule ZtripwireWeb.DashboardLive do
       solar_system_id = system.solar_system_id
       range = socket.assigns[:chart_range] || "24h"
 
+      demo? = Map.get(socket.assigns, :demo?, false)
+
       Task.start(fn ->
-        send(pid, {:chart_data_loaded, solar_system_id, range, chart_data_for(system, range)})
+        data = if demo?, do: empty_chart_data(range), else: chart_data_for(system, range)
+        send(pid, {:chart_data_loaded, solar_system_id, range, data})
       end)
     end
 
@@ -3670,11 +3880,35 @@ defmodule ZtripwireWeb.DashboardLive do
     labels = range_labels(range)
     width = bucket_width_hours(range)
     now = DateTime.utc_now()
+    since = DateTime.add(now, -length(labels) * width * 3600, :second)
 
+    case chart_activity(system, since, now, length(labels), width) do
+      {jumps, ship_kills, pod_kills, npc_kills} ->
+        %{
+          labels: labels,
+          jumps: jumps,
+          ship_kills: ship_kills,
+          pod_kills: pod_kills,
+          npc_kills: npc_kills
+        }
+
+      nil ->
+        chart_fallback(system, labels, width, now, since)
+    end
+  end
+
+  defp chart_activity(system, since, now, count, width) do
+    if Ztripwire.Systems.esi_resolvable?(system) do
+      case Ztripwire.Mapping.list_system_activity(system.solar_system_id, since) do
+        [] -> nil
+        rows -> Ztripwire.Mapping.bucket_activity(rows, now, count, width)
+      end
+    end
+  end
+
+  defp chart_fallback(system, labels, width, now, since) do
     {ship_kills, pod_kills} =
       if Ztripwire.Systems.esi_resolvable?(system) do
-        since = DateTime.add(now, -length(labels) * width * 3600, :second)
-
         case Ztripwire.ZKill.kill_history(system.solar_system_id, since: since) do
           {:ok, kills} -> Ztripwire.ZKill.bucket(kills, now, length(labels), width)
           {:error, _} -> {List.duplicate(0, length(labels)), List.duplicate(0, length(labels))}

@@ -11,6 +11,8 @@ defmodule Ztripwire.Tracking do
   alias Phoenix.PubSub
 
   @topic_prefix "mask"
+  @no_map_systems [30_000_142, 30_002_187]
+  @pod_type_ids [670, 33_328]
 
   def mask_topic(mask_id), do: "#{@topic_prefix}:#{mask_id}"
 
@@ -51,8 +53,17 @@ defmodule Ztripwire.Tracking do
     Map.new(characters, fn character -> {character.eve_id, presence(character.eve_id) || %{}} end)
   end
 
-  def add_viewer(%{eve_id: eve_id}, pid \\ self()), do: Presence.add_viewer(eve_id, pid)
+  def add_viewer(%{eve_id: eve_id}, pid \\ self(), target \\ nil) do
+    Presence.add_viewer(eve_id, pid, target)
+  end
+
   def remove_viewer(%{eve_id: eve_id}, pid \\ self()), do: Presence.remove_viewer(eve_id, pid)
+
+  def set_viewer_target(%{eve_id: eve_id}, target, pid \\ self()) do
+    Presence.set_target(eve_id, pid, target)
+  end
+
+  def targets(eve_id) when is_integer(eve_id), do: Presence.targets(eve_id)
 
   def stop_poller(%{eve_id: eve_id}) do
     case Registry.lookup(Ztripwire.TrackingRegistry, eve_id) do
@@ -82,6 +93,7 @@ defmodule Ztripwire.Tracking do
   def apply_location_change(map, character_name, prev_system, solar_system_id, opts \\ []) do
     name_fetcher = Keyword.get(opts, :name_fetcher, &fetch_system_info/1)
     route_fn = Keyword.get(opts, :route_fn, fn o, d -> ESI.get_route(o, d) end)
+    record_stats? = Keyword.get(opts, :record_stats, true)
     position = next_position(map, prev_system)
 
     with {:ok, system} <-
@@ -99,12 +111,14 @@ defmodule Ztripwire.Tracking do
           nil
         end
 
-      _ = Mapping.record_visit(system)
+      if record_stats? do
+        _ = Mapping.record_visit(system)
 
-      if is_binary(character_name) and character_name != "" do
-        case Accounts.get_character_by_name(character_name) do
-          %{} = visitor -> Accounts.bump_stats(visitor.id, systems_visited: 1)
-          nil -> :ok
+        if is_binary(character_name) and character_name != "" do
+          case Accounts.get_character_by_name(character_name) do
+            %{} = visitor -> Accounts.bump_stats(visitor.id, systems_visited: 1)
+            nil -> :ok
+          end
         end
       end
 
@@ -114,6 +128,59 @@ defmodule Ztripwire.Tracking do
       {:ok, %{system: system, connection: connection_result}}
     end
   end
+
+  def automap_allowed?(map, from, to_solar, opts \\ [])
+
+  def automap_allowed?(map, %MapSystem{} = from, to_solar, opts)
+      when is_integer(to_solar) do
+    to_row = Mapping.get_system_by_solar(map.mask_id, to_solar)
+    target_in_chain? = to_row != nil and is_nil(to_row.hidden_at)
+
+    cond do
+      not automapper?(Keyword.get(opts, :character)) ->
+        false
+
+      Keyword.get(opts, :docked, false) ->
+        false
+
+      Keyword.get(opts, :ship_type_id) in @pod_type_ids ->
+        false
+
+      from.solar_system_id == to_solar ->
+        false
+
+      from.solar_system_id in @no_map_systems or to_solar in @no_map_systems ->
+        false
+
+      Ztripwire.Systems.special_region?(from.solar_system_id) or
+          Ztripwire.Systems.special_region?(to_solar) ->
+        false
+
+      kspace?(from.solar_system_id) and kspace?(to_solar) ->
+        false
+
+      target_in_chain? ->
+        false
+
+      to_row != nil and
+          Mapping.connection_between(map.mask_id, from.id, to_row.id) != nil ->
+        false
+
+      true ->
+        true
+    end
+  end
+
+  def automap_allowed?(_map, _from, _to_solar, _opts), do: false
+
+  def automapper?(nil), do: true
+  def automapper?(%{automapper: false}), do: false
+  def automapper?(_character), do: true
+
+  def system_name(solar_system_id), do: Ztripwire.Systems.name_for(solar_system_id)
+
+  defp kspace?(id) when is_integer(id), do: id < 31_000_000
+  defp kspace?(_), do: false
 
   def wormholes_for_jump(from_system, to_system, signatures) do
     to_class = Ztripwire.Systems.display_class(to_system)
@@ -154,9 +221,7 @@ defmodule Ztripwire.Tracking do
   end
 
   defp eligible_jump_codes(from_system, to_system) do
-    from = Ztripwire.Systems.display_class(from_system)
-    to = Ztripwire.Systems.display_class(to_system)
-    Wormholes.eligible_types(from, to).from
+    Wormholes.eligible_types(from_system, to_system).from
   end
 
   defp blank_wormhole?(%{site_type: "wormhole", type_name: name}),

@@ -39,6 +39,56 @@ defmodule Ztripwire.SignaturesTest do
       assert parsed.category == :wormhole
     end
 
+    test "keeps the EVE type column out of the name" do
+      {:ok, parsed} =
+        Signatures.parse_line("ABC-123\tCosmic Signature\tWormhole\t\t100.00%\t1.21 AU")
+
+      assert parsed.name == nil
+      assert parsed.category == :wormhole
+      assert parsed.kind == :signature
+    end
+
+    test "parses a typed non-wormhole site" do
+      {:ok, parsed} =
+        Signatures.parse_line("ABC-123\tCosmic Signature\tCombat Site\tSerpentis Frigate Den")
+
+      assert parsed.name == "Serpentis Frigate Den"
+      assert parsed.category == :combat
+    end
+
+    test "recognizes localized scan groups and site types" do
+      cases = [
+        {"DEF-456\tAnomalie cosmique\tSystème abandonné", :anomaly, :combat, "Système abandonné"},
+        {"DEF-457\tKosmische Anomalie\tVerlassenes System", :anomaly, :combat,
+         "Verlassenes System"},
+        {"DEF-458\t宇宙の特異点\t放棄された施設", :anomaly, :combat, "放棄された施設"},
+        {"DEF-459\t코즈믹 어노말리\t버려진 시설", :anomaly, :combat, "버려진 시설"},
+        {"DEF-460\tКосмическая аномалия\tЗаброшенное сооружение", :anomaly, :combat,
+         "Заброшенное сооружение"},
+        {"GHI-461\tSignature cosmique\tTrou de ver\t\t100%\t1,21 AU", :signature, :wormhole, nil},
+        {"GHI-462\tKosmische Signatur\tWurmloch\t\t100%\t1,21 AU", :signature, :wormhole, nil},
+        {"GHI-463\t宇宙のシグネチャ\tワームホール\t\t100%\t1.21 AU", :signature, :wormhole, nil},
+        {"GHI-464\t코즈믹 시그니처\t웜홀\t\t100%\t1.21 AU", :signature, :wormhole, nil},
+        {"GHI-465\tСкрытый сигнал\tЧервоточина\t\t100%\t1,21 AU", :signature, :wormhole, nil}
+      ]
+
+      for {line, kind, category, name} <- cases do
+        assert {:ok, parsed} = Signatures.parse_line(line)
+        assert parsed.kind == kind
+        assert parsed.category == category
+        assert parsed.name == name
+      end
+    end
+
+    test "excludes localized distances from the name" do
+      {:ok, parsed} =
+        Signatures.parse_line(
+          "ABC-123\tCosmic Signature\tSerpentis Frigate Den\t100.0%\t1,21 а.е."
+        )
+
+      assert parsed.name == "Serpentis Frigate Den"
+    end
+
     test "detects data, relic, gas and ore sites by keyword" do
       for {name, expected} <- [
             {"Ruined Data Site", :data},
@@ -117,6 +167,70 @@ defmodule Ztripwire.SignaturesTest do
       attrs = Signatures.attrs_from_params(%{"scanned_at" => "nope", "type_id" => "abc"})
       refute Map.has_key?(attrs, :inserted_at)
       assert attrs.type_id == nil
+    end
+  end
+
+  describe "scan attrs" do
+    test "an existing wormhole keeps its identified type and life" do
+      existing = %Ztripwire.Mapping.Signature{
+        sig_id: "ABC-123",
+        kind: "signature",
+        site_type: "wormhole",
+        type_name: "Unstable Wormhole (K162)",
+        life_length: 86_400,
+        expires_at: ~N[2026-01-02 00:00:00]
+      }
+
+      parsed = %Ztripwire.Signatures.Parsed{
+        sig_id: "ABC-123",
+        kind: :signature,
+        name: nil,
+        wormhole_type: nil,
+        category: :wormhole
+      }
+
+      assert Signatures.scan_update_attrs(existing, parsed, ~N[2026-01-01 12:00:00]) == :skip
+    end
+
+    test "an unchanged non-wormhole is not rewritten" do
+      existing = %Ztripwire.Mapping.Signature{
+        sig_id: "ABC-123",
+        kind: "signature",
+        site_type: "combat",
+        type_name: "Serpentis Frigate Den"
+      }
+
+      parsed = %Ztripwire.Signatures.Parsed{
+        sig_id: "ABC-123",
+        kind: :signature,
+        name: "Serpentis Frigate Den",
+        wormhole_type: nil,
+        category: :combat
+      }
+
+      assert Signatures.scan_update_attrs(existing, parsed, ~N[2026-01-01 12:00:00]) == :skip
+    end
+
+    test "a changed non-wormhole is refreshed" do
+      existing = %Ztripwire.Mapping.Signature{
+        sig_id: "ABC-123",
+        kind: "signature",
+        site_type: "combat",
+        type_name: "Old Name"
+      }
+
+      parsed = %Ztripwire.Signatures.Parsed{
+        sig_id: "ABC-123",
+        kind: :signature,
+        name: "New Name",
+        wormhole_type: nil,
+        category: :combat
+      }
+
+      attrs = Signatures.scan_update_attrs(existing, parsed, ~N[2026-01-01 12:00:00])
+      assert attrs.type_name == "New Name"
+      assert attrs.life_length == 259_200
+      assert attrs.expires_at == ~N[2026-01-04 12:00:00]
     end
   end
 

@@ -18,6 +18,7 @@ defmodule Ztripwire.Accounts.Character do
     field :is_admin, :boolean, default: false
     field :ship_on_chain, :boolean, default: true
     field :character_on_chain, :boolean, default: true
+    field :automapper, :boolean, default: true
     field :signatures_added, :integer, default: 0
     field :signatures_updated, :integer, default: 0
     field :signatures_deleted, :integer, default: 0
@@ -48,7 +49,8 @@ defmodule Ztripwire.Accounts.Character do
       :last_login_at,
       :is_admin,
       :ship_on_chain,
-      :character_on_chain
+      :character_on_chain,
+      :automapper
     ])
     |> validate_required([:eve_id, :name])
     |> unique_constraint(:eve_id)

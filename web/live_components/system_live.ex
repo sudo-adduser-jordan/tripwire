@@ -33,7 +33,9 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
      |> assign_new(:chart_hidden, fn -> MapSet.new() end)
      |> assign_new(:chart_data, fn ->
        %{labels: [], jumps: [], ship_kills: [], pod_kills: [], npc_kills: []}
-     end)}
+     end)
+     |> assign_new(:kill_stream, fn -> [] end)
+     |> assign_new(:character, fn -> nil end)}
   end
 
   def handle_event("select-system", %{"id" => id}, socket) do
@@ -56,6 +58,24 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
 
   def handle_event("toggle-favorite", _params, socket) do
     send(self(), :toggle_favorite)
+    {:noreply, socket}
+  end
+
+  def handle_event("set-destination", %{"solar" => solar}, socket) do
+    case parse_id(solar) do
+      nil -> :ok
+      solar_id -> send(self(), {:set_destination, solar_id})
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("open-window", %{"solar" => solar}, socket) do
+    case parse_id(solar) do
+      nil -> :ok
+      solar_id -> send(self(), {:open_window, solar_id})
+    end
+
     {:noreply, socket}
   end
 
@@ -167,10 +187,55 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
               >
                 {link.label}
               </a>
+              <button
+                :if={character?(@character)}
+                id="system-set-destination"
+                type="button"
+                class="link link-hover opacity-70 hover:opacity-100 disabled:opacity-40"
+                disabled={
+                  !waypoint_available?(@chart_system) or
+                    !scope?(@character, "esi-ui.write_waypoint.v1")
+                }
+                title={
+                  cond do
+                    not scope?(@character, "esi-ui.write_waypoint.v1") ->
+                      "Log in again to grant autopilot access"
+
+                    not waypoint_available?(@chart_system) ->
+                      "Autopilot is available for k-space systems only"
+
+                    true ->
+                      "Set autopilot destination"
+                  end
+                }
+                phx-click="set-destination"
+                phx-value-solar={@chart_system.solar_system_id}
+                phx-target={@myself}
+              >
+                Set destination
+              </button>
+              <button
+                :if={character?(@character)}
+                id="system-open-window"
+                type="button"
+                class="link link-hover opacity-70 hover:opacity-100 disabled:opacity-40"
+                disabled={!scope?(@character, "esi-ui.open_window.v1")}
+                title={
+                  if scope?(@character, "esi-ui.open_window.v1"),
+                    do: "Open in the EVE client",
+                    else: "Log in again to grant window access"
+                }
+                phx-click="open-window"
+                phx-value-solar={@chart_system.solar_system_id}
+                phx-target={@myself}
+              >
+                Open in game
+              </button>
             </div>
-            <.chart_range_buttons chart_range={@chart_range} />
+            <.chart_range_buttons :if={chart_visible?(@chart_system)} chart_range={@chart_range} />
           </div>
           <div
+            :if={chart_visible?(@chart_system)}
             id="system-chart"
             phx-hook="ChartMount"
             data-chart-fn="initSystemChart"
@@ -184,7 +249,11 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
             class="min-h-0 w-full flex-1"
           >
           </div>
-          <.chart_legend chart_hidden={@chart_hidden} />
+          <.chart_legend :if={chart_visible?(@chart_system)} chart_hidden={@chart_hidden} />
+          <.kill_stream
+            :if={@chart_system && not chart_visible?(@chart_system)}
+            kills={@kill_stream}
+          />
           <.system_selector
             systems={@systems}
             connected_systems={@connected_systems}
@@ -204,6 +273,82 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
   defp range_title("week"), do: "Show last week"
   defp range_title("48h"), do: "Show last 48 hours"
   defp range_title(_), do: "Show last 24 hours"
+
+  defp chart_visible?(nil), do: false
+  defp chart_visible?(system), do: Systems.esi_resolvable?(system)
+
+  defp character?(nil), do: false
+  defp character?(%{refresh_token: token}), do: not is_nil(token)
+  defp character?(_), do: false
+
+  defp scope?(character, scope), do: scope in List.wrap(Map.get(character, :scopes, []))
+
+  defp waypoint_available?(%{solar_system_id: id}) when is_integer(id), do: id < 31_000_000
+  defp waypoint_available?(_), do: false
+
+  attr :kills, :list, default: []
+
+  defp kill_stream(assigns) do
+    ~H"""
+    <div class="min-h-0 w-full flex-1 overflow-y-auto px-2 pb-2">
+      <p class="mb-1 flex items-center justify-between text-[10px] uppercase tracking-widest opacity-60">
+        <span>Recent kills</span>
+        <span>past 8 hours · zKillboard</span>
+      </p>
+      <div
+        :if={@kills == []}
+        class="rounded border border-dashed border-base-content/20 p-4 text-center text-xs opacity-60"
+      >
+        No kills in the past 8 hours.
+      </div>
+      <div :if={@kills != []} class="grid grid-cols-5 gap-1.5">
+        <a
+          :for={kill <- @kills}
+          href={"https://zkillboard.com/kill/#{kill.id}/"}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex min-w-0 flex-col items-center gap-1 rounded border border-base-content/20 bg-base-200 p-1 hover:border-primary"
+          title={"#{kill.ship_name} · #{format_isk(kill.value)} ISK · #{kill_age(kill.time)} ago"}
+        >
+          <img
+            src={EveImages.type_render(kill.ship_type_id, 64)}
+            alt=""
+            loading="lazy"
+            class="size-11 rounded object-cover"
+            onerror={"this.onerror=null;this.src='#{EveImages.type_icon(kill.ship_type_id, 64)}'"}
+          />
+          <span class="w-full truncate text-center text-[10px]">{kill.ship_name}</span>
+          <span class="text-[10px] tabular-nums opacity-60">
+            {format_isk(kill.value)} · {kill_age(kill.time)}
+          </span>
+        </a>
+      </div>
+    </div>
+    """
+  end
+
+  defp format_isk(value) when is_number(value) do
+    cond do
+      value >= 1_000_000_000 -> "#{Float.round(value / 1_000_000_000, 1)}b"
+      value >= 1_000_000 -> "#{Float.round(value / 1_000_000, 1)}m"
+      value >= 1_000 -> "#{Float.round(value / 1_000, 1)}k"
+      true -> Integer.to_string(trunc(value))
+    end
+  end
+
+  defp format_isk(_), do: "0"
+
+  defp kill_age(%DateTime{} = time), do: kill_age(DateTime.diff(DateTime.utc_now(), time))
+
+  defp kill_age(%NaiveDateTime{} = time),
+    do: kill_age(NaiveDateTime.diff(NaiveDateTime.utc_now(), time))
+
+  defp kill_age(seconds) when is_integer(seconds) and seconds < 3600,
+    do: "#{max(1, div(seconds, 60))}m"
+
+  defp kill_age(seconds) when is_integer(seconds) do
+    "#{Float.round(seconds / 3600, 1) |> :erlang.float_to_binary(decimals: 1)}h"
+  end
 
   attr :chart_range, :string, default: "24h"
 

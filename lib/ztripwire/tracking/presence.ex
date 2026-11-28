@@ -32,11 +32,26 @@ defmodule Ztripwire.Tracking.Presence do
     end
   end
 
-  def add_viewer(eve_id, pid \\ self()) when is_integer(eve_id) and is_pid(pid),
-    do: call({:add_viewer, eve_id, pid})
+  def add_viewer(eve_id, pid \\ self(), target \\ nil)
+      when is_integer(eve_id) and is_pid(pid),
+      do: call({:add_viewer, eve_id, pid, target})
 
   def remove_viewer(eve_id, pid \\ self()) when is_integer(eve_id) and is_pid(pid),
     do: call({:remove_viewer, eve_id, pid})
+
+  def set_target(eve_id, pid, target) when is_integer(eve_id) and is_pid(pid),
+    do: call({:set_target, eve_id, pid, target})
+
+  def targets(eve_id) when is_integer(eve_id) do
+    if table?() do
+      case :ets.lookup(@table, {:targets, eve_id}) do
+        [{_key, targets}] -> targets |> Map.values() |> Enum.uniq()
+        [] -> []
+      end
+    else
+      []
+    end
+  end
 
   def sync, do: GenServer.call(__MODULE__, :sync)
 
@@ -81,12 +96,13 @@ defmodule Ztripwire.Tracking.Presence do
     if table?() do
       :ets.delete(@table, {:presence, eve_id})
       :ets.delete(@table, {:viewers, eve_id})
+      :ets.delete(@table, {:targets, eve_id})
     end
 
     {:reply, :ok, state}
   end
 
-  def handle_call({:add_viewer, eve_id, pid}, _from, state) do
+  def handle_call({:add_viewer, eve_id, pid, target}, _from, state) do
     if table?() do
       :ets.update_counter(@table, {:viewers, eve_id}, 1, {{:viewers, eve_id}, 0})
 
@@ -97,6 +113,7 @@ defmodule Ztripwire.Tracking.Presence do
         end
 
       :ets.insert(@table, {{:viewer_pids, pid}, MapSet.put(watched, eve_id)})
+      put_target(eve_id, pid, target)
     end
 
     monitors =
@@ -107,6 +124,11 @@ defmodule Ztripwire.Tracking.Presence do
       end
 
     {:reply, :ok, %{state | monitors: monitors}}
+  end
+
+  def handle_call({:set_target, eve_id, pid, target}, _from, state) do
+    put_target(eve_id, pid, target)
+    {:reply, :ok, state}
   end
 
   def handle_call({:remove_viewer, eve_id, pid}, _from, state) do
@@ -126,6 +148,7 @@ defmodule Ztripwire.Tracking.Presence do
           :ets.insert(@table, {{:viewer_pids, pid}, watched})
         end
 
+        remove_target(eve_id, pid)
         decrement_viewer(eve_id)
         watched
       else
@@ -161,7 +184,11 @@ defmodule Ztripwire.Tracking.Presence do
     if table?() do
       case :ets.lookup(@table, {:viewer_pids, pid}) do
         [{_key, watched}] ->
-          Enum.each(watched, &decrement_viewer/1)
+          Enum.each(watched, fn eve_id ->
+            remove_target(eve_id, pid)
+            decrement_viewer(eve_id)
+          end)
+
           :ets.delete(@table, {:viewer_pids, pid})
 
         [] ->
@@ -177,6 +204,36 @@ defmodule Ztripwire.Tracking.Presence do
     sweep(now_ms())
     schedule_sweep()
     {:noreply, state}
+  end
+
+  defp put_target(_eve_id, _pid, nil), do: :ok
+
+  defp put_target(eve_id, pid, target) when is_map(target) do
+    targets =
+      case :ets.lookup(@table, {:targets, eve_id}) do
+        [{_key, targets}] -> targets
+        [] -> %{}
+      end
+
+    :ets.insert(@table, {{:targets, eve_id}, Map.put(targets, pid, target)})
+  end
+
+  defp put_target(_eve_id, _pid, _target), do: :ok
+
+  defp remove_target(eve_id, pid) do
+    case :ets.lookup(@table, {:targets, eve_id}) do
+      [{_key, targets}] ->
+        targets = Map.delete(targets, pid)
+
+        if map_size(targets) == 0 do
+          :ets.delete(@table, {:targets, eve_id})
+        else
+          :ets.insert(@table, {{:targets, eve_id}, targets})
+        end
+
+      [] ->
+        :ok
+    end
   end
 
   defp decrement_viewer(eve_id) do
