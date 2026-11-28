@@ -135,4 +135,44 @@ defmodule Ztripwire.ESI.ClientTest do
     assert {:error, {:rate_limited, _seconds}} = ESI.get_status()
     refute_received {:requested, _}
   end
+
+  test "applies a per-source quota so pollers outlive interactive traffic" do
+    Application.put_env(
+      :ztripwire,
+      Ztripwire.ESI,
+      Keyword.merge(Application.get_env(:ztripwire, Ztripwire.ESI),
+        interactive_quota: 1,
+        poller_quota: 10
+      )
+    )
+
+    parent = self()
+
+    Req.Test.stub(__MODULE__, fn conn ->
+      send(parent, {:requested, conn.request_path})
+      Req.Test.json(conn, %{"ok" => true})
+    end)
+
+    assert {:ok, %{"ok" => true}} = Client.get("/test/a", subject: :public)
+    assert {:error, {:rate_limited, _}} = Client.get("/test/b", subject: :public)
+    assert {:ok, %{"ok" => true}} = Client.get("/test/c", subject: :public, source: :poller)
+
+    assert_received {:requested, "/latest/test/a"}
+    refute_received {:requested, "/latest/test/b"}
+    assert_received {:requested, "/latest/test/c"}
+  end
+
+  test "reserves part of the rate-limit group for pollers" do
+    Req.Test.stub(__MODULE__, fn conn ->
+      conn
+      |> Plug.Conn.put_resp_header("x-ratelimit-group", "grp")
+      |> Plug.Conn.put_resp_header("x-ratelimit-limit", "100/15m")
+      |> Plug.Conn.put_resp_header("x-ratelimit-remaining", "5")
+      |> Req.Test.json(%{"ok" => true})
+    end)
+
+    assert {:ok, _} = Client.get("/test/a", subject: :public)
+    assert {:error, {:rate_limited, _}} = Client.get("/test/a", subject: :public)
+    assert {:ok, _} = Client.get("/test/a", subject: :public, source: :poller)
+  end
 end

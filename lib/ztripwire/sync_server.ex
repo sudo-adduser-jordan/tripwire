@@ -43,17 +43,19 @@ defmodule Ztripwire.SyncServer do
 
   defp run_corp_sync do
     for character <- Accounts.list_characters() do
-      _ = sync_character(character)
+      _ = sync_character(character, source: :poller)
     end
 
     prune_orphan_masks()
   end
 
-  def sync_character(%Ztripwire.Accounts.Character{} = character) do
-    case ESI.get_character(character.eve_id, refresh: true) do
+  def sync_character(%Ztripwire.Accounts.Character{} = character, opts \\ []) do
+    esi_opts = Keyword.merge([refresh: true], opts)
+
+    case ESI.get_character(character.eve_id, esi_opts) do
       {:ok, %{"corporation_id" => corporation_id} = body} ->
         corporation_name =
-          case ESI.get_corporation(corporation_id, refresh: true) do
+          case ESI.get_corporation(corporation_id, esi_opts) do
             {:ok, %{"name" => name}} -> name
             _ -> character.corporation_name
           end

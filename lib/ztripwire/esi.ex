@@ -15,18 +15,25 @@ defmodule Ztripwire.ESI do
     end
   end
 
-  def get_character_location(character_id, access_token, character \\ nil),
+  def get_character_location(character_id, access_token, character \\ nil, opts \\ []),
     do:
       authorized_get(
         "/characters/#{character_id}/location/",
         character_id,
         access_token,
-        character
+        character,
+        opts
       )
 
-  def get_character_online(character_id, access_token, character \\ nil),
+  def get_character_online(character_id, access_token, character \\ nil, opts \\ []),
     do:
-      authorized_get("/characters/#{character_id}/online/", character_id, access_token, character)
+      authorized_get(
+        "/characters/#{character_id}/online/",
+        character_id,
+        access_token,
+        character,
+        opts
+      )
 
   def get_character(character_id, opts \\ []),
     do: public_get("/characters/#{character_id}/", opts)
@@ -36,24 +43,38 @@ defmodule Ztripwire.ESI do
 
   def get_alliance(alliance_id), do: public_get("/alliances/#{alliance_id}/")
 
-  def get_character_roles(character_id, access_token, character \\ nil),
+  def get_character_roles(character_id, access_token, character \\ nil, opts \\ []),
     do:
-      authorized_get("/characters/#{character_id}/roles/", character_id, access_token, character)
+      authorized_get(
+        "/characters/#{character_id}/roles/",
+        character_id,
+        access_token,
+        character,
+        opts
+      )
 
-  def get_character_titles(character_id, access_token, character \\ nil) do
+  def get_character_titles(character_id, access_token, character \\ nil, opts \\ []) do
     case authorized_get(
            "/characters/#{character_id}/titles/",
            character_id,
            access_token,
-           character
+           character,
+           opts
          ) do
       {:ok, titles} when is_list(titles) -> {:ok, Enum.map(titles, & &1["name"])}
       other -> other
     end
   end
 
-  def get_character_ship(character_id, access_token, character \\ nil),
-    do: authorized_get("/characters/#{character_id}/ship/", character_id, access_token, character)
+  def get_character_ship(character_id, access_token, character \\ nil, opts \\ []),
+    do:
+      authorized_get(
+        "/characters/#{character_id}/ship/",
+        character_id,
+        access_token,
+        character,
+        opts
+      )
 
   def get_system_jumps, do: public_get("/universe/system_jumps/")
 
@@ -222,13 +243,15 @@ defmodule Ztripwire.ESI do
 
   defp persist_refresh_token(_eve_id, _refresh_token), do: :ok
 
-  defp authorized_get(path, character_id, access_token, character) do
-    case Client.get(path, subject: character_id, token: access_token) do
+  defp authorized_get(path, character_id, access_token, character, opts) do
+    source = Keyword.get(opts, :source, :interactive)
+
+    case Client.get(path, subject: character_id, token: access_token, source: source) do
       {:error, {401, _}} when not is_nil(character) ->
         TokenCache.delete(character.eve_id)
 
         with {:ok, token} <- valid_access_token(character) do
-          Client.get(path, subject: character_id, token: token)
+          Client.get(path, subject: character_id, token: token, source: source)
         end
 
       other ->

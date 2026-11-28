@@ -8,6 +8,7 @@ defmodule Ztripwire.ESI.Client do
   @sweep_interval 60_000
   @default_timeout 15_000
   @error_limit_floor 5
+  @quota_window_ms 60_000
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -88,7 +89,9 @@ defmodule Ztripwire.ESI.Client do
   end
 
   defp perform(method, path, key, entry, opts) do
-    with :ok <- budget_allows?(path) do
+    source = Keyword.get(opts, :source, :interactive)
+
+    with :ok <- budget_allows?(path, source) do
       started = System.monotonic_time(:millisecond)
       response = send_request(method, path, entry, opts)
       duration = System.monotonic_time(:millisecond) - started
@@ -266,7 +269,7 @@ defmodule Ztripwire.ESI.Client do
     end
   end
 
-  defp budget_allows?(path) do
+  defp budget_allows?(path, source) do
     now = now_ms()
 
     cond do
@@ -279,7 +282,7 @@ defmodule Ztripwire.ESI.Client do
       true ->
         case group_for(path) do
           nil ->
-            error_limit_allows?(now)
+            with :ok <- error_limit_allows?(now), do: quota_allows?(source, now)
 
           group ->
             cond do
@@ -287,20 +290,50 @@ defmodule Ztripwire.ESI.Client do
                 {:error,
                  {:rate_limited, seconds_until(blocked_until({:blocked, {:group, group}}), now)}}
 
-              group_exhausted?(group, now) ->
+              group_exhausted?(group, now, source) ->
                 {:error, {:rate_limited, seconds_until(budget({:group, group}).reset_at, now)}}
 
               true ->
-                error_limit_allows?(now)
+                with :ok <- error_limit_allows?(now), do: quota_allows?(source, now)
             end
         end
     end
   end
 
-  defp group_exhausted?(group, now) do
+  defp group_exhausted?(group, now, source) do
     case budget({:group, group}) do
-      %{remaining: remaining, reset_at: reset_at} when remaining <= 0 and reset_at > now -> true
-      _ -> false
+      %{remaining: remaining, reset_at: reset_at} = budget when reset_at > now ->
+        remaining <= reserved_for(source, budget)
+
+      _ ->
+        false
+    end
+  end
+
+  defp reserved_for(:poller, _budget), do: 0
+
+  defp reserved_for(_source, %{limit: limit}) when is_integer(limit) and limit > 0 do
+    round(limit * poller_reserve())
+  end
+
+  defp reserved_for(_source, _budget), do: 0
+
+  defp quota_allows?(source, now) do
+    quota = quota_for(source)
+    bucket = div(now, @quota_window_ms)
+    key = {:quota, source, bucket}
+
+    count =
+      if table?(@budget_table) do
+        :ets.update_counter(@budget_table, key, 1, {key, 0})
+      else
+        0
+      end
+
+    if count > quota do
+      {:error, {:rate_limited, seconds_until((bucket + 1) * @quota_window_ms, now)}}
+    else
+      :ok
     end
   end
 
@@ -327,10 +360,12 @@ defmodule Ztripwire.ESI.Client do
 
         window ->
           remaining = integer_header(resp, "x-ratelimit-remaining") || 0
+          limit = integer_header(resp, "x-ratelimit-limit")
 
           :ets.insert(
             @budget_table,
-            {{:group, group}, %{remaining: remaining, reset_at: now_ms() + window * 1000}}
+            {{:group, group},
+             %{remaining: remaining, limit: limit, reset_at: now_ms() + window * 1000}}
           )
       end
     end
@@ -521,6 +556,17 @@ defmodule Ztripwire.ESI.Client do
     :ztripwire
     |> Application.get_env(Ztripwire.ESI, [])
     |> Keyword.get(:cache, true)
+  end
+
+  defp quota_for(:poller), do: esi_config(:poller_quota, 600)
+  defp quota_for(_source), do: esi_config(:interactive_quota, 120)
+
+  defp poller_reserve, do: esi_config(:poller_reserve, 0.1)
+
+  defp esi_config(key, default) do
+    :ztripwire
+    |> Application.get_env(Ztripwire.ESI, [])
+    |> Keyword.get(key, default)
   end
 
   defp req_options do

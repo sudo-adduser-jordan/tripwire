@@ -20,7 +20,10 @@ config :ztripwire, Ztripwire.ESI,
   base_url: "https://esi.evetech.net/latest",
   user_agent: "Ztripwire/0.1.0 (+https://bitbucket.org/daimian/tripwire)",
   compatibility_date: "2026-05-18",
-  cache: true
+  cache: true,
+  interactive_quota: 120,
+  poller_quota: 600,
+  poller_reserve: 0.1
 
 config :ztripwire, Ztripwire.Mailer, adapter: Swoosh.Adapters.Local
 

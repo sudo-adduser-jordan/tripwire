@@ -155,7 +155,7 @@ defmodule Ztripwire.Tracking.Poller do
   defp fetch_online(character) do
     with {:ok, token} <- ESI.valid_access_token(character),
          {:ok, %{"online" => online}} <-
-           ESI.get_character_online(character.eve_id, token, character) do
+           ESI.get_character_online(character.eve_id, token, character, source: :poller) do
       {:ok, online}
     else
       {:error, :no_refresh_token} -> :untracked
@@ -168,7 +168,7 @@ defmodule Ztripwire.Tracking.Poller do
   defp fetch_location(character) do
     with {:ok, token} <- ESI.valid_access_token(character),
          {:ok, %{"solar_system_id" => solar_system_id}} <-
-           ESI.get_character_location(character.eve_id, token, character) do
+           ESI.get_character_location(character.eve_id, token, character, source: :poller) do
       {:ok, solar_system_id}
     else
       {:error, :no_refresh_token} -> :untracked
@@ -182,7 +182,7 @@ defmodule Ztripwire.Tracking.Poller do
   defp fetch_ship(character) do
     with {:ok, token} <- ESI.valid_access_token(character),
          {:ok, %{"ship_type_id" => type_id} = ship} <-
-           ESI.get_character_ship(character.eve_id, token, character) do
+           ESI.get_character_ship(character.eve_id, token, character, source: :poller) do
       {ship["ship_name"], type_id}
     else
       {:error, :no_refresh_token} -> nil
