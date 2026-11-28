@@ -115,19 +115,35 @@ defmodule ZtripwireWeb.AuthControllerTest do
     assert get_session(conn, "phoenix_flash")["info"] =~ "demo mode"
   end
 
+  defp post_session(conn, path) do
+    conn =
+      conn
+      |> put_private(:plug_skip_csrf_protection, false)
+      |> get("/")
+
+    Plug.CSRFProtection.load_state(conn.secret_key_base, get_session(conn, "_csrf_token"))
+    token = Plug.CSRFProtection.get_csrf_token()
+
+    post(conn, path, %{"_csrf_token" => token})
+  end
+
   test "session switch endpoint stores the character without redirecting", %{conn: conn} do
     {:ok, character} =
       Ztripwire.Accounts.upsert_character(%{eve_id: 77_001, name: "Session Char"})
 
-    conn = get(conn, "/auth/session/#{character.eve_id}")
+    conn = post_session(conn, "/auth/session/#{character.eve_id}")
 
     assert conn.status == 204
     assert %{"id" => 77_001, "name" => "Session Char"} = get_session(conn, "current_user")
     assert character.eve_id in get_session(conn, "character_ids")
   end
 
+  test "session switch endpoint rejects GET", %{conn: conn} do
+    assert get(conn, "/auth/session/123").status == 404
+  end
+
   test "session switch endpoint rejects unknown characters", %{conn: conn} do
-    conn = get(conn, "/auth/session/999999")
+    conn = post_session(conn, "/auth/session/999999")
 
     assert conn.status == 404
     assert get_session(conn, "current_user") == nil
@@ -149,7 +165,7 @@ defmodule ZtripwireWeb.AuthControllerTest do
       |> Plug.Test.init_test_session(%{
         "current_user" => %{"id" => character.eve_id, "name" => character.name}
       })
-      |> get("/auth/session/mask/#{mask.id}")
+      |> post_session("/auth/session/mask/#{mask.id}")
 
     assert conn.status == 204
     assert get_session(conn, "mask_id") == mask.id
@@ -166,7 +182,7 @@ defmodule ZtripwireWeb.AuthControllerTest do
       |> Plug.Test.init_test_session(%{
         "current_user" => %{"id" => character.eve_id, "name" => character.name}
       })
-      |> get("/auth/session/mask/#{foreign.id}")
+      |> post_session("/auth/session/mask/#{foreign.id}")
 
     assert conn.status == 404
     assert get_session(conn, "mask_id") == nil
@@ -175,14 +191,22 @@ defmodule ZtripwireWeb.AuthControllerTest do
   test "mask session endpoint rejects the demo mask and unknown ids", %{conn: conn} do
     demo = Ztripwire.TestFixtures.demo_mask()
 
-    conn = get(conn, "/auth/session/mask/#{demo.id}")
+    conn = post_session(conn, "/auth/session/mask/#{demo.id}")
 
     assert conn.status == 404
     assert get_session(conn, "mask_id") == nil
 
-    conn = get(conn, "/auth/session/mask/999999")
+    conn = post_session(conn, "/auth/session/mask/999999")
 
     assert conn.status == 404
     assert get_session(conn, "mask_id") == nil
+  end
+
+  test "session endpoints reject a missing CSRF token", %{conn: conn} do
+    conn = put_private(conn, :plug_skip_csrf_protection, false)
+
+    assert_raise Plug.CSRFProtection.InvalidCSRFTokenError, fn ->
+      post(conn, "/auth/session/123")
+    end
   end
 end

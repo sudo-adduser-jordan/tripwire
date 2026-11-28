@@ -1,3 +1,13 @@
+const csrfToken = () =>
+  document.querySelector("meta[name='csrf-token']")?.getAttribute("content")
+
+const storeSession = (path) =>
+  fetch(path, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "x-csrf-token": csrfToken() },
+  })
+
 const CharacterSwitch = {
   mounted() {
     this.handleEvent("character-switched", ({ eve_id, mask_id }) => {
@@ -10,12 +20,12 @@ const CharacterSwitch = {
   },
 
   async _switchCharacter(eve_id, mask_id) {
-    await fetch(`/auth/session/${eve_id}`, { credentials: "same-origin" })
+    await storeSession(`/auth/session/${eve_id}`)
     if (mask_id) await this._storeMask(mask_id)
   },
 
   _storeMask(mask_id) {
-    return fetch(`/auth/session/mask/${mask_id}`, { credentials: "same-origin" })
+    return storeSession(`/auth/session/mask/${mask_id}`)
   },
 }
 
