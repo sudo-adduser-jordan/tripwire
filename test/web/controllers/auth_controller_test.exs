@@ -17,6 +17,24 @@ defmodule ZtripwireWeb.AuthControllerTest do
     end
   end
 
+  test "SSO callback without a state parameter is rejected", %{conn: conn} do
+    System.put_env("EVESSO_CLIENT_ID", "test-id")
+    System.put_env("EVESSO_CLIENT_SECRET", "test-secret")
+
+    count = length(Ztripwire.Accounts.list_characters())
+
+    try do
+      conn = get(conn, "/auth/evesso/callback?code=code")
+
+      assert redirected_to(conn) == "/"
+      assert get_session(conn, "phoenix_flash")["error"] =~ "login session expired"
+      assert length(Ztripwire.Accounts.list_characters()) == count
+    after
+      System.delete_env("EVESSO_CLIENT_ID")
+      System.delete_env("EVESSO_CLIENT_SECRET")
+    end
+  end
+
   test "SSO request redirects to EVE with a state parameter and state cookie", %{conn: conn} do
     System.put_env("EVESSO_CLIENT_ID", "test-id")
     System.put_env("EVESSO_CLIENT_SECRET", "test-secret")

@@ -8,6 +8,7 @@ defmodule ZtripwireWeb.AuthController do
 
   plug :require_sso when action in [:request, :callback, :delete]
   plug :restore_state_param when action in [:callback]
+  plug :require_state_param when action in [:callback]
   plug Ueberauth
 
   defp require_sso(conn, _opts) do
@@ -28,6 +29,30 @@ defmodule ZtripwireWeb.AuthController do
     end
   end
 
+  defp require_state_param(conn, _opts) do
+    expected = SSO.state_param(conn)
+    provided = conn.params["state"]
+
+    if is_binary(expected) and is_binary(provided) and
+         Plug.Crypto.secure_compare(provided, expected) do
+      conn
+    else
+      Ztripwire.Log.emit(:warning, %{
+        event: "sso_login_failed",
+        provider: "evesso",
+        reason: "invalid_state",
+        has_code: is_binary(conn.params["code"]),
+        params: conn.params |> Map.keys() |> Enum.sort(),
+        state_cookie: Map.has_key?(conn.req_cookies, "ueberauth.state_param")
+      })
+
+      conn
+      |> put_flash(:error, "EVE SSO login failed: login session expired, sign in again")
+      |> redirect(to: "/")
+      |> halt()
+    end
+  end
+
   def delete(conn, _params) do
     conn
     |> put_flash(:info, "You have been logged out!")
@@ -38,7 +63,9 @@ defmodule ZtripwireWeb.AuthController do
   def request(conn, _params), do: conn
 
   def callback(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
-    case Ztripwire.SSO.JWT.verify(auth.credentials && auth.credentials.token) do
+    token = auth.credentials && auth.credentials.token
+
+    case Ztripwire.SSO.JWT.verify(token, subject: auth.uid) do
       {:ok, _claims} ->
         login(conn, auth)
 
