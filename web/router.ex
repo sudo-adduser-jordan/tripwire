@@ -20,8 +20,35 @@ defmodule ZtripwireWeb.Router do
     plug :fetch_live_flash
     plug :put_root_layout, html: {ZtripwireWeb.RootLayout, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug :put_security_headers
     plug :load_current_user
+  end
+
+  defp put_security_headers(conn, _opts) do
+    nonce = Base.url_encode64(:crypto.strong_rand_bytes(18), padding: false)
+
+    csp =
+      [
+        "default-src 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+        "frame-ancestors 'self'",
+        "form-action 'self'",
+        "script-src 'self' 'nonce-#{nonce}'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: https://images.evetech.net",
+        "font-src 'self'",
+        "media-src 'self'",
+        "connect-src 'self' ws: wss:"
+      ]
+      |> Enum.join("; ")
+
+    conn
+    |> assign(:csp_nonce, nonce)
+    |> put_secure_browser_headers(%{
+      "content-security-policy" => csp,
+      "permissions-policy" => "camera=(), microphone=(), geolocation=()"
+    })
   end
 
   pipeline :api do

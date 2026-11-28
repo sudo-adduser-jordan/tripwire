@@ -14,7 +14,7 @@
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
     </script>
 
-    <script>
+    <script nonce={assigns[:csp_nonce]}>
       const themeKey = "phx:theme";
       const modeKey = "phx:mode";
       const solidKey = "phx:solid";
@@ -101,7 +101,7 @@
         setFont(e.target.value);
       });
     </script>
-    <style>
+    <style nonce={assigns[:csp_nonce]}>
       /* eveonline.com hero art: the Fractured Skies loop over its still frame */
       .eve-hero {
         position: fixed;

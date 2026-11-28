@@ -72,6 +72,22 @@ defmodule ZtripwireWeb.PageControllerTest do
     assert html =~ ~s|data-theme-lock="true"|
   end
 
+  test "GET / sets a CSP whose nonce matches the inline theme script", %{conn: conn} do
+    conn = get(conn, ~p"/")
+
+    [csp] = get_resp_header(conn, "content-security-policy")
+    assert [_full, nonce] = Regex.run(~r/'nonce-([^']+)'/, csp)
+    assert csp =~ "object-src 'none'"
+    assert csp =~ "frame-ancestors 'self'"
+
+    assert get_resp_header(conn, "permissions-policy") == [
+             "camera=(), microphone=(), geolocation=()"
+           ]
+
+    html = html_response(conn, 200)
+    assert html =~ ~s|nonce="#{nonce}"|
+  end
+
   defp with_env(vars, fun) do
     previous = Map.new(vars, fn {name, _value} -> {name, System.get_env(name)} end)
 
