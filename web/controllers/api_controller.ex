@@ -62,13 +62,13 @@ defmodule ZtripwireWeb.ApiController do
     token =
       conn
       |> get_req_header("x-api-token")
-      |> List.first() || conn.params["token"] || ""
+      |> List.first() || ""
 
     cond do
       expected in [nil, ""] ->
         conn |> put_status(:forbidden) |> json(%{error: "API disabled"}) |> halt()
 
-      token == expected ->
+      Plug.Crypto.secure_compare(token, expected) ->
         conn
 
       true ->

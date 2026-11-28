@@ -90,6 +90,7 @@ Deploys run the server in `MIX_ENV=prod` and are driven by the `start` and `stop
    | `ZTRIPWIRE_ESI_COMPATIBILITY_DATE` | no | ESI `X-Compatibility-Date`, defaults to `2026-05-18`; re-verify the routes when raising it |
    | `ZTRIPWIRE_ADMIN_CHARACTER_IDS` | no | Comma-separated EVE character ids promoted to admin at login; set it before deploying an upgrade so the current admin stays admin |
    | `ZTRIPWIRE_ADMIN_CORPORATION_IDS` | no | Comma-separated EVE corporation ids whose characters are promoted to admin at login |
+   | `TRIPWIRE_API` | no | Shared token for the read-only `/api` endpoints, sent in the `x-api-token` header; the endpoints answer 403 while unset |
 
 3. Start the server:
 
