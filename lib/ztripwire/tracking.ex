@@ -51,8 +51,8 @@ defmodule Ztripwire.Tracking do
     Map.new(characters, fn character -> {character.eve_id, presence(character.eve_id) || %{}} end)
   end
 
-  def add_viewer(%{eve_id: eve_id}), do: Presence.add_viewer(eve_id)
-  def remove_viewer(%{eve_id: eve_id}), do: Presence.remove_viewer(eve_id)
+  def add_viewer(%{eve_id: eve_id}, pid \\ self()), do: Presence.add_viewer(eve_id, pid)
+  def remove_viewer(%{eve_id: eve_id}, pid \\ self()), do: Presence.remove_viewer(eve_id, pid)
 
   def stop_poller(%{eve_id: eve_id}) do
     case Registry.lookup(Ztripwire.TrackingRegistry, eve_id) do
