@@ -402,7 +402,7 @@ defmodule Ztripwire.ESI.Client do
     group = header(resp, "x-ratelimit-group")
 
     if group && table?(@budget_table) do
-      :ets.insert(@budget_table, {{:path_group, path}, group})
+      :ets.insert(@budget_table, {{:path_group, path}, {group, now_ms()}})
 
       case window_seconds(header(resp, "x-ratelimit-limit")) do
         nil ->
@@ -455,6 +455,7 @@ defmodule Ztripwire.ESI.Client do
 
   defp group_for(path) do
     case budget({:path_group, path}) do
+      {group, _stored_at} when is_binary(group) -> group
       group when is_binary(group) -> group
       _ -> nil
     end
@@ -546,13 +547,24 @@ defmodule Ztripwire.ESI.Client do
     end
 
     if table?(@budget_table) do
-      :ets.foldl(
-        fn {key, value}, acc ->
-          if match?({:blocked, _}, key) and is_integer(value) and value <= now - 300_000 do
-            :ets.delete(@budget_table, key)
-          end
+      current_bucket = div(now, @quota_window_ms)
 
-          acc
+      :ets.foldl(
+        fn
+          {key = {:quota, _source, bucket}, _value}, acc ->
+            if bucket < current_bucket - 1, do: :ets.delete(@budget_table, key)
+            acc
+
+          {key = {:path_group, _path}, {_group, stored_at}}, acc ->
+            if stored_at <= now - 86_400_000, do: :ets.delete(@budget_table, key)
+            acc
+
+          {key, value}, acc ->
+            if match?({:blocked, _}, key) and is_integer(value) and value <= now - 300_000 do
+              :ets.delete(@budget_table, key)
+            end
+
+            acc
         end,
         :ok,
         @budget_table

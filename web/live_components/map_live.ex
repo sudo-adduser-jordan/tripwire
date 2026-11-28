@@ -119,21 +119,41 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
     end
   end
 
+  defp parse_id(id) do
+    case Integer.parse(to_string(id)) do
+      {value, ""} -> value
+      _ -> nil
+    end
+  end
+
   def handle_event("toggle-collapse", %{"id" => id}, socket) do
-    send(self(), {:toggle_collapse, String.to_integer(id)})
+    case parse_id(id) do
+      nil -> :ok
+      system_id -> send(self(), {:toggle_collapse, system_id})
+    end
+
     {:noreply, socket}
   end
 
   def handle_event("select-system", %{"id" => id}, socket) do
-    send(self(), {:select_system, String.to_integer(id)})
+    case parse_id(id) do
+      nil -> :ok
+      system_id -> send(self(), {:select_system, system_id})
+    end
+
     {:noreply, socket}
   end
 
   def handle_event("open-node-signature", %{"id" => id}, socket) do
-    system_id = String.to_integer(id)
-    signature = node_signature(socket.assigns.connections, socket.assigns.wh_sigs, system_id)
-    send(self(), {:open_node_signature, system_id, signature && signature.id})
-    {:noreply, socket}
+    case parse_id(id) do
+      nil ->
+        {:noreply, socket}
+
+      system_id ->
+        signature = node_signature(socket.assigns.connections, socket.assigns.wh_sigs, system_id)
+        send(self(), {:open_node_signature, system_id, signature && signature.id})
+        {:noreply, socket}
+    end
   end
 
   def handle_event("show-favorites", _params, socket) do
@@ -157,7 +177,11 @@ defmodule ZtripwireWeb.LiveComponents.MapLive do
   end
 
   def handle_event("switch-map", %{"id" => id}, socket) do
-    send(self(), {:switch_map, String.to_integer(id)})
+    case parse_id(id) do
+      nil -> :ok
+      map_id -> send(self(), {:switch_map, map_id})
+    end
+
     {:noreply, socket}
   end
 

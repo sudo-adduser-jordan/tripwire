@@ -16,6 +16,7 @@ erDiagram
     string alliance_name
     array scopes
     string refresh_token
+    string owner_hash
     datetime last_login_at
     boolean is_admin
     boolean ship_on_chain
@@ -68,6 +69,7 @@ erDiagram
     integer id PK
     string name
     string widgets
+    integer owner_character_id
     datetime inserted_at
     datetime updated_at
   }
@@ -236,6 +238,7 @@ erDiagram
   }
   user_settings {
     integer id PK
+    integer character_id
     string map_layout
     boolean show_row_guides
     boolean show_row_counts

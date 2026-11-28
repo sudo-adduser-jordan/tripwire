@@ -29,8 +29,14 @@ secret_key_base =
       value
   end
 
+dev_bind_ip =
+  case System.get_env("DEV_BIND_ALL") do
+    value when value in ["1", "true"] -> {0, 0, 0, 0}
+    _ -> {127, 0, 0, 1}
+  end
+
 config :ztripwire, ZtripwireWeb.Endpoint,
-  http: [ip: {0, 0, 0, 0}],
+  http: [ip: dev_bind_ip],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,

@@ -15,6 +15,7 @@ defmodule Ztripwire.Application do
       Ztripwire.Tracking.Presence,
       Ztripwire.Tracking.PollerSupervisor,
       {Registry, keys: :unique, name: Ztripwire.TrackingRegistry},
+      {Task.Supervisor, name: Ztripwire.TaskSupervisor},
       Ztripwire.SyncServer,
       {DNSCluster, query: Application.get_env(:ztripwire, :dns_cluster_query) || :ignore},
       ZtripwireWeb.Endpoint

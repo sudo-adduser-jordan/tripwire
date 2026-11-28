@@ -23,6 +23,7 @@ defmodule ZtripwireWeb.DashboardLive do
   @chart_refresh_ms 60_000
   @chart_ranges ~w(24h 48h week)
   @settings_tabs ~w(account map widgets layouts statistics themes admin)
+  @max_paste_bytes 200_000
   @widgets %{
     "system" => :widget_system,
     "notes" => :widget_notes,
@@ -486,6 +487,99 @@ defmodule ZtripwireWeb.DashboardLive do
     do: handle_event("open-map-modal", %{}, socket)
 
   def handle_info(_message, socket), do: {:noreply, socket}
+
+  defp paste_signatures(socket, text) do
+    with system when not is_nil(system) <- selected_system(socket),
+         entries when entries != [] <- SigParser.parse_paste(text) do
+      before = Data.list_signatures(data(socket), system.id)
+      before_ids = MapSet.new(before, & &1.sig_id)
+
+      pasted_ids = entries |> Enum.map(& &1.sig_id) |> MapSet.new()
+
+      {{added, updated}, data} =
+        Data.upsert_signatures(data(socket), system, entries, socket.assigns.character)
+
+      socket = put_data(socket, data)
+
+      {{dropped, linked, hidden}, data} =
+        Data.sync_map_after_signature_change(data(socket), system, [])
+
+      socket = put_data(socket, data)
+
+      socket =
+        push_signature_history(
+          socket,
+          system.id,
+          {:batch, signature_diff_ops(before, Data.list_signatures(data(socket), system.id))}
+        )
+
+      missing = before_ids |> MapSet.difference(pasted_ids) |> Enum.sort()
+
+      socket =
+        if missing == [] do
+          socket |> assign(:stale_ids, []) |> assign(:stale_system_id, nil)
+        else
+          socket |> assign(:stale_ids, missing) |> assign(:stale_system_id, system.id)
+        end
+
+      {:noreply,
+       socket
+       |> reload_map_from_sync(dropped, linked, hidden)
+       |> reload_signatures()
+       |> maybe_match_flash(added, updated)}
+    else
+      nil ->
+        {:noreply,
+         socket
+         |> assign(:stale_ids, [])
+         |> assign(:stale_system_id, nil)
+         |> put_flash(:error, "Select a system first")}
+
+      [] ->
+        {:noreply,
+         socket
+         |> assign(:stale_ids, [])
+         |> assign(:stale_system_id, nil)
+         |> put_flash(:error, "No signatures recognized — bad input")}
+    end
+  end
+
+  defp switch_to_mask(socket, mask_id) do
+    case Enum.find(socket.assigns.masks, &(&1.id == mask_id)) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Mask not found")}
+
+      mask ->
+        {map, socket} = map_for_mask(socket, mask)
+        socket = ensure_jita_system(socket, map)
+
+        Phoenix.PubSub.unsubscribe(
+          Ztripwire.PubSub,
+          Ztripwire.Tracking.mask_topic(socket.assigns.map.mask_id)
+        )
+
+        Phoenix.PubSub.subscribe(Ztripwire.PubSub, Ztripwire.Tracking.mask_topic(map.mask_id))
+
+        {:noreply,
+         socket
+         |> assign(:mask, mask)
+         |> assign(:map, map)
+         |> assign(:maps, Data.list_maps_for_mask(data(socket), mask.id))
+         |> assign(:systems, chain_systems(socket, map))
+         |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.mask_id))
+         |> assign(:selected_system_id, nil)
+         |> assign(:selected_system_name, nil)
+         |> assign(:chart_system, nil)
+         |> assign(:system_suggestions, [])
+         |> assign(:signatures, [])
+         |> assign(:comments, [])
+         |> assign(:undo, %{})
+         |> assign(:redo, %{})
+         |> refresh_occupants()
+         |> patch_to_preferred(chain_systems(socket, map))
+         |> push_event("mask-switched", %{mask_id: mask.id})}
+    end
+  end
 
   @impl true
   def handle_event("toggle-settings", _params, socket) do
@@ -1086,7 +1180,10 @@ defmodule ZtripwireWeb.DashboardLive do
       )
 
     member_id =
-      String.to_integer(to_string(params["character_id"] || params["character-id"] || "0"))
+      case Integer.parse(to_string(params["character_id"] || params["character-id"] || "0")) do
+        {id, ""} -> id
+        _ -> 0
+      end
 
     with %{} = mask <- mask,
          true <- mask.kind == "demo",
@@ -1158,58 +1255,10 @@ defmodule ZtripwireWeb.DashboardLive do
     text = Map.get(params, "text", "") |> to_string()
     socket = clear_flash(socket)
 
-    with system when not is_nil(system) <- selected_system(socket),
-         entries when entries != [] <- SigParser.parse_paste(text) do
-      before = Data.list_signatures(data(socket), system.id)
-      before_ids = MapSet.new(before, & &1.sig_id)
-
-      pasted_ids = entries |> Enum.map(& &1.sig_id) |> MapSet.new()
-
-      {{added, updated}, data} =
-        Data.upsert_signatures(data(socket), system, entries, socket.assigns.character)
-
-      socket = put_data(socket, data)
-
-      {{dropped, linked, hidden}, data} =
-        Data.sync_map_after_signature_change(data(socket), system, [])
-
-      socket = put_data(socket, data)
-
-      socket =
-        push_signature_history(
-          socket,
-          system.id,
-          {:batch, signature_diff_ops(before, Data.list_signatures(data(socket), system.id))}
-        )
-
-      missing = before_ids |> MapSet.difference(pasted_ids) |> Enum.sort()
-
-      socket =
-        if missing == [] do
-          socket |> assign(:stale_ids, []) |> assign(:stale_system_id, nil)
-        else
-          socket |> assign(:stale_ids, missing) |> assign(:stale_system_id, system.id)
-        end
-
-      {:noreply,
-       socket
-       |> reload_map_from_sync(dropped, linked, hidden)
-       |> reload_signatures()
-       |> maybe_match_flash(added, updated)}
+    if byte_size(text) > @max_paste_bytes do
+      {:noreply, put_flash(socket, :error, "Scan paste is too large")}
     else
-      nil ->
-        {:noreply,
-         socket
-         |> assign(:stale_ids, [])
-         |> assign(:stale_system_id, nil)
-         |> put_flash(:error, "Select a system first")}
-
-      [] ->
-        {:noreply,
-         socket
-         |> assign(:stale_ids, [])
-         |> assign(:stale_system_id, nil)
-         |> put_flash(:error, "No signatures recognized — bad input")}
+      paste_signatures(socket, text)
     end
   end
 
@@ -1456,41 +1505,9 @@ defmodule ZtripwireWeb.DashboardLive do
   end
 
   def handle_event("switch-mask", %{"id" => id}, socket) do
-    mask_id = String.to_integer(id)
-
-    case Enum.find(socket.assigns.masks, &(&1.id == mask_id)) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "Mask not found")}
-
-      mask ->
-        {map, socket} = map_for_mask(socket, mask)
-        socket = ensure_jita_system(socket, map)
-
-        Phoenix.PubSub.unsubscribe(
-          Ztripwire.PubSub,
-          Ztripwire.Tracking.mask_topic(socket.assigns.map.mask_id)
-        )
-
-        Phoenix.PubSub.subscribe(Ztripwire.PubSub, Ztripwire.Tracking.mask_topic(map.mask_id))
-
-        {:noreply,
-         socket
-         |> assign(:mask, mask)
-         |> assign(:map, map)
-         |> assign(:maps, Data.list_maps_for_mask(data(socket), mask.id))
-         |> assign(:systems, chain_systems(socket, map))
-         |> assign(:connections, Data.list_connections_with_endpoints(data(socket), map.mask_id))
-         |> assign(:selected_system_id, nil)
-         |> assign(:selected_system_name, nil)
-         |> assign(:chart_system, nil)
-         |> assign(:system_suggestions, [])
-         |> assign(:signatures, [])
-         |> assign(:comments, [])
-         |> assign(:undo, %{})
-         |> assign(:redo, %{})
-         |> refresh_occupants()
-         |> patch_to_preferred(chain_systems(socket, map))
-         |> push_event("mask-switched", %{mask_id: mask.id})}
+    case Integer.parse(to_string(id)) do
+      {mask_id, ""} -> switch_to_mask(socket, mask_id)
+      _ -> {:noreply, put_flash(socket, :error, "Mask not found")}
     end
   end
 

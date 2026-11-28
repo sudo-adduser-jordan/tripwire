@@ -58,8 +58,13 @@ defmodule ZtripwireWeb.Plugs.WideEvent do
 
   defp user_agent(conn) do
     case get_req_header(conn, "user-agent") do
-      [agent | _] -> agent
-      [] -> "unknown"
+      [agent | _] ->
+        agent
+        |> String.replace(~r/[\x00-\x1F\x7F]/, " ")
+        |> String.slice(0, 256)
+
+      [] ->
+        "unknown"
     end
   end
 end

@@ -37,18 +37,33 @@ defmodule ZtripwireWeb.LiveComponents.SystemLive do
   end
 
   def handle_event("select-system", %{"id" => id}, socket) do
-    send(self(), {:select_system, String.to_integer(id)})
+    case parse_id(id) do
+      nil -> :ok
+      system_id -> send(self(), {:select_system, system_id})
+    end
+
     {:noreply, socket}
   end
 
   def handle_event("select-gate-system", %{"solar" => solar}, socket) do
-    send(self(), {:select_gate_system, String.to_integer(solar)})
+    case parse_id(solar) do
+      nil -> :ok
+      solar_system_id -> send(self(), {:select_gate_system, solar_system_id})
+    end
+
     {:noreply, socket}
   end
 
   def handle_event("toggle-favorite", _params, socket) do
     send(self(), :toggle_favorite)
     {:noreply, socket}
+  end
+
+  defp parse_id(id) do
+    case Integer.parse(to_string(id)) do
+      {value, ""} -> value
+      _ -> nil
+    end
   end
 
   attr :position, :map, default: %{"x" => 0, "y" => 0, "w" => 6, "h" => 6}

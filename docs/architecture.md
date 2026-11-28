@@ -86,7 +86,7 @@ flowchart TD
   presentation -->|2| demo
   presentation -->|1| background
   presentation -->|39| contexts
-  presentation -->|3| persistence
+  presentation -->|1| persistence
   presentation -->|9| integrations
   tooling -->|2| contexts
   data_access -->|2| demo
@@ -99,8 +99,8 @@ flowchart TD
   background -->|7| integrations
   contexts -.->|1| demo
   contexts -.->|2| background
-  contexts -->|41| persistence
-  contexts -->|6| integrations
+  contexts -->|43| persistence
+  contexts -->|5| integrations
   persistence -.->|2| contexts
   persistence -->|1| integrations
   integrations -.->|4| contexts

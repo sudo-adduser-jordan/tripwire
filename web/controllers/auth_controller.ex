@@ -107,7 +107,10 @@ defmodule ZtripwireWeb.AuthController do
     {:ok, character} = Ztripwire.Accounts.upsert_character_from_ueberauth(auth)
     character = handle_owner_change(previous, character)
 
-    Task.start(fn -> Ztripwire.SyncServer.sync_character(character) end)
+    Task.Supervisor.start_child(Ztripwire.TaskSupervisor, fn ->
+      Ztripwire.SyncServer.sync_character(character)
+    end)
+
     {:ok, _pid} = Ztripwire.Tracking.ensure_poller(character)
 
     character = sync_admin(character)

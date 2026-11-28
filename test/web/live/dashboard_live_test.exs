@@ -1303,6 +1303,23 @@ defmodule ZtripwireWeb.DashboardLiveTest do
     assert sig.type_name == "Unstable Wormhole (Z647)"
   end
 
+  test "global paste rejects text over the size limit", %{
+    conn: conn,
+    character: character
+  } do
+    {_mask, _map, system} = setup_with_system(%{character: character}, "J150321")
+
+    {:ok, view, _html} = live(login(conn, character), ~p"/dashboard")
+
+    render_patch(view, "/J150321")
+    oversized = String.duplicate("ABC-123\tCosmic Signature\tUnstable Wormhole (Z647)\n", 5_000)
+
+    html = render_click(view, "global-paste", %{"text" => oversized})
+
+    assert html =~ "Scan paste is too large"
+    assert Mapping.list_signatures(system.id) == []
+  end
+
   test "signatures pasted on one tab show on every tab of the mask", %{
     conn: conn,
     character: character

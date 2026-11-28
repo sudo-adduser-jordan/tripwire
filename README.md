@@ -25,7 +25,7 @@ Automation uses `Taskfile.yml` (Task v3); server lifecycle tasks run inline shel
 | `task migrate` | Run database migrations for dev and test, backfill missing system class/effect/statics, then sync the `sde_*` tables |
 | `task start` | Restart the production server in the background (`DATABASE_PATH` defaults to `./priv/db/ztripwire-prod.db`), sync the `sde_*` tables, and wait until it answers before printing the URL |
 | `task stop` | Stop the background production server |
-| `task dev` | Stop the production server, run dev migrations, then boot `MIX_ENV=dev mix phx.server` attached on port `4000` with live reload; Ctrl-C stops it |
+| `task dev` | Stop the production server, run dev migrations, then boot `MIX_ENV=dev mix phx.server` attached on port `4000` (bound to `127.0.0.1` unless `DEV_BIND_ALL=1`) with live reload; Ctrl-C stops it |
 
 In dev, `MIX_ENV=dev` also starts the Erlang `:os_mon` application, so the LiveDashboard at `/dev/dashboard` serves CPU, memory, and disk data on its `/dev/dashboard/os_mon` page. `:os_mon` stays off in test and prod.
 
@@ -100,6 +100,6 @@ Deploys run the server in `MIX_ENV=prod` and are driven by the `start` and `stop
    task stop    # stop the background server
    ```
 
-`task dev` stops the production server, runs dev migrations, and boots the development server in the foreground on port `4000`, with live reload and the esbuild/tailwind watchers from `config/dev.exs`; Ctrl-C stops it. `task start` rebuilds and digests assets before boot so `cache_static_manifest` resolves, then waits until the endpoint reports it is listening before printing the URL. If the port is already taken the task fails and prints the tail of `logs/prod.log`.
+`task dev` stops the production server, runs dev migrations, and boots the development server in the foreground on port `4000`, with live reload and the esbuild/tailwind watchers from `config/dev.exs`; the server binds to `127.0.0.1` unless `DEV_BIND_ALL=1` is set, which exposes it (and the `/dev` dashboard) on every interface. Ctrl-C stops it. `task start` rebuilds and digests assets before boot so `cache_static_manifest` resolves, then waits until the endpoint reports it is listening before printing the URL. If the port is already taken the task fails and prints the tail of `logs/prod.log`.
 
 Production sets `force_ssl` with `rewrite_on: [:x_forwarded_proto]`, so terminate TLS in a reverse proxy (or a platform edge) and forward `X-Forwarded-Proto: https`. Plain `http://` requests to a non-loopback host are redirected to `https`.
